@@ -2,7 +2,7 @@
 
 ## Context
 
-Automated subagent execution for managing the Python sidecar and its dependencies (Presidio, spaCy) has encountered persistent failures, including SIGKILL errors and "No such file or directory" errors for brief files. These issues stem from limitations in the subagent execution environment.
+Subagent execution for managing the Python sidecar and its dependencies (Presidio, spaCy) has encountered persistent failures, including SIGKILL errors and "No such file or directory" errors for brief files. These issues indicate fundamental problems with the subagent execution environment concerning file access and native module handling.
 
 To proceed with development, the Python sidecar and its dependencies must be set up manually.
 

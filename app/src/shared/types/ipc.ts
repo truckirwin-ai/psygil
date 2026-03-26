@@ -32,85 +32,160 @@ export type PipelineStage =
   | 'complete'
 
 // ---------------------------------------------------------------------------
-// Cases
+// Cases — DB row shape (matches cases table + folder_path column)
 // ---------------------------------------------------------------------------
 
-export interface CaseRecord {
-  readonly case_id: string
-  readonly case_name: string
-  readonly case_type: string
-  readonly status: string
-  readonly pipeline_stage: PipelineStage
+export interface CaseRow {
+  readonly case_id: number
+  readonly case_number: string
+  readonly primary_clinician_user_id: number
+  readonly examinee_first_name: string
+  readonly examinee_last_name: string
+  readonly examinee_dob: string | null
+  readonly examinee_gender: string | null
+  readonly cultural_context: string | null
+  readonly linguistic_context: string | null
+  readonly evaluation_type: string | null
+  readonly practice_profile_id: number | null
+  readonly referral_source: string | null
+  readonly evaluation_questions: string | null
+  readonly case_status: string
+  readonly workflow_current_stage: string | null
   readonly created_at: string
-  readonly last_modified: string
-  readonly document_count: number
-  readonly metadata: Record<string, unknown>
+  readonly last_modified: string | null
+  readonly completed_at: string | null
+  readonly notes: string | null
+  readonly practice_id: number | null
+  readonly folder_path: string | null
+  readonly deleted_at?: string | null
+}
+
+export interface CreateCaseParams {
+  readonly case_number: string
+  readonly primary_clinician_user_id: number
+  readonly examinee_first_name: string
+  readonly examinee_last_name: string
+  readonly examinee_dob?: string
+  readonly examinee_gender?: string
+  readonly evaluation_type?: string
+  readonly referral_source?: string
+  readonly evaluation_questions?: string
+  readonly notes?: string
 }
 
 // cases.list
 export interface CasesListParams {
   readonly filter?: {
-    readonly case_type?: string
-    readonly status?: string
+    readonly case_status?: string
     readonly pipeline_stage?: PipelineStage
-  }
-  readonly sort?: {
-    readonly field: string
-    readonly order: 'asc' | 'desc'
-  }
-  readonly pagination?: {
-    readonly page: number
-    readonly limit: number
   }
 }
 
 export interface CasesListResult {
-  readonly cases: readonly CaseRecord[]
+  readonly cases: readonly CaseRow[]
   readonly total: number
-  readonly page: number
-  readonly limit: number
 }
 
 // cases.get
 export interface CasesGetParams {
-  readonly case_id: string
+  readonly case_id: number
 }
 
-export type CasesGetResult = CaseRecord
+export type CasesGetResult = CaseRow
 
-// cases.create
-export interface CasesCreateParams {
-  readonly case_name: string
-  readonly case_type: string
-  readonly client_id?: string
-  readonly description?: string
-  readonly metadata?: Record<string, unknown>
-}
+// cases.create — reuse CreateCaseParams
+export type CasesCreateParams = CreateCaseParams
 
-export interface CasesCreateResult {
-  readonly case_id: string
-  readonly created_at: string
-}
-
-// cases.update
-export interface CasesUpdateParams {
-  readonly case_id: string
-  readonly updates: Record<string, unknown>
-}
-
-export interface CasesUpdateResult {
-  readonly case_id: string
-  readonly updated_fields: readonly string[]
-}
+export type CasesCreateResult = CaseRow
 
 // cases.archive
 export interface CasesArchiveParams {
-  readonly case_id: string
+  readonly case_id: number
 }
 
-export interface CasesArchiveResult {
-  readonly case_id: string
-  readonly archived_at: string
+export type CasesArchiveResult = CaseRow
+
+// ---------------------------------------------------------------------------
+// Patient Intake
+// ---------------------------------------------------------------------------
+
+export type ReferralType = 'court' | 'attorney' | 'self' | 'walk-in'
+
+export interface PatientIntakeRow {
+  readonly intake_id: number
+  readonly case_id: number
+  readonly referral_type: ReferralType
+  readonly referral_source: string | null
+  readonly eval_type: string | null
+  readonly presenting_complaint: string | null
+  readonly jurisdiction: string | null
+  readonly charges: string | null
+  readonly attorney_name: string | null
+  readonly report_deadline: string | null
+  readonly status: 'draft' | 'complete'
+  readonly created_at: string
+  readonly updated_at: string
+}
+
+export interface IntakeSaveParams {
+  readonly case_id: number
+  readonly data: {
+    readonly referral_type?: ReferralType
+    readonly referral_source?: string
+    readonly eval_type?: string
+    readonly presenting_complaint?: string
+    readonly jurisdiction?: string
+    readonly charges?: string
+    readonly attorney_name?: string
+    readonly report_deadline?: string
+    readonly status?: 'draft' | 'complete'
+  }
+}
+
+export interface IntakeGetParams {
+  readonly case_id: number
+}
+
+// ---------------------------------------------------------------------------
+// Patient Onboarding
+// ---------------------------------------------------------------------------
+
+export type OnboardingSection =
+  | 'contact'
+  | 'complaints'
+  | 'family'
+  | 'education'
+  | 'health'
+  | 'mental'
+  | 'substance'
+  | 'legal'
+  | 'recent'
+
+export interface PatientOnboardingRow {
+  readonly onboarding_id: number
+  readonly case_id: number
+  readonly section: OnboardingSection
+  readonly content: string
+  readonly clinician_notes: string | null
+  readonly verified: number
+  readonly status: 'draft' | 'complete'
+  readonly created_at: string
+  readonly updated_at: string
+}
+
+export interface OnboardingSaveParams {
+  readonly case_id: number
+  readonly section: OnboardingSection
+  readonly data: {
+    readonly content: string
+    readonly clinician_notes?: string
+    readonly verified?: boolean
+    readonly status?: 'draft' | 'complete'
+  }
+}
+
+export interface OnboardingGetParams {
+  readonly case_id: number
 }
 
 // ---------------------------------------------------------------------------
@@ -237,11 +312,18 @@ export interface WorkspaceFileChangedEvent {
 export interface PsygilApi {
   readonly platform: string
   readonly cases: {
-    readonly list: (params: CasesListParams) => Promise<IpcResponse<CasesListResult>>
+    readonly list: (params?: CasesListParams) => Promise<IpcResponse<CasesListResult>>
     readonly get: (params: CasesGetParams) => Promise<IpcResponse<CasesGetResult>>
     readonly create: (params: CasesCreateParams) => Promise<IpcResponse<CasesCreateResult>>
-    readonly update: (params: CasesUpdateParams) => Promise<IpcResponse<CasesUpdateResult>>
     readonly archive: (params: CasesArchiveParams) => Promise<IpcResponse<CasesArchiveResult>>
+  }
+  readonly intake: {
+    readonly save: (params: IntakeSaveParams) => Promise<IpcResponse<PatientIntakeRow>>
+    readonly get: (params: IntakeGetParams) => Promise<IpcResponse<PatientIntakeRow | null>>
+  }
+  readonly onboarding: {
+    readonly save: (params: OnboardingSaveParams) => Promise<IpcResponse<PatientOnboardingRow>>
+    readonly get: (params: OnboardingGetParams) => Promise<IpcResponse<readonly PatientOnboardingRow[]>>
   }
   readonly db: {
     readonly health: () => Promise<IpcResponse<DbHealthResult>>

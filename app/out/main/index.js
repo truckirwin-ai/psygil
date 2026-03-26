@@ -3,13 +3,13 @@ const electron = require("electron");
 const path = require("path");
 const node_crypto = require("node:crypto");
 const fs = require("fs");
-const node_events = require("node:events");
-const node_fs = require("node:fs");
-const promises = require("node:fs/promises");
-const sp = require("node:path");
-const node_stream = require("node:stream");
-const node_os = require("node:os");
+const chokidar = require("chokidar");
 const net = require("net");
+const Database = require("better-sqlite3");
+const betterSqlite3 = require("drizzle-orm/better-sqlite3");
+const argon2 = require("argon2");
+const drizzleOrm = require("drizzle-orm");
+const sqliteCore = require("drizzle-orm/sqlite-core");
 function _interopNamespaceDefault(e) {
   const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
   if (e) {
@@ -26,7 +26,6 @@ function _interopNamespaceDefault(e) {
   n.default = e;
   return Object.freeze(n);
 }
-const sp__namespace = /* @__PURE__ */ _interopNamespaceDefault(sp);
 const net__namespace = /* @__PURE__ */ _interopNamespaceDefault(net);
 const TOKEN_KEYS = {
   ID_TOKEN: "psygil_id_token",
@@ -293,1719 +292,6 @@ function checkLicense() {
     expires_at: session.expiresAt
   };
 }
-const EntryTypes = {
-  FILE_TYPE: "files",
-  DIR_TYPE: "directories",
-  FILE_DIR_TYPE: "files_directories",
-  EVERYTHING_TYPE: "all"
-};
-const defaultOptions = {
-  root: ".",
-  fileFilter: (_entryInfo) => true,
-  directoryFilter: (_entryInfo) => true,
-  type: EntryTypes.FILE_TYPE,
-  lstat: false,
-  depth: 2147483648,
-  alwaysStat: false,
-  highWaterMark: 4096
-};
-Object.freeze(defaultOptions);
-const RECURSIVE_ERROR_CODE = "READDIRP_RECURSIVE_ERROR";
-const NORMAL_FLOW_ERRORS = /* @__PURE__ */ new Set(["ENOENT", "EPERM", "EACCES", "ELOOP", RECURSIVE_ERROR_CODE]);
-const ALL_TYPES = [
-  EntryTypes.DIR_TYPE,
-  EntryTypes.EVERYTHING_TYPE,
-  EntryTypes.FILE_DIR_TYPE,
-  EntryTypes.FILE_TYPE
-];
-const DIR_TYPES = /* @__PURE__ */ new Set([
-  EntryTypes.DIR_TYPE,
-  EntryTypes.EVERYTHING_TYPE,
-  EntryTypes.FILE_DIR_TYPE
-]);
-const FILE_TYPES = /* @__PURE__ */ new Set([
-  EntryTypes.EVERYTHING_TYPE,
-  EntryTypes.FILE_DIR_TYPE,
-  EntryTypes.FILE_TYPE
-]);
-const isNormalFlowError = (error) => NORMAL_FLOW_ERRORS.has(error.code);
-const wantBigintFsStats = process.platform === "win32";
-const emptyFn = (_entryInfo) => true;
-const normalizeFilter = (filter) => {
-  if (filter === void 0)
-    return emptyFn;
-  if (typeof filter === "function")
-    return filter;
-  if (typeof filter === "string") {
-    const fl = filter.trim();
-    return (entry) => entry.basename === fl;
-  }
-  if (Array.isArray(filter)) {
-    const trItems = filter.map((item) => item.trim());
-    return (entry) => trItems.some((f) => entry.basename === f);
-  }
-  return emptyFn;
-};
-class ReaddirpStream extends node_stream.Readable {
-  parents;
-  reading;
-  parent;
-  _stat;
-  _maxDepth;
-  _wantsDir;
-  _wantsFile;
-  _wantsEverything;
-  _root;
-  _isDirent;
-  _statsProp;
-  _rdOptions;
-  _fileFilter;
-  _directoryFilter;
-  constructor(options = {}) {
-    super({
-      objectMode: true,
-      autoDestroy: true,
-      highWaterMark: options.highWaterMark
-    });
-    const opts = { ...defaultOptions, ...options };
-    const { root, type } = opts;
-    this._fileFilter = normalizeFilter(opts.fileFilter);
-    this._directoryFilter = normalizeFilter(opts.directoryFilter);
-    const statMethod = opts.lstat ? promises.lstat : promises.stat;
-    if (wantBigintFsStats) {
-      this._stat = (path2) => statMethod(path2, { bigint: true });
-    } else {
-      this._stat = statMethod;
-    }
-    this._maxDepth = opts.depth != null && Number.isSafeInteger(opts.depth) ? opts.depth : defaultOptions.depth;
-    this._wantsDir = type ? DIR_TYPES.has(type) : false;
-    this._wantsFile = type ? FILE_TYPES.has(type) : false;
-    this._wantsEverything = type === EntryTypes.EVERYTHING_TYPE;
-    this._root = sp.resolve(root);
-    this._isDirent = !opts.alwaysStat;
-    this._statsProp = this._isDirent ? "dirent" : "stats";
-    this._rdOptions = { encoding: "utf8", withFileTypes: this._isDirent };
-    this.parents = [this._exploreDir(root, 1)];
-    this.reading = false;
-    this.parent = void 0;
-  }
-  async _read(batch) {
-    if (this.reading)
-      return;
-    this.reading = true;
-    try {
-      while (!this.destroyed && batch > 0) {
-        const par = this.parent;
-        const fil = par && par.files;
-        if (fil && fil.length > 0) {
-          const { path: path2, depth } = par;
-          const slice = fil.splice(0, batch).map((dirent) => this._formatEntry(dirent, path2));
-          const awaited = await Promise.all(slice);
-          for (const entry of awaited) {
-            if (!entry)
-              continue;
-            if (this.destroyed)
-              return;
-            const entryType = await this._getEntryType(entry);
-            if (entryType === "directory" && this._directoryFilter(entry)) {
-              if (depth <= this._maxDepth) {
-                this.parents.push(this._exploreDir(entry.fullPath, depth + 1));
-              }
-              if (this._wantsDir) {
-                this.push(entry);
-                batch--;
-              }
-            } else if ((entryType === "file" || this._includeAsFile(entry)) && this._fileFilter(entry)) {
-              if (this._wantsFile) {
-                this.push(entry);
-                batch--;
-              }
-            }
-          }
-        } else {
-          const parent = this.parents.pop();
-          if (!parent) {
-            this.push(null);
-            break;
-          }
-          this.parent = await parent;
-          if (this.destroyed)
-            return;
-        }
-      }
-    } catch (error) {
-      this.destroy(error);
-    } finally {
-      this.reading = false;
-    }
-  }
-  async _exploreDir(path2, depth) {
-    let files;
-    try {
-      files = await promises.readdir(path2, this._rdOptions);
-    } catch (error) {
-      this._onError(error);
-    }
-    return { files, depth, path: path2 };
-  }
-  async _formatEntry(dirent, path2) {
-    let entry;
-    const basename = this._isDirent ? dirent.name : dirent;
-    try {
-      const fullPath = sp.resolve(sp.join(path2, basename));
-      entry = { path: sp.relative(this._root, fullPath), fullPath, basename };
-      entry[this._statsProp] = this._isDirent ? dirent : await this._stat(fullPath);
-    } catch (err) {
-      this._onError(err);
-      return;
-    }
-    return entry;
-  }
-  _onError(err) {
-    if (isNormalFlowError(err) && !this.destroyed) {
-      this.emit("warn", err);
-    } else {
-      this.destroy(err);
-    }
-  }
-  async _getEntryType(entry) {
-    if (!entry && this._statsProp in entry) {
-      return "";
-    }
-    const stats = entry[this._statsProp];
-    if (stats.isFile())
-      return "file";
-    if (stats.isDirectory())
-      return "directory";
-    if (stats && stats.isSymbolicLink()) {
-      const full = entry.fullPath;
-      try {
-        const entryRealPath = await promises.realpath(full);
-        const entryRealPathStats = await promises.lstat(entryRealPath);
-        if (entryRealPathStats.isFile()) {
-          return "file";
-        }
-        if (entryRealPathStats.isDirectory()) {
-          const len = entryRealPath.length;
-          if (full.startsWith(entryRealPath) && full.substr(len, 1) === sp.sep) {
-            const recursiveError = new Error(`Circular symlink detected: "${full}" points to "${entryRealPath}"`);
-            recursiveError.code = RECURSIVE_ERROR_CODE;
-            return this._onError(recursiveError);
-          }
-          return "directory";
-        }
-      } catch (error) {
-        this._onError(error);
-        return "";
-      }
-    }
-  }
-  _includeAsFile(entry) {
-    const stats = entry && entry[this._statsProp];
-    return stats && this._wantsEverything && !stats.isDirectory();
-  }
-}
-function readdirp(root, options = {}) {
-  let type = options.entryType || options.type;
-  if (type === "both")
-    type = EntryTypes.FILE_DIR_TYPE;
-  if (type)
-    options.type = type;
-  if (!root) {
-    throw new Error("readdirp: root argument is required. Usage: readdirp(root, options)");
-  } else if (typeof root !== "string") {
-    throw new TypeError("readdirp: root argument must be a string. Usage: readdirp(root, options)");
-  } else if (type && !ALL_TYPES.includes(type)) {
-    throw new Error(`readdirp: Invalid type passed. Use one of ${ALL_TYPES.join(", ")}`);
-  }
-  options.root = root;
-  return new ReaddirpStream(options);
-}
-const STR_DATA = "data";
-const STR_END = "end";
-const STR_CLOSE = "close";
-const EMPTY_FN = () => {
-};
-const pl = process.platform;
-const isWindows = pl === "win32";
-const isMacos = pl === "darwin";
-const isLinux = pl === "linux";
-const isFreeBSD = pl === "freebsd";
-const isIBMi = node_os.type() === "OS400";
-const EVENTS = {
-  ALL: "all",
-  READY: "ready",
-  ADD: "add",
-  CHANGE: "change",
-  ADD_DIR: "addDir",
-  UNLINK: "unlink",
-  UNLINK_DIR: "unlinkDir",
-  RAW: "raw",
-  ERROR: "error"
-};
-const EV = EVENTS;
-const THROTTLE_MODE_WATCH = "watch";
-const statMethods = { lstat: promises.lstat, stat: promises.stat };
-const KEY_LISTENERS = "listeners";
-const KEY_ERR = "errHandlers";
-const KEY_RAW = "rawEmitters";
-const HANDLER_KEYS = [KEY_LISTENERS, KEY_ERR, KEY_RAW];
-const binaryExtensions = /* @__PURE__ */ new Set([
-  "3dm",
-  "3ds",
-  "3g2",
-  "3gp",
-  "7z",
-  "a",
-  "aac",
-  "adp",
-  "afdesign",
-  "afphoto",
-  "afpub",
-  "ai",
-  "aif",
-  "aiff",
-  "alz",
-  "ape",
-  "apk",
-  "appimage",
-  "ar",
-  "arj",
-  "asf",
-  "au",
-  "avi",
-  "bak",
-  "baml",
-  "bh",
-  "bin",
-  "bk",
-  "bmp",
-  "btif",
-  "bz2",
-  "bzip2",
-  "cab",
-  "caf",
-  "cgm",
-  "class",
-  "cmx",
-  "cpio",
-  "cr2",
-  "cur",
-  "dat",
-  "dcm",
-  "deb",
-  "dex",
-  "djvu",
-  "dll",
-  "dmg",
-  "dng",
-  "doc",
-  "docm",
-  "docx",
-  "dot",
-  "dotm",
-  "dra",
-  "DS_Store",
-  "dsk",
-  "dts",
-  "dtshd",
-  "dvb",
-  "dwg",
-  "dxf",
-  "ecelp4800",
-  "ecelp7470",
-  "ecelp9600",
-  "egg",
-  "eol",
-  "eot",
-  "epub",
-  "exe",
-  "f4v",
-  "fbs",
-  "fh",
-  "fla",
-  "flac",
-  "flatpak",
-  "fli",
-  "flv",
-  "fpx",
-  "fst",
-  "fvt",
-  "g3",
-  "gh",
-  "gif",
-  "graffle",
-  "gz",
-  "gzip",
-  "h261",
-  "h263",
-  "h264",
-  "icns",
-  "ico",
-  "ief",
-  "img",
-  "ipa",
-  "iso",
-  "jar",
-  "jpeg",
-  "jpg",
-  "jpgv",
-  "jpm",
-  "jxr",
-  "key",
-  "ktx",
-  "lha",
-  "lib",
-  "lvp",
-  "lz",
-  "lzh",
-  "lzma",
-  "lzo",
-  "m3u",
-  "m4a",
-  "m4v",
-  "mar",
-  "mdi",
-  "mht",
-  "mid",
-  "midi",
-  "mj2",
-  "mka",
-  "mkv",
-  "mmr",
-  "mng",
-  "mobi",
-  "mov",
-  "movie",
-  "mp3",
-  "mp4",
-  "mp4a",
-  "mpeg",
-  "mpg",
-  "mpga",
-  "mxu",
-  "nef",
-  "npx",
-  "numbers",
-  "nupkg",
-  "o",
-  "odp",
-  "ods",
-  "odt",
-  "oga",
-  "ogg",
-  "ogv",
-  "otf",
-  "ott",
-  "pages",
-  "pbm",
-  "pcx",
-  "pdb",
-  "pdf",
-  "pea",
-  "pgm",
-  "pic",
-  "png",
-  "pnm",
-  "pot",
-  "potm",
-  "potx",
-  "ppa",
-  "ppam",
-  "ppm",
-  "pps",
-  "ppsm",
-  "ppsx",
-  "ppt",
-  "pptm",
-  "pptx",
-  "psd",
-  "pya",
-  "pyc",
-  "pyo",
-  "pyv",
-  "qt",
-  "rar",
-  "ras",
-  "raw",
-  "resources",
-  "rgb",
-  "rip",
-  "rlc",
-  "rmf",
-  "rmvb",
-  "rpm",
-  "rtf",
-  "rz",
-  "s3m",
-  "s7z",
-  "scpt",
-  "sgi",
-  "shar",
-  "snap",
-  "sil",
-  "sketch",
-  "slk",
-  "smv",
-  "snk",
-  "so",
-  "stl",
-  "suo",
-  "sub",
-  "swf",
-  "tar",
-  "tbz",
-  "tbz2",
-  "tga",
-  "tgz",
-  "thmx",
-  "tif",
-  "tiff",
-  "tlz",
-  "ttc",
-  "ttf",
-  "txz",
-  "udf",
-  "uvh",
-  "uvi",
-  "uvm",
-  "uvp",
-  "uvs",
-  "uvu",
-  "viv",
-  "vob",
-  "war",
-  "wav",
-  "wax",
-  "wbmp",
-  "wdp",
-  "weba",
-  "webm",
-  "webp",
-  "whl",
-  "wim",
-  "wm",
-  "wma",
-  "wmv",
-  "wmx",
-  "woff",
-  "woff2",
-  "wrm",
-  "wvx",
-  "xbm",
-  "xif",
-  "xla",
-  "xlam",
-  "xls",
-  "xlsb",
-  "xlsm",
-  "xlsx",
-  "xlt",
-  "xltm",
-  "xltx",
-  "xm",
-  "xmind",
-  "xpi",
-  "xpm",
-  "xwd",
-  "xz",
-  "z",
-  "zip",
-  "zipx"
-]);
-const isBinaryPath = (filePath) => binaryExtensions.has(sp__namespace.extname(filePath).slice(1).toLowerCase());
-const foreach = (val, fn) => {
-  if (val instanceof Set) {
-    val.forEach(fn);
-  } else {
-    fn(val);
-  }
-};
-const addAndConvert = (main, prop, item) => {
-  let container = main[prop];
-  if (!(container instanceof Set)) {
-    main[prop] = container = /* @__PURE__ */ new Set([container]);
-  }
-  container.add(item);
-};
-const clearItem = (cont) => (key) => {
-  const set = cont[key];
-  if (set instanceof Set) {
-    set.clear();
-  } else {
-    delete cont[key];
-  }
-};
-const delFromSet = (main, prop, item) => {
-  const container = main[prop];
-  if (container instanceof Set) {
-    container.delete(item);
-  } else if (container === item) {
-    delete main[prop];
-  }
-};
-const isEmptySet = (val) => val instanceof Set ? val.size === 0 : !val;
-const FsWatchInstances = /* @__PURE__ */ new Map();
-function createFsWatchInstance(path2, options, listener, errHandler, emitRaw) {
-  const handleEvent = (rawEvent, evPath) => {
-    listener(path2);
-    emitRaw(rawEvent, evPath, { watchedPath: path2 });
-    if (evPath && path2 !== evPath) {
-      fsWatchBroadcast(sp__namespace.resolve(path2, evPath), KEY_LISTENERS, sp__namespace.join(path2, evPath));
-    }
-  };
-  try {
-    return node_fs.watch(path2, {
-      persistent: options.persistent
-    }, handleEvent);
-  } catch (error) {
-    errHandler(error);
-    return void 0;
-  }
-}
-const fsWatchBroadcast = (fullPath, listenerType, val1, val2, val3) => {
-  const cont = FsWatchInstances.get(fullPath);
-  if (!cont)
-    return;
-  foreach(cont[listenerType], (listener) => {
-    listener(val1, val2, val3);
-  });
-};
-const setFsWatchListener = (path2, fullPath, options, handlers) => {
-  const { listener, errHandler, rawEmitter } = handlers;
-  let cont = FsWatchInstances.get(fullPath);
-  let watcher;
-  if (!options.persistent) {
-    watcher = createFsWatchInstance(path2, options, listener, errHandler, rawEmitter);
-    if (!watcher)
-      return;
-    return watcher.close.bind(watcher);
-  }
-  if (cont) {
-    addAndConvert(cont, KEY_LISTENERS, listener);
-    addAndConvert(cont, KEY_ERR, errHandler);
-    addAndConvert(cont, KEY_RAW, rawEmitter);
-  } else {
-    watcher = createFsWatchInstance(
-      path2,
-      options,
-      fsWatchBroadcast.bind(null, fullPath, KEY_LISTENERS),
-      errHandler,
-      // no need to use broadcast here
-      fsWatchBroadcast.bind(null, fullPath, KEY_RAW)
-    );
-    if (!watcher)
-      return;
-    watcher.on(EV.ERROR, async (error) => {
-      const broadcastErr = fsWatchBroadcast.bind(null, fullPath, KEY_ERR);
-      if (cont)
-        cont.watcherUnusable = true;
-      if (isWindows && error.code === "EPERM") {
-        try {
-          const fd = await promises.open(path2, "r");
-          await fd.close();
-          broadcastErr(error);
-        } catch (err) {
-        }
-      } else {
-        broadcastErr(error);
-      }
-    });
-    cont = {
-      listeners: listener,
-      errHandlers: errHandler,
-      rawEmitters: rawEmitter,
-      watcher
-    };
-    FsWatchInstances.set(fullPath, cont);
-  }
-  return () => {
-    delFromSet(cont, KEY_LISTENERS, listener);
-    delFromSet(cont, KEY_ERR, errHandler);
-    delFromSet(cont, KEY_RAW, rawEmitter);
-    if (isEmptySet(cont.listeners)) {
-      cont.watcher.close();
-      FsWatchInstances.delete(fullPath);
-      HANDLER_KEYS.forEach(clearItem(cont));
-      cont.watcher = void 0;
-      Object.freeze(cont);
-    }
-  };
-};
-const FsWatchFileInstances = /* @__PURE__ */ new Map();
-const setFsWatchFileListener = (path2, fullPath, options, handlers) => {
-  const { listener, rawEmitter } = handlers;
-  let cont = FsWatchFileInstances.get(fullPath);
-  const copts = cont && cont.options;
-  if (copts && (copts.persistent < options.persistent || copts.interval > options.interval)) {
-    node_fs.unwatchFile(fullPath);
-    cont = void 0;
-  }
-  if (cont) {
-    addAndConvert(cont, KEY_LISTENERS, listener);
-    addAndConvert(cont, KEY_RAW, rawEmitter);
-  } else {
-    cont = {
-      listeners: listener,
-      rawEmitters: rawEmitter,
-      options,
-      watcher: node_fs.watchFile(fullPath, options, (curr, prev) => {
-        foreach(cont.rawEmitters, (rawEmitter2) => {
-          rawEmitter2(EV.CHANGE, fullPath, { curr, prev });
-        });
-        const currmtime = curr.mtimeMs;
-        if (curr.size !== prev.size || currmtime > prev.mtimeMs || currmtime === 0) {
-          foreach(cont.listeners, (listener2) => listener2(path2, curr));
-        }
-      })
-    };
-    FsWatchFileInstances.set(fullPath, cont);
-  }
-  return () => {
-    delFromSet(cont, KEY_LISTENERS, listener);
-    delFromSet(cont, KEY_RAW, rawEmitter);
-    if (isEmptySet(cont.listeners)) {
-      FsWatchFileInstances.delete(fullPath);
-      node_fs.unwatchFile(fullPath);
-      cont.options = cont.watcher = void 0;
-      Object.freeze(cont);
-    }
-  };
-};
-class NodeFsHandler {
-  fsw;
-  _boundHandleError;
-  constructor(fsW) {
-    this.fsw = fsW;
-    this._boundHandleError = (error) => fsW._handleError(error);
-  }
-  /**
-   * Watch file for changes with fs_watchFile or fs_watch.
-   * @param path to file or dir
-   * @param listener on fs change
-   * @returns closer for the watcher instance
-   */
-  _watchWithNodeFs(path2, listener) {
-    const opts = this.fsw.options;
-    const directory = sp__namespace.dirname(path2);
-    const basename = sp__namespace.basename(path2);
-    const parent = this.fsw._getWatchedDir(directory);
-    parent.add(basename);
-    const absolutePath = sp__namespace.resolve(path2);
-    const options = {
-      persistent: opts.persistent
-    };
-    if (!listener)
-      listener = EMPTY_FN;
-    let closer;
-    if (opts.usePolling) {
-      const enableBin = opts.interval !== opts.binaryInterval;
-      options.interval = enableBin && isBinaryPath(basename) ? opts.binaryInterval : opts.interval;
-      closer = setFsWatchFileListener(path2, absolutePath, options, {
-        listener,
-        rawEmitter: this.fsw._emitRaw
-      });
-    } else {
-      closer = setFsWatchListener(path2, absolutePath, options, {
-        listener,
-        errHandler: this._boundHandleError,
-        rawEmitter: this.fsw._emitRaw
-      });
-    }
-    return closer;
-  }
-  /**
-   * Watch a file and emit add event if warranted.
-   * @returns closer for the watcher instance
-   */
-  _handleFile(file, stats, initialAdd) {
-    if (this.fsw.closed) {
-      return;
-    }
-    const dirname = sp__namespace.dirname(file);
-    const basename = sp__namespace.basename(file);
-    const parent = this.fsw._getWatchedDir(dirname);
-    let prevStats = stats;
-    if (parent.has(basename))
-      return;
-    const listener = async (path2, newStats) => {
-      if (!this.fsw._throttle(THROTTLE_MODE_WATCH, file, 5))
-        return;
-      if (!newStats || newStats.mtimeMs === 0) {
-        try {
-          const newStats2 = await promises.stat(file);
-          if (this.fsw.closed)
-            return;
-          const at = newStats2.atimeMs;
-          const mt = newStats2.mtimeMs;
-          if (!at || at <= mt || mt !== prevStats.mtimeMs) {
-            this.fsw._emit(EV.CHANGE, file, newStats2);
-          }
-          if ((isMacos || isLinux || isFreeBSD) && prevStats.ino !== newStats2.ino) {
-            this.fsw._closeFile(path2);
-            prevStats = newStats2;
-            const closer2 = this._watchWithNodeFs(file, listener);
-            if (closer2)
-              this.fsw._addPathCloser(path2, closer2);
-          } else {
-            prevStats = newStats2;
-          }
-        } catch (error) {
-          this.fsw._remove(dirname, basename);
-        }
-      } else if (parent.has(basename)) {
-        const at = newStats.atimeMs;
-        const mt = newStats.mtimeMs;
-        if (!at || at <= mt || mt !== prevStats.mtimeMs) {
-          this.fsw._emit(EV.CHANGE, file, newStats);
-        }
-        prevStats = newStats;
-      }
-    };
-    const closer = this._watchWithNodeFs(file, listener);
-    if (!(initialAdd && this.fsw.options.ignoreInitial) && this.fsw._isntIgnored(file)) {
-      if (!this.fsw._throttle(EV.ADD, file, 0))
-        return;
-      this.fsw._emit(EV.ADD, file, stats);
-    }
-    return closer;
-  }
-  /**
-   * Handle symlinks encountered while reading a dir.
-   * @param entry returned by readdirp
-   * @param directory path of dir being read
-   * @param path of this item
-   * @param item basename of this item
-   * @returns true if no more processing is needed for this entry.
-   */
-  async _handleSymlink(entry, directory, path2, item) {
-    if (this.fsw.closed) {
-      return;
-    }
-    const full = entry.fullPath;
-    const dir = this.fsw._getWatchedDir(directory);
-    if (!this.fsw.options.followSymlinks) {
-      this.fsw._incrReadyCount();
-      let linkPath;
-      try {
-        linkPath = await promises.realpath(path2);
-      } catch (e) {
-        this.fsw._emitReady();
-        return true;
-      }
-      if (this.fsw.closed)
-        return;
-      if (dir.has(item)) {
-        if (this.fsw._symlinkPaths.get(full) !== linkPath) {
-          this.fsw._symlinkPaths.set(full, linkPath);
-          this.fsw._emit(EV.CHANGE, path2, entry.stats);
-        }
-      } else {
-        dir.add(item);
-        this.fsw._symlinkPaths.set(full, linkPath);
-        this.fsw._emit(EV.ADD, path2, entry.stats);
-      }
-      this.fsw._emitReady();
-      return true;
-    }
-    if (this.fsw._symlinkPaths.has(full)) {
-      return true;
-    }
-    this.fsw._symlinkPaths.set(full, true);
-  }
-  _handleRead(directory, initialAdd, wh, target, dir, depth, throttler) {
-    directory = sp__namespace.join(directory, "");
-    const throttleKey = target ? `${directory}:${target}` : directory;
-    throttler = this.fsw._throttle("readdir", throttleKey, 1e3);
-    if (!throttler)
-      return;
-    const previous = this.fsw._getWatchedDir(wh.path);
-    const current = /* @__PURE__ */ new Set();
-    let stream = this.fsw._readdirp(directory, {
-      fileFilter: (entry) => wh.filterPath(entry),
-      directoryFilter: (entry) => wh.filterDir(entry)
-    });
-    if (!stream)
-      return;
-    stream.on(STR_DATA, async (entry) => {
-      if (this.fsw.closed) {
-        stream = void 0;
-        return;
-      }
-      const item = entry.path;
-      let path2 = sp__namespace.join(directory, item);
-      current.add(item);
-      if (entry.stats.isSymbolicLink() && await this._handleSymlink(entry, directory, path2, item)) {
-        return;
-      }
-      if (this.fsw.closed) {
-        stream = void 0;
-        return;
-      }
-      if (item === target || !target && !previous.has(item)) {
-        this.fsw._incrReadyCount();
-        path2 = sp__namespace.join(dir, sp__namespace.relative(dir, path2));
-        this._addToNodeFs(path2, initialAdd, wh, depth + 1);
-      }
-    }).on(EV.ERROR, this._boundHandleError);
-    return new Promise((resolve, reject) => {
-      if (!stream)
-        return reject();
-      stream.once(STR_END, () => {
-        if (this.fsw.closed) {
-          stream = void 0;
-          return;
-        }
-        const wasThrottled = throttler ? throttler.clear() : false;
-        resolve(void 0);
-        previous.getChildren().filter((item) => {
-          return item !== directory && !current.has(item);
-        }).forEach((item) => {
-          this.fsw._remove(directory, item);
-        });
-        stream = void 0;
-        if (wasThrottled)
-          this._handleRead(directory, false, wh, target, dir, depth, throttler);
-      });
-    });
-  }
-  /**
-   * Read directory to add / remove files from `@watched` list and re-read it on change.
-   * @param dir fs path
-   * @param stats
-   * @param initialAdd
-   * @param depth relative to user-supplied path
-   * @param target child path targeted for watch
-   * @param wh Common watch helpers for this path
-   * @param realpath
-   * @returns closer for the watcher instance.
-   */
-  async _handleDir(dir, stats, initialAdd, depth, target, wh, realpath) {
-    const parentDir = this.fsw._getWatchedDir(sp__namespace.dirname(dir));
-    const tracked = parentDir.has(sp__namespace.basename(dir));
-    if (!(initialAdd && this.fsw.options.ignoreInitial) && !target && !tracked) {
-      this.fsw._emit(EV.ADD_DIR, dir, stats);
-    }
-    parentDir.add(sp__namespace.basename(dir));
-    this.fsw._getWatchedDir(dir);
-    let throttler;
-    let closer;
-    const oDepth = this.fsw.options.depth;
-    if ((oDepth == null || depth <= oDepth) && !this.fsw._symlinkPaths.has(realpath)) {
-      if (!target) {
-        await this._handleRead(dir, initialAdd, wh, target, dir, depth, throttler);
-        if (this.fsw.closed)
-          return;
-      }
-      closer = this._watchWithNodeFs(dir, (dirPath, stats2) => {
-        if (stats2 && stats2.mtimeMs === 0)
-          return;
-        this._handleRead(dirPath, false, wh, target, dir, depth, throttler);
-      });
-    }
-    return closer;
-  }
-  /**
-   * Handle added file, directory, or glob pattern.
-   * Delegates call to _handleFile / _handleDir after checks.
-   * @param path to file or ir
-   * @param initialAdd was the file added at watch instantiation?
-   * @param priorWh depth relative to user-supplied path
-   * @param depth Child path actually targeted for watch
-   * @param target Child path actually targeted for watch
-   */
-  async _addToNodeFs(path2, initialAdd, priorWh, depth, target) {
-    const ready = this.fsw._emitReady;
-    if (this.fsw._isIgnored(path2) || this.fsw.closed) {
-      ready();
-      return false;
-    }
-    const wh = this.fsw._getWatchHelpers(path2);
-    if (priorWh) {
-      wh.filterPath = (entry) => priorWh.filterPath(entry);
-      wh.filterDir = (entry) => priorWh.filterDir(entry);
-    }
-    try {
-      const stats = await statMethods[wh.statMethod](wh.watchPath);
-      if (this.fsw.closed)
-        return;
-      if (this.fsw._isIgnored(wh.watchPath, stats)) {
-        ready();
-        return false;
-      }
-      const follow = this.fsw.options.followSymlinks;
-      let closer;
-      if (stats.isDirectory()) {
-        const absPath = sp__namespace.resolve(path2);
-        const targetPath = follow ? await promises.realpath(path2) : path2;
-        if (this.fsw.closed)
-          return;
-        closer = await this._handleDir(wh.watchPath, stats, initialAdd, depth, target, wh, targetPath);
-        if (this.fsw.closed)
-          return;
-        if (absPath !== targetPath && targetPath !== void 0) {
-          this.fsw._symlinkPaths.set(absPath, targetPath);
-        }
-      } else if (stats.isSymbolicLink()) {
-        const targetPath = follow ? await promises.realpath(path2) : path2;
-        if (this.fsw.closed)
-          return;
-        const parent = sp__namespace.dirname(wh.watchPath);
-        this.fsw._getWatchedDir(parent).add(wh.watchPath);
-        this.fsw._emit(EV.ADD, wh.watchPath, stats);
-        closer = await this._handleDir(parent, stats, initialAdd, depth, path2, wh, targetPath);
-        if (this.fsw.closed)
-          return;
-        if (targetPath !== void 0) {
-          this.fsw._symlinkPaths.set(sp__namespace.resolve(path2), targetPath);
-        }
-      } else {
-        closer = this._handleFile(wh.watchPath, stats, initialAdd);
-      }
-      ready();
-      if (closer)
-        this.fsw._addPathCloser(path2, closer);
-      return false;
-    } catch (error) {
-      if (this.fsw._handleError(error)) {
-        ready();
-        return path2;
-      }
-    }
-  }
-}
-/*! chokidar - MIT License (c) 2012 Paul Miller (paulmillr.com) */
-const SLASH = "/";
-const SLASH_SLASH = "//";
-const ONE_DOT = ".";
-const TWO_DOTS = "..";
-const STRING_TYPE = "string";
-const BACK_SLASH_RE = /\\/g;
-const DOUBLE_SLASH_RE = /\/\//g;
-const DOT_RE = /\..*\.(sw[px])$|~$|\.subl.*\.tmp/;
-const REPLACER_RE = /^\.[/\\]/;
-function arrify(item) {
-  return Array.isArray(item) ? item : [item];
-}
-const isMatcherObject = (matcher) => typeof matcher === "object" && matcher !== null && !(matcher instanceof RegExp);
-function createPattern(matcher) {
-  if (typeof matcher === "function")
-    return matcher;
-  if (typeof matcher === "string")
-    return (string) => matcher === string;
-  if (matcher instanceof RegExp)
-    return (string) => matcher.test(string);
-  if (typeof matcher === "object" && matcher !== null) {
-    return (string) => {
-      if (matcher.path === string)
-        return true;
-      if (matcher.recursive) {
-        const relative = sp__namespace.relative(matcher.path, string);
-        if (!relative) {
-          return false;
-        }
-        return !relative.startsWith("..") && !sp__namespace.isAbsolute(relative);
-      }
-      return false;
-    };
-  }
-  return () => false;
-}
-function normalizePath(path2) {
-  if (typeof path2 !== "string")
-    throw new Error("string expected");
-  path2 = sp__namespace.normalize(path2);
-  path2 = path2.replace(/\\/g, "/");
-  let prepend = false;
-  if (path2.startsWith("//"))
-    prepend = true;
-  path2 = path2.replace(DOUBLE_SLASH_RE, "/");
-  if (prepend)
-    path2 = "/" + path2;
-  return path2;
-}
-function matchPatterns(patterns, testString, stats) {
-  const path2 = normalizePath(testString);
-  for (let index = 0; index < patterns.length; index++) {
-    const pattern = patterns[index];
-    if (pattern(path2, stats)) {
-      return true;
-    }
-  }
-  return false;
-}
-function anymatch(matchers, testString) {
-  if (matchers == null) {
-    throw new TypeError("anymatch: specify first argument");
-  }
-  const matchersArray = arrify(matchers);
-  const patterns = matchersArray.map((matcher) => createPattern(matcher));
-  {
-    return (testString2, stats) => {
-      return matchPatterns(patterns, testString2, stats);
-    };
-  }
-}
-const unifyPaths = (paths_) => {
-  const paths = arrify(paths_).flat();
-  if (!paths.every((p) => typeof p === STRING_TYPE)) {
-    throw new TypeError(`Non-string provided as watch path: ${paths}`);
-  }
-  return paths.map(normalizePathToUnix);
-};
-const toUnix = (string) => {
-  let str = string.replace(BACK_SLASH_RE, SLASH);
-  let prepend = false;
-  if (str.startsWith(SLASH_SLASH)) {
-    prepend = true;
-  }
-  str = str.replace(DOUBLE_SLASH_RE, SLASH);
-  if (prepend) {
-    str = SLASH + str;
-  }
-  return str;
-};
-const normalizePathToUnix = (path2) => toUnix(sp__namespace.normalize(toUnix(path2)));
-const normalizeIgnored = (cwd = "") => (path2) => {
-  if (typeof path2 === "string") {
-    return normalizePathToUnix(sp__namespace.isAbsolute(path2) ? path2 : sp__namespace.join(cwd, path2));
-  } else {
-    return path2;
-  }
-};
-const getAbsolutePath = (path2, cwd) => {
-  if (sp__namespace.isAbsolute(path2)) {
-    return path2;
-  }
-  return sp__namespace.join(cwd, path2);
-};
-const EMPTY_SET = Object.freeze(/* @__PURE__ */ new Set());
-class DirEntry {
-  path;
-  _removeWatcher;
-  items;
-  constructor(dir, removeWatcher) {
-    this.path = dir;
-    this._removeWatcher = removeWatcher;
-    this.items = /* @__PURE__ */ new Set();
-  }
-  add(item) {
-    const { items } = this;
-    if (!items)
-      return;
-    if (item !== ONE_DOT && item !== TWO_DOTS)
-      items.add(item);
-  }
-  async remove(item) {
-    const { items } = this;
-    if (!items)
-      return;
-    items.delete(item);
-    if (items.size > 0)
-      return;
-    const dir = this.path;
-    try {
-      await promises.readdir(dir);
-    } catch (err) {
-      if (this._removeWatcher) {
-        this._removeWatcher(sp__namespace.dirname(dir), sp__namespace.basename(dir));
-      }
-    }
-  }
-  has(item) {
-    const { items } = this;
-    if (!items)
-      return;
-    return items.has(item);
-  }
-  getChildren() {
-    const { items } = this;
-    if (!items)
-      return [];
-    return [...items.values()];
-  }
-  dispose() {
-    this.items.clear();
-    this.path = "";
-    this._removeWatcher = EMPTY_FN;
-    this.items = EMPTY_SET;
-    Object.freeze(this);
-  }
-}
-const STAT_METHOD_F = "stat";
-const STAT_METHOD_L = "lstat";
-class WatchHelper {
-  fsw;
-  path;
-  watchPath;
-  fullWatchPath;
-  dirParts;
-  followSymlinks;
-  statMethod;
-  constructor(path2, follow, fsw) {
-    this.fsw = fsw;
-    const watchPath = path2;
-    this.path = path2 = path2.replace(REPLACER_RE, "");
-    this.watchPath = watchPath;
-    this.fullWatchPath = sp__namespace.resolve(watchPath);
-    this.dirParts = [];
-    this.dirParts.forEach((parts) => {
-      if (parts.length > 1)
-        parts.pop();
-    });
-    this.followSymlinks = follow;
-    this.statMethod = follow ? STAT_METHOD_F : STAT_METHOD_L;
-  }
-  entryPath(entry) {
-    return sp__namespace.join(this.watchPath, sp__namespace.relative(this.watchPath, entry.fullPath));
-  }
-  filterPath(entry) {
-    const { stats } = entry;
-    if (stats && stats.isSymbolicLink())
-      return this.filterDir(entry);
-    const resolvedPath = this.entryPath(entry);
-    return this.fsw._isntIgnored(resolvedPath, stats) && this.fsw._hasReadPermissions(stats);
-  }
-  filterDir(entry) {
-    return this.fsw._isntIgnored(this.entryPath(entry), entry.stats);
-  }
-}
-class FSWatcher extends node_events.EventEmitter {
-  closed;
-  options;
-  _closers;
-  _ignoredPaths;
-  _throttled;
-  _streams;
-  _symlinkPaths;
-  _watched;
-  _pendingWrites;
-  _pendingUnlinks;
-  _readyCount;
-  _emitReady;
-  _closePromise;
-  _userIgnored;
-  _readyEmitted;
-  _emitRaw;
-  _boundRemove;
-  _nodeFsHandler;
-  // Not indenting methods for history sake; for now.
-  constructor(_opts = {}) {
-    super();
-    this.closed = false;
-    this._closers = /* @__PURE__ */ new Map();
-    this._ignoredPaths = /* @__PURE__ */ new Set();
-    this._throttled = /* @__PURE__ */ new Map();
-    this._streams = /* @__PURE__ */ new Set();
-    this._symlinkPaths = /* @__PURE__ */ new Map();
-    this._watched = /* @__PURE__ */ new Map();
-    this._pendingWrites = /* @__PURE__ */ new Map();
-    this._pendingUnlinks = /* @__PURE__ */ new Map();
-    this._readyCount = 0;
-    this._readyEmitted = false;
-    const awf = _opts.awaitWriteFinish;
-    const DEF_AWF = { stabilityThreshold: 2e3, pollInterval: 100 };
-    const opts = {
-      // Defaults
-      persistent: true,
-      ignoreInitial: false,
-      ignorePermissionErrors: false,
-      interval: 100,
-      binaryInterval: 300,
-      followSymlinks: true,
-      usePolling: false,
-      // useAsync: false,
-      atomic: true,
-      // NOTE: overwritten later (depends on usePolling)
-      ..._opts,
-      // Change format
-      ignored: _opts.ignored ? arrify(_opts.ignored) : arrify([]),
-      awaitWriteFinish: awf === true ? DEF_AWF : typeof awf === "object" ? { ...DEF_AWF, ...awf } : false
-    };
-    if (isIBMi)
-      opts.usePolling = true;
-    if (opts.atomic === void 0)
-      opts.atomic = !opts.usePolling;
-    const envPoll = process.env.CHOKIDAR_USEPOLLING;
-    if (envPoll !== void 0) {
-      const envLower = envPoll.toLowerCase();
-      if (envLower === "false" || envLower === "0")
-        opts.usePolling = false;
-      else if (envLower === "true" || envLower === "1")
-        opts.usePolling = true;
-      else
-        opts.usePolling = !!envLower;
-    }
-    const envInterval = process.env.CHOKIDAR_INTERVAL;
-    if (envInterval)
-      opts.interval = Number.parseInt(envInterval, 10);
-    let readyCalls = 0;
-    this._emitReady = () => {
-      readyCalls++;
-      if (readyCalls >= this._readyCount) {
-        this._emitReady = EMPTY_FN;
-        this._readyEmitted = true;
-        process.nextTick(() => this.emit(EVENTS.READY));
-      }
-    };
-    this._emitRaw = (...args) => this.emit(EVENTS.RAW, ...args);
-    this._boundRemove = this._remove.bind(this);
-    this.options = opts;
-    this._nodeFsHandler = new NodeFsHandler(this);
-    Object.freeze(opts);
-  }
-  _addIgnoredPath(matcher) {
-    if (isMatcherObject(matcher)) {
-      for (const ignored of this._ignoredPaths) {
-        if (isMatcherObject(ignored) && ignored.path === matcher.path && ignored.recursive === matcher.recursive) {
-          return;
-        }
-      }
-    }
-    this._ignoredPaths.add(matcher);
-  }
-  _removeIgnoredPath(matcher) {
-    this._ignoredPaths.delete(matcher);
-    if (typeof matcher === "string") {
-      for (const ignored of this._ignoredPaths) {
-        if (isMatcherObject(ignored) && ignored.path === matcher) {
-          this._ignoredPaths.delete(ignored);
-        }
-      }
-    }
-  }
-  // Public methods
-  /**
-   * Adds paths to be watched on an existing FSWatcher instance.
-   * @param paths_ file or file list. Other arguments are unused
-   */
-  add(paths_, _origAdd, _internal) {
-    const { cwd } = this.options;
-    this.closed = false;
-    this._closePromise = void 0;
-    let paths = unifyPaths(paths_);
-    if (cwd) {
-      paths = paths.map((path2) => {
-        const absPath = getAbsolutePath(path2, cwd);
-        return absPath;
-      });
-    }
-    paths.forEach((path2) => {
-      this._removeIgnoredPath(path2);
-    });
-    this._userIgnored = void 0;
-    if (!this._readyCount)
-      this._readyCount = 0;
-    this._readyCount += paths.length;
-    Promise.all(paths.map(async (path2) => {
-      const res = await this._nodeFsHandler._addToNodeFs(path2, !_internal, void 0, 0, _origAdd);
-      if (res)
-        this._emitReady();
-      return res;
-    })).then((results) => {
-      if (this.closed)
-        return;
-      results.forEach((item) => {
-        if (item)
-          this.add(sp__namespace.dirname(item), sp__namespace.basename(_origAdd || item));
-      });
-    });
-    return this;
-  }
-  /**
-   * Close watchers or start ignoring events from specified paths.
-   */
-  unwatch(paths_) {
-    if (this.closed)
-      return this;
-    const paths = unifyPaths(paths_);
-    const { cwd } = this.options;
-    paths.forEach((path2) => {
-      if (!sp__namespace.isAbsolute(path2) && !this._closers.has(path2)) {
-        if (cwd)
-          path2 = sp__namespace.join(cwd, path2);
-        path2 = sp__namespace.resolve(path2);
-      }
-      this._closePath(path2);
-      this._addIgnoredPath(path2);
-      if (this._watched.has(path2)) {
-        this._addIgnoredPath({
-          path: path2,
-          recursive: true
-        });
-      }
-      this._userIgnored = void 0;
-    });
-    return this;
-  }
-  /**
-   * Close watchers and remove all listeners from watched paths.
-   */
-  close() {
-    if (this._closePromise) {
-      return this._closePromise;
-    }
-    this.closed = true;
-    this.removeAllListeners();
-    const closers = [];
-    this._closers.forEach((closerList) => closerList.forEach((closer) => {
-      const promise = closer();
-      if (promise instanceof Promise)
-        closers.push(promise);
-    }));
-    this._streams.forEach((stream) => stream.destroy());
-    this._userIgnored = void 0;
-    this._readyCount = 0;
-    this._readyEmitted = false;
-    this._watched.forEach((dirent) => dirent.dispose());
-    this._closers.clear();
-    this._watched.clear();
-    this._streams.clear();
-    this._symlinkPaths.clear();
-    this._throttled.clear();
-    this._closePromise = closers.length ? Promise.all(closers).then(() => void 0) : Promise.resolve();
-    return this._closePromise;
-  }
-  /**
-   * Expose list of watched paths
-   * @returns for chaining
-   */
-  getWatched() {
-    const watchList = {};
-    this._watched.forEach((entry, dir) => {
-      const key = this.options.cwd ? sp__namespace.relative(this.options.cwd, dir) : dir;
-      const index = key || ONE_DOT;
-      watchList[index] = entry.getChildren().sort();
-    });
-    return watchList;
-  }
-  emitWithAll(event, args) {
-    this.emit(event, ...args);
-    if (event !== EVENTS.ERROR)
-      this.emit(EVENTS.ALL, event, ...args);
-  }
-  // Common helpers
-  // --------------
-  /**
-   * Normalize and emit events.
-   * Calling _emit DOES NOT MEAN emit() would be called!
-   * @param event Type of event
-   * @param path File or directory path
-   * @param stats arguments to be passed with event
-   * @returns the error if defined, otherwise the value of the FSWatcher instance's `closed` flag
-   */
-  async _emit(event, path2, stats) {
-    if (this.closed)
-      return;
-    const opts = this.options;
-    if (isWindows)
-      path2 = sp__namespace.normalize(path2);
-    if (opts.cwd)
-      path2 = sp__namespace.relative(opts.cwd, path2);
-    const args = [path2];
-    if (stats != null)
-      args.push(stats);
-    const awf = opts.awaitWriteFinish;
-    let pw;
-    if (awf && (pw = this._pendingWrites.get(path2))) {
-      pw.lastChange = /* @__PURE__ */ new Date();
-      return this;
-    }
-    if (opts.atomic) {
-      if (event === EVENTS.UNLINK) {
-        this._pendingUnlinks.set(path2, [event, ...args]);
-        setTimeout(() => {
-          this._pendingUnlinks.forEach((entry, path22) => {
-            this.emit(...entry);
-            this.emit(EVENTS.ALL, ...entry);
-            this._pendingUnlinks.delete(path22);
-          });
-        }, typeof opts.atomic === "number" ? opts.atomic : 100);
-        return this;
-      }
-      if (event === EVENTS.ADD && this._pendingUnlinks.has(path2)) {
-        event = EVENTS.CHANGE;
-        this._pendingUnlinks.delete(path2);
-      }
-    }
-    if (awf && (event === EVENTS.ADD || event === EVENTS.CHANGE) && this._readyEmitted) {
-      const awfEmit = (err, stats2) => {
-        if (err) {
-          event = EVENTS.ERROR;
-          args[0] = err;
-          this.emitWithAll(event, args);
-        } else if (stats2) {
-          if (args.length > 1) {
-            args[1] = stats2;
-          } else {
-            args.push(stats2);
-          }
-          this.emitWithAll(event, args);
-        }
-      };
-      this._awaitWriteFinish(path2, awf.stabilityThreshold, event, awfEmit);
-      return this;
-    }
-    if (event === EVENTS.CHANGE) {
-      const isThrottled = !this._throttle(EVENTS.CHANGE, path2, 50);
-      if (isThrottled)
-        return this;
-    }
-    if (opts.alwaysStat && stats === void 0 && (event === EVENTS.ADD || event === EVENTS.ADD_DIR || event === EVENTS.CHANGE)) {
-      const fullPath = opts.cwd ? sp__namespace.join(opts.cwd, path2) : path2;
-      let stats2;
-      try {
-        stats2 = await promises.stat(fullPath);
-      } catch (err) {
-      }
-      if (!stats2 || this.closed)
-        return;
-      args.push(stats2);
-    }
-    this.emitWithAll(event, args);
-    return this;
-  }
-  /**
-   * Common handler for errors
-   * @returns The error if defined, otherwise the value of the FSWatcher instance's `closed` flag
-   */
-  _handleError(error) {
-    const code = error && error.code;
-    if (error && code !== "ENOENT" && code !== "ENOTDIR" && (!this.options.ignorePermissionErrors || code !== "EPERM" && code !== "EACCES")) {
-      this.emit(EVENTS.ERROR, error);
-    }
-    return error || this.closed;
-  }
-  /**
-   * Helper utility for throttling
-   * @param actionType type being throttled
-   * @param path being acted upon
-   * @param timeout duration of time to suppress duplicate actions
-   * @returns tracking object or false if action should be suppressed
-   */
-  _throttle(actionType, path2, timeout) {
-    if (!this._throttled.has(actionType)) {
-      this._throttled.set(actionType, /* @__PURE__ */ new Map());
-    }
-    const action = this._throttled.get(actionType);
-    if (!action)
-      throw new Error("invalid throttle");
-    const actionPath = action.get(path2);
-    if (actionPath) {
-      actionPath.count++;
-      return false;
-    }
-    let timeoutObject;
-    const clear = () => {
-      const item = action.get(path2);
-      const count = item ? item.count : 0;
-      action.delete(path2);
-      clearTimeout(timeoutObject);
-      if (item)
-        clearTimeout(item.timeoutObject);
-      return count;
-    };
-    timeoutObject = setTimeout(clear, timeout);
-    const thr = { timeoutObject, clear, count: 0 };
-    action.set(path2, thr);
-    return thr;
-  }
-  _incrReadyCount() {
-    return this._readyCount++;
-  }
-  /**
-   * Awaits write operation to finish.
-   * Polls a newly created file for size variations. When files size does not change for 'threshold' milliseconds calls callback.
-   * @param path being acted upon
-   * @param threshold Time in milliseconds a file size must be fixed before acknowledging write OP is finished
-   * @param event
-   * @param awfEmit Callback to be called when ready for event to be emitted.
-   */
-  _awaitWriteFinish(path2, threshold, event, awfEmit) {
-    const awf = this.options.awaitWriteFinish;
-    if (typeof awf !== "object")
-      return;
-    const pollInterval = awf.pollInterval;
-    let timeoutHandler;
-    let fullPath = path2;
-    if (this.options.cwd && !sp__namespace.isAbsolute(path2)) {
-      fullPath = sp__namespace.join(this.options.cwd, path2);
-    }
-    const now = /* @__PURE__ */ new Date();
-    const writes = this._pendingWrites;
-    function awaitWriteFinishFn(prevStat) {
-      node_fs.stat(fullPath, (err, curStat) => {
-        if (err || !writes.has(path2)) {
-          if (err && err.code !== "ENOENT")
-            awfEmit(err);
-          return;
-        }
-        const now2 = Number(/* @__PURE__ */ new Date());
-        if (prevStat && curStat.size !== prevStat.size) {
-          writes.get(path2).lastChange = now2;
-        }
-        const pw = writes.get(path2);
-        const df = now2 - pw.lastChange;
-        if (df >= threshold) {
-          writes.delete(path2);
-          awfEmit(void 0, curStat);
-        } else {
-          timeoutHandler = setTimeout(awaitWriteFinishFn, pollInterval, curStat);
-        }
-      });
-    }
-    if (!writes.has(path2)) {
-      writes.set(path2, {
-        lastChange: now,
-        cancelWait: () => {
-          writes.delete(path2);
-          clearTimeout(timeoutHandler);
-          return event;
-        }
-      });
-      timeoutHandler = setTimeout(awaitWriteFinishFn, pollInterval);
-    }
-  }
-  /**
-   * Determines whether user has asked to ignore this path.
-   */
-  _isIgnored(path2, stats) {
-    if (this.options.atomic && DOT_RE.test(path2))
-      return true;
-    if (!this._userIgnored) {
-      const { cwd } = this.options;
-      const ign = this.options.ignored;
-      const ignored = (ign || []).map(normalizeIgnored(cwd));
-      const ignoredPaths = [...this._ignoredPaths];
-      const list = [...ignoredPaths.map(normalizeIgnored(cwd)), ...ignored];
-      this._userIgnored = anymatch(list);
-    }
-    return this._userIgnored(path2, stats);
-  }
-  _isntIgnored(path2, stat2) {
-    return !this._isIgnored(path2, stat2);
-  }
-  /**
-   * Provides a set of common helpers and properties relating to symlink handling.
-   * @param path file or directory pattern being watched
-   */
-  _getWatchHelpers(path2) {
-    return new WatchHelper(path2, this.options.followSymlinks, this);
-  }
-  // Directory helpers
-  // -----------------
-  /**
-   * Provides directory tracking objects
-   * @param directory path of the directory
-   */
-  _getWatchedDir(directory) {
-    const dir = sp__namespace.resolve(directory);
-    if (!this._watched.has(dir))
-      this._watched.set(dir, new DirEntry(dir, this._boundRemove));
-    return this._watched.get(dir);
-  }
-  // File helpers
-  // ------------
-  /**
-   * Check for read permissions: https://stackoverflow.com/a/11781404/1358405
-   */
-  _hasReadPermissions(stats) {
-    if (this.options.ignorePermissionErrors)
-      return true;
-    return Boolean(Number(stats.mode) & 256);
-  }
-  /**
-   * Handles emitting unlink events for
-   * files and directories, and via recursion, for
-   * files and directories within directories that are unlinked
-   * @param directory within which the following item is located
-   * @param item      base path of item/directory
-   */
-  _remove(directory, item, isDirectory2) {
-    const path2 = sp__namespace.join(directory, item);
-    const fullPath = sp__namespace.resolve(path2);
-    isDirectory2 = isDirectory2 != null ? isDirectory2 : this._watched.has(path2) || this._watched.has(fullPath);
-    if (!this._throttle("remove", path2, 100))
-      return;
-    if (!isDirectory2 && this._watched.size === 1) {
-      this.add(directory, item, true);
-    }
-    const wp = this._getWatchedDir(path2);
-    const nestedDirectoryChildren = wp.getChildren();
-    nestedDirectoryChildren.forEach((nested) => this._remove(path2, nested));
-    const parent = this._getWatchedDir(directory);
-    const wasTracked = parent.has(item);
-    parent.remove(item);
-    if (this._symlinkPaths.has(fullPath)) {
-      this._symlinkPaths.delete(fullPath);
-    }
-    let relPath = path2;
-    if (this.options.cwd)
-      relPath = sp__namespace.relative(this.options.cwd, path2);
-    if (this.options.awaitWriteFinish && this._pendingWrites.has(relPath)) {
-      const event = this._pendingWrites.get(relPath).cancelWait();
-      if (event === EVENTS.ADD)
-        return;
-    }
-    this._watched.delete(path2);
-    this._watched.delete(fullPath);
-    const eventName = isDirectory2 ? EVENTS.UNLINK_DIR : EVENTS.UNLINK;
-    if (wasTracked && !this._isIgnored(path2))
-      this._emit(eventName, path2);
-    this._closePath(path2);
-  }
-  /**
-   * Closes all watchers for a path
-   */
-  _closePath(path2) {
-    this._closeFile(path2);
-    const dir = sp__namespace.dirname(path2);
-    this._getWatchedDir(dir).remove(sp__namespace.basename(path2));
-  }
-  /**
-   * Closes only file-specific watchers
-   */
-  _closeFile(path2) {
-    const closers = this._closers.get(path2);
-    if (!closers)
-      return;
-    closers.forEach((closer) => closer());
-    this._closers.delete(path2);
-  }
-  _addPathCloser(path2, closer) {
-    if (!closer)
-      return;
-    let list = this._closers.get(path2);
-    if (!list) {
-      list = [];
-      this._closers.set(path2, list);
-    }
-    list.push(closer);
-  }
-  _readdirp(root, opts) {
-    if (this.closed)
-      return;
-    const options = { type: EVENTS.ALL, alwaysStat: true, lstat: true, ...opts, depth: 0 };
-    let stream = readdirp(root, options);
-    this._streams.add(stream);
-    stream.once(STR_CLOSE, () => {
-      stream = void 0;
-    });
-    stream.once(STR_END, () => {
-      if (stream) {
-        this._streams.delete(stream);
-        stream = void 0;
-      }
-    });
-    return stream;
-  }
-}
-function watch(paths, options = {}) {
-  const watcher = new FSWatcher(options);
-  watcher.add(paths);
-  return watcher;
-}
-const chokidar = { watch, FSWatcher };
 function getConfigPath() {
   return path.join(electron.app.getPath("userData"), "config.json");
 }
@@ -2188,6 +474,872 @@ async function batchDetect(texts) {
     }))
   );
 }
+const users = sqliteCore.sqliteTable("users", {
+  user_id: sqliteCore.integer("user_id").primaryKey({ autoIncrement: true }),
+  email: sqliteCore.text("email").notNull().unique(),
+  full_name: sqliteCore.text("full_name").notNull(),
+  role: sqliteCore.text("role").notNull(),
+  // CHECK: psychologist | psychometrist | admin | receptionist
+  specializations: sqliteCore.text("specializations"),
+  credentials: sqliteCore.text("credentials"),
+  license_number: sqliteCore.text("license_number"),
+  state_licensed: sqliteCore.text("state_licensed"),
+  organization: sqliteCore.text("organization"),
+  is_active: sqliteCore.integer("is_active", { mode: "boolean" }).notNull().default(true),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  last_login: sqliteCore.text("last_login"),
+  deleted_at: sqliteCore.text("deleted_at"),
+  // Addendum: practice association
+  practice_id: sqliteCore.integer("practice_id").references(() => practiceConfig.practice_id)
+}, (table) => [
+  sqliteCore.index("idx_users_email").on(table.email),
+  sqliteCore.index("idx_users_role").on(table.role),
+  sqliteCore.index("idx_users_is_active").on(table.is_active),
+  sqliteCore.index("idx_users_practice_id").on(table.practice_id)
+]);
+const diagnosisCatalog = sqliteCore.sqliteTable("diagnosis_catalog", {
+  diagnosis_id: sqliteCore.integer("diagnosis_id").primaryKey({ autoIncrement: true }),
+  code: sqliteCore.text("code").notNull().unique(),
+  dsm5tr_code: sqliteCore.text("dsm5tr_code"),
+  name: sqliteCore.text("name").notNull(),
+  description: sqliteCore.text("description"),
+  category: sqliteCore.text("category"),
+  is_builtin: sqliteCore.integer("is_builtin", { mode: "boolean" }).notNull().default(true),
+  created_by_user_id: sqliteCore.integer("created_by_user_id").references(() => users.user_id),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_diagnosis_catalog_code").on(table.code),
+  sqliteCore.index("idx_diagnosis_catalog_dsm5tr_code").on(table.dsm5tr_code),
+  sqliteCore.index("idx_diagnosis_catalog_is_builtin").on(table.is_builtin)
+]);
+const instrumentLibrary = sqliteCore.sqliteTable("instrument_library", {
+  instrument_id: sqliteCore.integer("instrument_id").primaryKey({ autoIncrement: true }),
+  abbreviation: sqliteCore.text("abbreviation").notNull().unique(),
+  full_name: sqliteCore.text("full_name").notNull(),
+  description: sqliteCore.text("description"),
+  what_it_measures: sqliteCore.text("what_it_measures"),
+  publisher: sqliteCore.text("publisher"),
+  publication_year: sqliteCore.integer("publication_year"),
+  scoring_method: sqliteCore.text("scoring_method"),
+  time_to_administer_minutes: sqliteCore.integer("time_to_administer_minutes"),
+  is_active: sqliteCore.integer("is_active", { mode: "boolean" }).notNull().default(true),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_instrument_library_abbreviation").on(table.abbreviation),
+  sqliteCore.index("idx_instrument_library_is_active").on(table.is_active)
+]);
+const diagnosisInstrumentMappings = sqliteCore.sqliteTable("diagnosis_instrument_mappings", {
+  mapping_id: sqliteCore.integer("mapping_id").primaryKey({ autoIncrement: true }),
+  diagnosis_id: sqliteCore.integer("diagnosis_id").notNull().references(() => diagnosisCatalog.diagnosis_id, { onDelete: "cascade" }),
+  instrument_id: sqliteCore.integer("instrument_id").notNull().references(() => instrumentLibrary.instrument_id, { onDelete: "cascade" }),
+  relevance_score: sqliteCore.real("relevance_score").default(1),
+  is_primary: sqliteCore.integer("is_primary", { mode: "boolean" }).default(false),
+  notes: sqliteCore.text("notes")
+}, (table) => [
+  sqliteCore.uniqueIndex("idx_dim_unique").on(table.diagnosis_id, table.instrument_id),
+  sqliteCore.index("idx_diagnosis_instrument_mappings_diagnosis_id").on(table.diagnosis_id),
+  sqliteCore.index("idx_diagnosis_instrument_mappings_instrument_id").on(table.instrument_id)
+]);
+const practiceProfiles = sqliteCore.sqliteTable("practice_profiles", {
+  profile_id: sqliteCore.integer("profile_id").primaryKey({ autoIncrement: true }),
+  profile_name: sqliteCore.text("profile_name").notNull().unique(),
+  profile_type: sqliteCore.text("profile_type").notNull(),
+  // CHECK: forensic_criminal | forensic_civil | clinical_general | neuropsych
+  description: sqliteCore.text("description"),
+  default_diagnoses: sqliteCore.text("default_diagnoses"),
+  default_instruments: sqliteCore.text("default_instruments"),
+  standard_sections: sqliteCore.text("standard_sections"),
+  created_by_user_id: sqliteCore.integer("created_by_user_id").notNull().references(() => users.user_id),
+  is_active: sqliteCore.integer("is_active", { mode: "boolean" }).notNull().default(true),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_practice_profiles_profile_type").on(table.profile_type),
+  sqliteCore.index("idx_practice_profiles_is_active").on(table.is_active)
+]);
+const reportTemplates = sqliteCore.sqliteTable("report_templates", {
+  template_id: sqliteCore.integer("template_id").primaryKey({ autoIncrement: true }),
+  template_name: sqliteCore.text("template_name").notNull(),
+  evaluation_type: sqliteCore.text("evaluation_type").notNull(),
+  template_content: sqliteCore.text("template_content"),
+  sections: sqliteCore.text("sections"),
+  jurisdiction: sqliteCore.text("jurisdiction"),
+  created_by_user_id: sqliteCore.integer("created_by_user_id").notNull().references(() => users.user_id),
+  is_active: sqliteCore.integer("is_active", { mode: "boolean" }).notNull().default(true),
+  version: sqliteCore.integer("version").default(1),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_report_templates_evaluation_type").on(table.evaluation_type),
+  sqliteCore.index("idx_report_templates_jurisdiction").on(table.jurisdiction),
+  sqliteCore.index("idx_report_templates_is_active").on(table.is_active)
+]);
+const styleRules = sqliteCore.sqliteTable("style_rules", {
+  rule_id: sqliteCore.integer("rule_id").primaryKey({ autoIncrement: true }),
+  rule_name: sqliteCore.text("rule_name").notNull().unique(),
+  rule_content: sqliteCore.text("rule_content").notNull(),
+  category: sqliteCore.text("category"),
+  guardrails: sqliteCore.text("guardrails"),
+  examples: sqliteCore.text("examples"),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  updated_at: sqliteCore.text("updated_at").default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_style_rules_category").on(table.category)
+]);
+const cases = sqliteCore.sqliteTable("cases", {
+  case_id: sqliteCore.integer("case_id").primaryKey({ autoIncrement: true }),
+  case_number: sqliteCore.text("case_number").notNull().unique(),
+  primary_clinician_user_id: sqliteCore.integer("primary_clinician_user_id").notNull().references(() => users.user_id),
+  examinee_first_name: sqliteCore.text("examinee_first_name").notNull(),
+  examinee_last_name: sqliteCore.text("examinee_last_name").notNull(),
+  examinee_dob: sqliteCore.text("examinee_dob"),
+  examinee_gender: sqliteCore.text("examinee_gender"),
+  cultural_context: sqliteCore.text("cultural_context"),
+  linguistic_context: sqliteCore.text("linguistic_context"),
+  evaluation_type: sqliteCore.text("evaluation_type"),
+  practice_profile_id: sqliteCore.integer("practice_profile_id").references(() => practiceProfiles.profile_id),
+  referral_source: sqliteCore.text("referral_source"),
+  evaluation_questions: sqliteCore.text("evaluation_questions"),
+  case_status: sqliteCore.text("case_status").notNull().default("intake"),
+  // CHECK: intake | in_progress | completed | archived
+  workflow_current_stage: sqliteCore.text("workflow_current_stage").default("gate_1"),
+  // CHECK: gate_1 | gate_2 | gate_3 | finalized
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  last_modified: sqliteCore.text("last_modified").default(drizzleOrm.sql`CURRENT_DATE`),
+  completed_at: sqliteCore.text("completed_at"),
+  notes: sqliteCore.text("notes"),
+  // Addendum: practice association
+  practice_id: sqliteCore.integer("practice_id").references(() => practiceConfig.practice_id)
+}, (table) => [
+  sqliteCore.index("idx_cases_primary_clinician_user_id").on(table.primary_clinician_user_id),
+  sqliteCore.index("idx_cases_case_status").on(table.case_status),
+  sqliteCore.index("idx_cases_workflow_current_stage").on(table.workflow_current_stage),
+  sqliteCore.index("idx_cases_created_at").on(table.created_at),
+  sqliteCore.index("idx_cases_case_number").on(table.case_number),
+  sqliteCore.index("idx_cases_practice_id").on(table.practice_id)
+]);
+const sessions = sqliteCore.sqliteTable("sessions", {
+  session_id: sqliteCore.integer("session_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  session_number: sqliteCore.integer("session_number").notNull(),
+  session_date: sqliteCore.text("session_date").notNull(),
+  clinician_user_id: sqliteCore.integer("clinician_user_id").notNull().references(() => users.user_id),
+  psychometrist_user_id: sqliteCore.integer("psychometrist_user_id").references(() => users.user_id),
+  duration_minutes: sqliteCore.integer("duration_minutes"),
+  session_notes: sqliteCore.text("session_notes"),
+  behavioral_observations: sqliteCore.text("behavioral_observations"),
+  rapport_quality: sqliteCore.text("rapport_quality"),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.uniqueIndex("idx_sessions_case_session").on(table.case_id, table.session_number),
+  sqliteCore.index("idx_sessions_case_id").on(table.case_id),
+  sqliteCore.index("idx_sessions_session_date").on(table.session_date),
+  sqliteCore.index("idx_sessions_clinician_user_id").on(table.clinician_user_id)
+]);
+const documents = sqliteCore.sqliteTable("documents", {
+  document_id: sqliteCore.integer("document_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  session_id: sqliteCore.integer("session_id").references(() => sessions.session_id, { onDelete: "set null" }),
+  document_type: sqliteCore.text("document_type").notNull(),
+  // CHECK: referral | pdf | docx | transcript_vtt | audio | score_report | medical_record | other
+  original_filename: sqliteCore.text("original_filename").notNull(),
+  file_path: sqliteCore.text("file_path").notNull(),
+  file_size_bytes: sqliteCore.integer("file_size_bytes"),
+  mime_type: sqliteCore.text("mime_type"),
+  uploaded_by_user_id: sqliteCore.integer("uploaded_by_user_id").notNull().references(() => users.user_id),
+  upload_date: sqliteCore.text("upload_date").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  description: sqliteCore.text("description"),
+  indexed_content: sqliteCore.text("indexed_content"),
+  // Addendum: cloud sync columns
+  remote_path: sqliteCore.text("remote_path"),
+  remote_version: sqliteCore.text("remote_version"),
+  sync_status: sqliteCore.text("sync_status").default("local_only"),
+  // CHECK: local_only | synced | pending_upload | pending_download | conflict
+  last_synced_at: sqliteCore.text("last_synced_at")
+}, (table) => [
+  sqliteCore.index("idx_documents_case_id").on(table.case_id),
+  sqliteCore.index("idx_documents_session_id").on(table.session_id),
+  sqliteCore.index("idx_documents_document_type").on(table.document_type),
+  sqliteCore.index("idx_documents_upload_date").on(table.upload_date),
+  sqliteCore.index("idx_documents_sync_status").on(table.sync_status),
+  sqliteCore.index("idx_documents_last_synced_at").on(table.last_synced_at)
+]);
+const testAdministrations = sqliteCore.sqliteTable("test_administrations", {
+  test_admin_id: sqliteCore.integer("test_admin_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  session_id: sqliteCore.integer("session_id").references(() => sessions.session_id, { onDelete: "set null" }),
+  instrument_id: sqliteCore.integer("instrument_id").notNull().references(() => instrumentLibrary.instrument_id),
+  administration_date: sqliteCore.text("administration_date").notNull(),
+  administered_by_user_id: sqliteCore.integer("administered_by_user_id").notNull().references(() => users.user_id),
+  score_report_document_id: sqliteCore.integer("score_report_document_id").references(() => documents.document_id, { onDelete: "set null" }),
+  raw_score: sqliteCore.real("raw_score"),
+  standard_score: sqliteCore.real("standard_score"),
+  percentile: sqliteCore.integer("percentile"),
+  scaled_score: sqliteCore.real("scaled_score"),
+  t_score: sqliteCore.real("t_score"),
+  confidence_interval_lower: sqliteCore.real("confidence_interval_lower"),
+  confidence_interval_upper: sqliteCore.real("confidence_interval_upper"),
+  interpretation: sqliteCore.text("interpretation"),
+  notes: sqliteCore.text("notes"),
+  data_entry_method: sqliteCore.text("data_entry_method"),
+  // CHECK: manual | qglobal_import | pariconnect_import | pdf_extraction
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_test_administrations_case_id").on(table.case_id),
+  sqliteCore.index("idx_test_administrations_instrument_id").on(table.instrument_id),
+  sqliteCore.index("idx_test_administrations_administration_date").on(table.administration_date)
+]);
+const gateReviews = sqliteCore.sqliteTable("gate_reviews", {
+  gate_review_id: sqliteCore.integer("gate_review_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  gate_number: sqliteCore.integer("gate_number").notNull(),
+  // CHECK: 1 | 2 | 3
+  gate_purpose: sqliteCore.text("gate_purpose").notNull(),
+  reviewer_user_id: sqliteCore.integer("reviewer_user_id").notNull().references(() => users.user_id),
+  review_date: sqliteCore.text("review_date").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  review_status: sqliteCore.text("review_status").notNull().default("pending"),
+  // CHECK: pending | in_progress | completed | requires_revision
+  notes: sqliteCore.text("notes")
+}, (table) => [
+  sqliteCore.uniqueIndex("idx_gate_reviews_case_gate").on(table.case_id, table.gate_number),
+  sqliteCore.index("idx_gate_reviews_case_id").on(table.case_id),
+  sqliteCore.index("idx_gate_reviews_gate_number").on(table.gate_number),
+  sqliteCore.index("idx_gate_reviews_review_status").on(table.review_status)
+]);
+const gateDecisions = sqliteCore.sqliteTable("gate_decisions", {
+  decision_id: sqliteCore.integer("decision_id").primaryKey({ autoIncrement: true }),
+  gate_review_id: sqliteCore.integer("gate_review_id").notNull().references(() => gateReviews.gate_review_id, { onDelete: "cascade" }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  decision_type: sqliteCore.text("decision_type").notNull(),
+  // CHECK: data_confirmed | diagnosis_selected | diagnosis_ruled_out | attestation | other
+  subject_entity_type: sqliteCore.text("subject_entity_type"),
+  subject_entity_id: sqliteCore.integer("subject_entity_id"),
+  actor_user_id: sqliteCore.integer("actor_user_id").notNull().references(() => users.user_id),
+  decision_rationale: sqliteCore.text("decision_rationale"),
+  decision_date: sqliteCore.text("decision_date").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  is_final: sqliteCore.integer("is_final", { mode: "boolean" }).default(false)
+}, (table) => [
+  sqliteCore.index("idx_gate_decisions_gate_review_id").on(table.gate_review_id),
+  sqliteCore.index("idx_gate_decisions_case_id").on(table.case_id),
+  sqliteCore.index("idx_gate_decisions_decision_type").on(table.decision_type),
+  sqliteCore.index("idx_gate_decisions_actor_user_id").on(table.actor_user_id)
+]);
+const diagnoses = sqliteCore.sqliteTable("diagnoses", {
+  diagnosis_record_id: sqliteCore.integer("diagnosis_record_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  diagnosis_id: sqliteCore.integer("diagnosis_id").notNull().references(() => diagnosisCatalog.diagnosis_id),
+  selected_at_gate_2: sqliteCore.integer("selected_at_gate_2", { mode: "boolean" }).default(true),
+  clinician_user_id: sqliteCore.integer("clinician_user_id").notNull().references(() => users.user_id),
+  confidence_level: sqliteCore.text("confidence_level"),
+  // CHECK: high | moderate | low
+  supporting_evidence: sqliteCore.text("supporting_evidence"),
+  selection_date: sqliteCore.text("selection_date").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  is_primary_diagnosis: sqliteCore.integer("is_primary_diagnosis", { mode: "boolean" }).default(false),
+  rule_out_rationale: sqliteCore.text("rule_out_rationale")
+}, (table) => [
+  sqliteCore.index("idx_diagnoses_case_id").on(table.case_id),
+  sqliteCore.index("idx_diagnoses_diagnosis_id").on(table.diagnosis_id),
+  sqliteCore.index("idx_diagnoses_clinician_user_id").on(table.clinician_user_id),
+  sqliteCore.index("idx_diagnoses_selected_at_gate_2").on(table.selected_at_gate_2)
+]);
+const agentRuns = sqliteCore.sqliteTable("agent_runs", {
+  agent_run_id: sqliteCore.integer("agent_run_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  agent_type: sqliteCore.text("agent_type").notNull(),
+  // CHECK: diagnostician | writer | validator
+  agent_version: sqliteCore.text("agent_version"),
+  input_hash: sqliteCore.text("input_hash"),
+  input_summary: sqliteCore.text("input_summary"),
+  output_hash: sqliteCore.text("output_hash"),
+  output_summary: sqliteCore.text("output_summary"),
+  duration_seconds: sqliteCore.real("duration_seconds"),
+  status: sqliteCore.text("status").notNull().default("success"),
+  // CHECK: success | partial_success | failed | error
+  error_message: sqliteCore.text("error_message"),
+  invoked_by_user_id: sqliteCore.integer("invoked_by_user_id").notNull().references(() => users.user_id),
+  started_at: sqliteCore.text("started_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  completed_at: sqliteCore.text("completed_at")
+}, (table) => [
+  sqliteCore.index("idx_agent_runs_case_id").on(table.case_id),
+  sqliteCore.index("idx_agent_runs_agent_type").on(table.agent_type),
+  sqliteCore.index("idx_agent_runs_status").on(table.status),
+  sqliteCore.index("idx_agent_runs_started_at").on(table.started_at)
+]);
+const evidenceMaps = sqliteCore.sqliteTable("evidence_maps", {
+  evidence_map_id: sqliteCore.integer("evidence_map_id").primaryKey({ autoIncrement: true }),
+  agent_run_id: sqliteCore.integer("agent_run_id").notNull().references(() => agentRuns.agent_run_id, { onDelete: "cascade" }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  diagnosis_id: sqliteCore.integer("diagnosis_id").notNull().references(() => diagnosisCatalog.diagnosis_id),
+  criterion_name: sqliteCore.text("criterion_name").notNull(),
+  criterion_description: sqliteCore.text("criterion_description"),
+  supporting_evidence: sqliteCore.text("supporting_evidence"),
+  contradicting_evidence: sqliteCore.text("contradicting_evidence"),
+  evidence_strength: sqliteCore.text("evidence_strength"),
+  // CHECK: strong | moderate | weak | absent
+  confidence_score: sqliteCore.real("confidence_score"),
+  source_documents: sqliteCore.text("source_documents"),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_evidence_maps_agent_run_id").on(table.agent_run_id),
+  sqliteCore.index("idx_evidence_maps_case_id").on(table.case_id),
+  sqliteCore.index("idx_evidence_maps_diagnosis_id").on(table.diagnosis_id)
+]);
+const writerDrafts = sqliteCore.sqliteTable("writer_drafts", {
+  draft_id: sqliteCore.integer("draft_id").primaryKey({ autoIncrement: true }),
+  agent_run_id: sqliteCore.integer("agent_run_id").notNull().references(() => agentRuns.agent_run_id, { onDelete: "cascade" }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  section_name: sqliteCore.text("section_name").notNull(),
+  section_content: sqliteCore.text("section_content").notNull(),
+  content_type: sqliteCore.text("content_type").notNull(),
+  // CHECK: fully_generated | draft_requiring_revision
+  revision_status: sqliteCore.text("revision_status").default("pending"),
+  // CHECK: pending | reviewed | approved | revised
+  reviewer_user_id: sqliteCore.integer("reviewer_user_id").references(() => users.user_id),
+  review_notes: sqliteCore.text("review_notes"),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  reviewed_at: sqliteCore.text("reviewed_at")
+}, (table) => [
+  sqliteCore.index("idx_writer_drafts_agent_run_id").on(table.agent_run_id),
+  sqliteCore.index("idx_writer_drafts_case_id").on(table.case_id),
+  sqliteCore.index("idx_writer_drafts_content_type").on(table.content_type),
+  sqliteCore.index("idx_writer_drafts_revision_status").on(table.revision_status)
+]);
+const reports = sqliteCore.sqliteTable("reports", {
+  report_id: sqliteCore.integer("report_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  report_version: sqliteCore.integer("report_version").notNull().default(1),
+  template_id: sqliteCore.integer("template_id").references(() => reportTemplates.template_id, { onDelete: "set null" }),
+  generated_by_user_id: sqliteCore.integer("generated_by_user_id").notNull().references(() => users.user_id),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  last_modified: sqliteCore.text("last_modified").default(drizzleOrm.sql`CURRENT_DATE`),
+  finalized_by_user_id: sqliteCore.integer("finalized_by_user_id").references(() => users.user_id),
+  finalized_at: sqliteCore.text("finalized_at"),
+  is_locked: sqliteCore.integer("is_locked", { mode: "boolean" }).default(false),
+  integrity_hash: sqliteCore.text("integrity_hash"),
+  sealed_pdf_path: sqliteCore.text("sealed_pdf_path"),
+  file_path: sqliteCore.text("file_path").notNull(),
+  file_size_bytes: sqliteCore.integer("file_size_bytes"),
+  status: sqliteCore.text("status").notNull().default("draft")
+  // CHECK: draft | in_review | revisions_needed | approved | finalized
+}, (table) => [
+  sqliteCore.index("idx_reports_case_id").on(table.case_id),
+  sqliteCore.index("idx_reports_report_version").on(table.report_version),
+  sqliteCore.index("idx_reports_status").on(table.status),
+  sqliteCore.index("idx_reports_created_at").on(table.created_at),
+  sqliteCore.index("idx_reports_is_locked").on(table.is_locked)
+]);
+const reportRevisions = sqliteCore.sqliteTable("report_revisions", {
+  revision_id: sqliteCore.integer("revision_id").primaryKey({ autoIncrement: true }),
+  report_id: sqliteCore.integer("report_id").notNull().references(() => reports.report_id, { onDelete: "cascade" }),
+  revision_number: sqliteCore.integer("revision_number").notNull(),
+  changed_by_user_id: sqliteCore.integer("changed_by_user_id").notNull().references(() => users.user_id),
+  revision_date: sqliteCore.text("revision_date").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  change_summary: sqliteCore.text("change_summary"),
+  previous_integrity_hash: sqliteCore.text("previous_integrity_hash"),
+  new_integrity_hash: sqliteCore.text("new_integrity_hash")
+}, (table) => [
+  sqliteCore.uniqueIndex("idx_report_revisions_report_rev").on(table.report_id, table.revision_number),
+  sqliteCore.index("idx_report_revisions_report_id").on(table.report_id),
+  sqliteCore.index("idx_report_revisions_changed_by_user_id").on(table.changed_by_user_id)
+]);
+const auditLog = sqliteCore.sqliteTable("audit_log", {
+  audit_log_id: sqliteCore.integer("audit_log_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  action_type: sqliteCore.text("action_type").notNull(),
+  // CHECK: see SQL spec for full list
+  actor_user_id: sqliteCore.integer("actor_user_id").notNull().references(() => users.user_id),
+  action_date: sqliteCore.text("action_date").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  details: sqliteCore.text("details"),
+  related_entity_type: sqliteCore.text("related_entity_type"),
+  related_entity_id: sqliteCore.integer("related_entity_id"),
+  granularity: sqliteCore.text("granularity").default("decision_record_only")
+  // CHECK: decision_record_only | full_detail
+}, (table) => [
+  sqliteCore.index("idx_audit_log_case_id").on(table.case_id),
+  sqliteCore.index("idx_audit_log_action_date").on(table.action_date),
+  sqliteCore.index("idx_audit_log_actor_user_id").on(table.actor_user_id),
+  sqliteCore.index("idx_audit_log_action_type").on(table.action_type)
+]);
+const peerConsultations = sqliteCore.sqliteTable("peer_consultations", {
+  consultation_id: sqliteCore.integer("consultation_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  initiating_clinician_user_id: sqliteCore.integer("initiating_clinician_user_id").notNull().references(() => users.user_id),
+  consulting_clinician_user_id: sqliteCore.integer("consulting_clinician_user_id").notNull().references(() => users.user_id),
+  consultation_date: sqliteCore.text("consultation_date").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  consultation_topic: sqliteCore.text("consultation_topic"),
+  consultation_notes: sqliteCore.text("consultation_notes"),
+  consultation_response: sqliteCore.text("consultation_response"),
+  response_date: sqliteCore.text("response_date")
+}, (table) => [
+  sqliteCore.index("idx_peer_consultations_case_id").on(table.case_id),
+  sqliteCore.index("idx_peer_consultations_initiating").on(table.initiating_clinician_user_id),
+  sqliteCore.index("idx_peer_consultations_consulting").on(table.consulting_clinician_user_id)
+]);
+const referralSources = sqliteCore.sqliteTable("referral_sources", {
+  referral_id: sqliteCore.integer("referral_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  referral_document_id: sqliteCore.integer("referral_document_id").references(() => documents.document_id, { onDelete: "set null" }),
+  referral_source_name: sqliteCore.text("referral_source_name").notNull(),
+  referral_source_type: sqliteCore.text("referral_source_type"),
+  // CHECK: attorney | court | medical | insurance | self_referred | other
+  referral_date: sqliteCore.text("referral_date"),
+  evaluation_questions: sqliteCore.text("evaluation_questions"),
+  specific_concerns: sqliteCore.text("specific_concerns"),
+  requesting_party: sqliteCore.text("requesting_party")
+}, (table) => [
+  sqliteCore.index("idx_referral_sources_case_id").on(table.case_id),
+  sqliteCore.index("idx_referral_sources_referral_source_type").on(table.referral_source_type)
+]);
+const backupMetadata = sqliteCore.sqliteTable("backup_metadata", {
+  backup_id: sqliteCore.integer("backup_id").primaryKey({ autoIncrement: true }),
+  backup_date: sqliteCore.text("backup_date").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  backup_type: sqliteCore.text("backup_type").notNull(),
+  // CHECK: full | incremental | export
+  backup_path: sqliteCore.text("backup_path").notNull(),
+  case_count: sqliteCore.integer("case_count"),
+  file_size_bytes: sqliteCore.integer("file_size_bytes"),
+  integrity_hash: sqliteCore.text("integrity_hash"),
+  created_by_user_id: sqliteCore.integer("created_by_user_id").references(() => users.user_id),
+  notes: sqliteCore.text("notes")
+}, (table) => [
+  sqliteCore.index("idx_backup_metadata_backup_date").on(table.backup_date),
+  sqliteCore.index("idx_backup_metadata_backup_type").on(table.backup_type)
+]);
+const caseNotes = sqliteCore.sqliteTable("case_notes", {
+  case_note_id: sqliteCore.integer("case_note_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  session_id: sqliteCore.integer("session_id").references(() => sessions.session_id, { onDelete: "set null" }),
+  created_by_user_id: sqliteCore.integer("created_by_user_id").notNull().references(() => users.user_id),
+  note_content: sqliteCore.text("note_content").notNull(),
+  note_type: sqliteCore.text("note_type"),
+  // CHECK: clinical | administrative | diagnostic_reasoning | test_interpretation
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_case_notes_case_id").on(table.case_id),
+  sqliteCore.index("idx_case_notes_session_id").on(table.session_id),
+  sqliteCore.index("idx_case_notes_created_at").on(table.created_at)
+]);
+const practiceConfig = sqliteCore.sqliteTable("practice_config", {
+  practice_id: sqliteCore.integer("practice_id").primaryKey({ autoIncrement: true }),
+  practice_name: sqliteCore.text("practice_name").notNull().unique(),
+  storage_mode: sqliteCore.text("storage_mode").notNull().default("local_only"),
+  // CHECK: local_only | shared_drive | cloud_o365 | cloud_gdrive
+  storage_path: sqliteCore.text("storage_path"),
+  cloud_tenant_id: sqliteCore.text("cloud_tenant_id"),
+  cloud_site_id: sqliteCore.text("cloud_site_id"),
+  cloud_drive_id: sqliteCore.text("cloud_drive_id"),
+  gdrive_shared_drive_id: sqliteCore.text("gdrive_shared_drive_id"),
+  auto_sync_interval_minutes: sqliteCore.integer("auto_sync_interval_minutes"),
+  enable_version_history: sqliteCore.integer("enable_version_history", { mode: "boolean" }).default(true),
+  max_local_cache_mb: sqliteCore.integer("max_local_cache_mb").default(5e3),
+  admin_email: sqliteCore.text("admin_email"),
+  created_at: sqliteCore.text("created_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  updated_at: sqliteCore.text("updated_at").default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_practice_config_storage_mode").on(table.storage_mode),
+  sqliteCore.index("idx_practice_config_practice_name").on(table.practice_name)
+]);
+const documentPermissions = sqliteCore.sqliteTable("document_permissions", {
+  permission_id: sqliteCore.integer("permission_id").primaryKey({ autoIncrement: true }),
+  document_id: sqliteCore.integer("document_id").notNull().references(() => documents.document_id, { onDelete: "cascade" }),
+  user_id: sqliteCore.integer("user_id").notNull().references(() => users.user_id, { onDelete: "cascade" }),
+  permission_level: sqliteCore.text("permission_level").notNull().default("read"),
+  // CHECK: read | write | admin
+  granted_by_user_id: sqliteCore.integer("granted_by_user_id").notNull().references(() => users.user_id),
+  granted_at: sqliteCore.text("granted_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  revoked_at: sqliteCore.text("revoked_at")
+}, (table) => [
+  sqliteCore.uniqueIndex("idx_document_permissions_doc_user").on(table.document_id, table.user_id),
+  sqliteCore.index("idx_document_permissions_document_id").on(table.document_id),
+  sqliteCore.index("idx_document_permissions_user_id").on(table.user_id),
+  sqliteCore.index("idx_document_permissions_permission_level").on(table.permission_level)
+]);
+const fileLocks = sqliteCore.sqliteTable("file_locks", {
+  lock_id: sqliteCore.integer("lock_id").primaryKey({ autoIncrement: true }),
+  document_id: sqliteCore.integer("document_id").notNull().references(() => documents.document_id, { onDelete: "cascade" }).unique(),
+  locked_by_user_id: sqliteCore.integer("locked_by_user_id").notNull().references(() => users.user_id),
+  lock_type: sqliteCore.text("lock_type").notNull().default("exclusive"),
+  // CHECK: exclusive | shared
+  acquired_at: sqliteCore.text("acquired_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  expires_at: sqliteCore.text("expires_at").notNull(),
+  released_at: sqliteCore.text("released_at")
+}, (table) => [
+  sqliteCore.index("idx_file_locks_document_id").on(table.document_id),
+  sqliteCore.index("idx_file_locks_locked_by_user_id").on(table.locked_by_user_id),
+  sqliteCore.index("idx_file_locks_expires_at").on(table.expires_at)
+]);
+const syncManifest = sqliteCore.sqliteTable("sync_manifest", {
+  manifest_id: sqliteCore.integer("manifest_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }).unique(),
+  last_sync_date: sqliteCore.text("last_sync_date"),
+  manifest_json: sqliteCore.text("manifest_json"),
+  sync_direction: sqliteCore.text("sync_direction").notNull().default("bidirectional"),
+  // CHECK: upload | download | bidirectional
+  sync_status: sqliteCore.text("sync_status").notNull().default("synced"),
+  // CHECK: synced | pending | conflict | error
+  error_message: sqliteCore.text("error_message"),
+  updated_at: sqliteCore.text("updated_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`)
+}, (table) => [
+  sqliteCore.index("idx_sync_manifest_case_id").on(table.case_id),
+  sqliteCore.index("idx_sync_manifest_sync_status").on(table.sync_status),
+  sqliteCore.index("idx_sync_manifest_updated_at").on(table.updated_at)
+]);
+const caseAssignments = sqliteCore.sqliteTable("case_assignments", {
+  assignment_id: sqliteCore.integer("assignment_id").primaryKey({ autoIncrement: true }),
+  case_id: sqliteCore.integer("case_id").notNull().references(() => cases.case_id, { onDelete: "cascade" }),
+  user_id: sqliteCore.integer("user_id").notNull().references(() => users.user_id, { onDelete: "cascade" }),
+  role_in_case: sqliteCore.text("role_in_case").notNull(),
+  // CHECK: primary_clinician | reviewing_clinician | psychometrist | receptionist
+  assigned_by_user_id: sqliteCore.integer("assigned_by_user_id").notNull().references(() => users.user_id),
+  assigned_at: sqliteCore.text("assigned_at").notNull().default(drizzleOrm.sql`CURRENT_DATE`),
+  completed_at: sqliteCore.text("completed_at")
+}, (table) => [
+  sqliteCore.uniqueIndex("idx_case_assignments_unique").on(table.case_id, table.user_id, table.role_in_case),
+  sqliteCore.index("idx_case_assignments_case_id").on(table.case_id),
+  sqliteCore.index("idx_case_assignments_user_id").on(table.user_id),
+  sqliteCore.index("idx_case_assignments_role_in_case").on(table.role_in_case)
+]);
+const schema = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  agentRuns,
+  auditLog,
+  backupMetadata,
+  caseAssignments,
+  caseNotes,
+  cases,
+  diagnoses,
+  diagnosisCatalog,
+  diagnosisInstrumentMappings,
+  documentPermissions,
+  documents,
+  evidenceMaps,
+  fileLocks,
+  gateDecisions,
+  gateReviews,
+  instrumentLibrary,
+  peerConsultations,
+  practiceConfig,
+  practiceProfiles,
+  referralSources,
+  reportRevisions,
+  reportTemplates,
+  reports,
+  sessions,
+  styleRules,
+  syncManifest,
+  testAdministrations,
+  users,
+  writerDrafts
+}, Symbol.toStringTag, { value: "Module" }));
+const DEV_PASSPHRASE = "psygil-dev-key-2026";
+const DEV_SALT = Buffer.from("psygil-kdf-salt-v1");
+async function deriveKey(passphrase) {
+  const keyBuffer = await argon2.hash(passphrase, {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    // 64 MB
+    timeCost: 3,
+    parallelism: 1,
+    hashLength: 32,
+    salt: DEV_SALT,
+    raw: true
+  });
+  return keyBuffer.toString("hex");
+}
+function openDatabase(dbPath, hexKey) {
+  const dir = path.dirname(dbPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const sqlite = new Database(dbPath);
+  sqlite.pragma("cipher='sqlcipher'");
+  sqlite.pragma(`key="x'${hexKey}'"`);
+  sqlite.pragma("foreign_keys = ON");
+  sqlite.pragma("journal_mode = WAL");
+  const db = betterSqlite3.drizzle(sqlite, { schema });
+  return { db, sqlite };
+}
+async function initDatabase(passphrase = DEV_PASSPHRASE, dbPath = getDefaultDbPath()) {
+  const hexKey = await deriveKey(passphrase);
+  return openDatabase(dbPath, hexKey);
+}
+function getDefaultDbPath() {
+  try {
+    const { app } = require("electron");
+    return path.join(app.getPath("userData"), "psygil.db");
+  } catch {
+    return path.join(process.cwd(), "data", "psygil.db");
+  }
+}
+const MIGRATIONS = [
+  {
+    id: "003_case_folder_path",
+    description: "Add folder_path column to cases table",
+    sql: `ALTER TABLE cases ADD COLUMN folder_path TEXT;`
+  },
+  {
+    id: "004_patient_intake",
+    description: "Create patient_intake table for referral/intake data",
+    sql: `
+      CREATE TABLE IF NOT EXISTS patient_intake (
+        intake_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
+        referral_type TEXT NOT NULL DEFAULT 'court'
+          CHECK (referral_type IN ('court', 'attorney', 'self', 'walk-in')),
+        referral_source TEXT,
+        eval_type TEXT,
+        presenting_complaint TEXT,
+        jurisdiction TEXT,
+        charges TEXT,
+        attorney_name TEXT,
+        report_deadline TEXT,
+        status TEXT NOT NULL DEFAULT 'draft'
+          CHECK (status IN ('draft', 'complete')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (case_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_patient_intake_case_id ON patient_intake(case_id);
+      CREATE INDEX IF NOT EXISTS idx_patient_intake_status ON patient_intake(status);
+
+      CREATE TRIGGER IF NOT EXISTS tr_patient_intake_updated_at
+      AFTER UPDATE ON patient_intake
+      FOR EACH ROW
+      BEGIN
+        UPDATE patient_intake SET updated_at = datetime('now') WHERE intake_id = NEW.intake_id;
+      END;
+    `
+  },
+  {
+    id: "005_patient_onboarding",
+    description: "Create patient_onboarding table for section-based onboarding data",
+    sql: `
+      CREATE TABLE IF NOT EXISTS patient_onboarding (
+        onboarding_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
+        section TEXT NOT NULL
+          CHECK (section IN (
+            'contact', 'complaints', 'family', 'education',
+            'health', 'mental', 'substance', 'legal', 'recent'
+          )),
+        content TEXT NOT NULL DEFAULT '{}',
+        clinician_notes TEXT,
+        verified INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'draft'
+          CHECK (status IN ('draft', 'complete')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (case_id, section)
+      );
+      CREATE INDEX IF NOT EXISTS idx_patient_onboarding_case_id ON patient_onboarding(case_id);
+      CREATE INDEX IF NOT EXISTS idx_patient_onboarding_section ON patient_onboarding(section);
+      CREATE INDEX IF NOT EXISTS idx_patient_onboarding_status ON patient_onboarding(status);
+
+      CREATE TRIGGER IF NOT EXISTS tr_patient_onboarding_updated_at
+      AFTER UPDATE ON patient_onboarding
+      FOR EACH ROW
+      BEGIN
+        UPDATE patient_onboarding SET updated_at = datetime('now') WHERE onboarding_id = NEW.onboarding_id;
+      END;
+    `
+  }
+];
+function runMigrations(sqlite) {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS _migrations (
+      id TEXT PRIMARY KEY,
+      description TEXT NOT NULL,
+      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+  const applied = new Set(
+    sqlite.prepare("SELECT id FROM _migrations").all().map((r) => r.id)
+  );
+  for (const migration of MIGRATIONS) {
+    if (applied.has(migration.id)) continue;
+    console.log(`[migrations] Applying: ${migration.id} — ${migration.description}`);
+    const tx = sqlite.transaction(() => {
+      sqlite.exec(migration.sql);
+      sqlite.prepare("INSERT INTO _migrations (id, description) VALUES (?, ?)").run(
+        migration.id,
+        migration.description
+      );
+    });
+    tx();
+    console.log(`[migrations] Applied: ${migration.id}`);
+  }
+}
+let handle = null;
+async function initDb() {
+  if (handle !== null) return;
+  const result = await initDatabase();
+  handle = result;
+  runMigrations(result.sqlite);
+}
+function getSqlite() {
+  if (handle === null) throw new Error("Database not initialized — call initDb() first");
+  return handle.sqlite;
+}
+const CASE_SUBFOLDERS = [
+  "_Inbox",
+  "Collateral",
+  "Testing",
+  "Interviews",
+  "Diagnostics",
+  "Reports",
+  "Archive"
+];
+function createCase(params) {
+  const sqlite = getSqlite();
+  const wsPath = loadWorkspacePath();
+  if (wsPath === null) {
+    throw new Error("No workspace path configured — set workspace before creating cases");
+  }
+  const folderName = `${params.case_number} ${params.examinee_last_name}, ${params.examinee_first_name}`;
+  const folderPath = path.join(wsPath, folderName);
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath, { recursive: true });
+  }
+  for (const sub of CASE_SUBFOLDERS) {
+    const subPath = path.join(folderPath, sub);
+    if (!fs.existsSync(subPath)) {
+      fs.mkdirSync(subPath, { recursive: true });
+    }
+  }
+  const stmt = sqlite.prepare(`
+    INSERT INTO cases (
+      case_number, primary_clinician_user_id,
+      examinee_first_name, examinee_last_name, examinee_dob, examinee_gender,
+      evaluation_type, referral_source, evaluation_questions,
+      case_status, workflow_current_stage, folder_path, notes
+    ) VALUES (
+      @case_number, @primary_clinician_user_id,
+      @examinee_first_name, @examinee_last_name, @examinee_dob, @examinee_gender,
+      @evaluation_type, @referral_source, @evaluation_questions,
+      'intake', 'gate_1', @folder_path, @notes
+    )
+  `);
+  const result = stmt.run({
+    case_number: params.case_number,
+    primary_clinician_user_id: params.primary_clinician_user_id,
+    examinee_first_name: params.examinee_first_name,
+    examinee_last_name: params.examinee_last_name,
+    examinee_dob: params.examinee_dob ?? null,
+    examinee_gender: params.examinee_gender ?? null,
+    evaluation_type: params.evaluation_type ?? null,
+    referral_source: params.referral_source ?? null,
+    evaluation_questions: params.evaluation_questions ?? null,
+    folder_path: folderPath,
+    notes: params.notes ?? null
+  });
+  const caseId = Number(result.lastInsertRowid);
+  return getCaseById(caseId);
+}
+function listCases() {
+  const sqlite = getSqlite();
+  const rows = sqlite.prepare("SELECT * FROM cases WHERE deleted_at IS NULL AND case_status != ? ORDER BY created_at DESC").all("archived");
+  return rows;
+}
+function getCaseById(caseId) {
+  const sqlite = getSqlite();
+  const row = sqlite.prepare("SELECT * FROM cases WHERE case_id = ?").get(caseId);
+  return row ?? null;
+}
+function archiveCase(caseId) {
+  const sqlite = getSqlite();
+  const existing = getCaseById(caseId);
+  if (existing === null) {
+    throw new Error(`Case ${caseId} not found`);
+  }
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  sqlite.prepare("UPDATE cases SET case_status = 'archived', deleted_at = ?, last_modified = ? WHERE case_id = ?").run(now, now, caseId);
+  if (existing.folder_path && fs.existsSync(existing.folder_path)) {
+    const wsPath = loadWorkspacePath();
+    if (wsPath !== null) {
+      const archiveRoot = path.join(wsPath, "Archive");
+      if (!fs.existsSync(archiveRoot)) {
+        fs.mkdirSync(archiveRoot, { recursive: true });
+      }
+      const folderName = existing.folder_path.split("/").pop();
+      const archiveDest = path.join(archiveRoot, folderName);
+      try {
+        fs.renameSync(existing.folder_path, archiveDest);
+        sqlite.prepare("UPDATE cases SET folder_path = ? WHERE case_id = ?").run(archiveDest, caseId);
+      } catch (err) {
+        console.error(`[cases] Failed to move folder to archive: ${err}`);
+      }
+    }
+  }
+  return getCaseById(caseId);
+}
+function saveIntake(caseId, data) {
+  const sqlite = getSqlite();
+  sqlite.prepare(`
+    INSERT INTO patient_intake (
+      case_id, referral_type, referral_source, eval_type,
+      presenting_complaint, jurisdiction, charges,
+      attorney_name, report_deadline, status
+    ) VALUES (
+      @case_id, @referral_type, @referral_source, @eval_type,
+      @presenting_complaint, @jurisdiction, @charges,
+      @attorney_name, @report_deadline, @status
+    )
+    ON CONFLICT (case_id) DO UPDATE SET
+      referral_type = excluded.referral_type,
+      referral_source = excluded.referral_source,
+      eval_type = excluded.eval_type,
+      presenting_complaint = excluded.presenting_complaint,
+      jurisdiction = excluded.jurisdiction,
+      charges = excluded.charges,
+      attorney_name = excluded.attorney_name,
+      report_deadline = excluded.report_deadline,
+      status = excluded.status
+  `).run({
+    case_id: caseId,
+    referral_type: data.referral_type ?? "court",
+    referral_source: data.referral_source ?? null,
+    eval_type: data.eval_type ?? null,
+    presenting_complaint: data.presenting_complaint ?? null,
+    jurisdiction: data.jurisdiction ?? null,
+    charges: data.charges ?? null,
+    attorney_name: data.attorney_name ?? null,
+    report_deadline: data.report_deadline ?? null,
+    status: data.status ?? "draft"
+  });
+  return getIntake(caseId);
+}
+function getIntake(caseId) {
+  const sqlite = getSqlite();
+  const row = sqlite.prepare("SELECT * FROM patient_intake WHERE case_id = ?").get(caseId);
+  return row ?? null;
+}
+function saveOnboardingSection(caseId, section, data) {
+  const sqlite = getSqlite();
+  sqlite.prepare(`
+    INSERT INTO patient_onboarding (
+      case_id, section, content, clinician_notes, verified, status
+    ) VALUES (
+      @case_id, @section, @content, @clinician_notes, @verified, @status
+    )
+    ON CONFLICT (case_id, section) DO UPDATE SET
+      content = excluded.content,
+      clinician_notes = excluded.clinician_notes,
+      verified = excluded.verified,
+      status = excluded.status
+  `).run({
+    case_id: caseId,
+    section,
+    content: data.content,
+    clinician_notes: data.clinician_notes ?? null,
+    verified: data.verified ? 1 : 0,
+    status: data.status ?? "draft"
+  });
+  const row = sqlite.prepare("SELECT * FROM patient_onboarding WHERE case_id = ? AND section = ?").get(caseId, section);
+  return row;
+}
+function getOnboardingSections(caseId) {
+  const sqlite = getSqlite();
+  const rows = sqlite.prepare("SELECT * FROM patient_onboarding WHERE case_id = ? ORDER BY section").all(caseId);
+  return rows;
+}
 function ok(data) {
   return { status: "success", data };
 }
@@ -2197,33 +1349,106 @@ function fail(error_code, message) {
 function registerCasesHandlers() {
   electron.ipcMain.handle(
     "cases:list",
-    (_event, _params) => ok({ cases: [], total: 0, page: 1, limit: 20 })
+    (_event, _params) => {
+      try {
+        const cases2 = listCases();
+        return ok({ cases: cases2, total: cases2.length });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to list cases";
+        return fail("CASES_LIST_FAILED", message);
+      }
+    }
   );
   electron.ipcMain.handle(
     "cases:get",
-    (_event, _params) => ok({
-      case_id: "",
-      case_name: "",
-      case_type: "",
-      status: "",
-      pipeline_stage: "onboarding",
-      created_at: "",
-      last_modified: "",
-      document_count: 0,
-      metadata: {}
-    })
+    (_event, params) => {
+      try {
+        const row = getCaseById(params.case_id);
+        if (row === null) {
+          return fail("CASE_NOT_FOUND", `Case ${params.case_id} not found`);
+        }
+        return ok(row);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to get case";
+        return fail("CASES_GET_FAILED", message);
+      }
+    }
   );
   electron.ipcMain.handle(
     "cases:create",
-    (_event, _params) => ok({ case_id: "stub-id", created_at: (/* @__PURE__ */ new Date()).toISOString() })
-  );
-  electron.ipcMain.handle(
-    "cases:update",
-    (_event, _params) => ok({ case_id: "", updated_fields: [] })
+    (_event, params) => {
+      try {
+        const row = createCase(params);
+        return ok(row);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to create case";
+        return fail("CASES_CREATE_FAILED", message);
+      }
+    }
   );
   electron.ipcMain.handle(
     "cases:archive",
-    (_event, _params) => ok({ case_id: "", archived_at: (/* @__PURE__ */ new Date()).toISOString() })
+    (_event, params) => {
+      try {
+        const row = archiveCase(params.case_id);
+        return ok(row);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to archive case";
+        return fail("CASES_ARCHIVE_FAILED", message);
+      }
+    }
+  );
+}
+function registerIntakeHandlers() {
+  electron.ipcMain.handle(
+    "intake:save",
+    (_event, params) => {
+      try {
+        const row = saveIntake(params.case_id, params.data);
+        return ok(row);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to save intake";
+        return fail("INTAKE_SAVE_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "intake:get",
+    (_event, params) => {
+      try {
+        const row = getIntake(params.case_id);
+        return ok(row);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to get intake";
+        return fail("INTAKE_GET_FAILED", message);
+      }
+    }
+  );
+}
+function registerOnboardingHandlers() {
+  electron.ipcMain.handle(
+    "onboarding:save",
+    (_event, params) => {
+      try {
+        const row = saveOnboardingSection(params.case_id, params.section, params.data);
+        return ok(row);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to save onboarding section";
+        return fail("ONBOARDING_SAVE_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "onboarding:get",
+    (_event, params) => {
+      try {
+        const rows = getOnboardingSections(params.case_id);
+        return ok(rows);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to get onboarding sections";
+        return fail("ONBOARDING_GET_FAILED", message);
+      }
+    }
   );
 }
 function registerDbHandlers() {
@@ -2373,6 +1598,8 @@ function registerPiiHandlers() {
 }
 function registerAllHandlers() {
   registerCasesHandlers();
+  registerIntakeHandlers();
+  registerOnboardingHandlers();
   registerDbHandlers();
   registerAuthHandlers();
   registerConfigHandlers();
@@ -2412,8 +1639,9 @@ function createWindow() {
   }
   return win;
 }
-electron.app.whenReady().then(() => {
+electron.app.whenReady().then(async () => {
   electron.app.setAsDefaultProtocolClient("psygil");
+  await initDb();
   registerAllHandlers();
   const wsPath = loadWorkspacePath();
   if (wsPath !== null) {

@@ -2,6 +2,7 @@ import { app, BrowserWindow, protocol } from 'electron'
 import { join } from 'path'
 import { registerAllHandlers } from './ipc'
 import { loadWorkspacePath, watchWorkspace, stopWatcher } from './workspace'
+import { initDb } from './db/connection'
 
 // 4-process architecture:
 // Process 1: Main (this file) — app lifecycle, IPC hub, window management
@@ -51,10 +52,13 @@ function createWindow(): BrowserWindow {
   return win
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Register psygil:// as the default protocol client so the OS routes
   // Auth0 PKCE callbacks back to this app from the system browser.
   app.setAsDefaultProtocolClient('psygil')
+
+  // Initialize encrypted database + run pending migrations before registering handlers
+  await initDb()
 
   registerAllHandlers()
 

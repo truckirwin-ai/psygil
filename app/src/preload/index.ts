@@ -1,13 +1,25 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { PsygilApi, WorkspaceFileChangedEvent, PiiDetectParams, PiiBatchDetectParams } from '../shared/types'
+import type {
+  PsygilApi,
+  WorkspaceFileChangedEvent,
+  PiiDetectParams,
+  PiiBatchDetectParams,
+  IntakeSaveParams,
+  IntakeGetParams,
+  OnboardingSaveParams,
+  OnboardingGetParams,
+} from '../shared/types'
 
 // IPC channel constants — must match main/ipc/handlers.ts
 const CH = {
   CASES_LIST: 'cases:list',
   CASES_GET: 'cases:get',
   CASES_CREATE: 'cases:create',
-  CASES_UPDATE: 'cases:update',
   CASES_ARCHIVE: 'cases:archive',
+  INTAKE_SAVE: 'intake:save',
+  INTAKE_GET: 'intake:get',
+  ONBOARDING_SAVE: 'onboarding:save',
+  ONBOARDING_GET: 'onboarding:get',
   DB_HEALTH: 'db:health',
   AUTH_LOGIN: 'auth:login',
   AUTH_GET_STATUS: 'auth:getStatus',
@@ -33,8 +45,17 @@ const api: PsygilApi = {
     list: (params) => ipcRenderer.invoke(CH.CASES_LIST, params),
     get: (params) => ipcRenderer.invoke(CH.CASES_GET, params),
     create: (params) => ipcRenderer.invoke(CH.CASES_CREATE, params),
-    update: (params) => ipcRenderer.invoke(CH.CASES_UPDATE, params),
     archive: (params) => ipcRenderer.invoke(CH.CASES_ARCHIVE, params)
+  },
+
+  intake: {
+    save: (params: IntakeSaveParams) => ipcRenderer.invoke(CH.INTAKE_SAVE, params),
+    get: (params: IntakeGetParams) => ipcRenderer.invoke(CH.INTAKE_GET, params),
+  },
+
+  onboarding: {
+    save: (params: OnboardingSaveParams) => ipcRenderer.invoke(CH.ONBOARDING_SAVE, params),
+    get: (params: OnboardingGetParams) => ipcRenderer.invoke(CH.ONBOARDING_GET, params),
   },
 
   db: {

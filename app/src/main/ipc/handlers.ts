@@ -7,10 +7,14 @@ import type {
   CasesGetResult,
   CasesCreateParams,
   CasesCreateResult,
-  CasesUpdateParams,
-  CasesUpdateResult,
   CasesArchiveParams,
   CasesArchiveResult,
+  IntakeSaveParams,
+  IntakeGetParams,
+  PatientIntakeRow,
+  OnboardingSaveParams,
+  OnboardingGetParams,
+  PatientOnboardingRow,
   DbHealthResult,
   AuthLoginResult,
   AuthGetStatusResult,
@@ -38,6 +42,16 @@ import {
   getDefaultWorkspacePath
 } from '../workspace'
 import { detect, batchDetect } from '../pii'
+import {
+  createCase,
+  listCases,
+  getCaseById,
+  archiveCase,
+  saveIntake,
+  getIntake,
+  saveOnboardingSection,
+  getOnboardingSections,
+} from '../cases'
 
 // ---------------------------------------------------------------------------
 // Stub helper — returns a typed success envelope
@@ -58,42 +72,121 @@ function fail(error_code: string, message: string): IpcResponse<never> {
 function registerCasesHandlers(): void {
   ipcMain.handle(
     'cases:list',
-    (_event, _params: CasesListParams): IpcResponse<CasesListResult> =>
-      ok({ cases: [], total: 0, page: 1, limit: 20 })
+    (_event, _params?: CasesListParams): IpcResponse<CasesListResult> => {
+      try {
+        const cases = listCases()
+        return ok({ cases, total: cases.length })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to list cases'
+        return fail('CASES_LIST_FAILED', message)
+      }
+    }
   )
 
   ipcMain.handle(
     'cases:get',
-    (_event, _params: CasesGetParams): IpcResponse<CasesGetResult> =>
-      ok({
-        case_id: '',
-        case_name: '',
-        case_type: '',
-        status: '',
-        pipeline_stage: 'onboarding',
-        created_at: '',
-        last_modified: '',
-        document_count: 0,
-        metadata: {}
-      })
+    (_event, params: CasesGetParams): IpcResponse<CasesGetResult> => {
+      try {
+        const row = getCaseById(params.case_id)
+        if (row === null) {
+          return fail('CASE_NOT_FOUND', `Case ${params.case_id} not found`)
+        }
+        return ok(row)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get case'
+        return fail('CASES_GET_FAILED', message)
+      }
+    }
   )
 
   ipcMain.handle(
     'cases:create',
-    (_event, _params: CasesCreateParams): IpcResponse<CasesCreateResult> =>
-      ok({ case_id: 'stub-id', created_at: new Date().toISOString() })
-  )
-
-  ipcMain.handle(
-    'cases:update',
-    (_event, _params: CasesUpdateParams): IpcResponse<CasesUpdateResult> =>
-      ok({ case_id: '', updated_fields: [] })
+    (_event, params: CasesCreateParams): IpcResponse<CasesCreateResult> => {
+      try {
+        const row = createCase(params)
+        return ok(row)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to create case'
+        return fail('CASES_CREATE_FAILED', message)
+      }
+    }
   )
 
   ipcMain.handle(
     'cases:archive',
-    (_event, _params: CasesArchiveParams): IpcResponse<CasesArchiveResult> =>
-      ok({ case_id: '', archived_at: new Date().toISOString() })
+    (_event, params: CasesArchiveParams): IpcResponse<CasesArchiveResult> => {
+      try {
+        const row = archiveCase(params.case_id)
+        return ok(row)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to archive case'
+        return fail('CASES_ARCHIVE_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Intake handlers
+// ---------------------------------------------------------------------------
+
+function registerIntakeHandlers(): void {
+  ipcMain.handle(
+    'intake:save',
+    (_event, params: IntakeSaveParams): IpcResponse<PatientIntakeRow> => {
+      try {
+        const row = saveIntake(params.case_id, params.data)
+        return ok(row)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to save intake'
+        return fail('INTAKE_SAVE_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'intake:get',
+    (_event, params: IntakeGetParams): IpcResponse<PatientIntakeRow | null> => {
+      try {
+        const row = getIntake(params.case_id)
+        return ok(row)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get intake'
+        return fail('INTAKE_GET_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Onboarding handlers
+// ---------------------------------------------------------------------------
+
+function registerOnboardingHandlers(): void {
+  ipcMain.handle(
+    'onboarding:save',
+    (_event, params: OnboardingSaveParams): IpcResponse<PatientOnboardingRow> => {
+      try {
+        const row = saveOnboardingSection(params.case_id, params.section, params.data)
+        return ok(row)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to save onboarding section'
+        return fail('ONBOARDING_SAVE_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'onboarding:get',
+    (_event, params: OnboardingGetParams): IpcResponse<readonly PatientOnboardingRow[]> => {
+      try {
+        const rows = getOnboardingSections(params.case_id)
+        return ok(rows)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get onboarding sections'
+        return fail('ONBOARDING_GET_FAILED', message)
+      }
+    }
   )
 }
 
@@ -288,6 +381,8 @@ function registerPiiHandlers(): void {
 
 export function registerAllHandlers(): void {
   registerCasesHandlers()
+  registerIntakeHandlers()
+  registerOnboardingHandlers()
   registerDbHandlers()
   registerAuthHandlers()
   registerConfigHandlers()

@@ -4,8 +4,11 @@ const CH = {
   CASES_LIST: "cases:list",
   CASES_GET: "cases:get",
   CASES_CREATE: "cases:create",
-  CASES_UPDATE: "cases:update",
   CASES_ARCHIVE: "cases:archive",
+  INTAKE_SAVE: "intake:save",
+  INTAKE_GET: "intake:get",
+  ONBOARDING_SAVE: "onboarding:save",
+  ONBOARDING_GET: "onboarding:get",
   DB_HEALTH: "db:health",
   AUTH_LOGIN: "auth:login",
   AUTH_GET_STATUS: "auth:getStatus",
@@ -26,8 +29,15 @@ const api = {
     list: (params) => electron.ipcRenderer.invoke(CH.CASES_LIST, params),
     get: (params) => electron.ipcRenderer.invoke(CH.CASES_GET, params),
     create: (params) => electron.ipcRenderer.invoke(CH.CASES_CREATE, params),
-    update: (params) => electron.ipcRenderer.invoke(CH.CASES_UPDATE, params),
     archive: (params) => electron.ipcRenderer.invoke(CH.CASES_ARCHIVE, params)
+  },
+  intake: {
+    save: (params) => electron.ipcRenderer.invoke(CH.INTAKE_SAVE, params),
+    get: (params) => electron.ipcRenderer.invoke(CH.INTAKE_GET, params)
+  },
+  onboarding: {
+    save: (params) => electron.ipcRenderer.invoke(CH.ONBOARDING_SAVE, params),
+    get: (params) => electron.ipcRenderer.invoke(CH.ONBOARDING_GET, params)
   },
   db: {
     health: () => electron.ipcRenderer.invoke(CH.DB_HEALTH)

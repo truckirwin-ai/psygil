@@ -57,13 +57,15 @@ def main() -> int:
     if resp.get("result") != {"status": "ok"}:
         failures.append(f"health/ping: expected {{'status':'ok'}}, got {resp.get('result')}")
 
-    # Test 2: pii/detect stub
+    # Test 2: pii/detect — Presidio is live, should detect PERSON and DATE_TIME
     resp = send_rpc(sock, "pii/detect", {"text": "John Doe was born on 1/1/1990"}, req_id=2)
     result = resp.get("result", {})
-    if result.get("text") != "John Doe was born on 1/1/1990":
-        failures.append(f"pii/detect: text not returned unchanged, got {result}")
-    if result.get("entities") != []:
-        failures.append(f"pii/detect: expected empty entities, got {result.get('entities')}")
+    entities = result.get("entities", [])
+    entity_types = [e["type"] for e in entities]
+    if "PERSON" not in entity_types:
+        failures.append(f"pii/detect: expected PERSON entity, got {entities}")
+    if "DATE_TIME" not in entity_types:
+        failures.append(f"pii/detect: expected DATE_TIME entity, got {entities}")
 
     # Test 3: pii/batch stub
     texts = ["Alice", "Bob"]
