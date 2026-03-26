@@ -26,5 +26,12 @@ export type {
   ConfigGetResult,
   ConfigSetParams,
   ConfigSetResult,
+  PiiEntity,
+  PiiDetectParams,
+  PiiDetectResult,
+  PiiBatchDetectParams,
+  PiiBatchDetectResult,
+  FolderNode,
+  WorkspaceFileChangedEvent,
   PsygilApi
 } from './ipc'

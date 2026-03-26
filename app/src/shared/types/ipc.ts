@@ -185,6 +185,52 @@ export interface ConfigSetResult {
 }
 
 // ---------------------------------------------------------------------------
+// PII Detection
+// ---------------------------------------------------------------------------
+
+export interface PiiEntity {
+  readonly text: string
+  readonly start: number
+  readonly end: number
+  readonly type: string
+  readonly score: number
+}
+
+// pii.detect
+export interface PiiDetectParams {
+  readonly text: string
+}
+
+export interface PiiDetectResult {
+  readonly entities: readonly PiiEntity[]
+}
+
+// pii.batchDetect
+export interface PiiBatchDetectParams {
+  readonly texts: readonly string[]
+}
+
+export interface PiiBatchDetectResult {
+  readonly results: readonly (readonly PiiEntity[])[]
+}
+
+// ---------------------------------------------------------------------------
+// Workspace
+// ---------------------------------------------------------------------------
+
+export interface FolderNode {
+  readonly name: string
+  readonly path: string
+  readonly isDirectory: boolean
+  readonly children?: readonly FolderNode[]
+}
+
+export interface WorkspaceFileChangedEvent {
+  readonly event: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir'
+  readonly path: string
+}
+
+// ---------------------------------------------------------------------------
 // Preload API shape — exposed as window.psygil
 // ---------------------------------------------------------------------------
 
@@ -208,6 +254,20 @@ export interface PsygilApi {
   readonly config: {
     readonly get: (params: ConfigGetParams) => Promise<IpcResponse<ConfigGetResult>>
     readonly set: (params: ConfigSetParams) => Promise<IpcResponse<ConfigSetResult>>
+  }
+  readonly pii: {
+    readonly detect: (params: PiiDetectParams) => Promise<IpcResponse<PiiDetectResult>>
+    readonly batchDetect: (params: PiiBatchDetectParams) => Promise<IpcResponse<PiiBatchDetectResult>>
+  }
+  readonly workspace: {
+    readonly getPath: () => Promise<IpcResponse<string | null>>
+    readonly setPath: (path: string) => Promise<IpcResponse<void>>
+    readonly getTree: () => Promise<IpcResponse<readonly FolderNode[]>>
+    readonly openInFinder: (path: string) => Promise<IpcResponse<void>>
+    readonly pickFolder: () => Promise<IpcResponse<string | null>>
+    readonly getDefaultPath: () => Promise<IpcResponse<string>>
+    readonly onFileChanged: (callback: (event: WorkspaceFileChangedEvent) => void) => void
+    readonly offFileChanged: () => void
   }
 }
 

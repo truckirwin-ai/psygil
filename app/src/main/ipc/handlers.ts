@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
 import type {
   IpcResponse,
   CasesListParams,
@@ -18,12 +18,26 @@ import type {
   ConfigGetParams,
   ConfigGetResult,
   ConfigSetParams,
-  ConfigSetResult
+  ConfigSetResult,
+  PiiDetectParams,
+  PiiDetectResult,
+  PiiBatchDetectParams,
+  PiiBatchDetectResult,
+  FolderNode
 } from '../../shared/types'
 import { getAuthStatus } from '../auth'
 import { performLogin } from '../auth/login'
 import { performLogout } from '../auth/logout'
 import { checkLicense } from '../auth/user'
+import {
+  loadWorkspacePath,
+  saveWorkspacePath,
+  createFolderStructure,
+  watchWorkspace,
+  getWorkspaceTree,
+  getDefaultWorkspacePath
+} from '../workspace'
+import { detect, batchDetect } from '../pii'
 
 // ---------------------------------------------------------------------------
 // Stub helper — returns a typed success envelope
@@ -166,6 +180,109 @@ function registerConfigHandlers(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Workspace handlers
+// ---------------------------------------------------------------------------
+
+function registerWorkspaceHandlers(): void {
+  ipcMain.handle(
+    'workspace:getPath',
+    (): IpcResponse<string | null> => ok(loadWorkspacePath())
+  )
+
+  ipcMain.handle(
+    'workspace:setPath',
+    (_event, path: string): IpcResponse<void> => {
+      try {
+        saveWorkspacePath(path)
+        createFolderStructure(path)
+        watchWorkspace(path)
+        return ok(undefined)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to set workspace path'
+        return fail('WORKSPACE_SET_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'workspace:getTree',
+    (): IpcResponse<readonly FolderNode[]> => {
+      const wsPath = loadWorkspacePath()
+      if (wsPath === null) {
+        return fail('NO_WORKSPACE', 'No workspace path configured')
+      }
+      try {
+        return ok(getWorkspaceTree(wsPath))
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to read workspace tree'
+        return fail('TREE_READ_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'workspace:openInFinder',
+    (_event, path: string): IpcResponse<void> => {
+      shell.openPath(path)
+      return ok(undefined)
+    }
+  )
+
+  ipcMain.handle(
+    'workspace:pickFolder',
+    async (event): Promise<IpcResponse<string | null>> => {
+      const parentWindow = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(parentWindow!, {
+        title: 'Choose Workspace Folder',
+        properties: ['openDirectory', 'createDirectory'],
+        buttonLabel: 'Choose',
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        return ok(null)
+      }
+      return ok(result.filePaths[0])
+    }
+  )
+
+  ipcMain.handle(
+    'workspace:getDefaultPath',
+    (): IpcResponse<string> => ok(getDefaultWorkspacePath())
+  )
+}
+
+// ---------------------------------------------------------------------------
+// PII handlers
+// ---------------------------------------------------------------------------
+
+function registerPiiHandlers(): void {
+  ipcMain.handle(
+    'pii:detect',
+    async (_event, params: PiiDetectParams): Promise<IpcResponse<PiiDetectResult>> => {
+      try {
+        const entities = await detect(params.text)
+        return ok({ entities })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'PII detection failed'
+        return fail('PII_DETECT_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'pii:batchDetect',
+    async (_event, params: PiiBatchDetectParams): Promise<IpcResponse<PiiBatchDetectResult>> => {
+      try {
+        const results = await batchDetect(params.texts)
+        return ok({ results })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'PII batch detection failed'
+        return fail('PII_BATCH_DETECT_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Public: register all IPC handlers
 // ---------------------------------------------------------------------------
 
@@ -174,4 +291,6 @@ export function registerAllHandlers(): void {
   registerDbHandlers()
   registerAuthHandlers()
   registerConfigHandlers()
+  registerPiiHandlers()
+  registerWorkspaceHandlers()
 }

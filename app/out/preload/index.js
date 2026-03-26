@@ -11,7 +11,14 @@ const CH = {
   AUTH_GET_STATUS: "auth:getStatus",
   AUTH_LOGOUT: "auth:logout",
   CONFIG_GET: "config:get",
-  CONFIG_SET: "config:set"
+  CONFIG_SET: "config:set",
+  WS_GET_PATH: "workspace:getPath",
+  WS_SET_PATH: "workspace:setPath",
+  WS_GET_TREE: "workspace:getTree",
+  WS_OPEN_FINDER: "workspace:openInFinder",
+  WS_PICK_FOLDER: "workspace:pickFolder",
+  WS_DEFAULT_PATH: "workspace:getDefaultPath",
+  WS_FILE_CHANGED: "workspace:file-changed"
 };
 const api = {
   platform: process.platform,
@@ -33,6 +40,24 @@ const api = {
   config: {
     get: (params) => electron.ipcRenderer.invoke(CH.CONFIG_GET, params),
     set: (params) => electron.ipcRenderer.invoke(CH.CONFIG_SET, params)
+  },
+  pii: {
+    detect: (params) => electron.ipcRenderer.invoke("pii:detect", params),
+    batchDetect: (params) => electron.ipcRenderer.invoke("pii:batchDetect", params)
+  },
+  workspace: {
+    getPath: () => electron.ipcRenderer.invoke(CH.WS_GET_PATH),
+    setPath: (path) => electron.ipcRenderer.invoke(CH.WS_SET_PATH, path),
+    getTree: () => electron.ipcRenderer.invoke(CH.WS_GET_TREE),
+    openInFinder: (path) => electron.ipcRenderer.invoke(CH.WS_OPEN_FINDER, path),
+    pickFolder: () => electron.ipcRenderer.invoke(CH.WS_PICK_FOLDER),
+    getDefaultPath: () => electron.ipcRenderer.invoke(CH.WS_DEFAULT_PATH),
+    onFileChanged: (callback) => {
+      electron.ipcRenderer.on(CH.WS_FILE_CHANGED, (_event, data) => callback(data));
+    },
+    offFileChanged: () => {
+      electron.ipcRenderer.removeAllListeners(CH.WS_FILE_CHANGED);
+    }
   }
 };
 electron.contextBridge.exposeInMainWorld("psygil", api);

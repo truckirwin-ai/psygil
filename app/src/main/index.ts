@@ -1,6 +1,7 @@
 import { app, BrowserWindow, protocol } from 'electron'
 import { join } from 'path'
 import { registerAllHandlers } from './ipc'
+import { loadWorkspacePath, watchWorkspace, stopWatcher } from './workspace'
 
 // 4-process architecture:
 // Process 1: Main (this file) — app lifecycle, IPC hub, window management
@@ -56,6 +57,13 @@ app.whenReady().then(() => {
   app.setAsDefaultProtocolClient('psygil')
 
   registerAllHandlers()
+
+  // If workspace was previously configured, start the file watcher
+  const wsPath = loadWorkspacePath()
+  if (wsPath !== null) {
+    watchWorkspace(wsPath)
+  }
+
   createWindow()
 
   app.on('activate', () => {
@@ -67,6 +75,11 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    stopWatcher()
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  stopWatcher()
 })

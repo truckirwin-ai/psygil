@@ -12649,115 +12649,191 @@ function Statusbar() {
   );
 }
 function LeftColumn() {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      style: {
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        background: "var(--bg)",
-        overflow: "hidden"
-      },
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-header", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Cases" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "New Case", title: "New Case", children: "＋" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Browse Cases", title: "Browse Cases", children: "⊞" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Import Case", title: "Import Case", children: "↑" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            style: {
-              flex: 1,
-              overflowY: "auto",
-              padding: "4px 0"
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(TreeNodePlaceholder, { icon: "📊", label: "Dashboard", depth: 0 }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(TreeNodePlaceholder, { icon: "📁", label: "Johnson, Marcus D. — CST", depth: 0, badge: "#2026-0147" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(TreeNodePlaceholder, { icon: "📁", label: "Williams, Kesha R. — Custody", depth: 0, badge: "#2026-0152" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(TreeNodePlaceholder, { icon: "📁", label: "Chen, David L. — Risk", depth: 0, badge: "#2026-0160" })
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            style: {
-              borderTop: "1px solid var(--border)",
-              flexShrink: 0
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Resources" }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px 12px" }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "DSM-5-TR Reference" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "State Statutes" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "APA Guidelines" })
-              ] })
-            ]
-          }
-        )
-      ]
+  const [wsState, setWsState] = reactExports.useState({ status: "loading" });
+  const loadTree = reactExports.useCallback(async () => {
+    const treeResp = await window.psygil.workspace.getTree();
+    if (treeResp.status === "success") {
+      setWsState({ status: "ready", tree: treeResp.data });
     }
-  );
+  }, []);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    async function init() {
+      const resp = await window.psygil.workspace.getPath();
+      if (cancelled) return;
+      if (resp.status === "success" && resp.data !== null) {
+        await loadTree();
+      } else {
+        setWsState({ status: "no-workspace" });
+      }
+    }
+    init();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadTree]);
+  reactExports.useEffect(() => {
+    if (wsState.status !== "ready") return;
+    window.psygil.workspace.onFileChanged(() => {
+      loadTree();
+    });
+    return () => {
+      window.psygil.workspace.offFileChanged();
+    };
+  }, [wsState.status, loadTree]);
+  const handleChooseFolder = reactExports.useCallback(async () => {
+    const pickResp = await window.psygil.workspace.pickFolder();
+    if (pickResp.status !== "success" || pickResp.data === null) return;
+    const setResp = await window.psygil.workspace.setPath(pickResp.data);
+    if (setResp.status === "success") {
+      await loadTree();
+    }
+  }, [loadTree]);
+  const handleUseDefault = reactExports.useCallback(async () => {
+    const defaultResp = await window.psygil.workspace.getDefaultPath();
+    if (defaultResp.status !== "success") return;
+    const setResp = await window.psygil.workspace.setPath(defaultResp.data);
+    if (setResp.status === "success") {
+      await loadTree();
+    }
+  }, [loadTree]);
+  if (wsState.status === "no-workspace") {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeOverlay, { onChoose: handleChooseFolder, onUseDefault: handleUseDefault });
+  }
+  if (wsState.status === "loading") {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-secondary)", fontSize: 13 }, children: "Loading…" });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-header", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Workspace" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Refresh", title: "Refresh", onClick: loadTree, children: "↻" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Open in Finder", title: "Open in Finder", onClick: async () => {
+        const resp = await window.psygil.workspace.getPath();
+        if (resp.status === "success" && resp.data !== null) {
+          window.psygil.workspace.openInFinder(resp.data);
+        }
+      }, children: "↗" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: "4px 0" }, children: wsState.tree.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px 12px", fontSize: 12, color: "var(--text-secondary)", textAlign: "center" }, children: [
+      "Workspace is empty.",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+      "Drop files into this folder to get started."
+    ] }) : wsState.tree.map((node) => /* @__PURE__ */ jsxRuntimeExports.jsx(TreeNode, { node, depth: 0 }, node.path)) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { borderTop: "1px solid var(--border)", flexShrink: 0 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Resources" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px 12px" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "DSM-5-TR Reference" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "State Statutes" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "APA Guidelines" })
+      ] })
+    ] })
+  ] });
 }
-function TreeNodePlaceholder({
-  icon,
-  label,
-  depth,
-  badge
+function TreeNode({
+  node,
+  depth
+}) {
+  const [expanded, setExpanded] = reactExports.useState(depth < 1);
+  const handleClick = reactExports.useCallback(() => {
+    if (node.isDirectory) {
+      setExpanded((prev) => !prev);
+    } else {
+      window.psygil.workspace.openInFinder(node.path);
+    }
+  }, [node.isDirectory, node.path]);
+  const icon = node.isDirectory ? "📁" : "📄";
+  const arrow = node.isDirectory ? expanded ? "▾" : "▸" : "";
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          padding: "3px 8px",
+          paddingLeft: 8 + depth * 16,
+          gap: 4,
+          cursor: "pointer",
+          fontSize: 13,
+          color: "var(--text)"
+        },
+        onMouseEnter: (e) => {
+          e.currentTarget.style.background = "var(--highlight)";
+        },
+        onMouseLeave: (e) => {
+          e.currentTarget.style.background = "transparent";
+        },
+        onClick: handleClick,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0, textAlign: "center" }, children: arrow }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, height: 16, fontSize: 14, flexShrink: 0 }, children: icon }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: node.name })
+        ]
+      }
+    ),
+    node.isDirectory && expanded && node.children != null && node.children.map((child) => /* @__PURE__ */ jsxRuntimeExports.jsx(TreeNode, { node: child, depth: depth + 1 }, child.path))
+  ] });
+}
+function WelcomeOverlay({
+  onChoose,
+  onUseDefault
 }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
       style: {
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
-        padding: "3px 8px",
-        paddingLeft: 8 + depth * 16,
-        gap: 4,
-        cursor: "pointer",
-        fontSize: 13,
-        color: "var(--text)"
-      },
-      onMouseEnter: (e) => {
-        e.currentTarget.style.background = "var(--highlight)";
-      },
-      onMouseLeave: (e) => {
-        e.currentTarget.style.background = "transparent";
+        justifyContent: "center",
+        height: "100%",
+        background: "var(--bg)",
+        padding: "24px 16px",
+        textAlign: "center"
       },
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0 }, children: "▸" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, height: 16, fontSize: 14, flexShrink: 0 }, children: icon }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 12 }, children: "📂" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 8 }, children: "Welcome to Psygil" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text-secondary)", marginBottom: 24, lineHeight: 1.5, maxWidth: 220 }, children: "Choose a folder to store your case files. This folder will contain all your cases, documents, and reports." }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
+          "button",
           {
-            style: {
-              flex: 1,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap"
-            },
-            children: label
-          }
-        ),
-        badge != null && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
+            onClick: onChoose,
             style: {
               background: "var(--accent)",
               color: "#ffffff",
-              fontSize: 10,
+              border: "none",
+              borderRadius: 4,
+              padding: "8px 20px",
+              fontSize: 13,
               fontWeight: 600,
-              borderRadius: 3,
-              padding: "1px 5px",
-              flexShrink: 0
+              cursor: "pointer",
+              marginBottom: 8,
+              width: "100%",
+              maxWidth: 200
             },
-            children: badge
+            children: "Choose Folder"
           }
-        )
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: onUseDefault,
+            style: {
+              background: "transparent",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: "8px 20px",
+              fontSize: 13,
+              cursor: "pointer",
+              width: "100%",
+              maxWidth: 200
+            },
+            children: "Use Default"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "var(--text-secondary)", marginTop: 12, opacity: 0.7 }, children: "Default: ~/Documents/Psygil Cases/" })
       ]
     }
   );

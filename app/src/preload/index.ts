@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { PsygilApi } from '../shared/types'
+import type { PsygilApi, WorkspaceFileChangedEvent, PiiDetectParams, PiiBatchDetectParams } from '../shared/types'
 
 // IPC channel constants — must match main/ipc/handlers.ts
 const CH = {
@@ -13,7 +13,14 @@ const CH = {
   AUTH_GET_STATUS: 'auth:getStatus',
   AUTH_LOGOUT: 'auth:logout',
   CONFIG_GET: 'config:get',
-  CONFIG_SET: 'config:set'
+  CONFIG_SET: 'config:set',
+  WS_GET_PATH: 'workspace:getPath',
+  WS_SET_PATH: 'workspace:setPath',
+  WS_GET_TREE: 'workspace:getTree',
+  WS_OPEN_FINDER: 'workspace:openInFinder',
+  WS_PICK_FOLDER: 'workspace:pickFolder',
+  WS_DEFAULT_PATH: 'workspace:getDefaultPath',
+  WS_FILE_CHANGED: 'workspace:file-changed',
 } as const
 
 // Typed API exposed to the renderer as window.psygil.
@@ -43,6 +50,26 @@ const api: PsygilApi = {
   config: {
     get: (params) => ipcRenderer.invoke(CH.CONFIG_GET, params),
     set: (params) => ipcRenderer.invoke(CH.CONFIG_SET, params)
+  },
+
+  pii: {
+    detect: (params: PiiDetectParams) => ipcRenderer.invoke('pii:detect', params),
+    batchDetect: (params: PiiBatchDetectParams) => ipcRenderer.invoke('pii:batchDetect', params),
+  },
+
+  workspace: {
+    getPath: () => ipcRenderer.invoke(CH.WS_GET_PATH),
+    setPath: (path) => ipcRenderer.invoke(CH.WS_SET_PATH, path),
+    getTree: () => ipcRenderer.invoke(CH.WS_GET_TREE),
+    openInFinder: (path) => ipcRenderer.invoke(CH.WS_OPEN_FINDER, path),
+    pickFolder: () => ipcRenderer.invoke(CH.WS_PICK_FOLDER),
+    getDefaultPath: () => ipcRenderer.invoke(CH.WS_DEFAULT_PATH),
+    onFileChanged: (callback: (event: WorkspaceFileChangedEvent) => void) => {
+      ipcRenderer.on(CH.WS_FILE_CHANGED, (_event, data) => callback(data))
+    },
+    offFileChanged: () => {
+      ipcRenderer.removeAllListeners(CH.WS_FILE_CHANGED)
+    },
   }
 }
 
