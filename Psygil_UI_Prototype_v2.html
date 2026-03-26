@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psygil — Forensic Evaluation Platform</title>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        :root {
+            --primary: #0078D4;
+            --primary-light: #e7f1fb;
+            --primary-dark: #005a9c;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --fg: #333333;
+            --fg-secondary: #666666;
+            --bg: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --border: #e0e0e0;
+            --border-dark: #cccccc;
+            --splitter: #d0d0d0;
+            --tab-bg: #fafafa;
+            --tab-bg-active: #ffffff;
+            --tree-hover: #f0f0f0;
+            --tree-selected: #e7f1fb;
+            --code-bg: #f8f8f8;
+            --code-fg: #333333;
+        }
+
+        [data-theme="medium"] {
+            --primary: #58A6FF;
+            --primary-light: #0d1117;
+            --fg: #c9d1d9;
+            --fg-secondary: #8b949e;
+            --bg: #0d1117;
+            --bg-secondary: #161b22;
+            --border: #30363d;
+            --border-dark: #21262d;
+            --splitter: #30363d;
+            --tab-bg: #161b22;
+            --tab-bg-active: #0d1117;
+            --tree-hover: #21262d;
+            --tree-selected: #1c2128;
+            --code-bg: #0d1117;
+            --code-fg: #c9d1d9;
+        }
+
+        [data-theme="dark"] {
+            --primary: #58A6FF;
+            --primary-light: #0d1117;
+            --fg: #e0e0e0;
+            --fg-secondary: #a0a0a0;
+            --bg: #1a1a1a;
+            --bg-secondary: #262626;
+            --border: #404040;
+            --border-dark: #333333;
+            --splitter: #404040;
+            --tab-bg: #262626;
+            --tab-bg-active: #1a1a1a;
+            --tree-hover: #333333;
+            --tree-selected: #2d2d2d;
+            --code-bg: #1a1a1a;
+            --code-fg: #e0e0e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--fg);
+            background: var(--bg);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* TITLEBAR */
+        .titlebar {
+            height: 36px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .titlebar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .titlebar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--fg);
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+
+        .icon-btn:hover {
+            background: var(--border);
+        }
+
+        .icon-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* MAIN LAYOUT */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* LEFT COLUMN */
+        .left-column {
+            width: 260px;
+            background: var(--bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .panel-header {
+            height: 32px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0 8px;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            font-size: 12px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+
+        .tree-node {
+            padding: 4px 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            user-select: none;
+            font-size: 12px;
+            transition: background 0.1s;
+            color: var(--fg);
+        }
+
+        .tree-node:hover {
+            background: var(--tree-hover);
+        }
+
+        .tree-node.selected {
+            background: var(--tree-selected);
+            color: var(--primary);
+        }
+
+        .tree-toggle {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .tree-toggle svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .tree-node.leaf .tree-toggle {
+            visibility: hidden;
+        }
+
+        .tree-indent {
+            display: inline-block;
+            margin-left: 12px;
+        }
+
+        .tree-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tree-icon svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .v-splitter {
+            width: 2px;
+            background: var(--splitter);
+            cursor: col-resize;
+            flex-shrink: 0;
+            transition: background 0.1s;
+        }
+
+        .v-splitter:hover {
+            background: var(--primary);
+        }
+
+        /* CENTER COLUMN */
+        .center-column {
+            flex: 1;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* TAB BAR */
+        .tab-bar {
+            height: 32px;
+            background: var(--tab-bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 0 4px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            flex-shrink: 0;
+        }
+
+        .tab {
+            height: 28px;
+            padding: 0 12px;
+            background: var(--tab-bg);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 12px;
+            color: var(--fg-secondary);
+            transition: background 0.1s, color 0.1s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .tab:hover {
+            background: var(--bg-secondary);
+            color: var(--fg);
+        }
+
+        .tab.active {
+            background: var(--tab-bg-active);
+            color: var(--fg);
+            border-bottom: 2px solid var(--primary);
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .tab-icon {
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .tab-icon svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .tab-close {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: background 0.1s;
+            flex-shrink: 0;
+        }
+
+        .tab-close:hover {
+            background: var(--border);
+        }
+
+        .tab-close svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* EDITOR AREA */
+        .editor-area {
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+            background: var(--bg);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .content-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .content-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .status-pill.in-progress {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-pill.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pill.pending {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--fg);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background 0.1s, border 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn:hover {
+            background: var(--border);
+            border-color: var(--border-dark);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: var(--fg-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-size: 13px;
+            color: var(--fg);
+        }
+
+        /* TABLES */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .data-table th {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--fg-secondary);
+        }
+
+        .data-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--tree-hover);
+        }
+
+        /* CARDS */
+        .card {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-success {
+            border-left: 3px solid var(--success);
+            background: rgba(40, 167, 69, 0.05);
+        }
+
+        .card-warning {
+            border-left: 3px solid var(--warning);
+            background: rgba(255, 193, 7, 0.05);
+        }
+
+        .card-danger {
+            border-left: 3px solid var(--danger);
+            background: rgba(220, 53, 69, 0.05);
+        }
+
+        /* GATE STEPPER */
+        .gate-stepper {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .gate-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .gate-step-indicator {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .gate-step-indicator.completed {
+            background: var(--success);
+            color: white;
+        }
+
+        .gate-step-indicator.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .gate-step-indicator.pending {
+            background: var(--bg-secondary);
+            color: var(--fg-secondary);
+            border: 1px solid var(--border);
+        }
+
+        /* TIMELINE */
+        .timeline {
+            position: relative;
+            padding-left: 24px;
+        }
+
+        .timeline-entry {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .timeline-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+            position: absolute;
+            left: -16px;
+            top: 3px;
+        }
+
+        .timeline-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .timeline-time {
+            font-size: 11px;
+            color: var(--fg-secondary);
+        }
+
+        .timeline-text {
+            font-size: 12px;
+            color: var(--fg);
+        }
+
+        /* RIGHT COLUMN */
+        .right-column {
+            width: 340px;
+            background: var(--bg);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        /* STATUS PANEL */
+        .status-panel {
+            height: 48px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            gap: 4px;
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+
+        .gate-tab {
+            padding: 4px 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: background 0.1s, border 0.1s;
+            color: var(--fg);
+        }
+
+        .gate-tab:hover {
+            background: var(--tree-hover);
+        }
+
+        .gate-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* STATUSBAR */
+        .statusbar {
+            height: 24px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 12px;
+            flex-shrink: 0;
+            font-size: 11px;
+            color: var(--fg-secondary);
+            user-select: none;
+        }
+
+        .statusbar-left, .statusbar-right {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        /* SCROLLBARS */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-dark);
+        }
+
+        /* DIAGNOSTIC DECISION PANEL (Gate 2) */
+        .danger-banner {
+            background: var(--danger);
+            color: white;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .diagnosis-card {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .diagnosis-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .diagnosis-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .radio-option input {
+            cursor: pointer;
+        }
+
+        /* SPLIT PANES */
+        .h-splitter {
+            height: 2px;
+            background: var(--splitter);
+            cursor: row-resize;
+            flex-shrink: 0;
+            transition: background 0.1s;
+        }
+
+        .h-splitter:hover {
+            background: var(--primary);
+        }
+
+        /* AI CHAT */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message {
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .message.user {
+            background: var(--primary-light);
+            color: var(--fg);
+            margin-left: 12px;
+        }
+
+        .message.ai {
+            background: var(--bg-secondary);
+            color: var(--fg);
+            margin-right: 12px;
+        }
+
+        .chat-input {
+            padding: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .chat-input textarea {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            resize: none;
+            height: 60px;
+        }
+
+        .chat-input textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* REPORT EDITOR */
+        .editor-toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 12px;
+            border-radius: 4px;
+        }
+
+        .toolbar-btn {
+            padding: 4px 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.1s;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--tree-hover);
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            background: var(--border);
+        }
+
+        .editor-content {
+            background: var(--code-bg);
+            color: var(--code-fg);
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .ai-draft-badge {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        /* CRITERION TABLE */
+        .criterion-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 11px;
+        }
+
+        .criterion-table td {
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+        }
+
+        .criterion-table .criterion-name {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+
+        .criterion-table .criterion-status {
+            text-align: center;
+            width: 50px;
+        }
+
+        /* HIDDEN BY DEFAULT */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- TITLEBAR -->
+        <div class="titlebar">
+            <div class="titlebar-left">
+                <span style="color: var(--primary); font-weight: 700;">●</span>
+                <span>PSYGIL</span>
+            </div>
+            <div class="titlebar-right">
+                <button class="icon-btn" id="theme-btn" title="Toggle theme">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                </button>
+                <button class="icon-btn" id="settings-btn" title="Settings">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </button>
+                <div class="user-menu">
+                    <span>Dr. Irwin</span>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 12px; height: 12px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN LAYOUT -->
+        <div class="main-container">
+            <!-- LEFT COLUMN -->
+            <div class="left-column">
+                <div class="panel">
+                    <div class="panel-header">CASES</div>
+                    <div class="panel-content" id="cases-panel">
+                        <!-- Cases tree populated by JS -->
+                    </div>
+                </div>
+                <div class="h-splitter" style="cursor: row-resize;"></div>
+                <div class="panel" style="max-height: 200px;">
+                    <div class="panel-header">RESOURCES</div>
+                    <div class="panel-content">
+                        <div class="tree-node leaf">
+                            <span class="tree-icon">📄</span>
+                            <span>Report Templates</span>
+                        </div>
+                        <div class="tree-node leaf">
+                            <span class="tree-icon">✍️</span>
+                            <span>Writing Samples</span>
+                        </div>
+                        <div class="tree-node leaf">
+                            <span class="tree-icon">📋</span>
+                            <span>Practice Documents</span>
+                        </div>
+                        <div class="tree-node leaf">
+                            <span class="tree-icon">❓</span>
+                            <span>Support Documents</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="v-splitter"></div>
+
+            <!-- CENTER COLUMN -->
+            <div class="center-column">
+                <!-- TAB BAR -->
+                <div class="tab-bar" id="tab-bar">
+                    <!-- Tabs populated by JS -->
+                </div>
+
+                <!-- EDITOR AREA -->
+                <div class="editor-area" id="editor-area">
+                    <!-- TAB CONTENT: DASHBOARD -->
+                    <div class="tab-content active" id="tab-dashboard">
+                        <div class="content-header">
+                            <div class="content-title">Dashboard</div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;">
+                            <div class="card">
+                                <div class="info-label">Active Cases</div>
+                                <div style="font-size: 24px; font-weight: 600; color: var(--primary);">47</div>
+                            </div>
+                            <div class="card">
+                                <div class="info-label">Pending Reviews</div>
+                                <div style="font-size: 24px; font-weight: 600; color: var(--warning);">12</div>
+                            </div>
+                            <div class="card">
+                                <div class="info-label">Reports This Month</div>
+                                <div style="font-size: 24px; font-weight: 600; color: var(--success);">23</div>
+                            </div>
+                            <div class="card">
+                                <div class="info-label">Avg Time per Case</div>
+                                <div style="font-size: 24px; font-weight: 600; color: var(--fg);">2.1h</div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Recent Cases</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Case #</th>
+                                    <th>Patient</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>#2026-0147</td>
+                                    <td>Johnson, CST</td>
+                                    <td>CST</td>
+                                    <td><span class="status-pill in-progress">In Progress</span></td>
+                                    <td>Today</td>
+                                </tr>
+                                <tr>
+                                    <td>#2026-0152</td>
+                                    <td>Martinez, Custody</td>
+                                    <td>Custody</td>
+                                    <td><span class="status-pill in-progress">In Progress</span></td>
+                                    <td>Yesterday</td>
+                                </tr>
+                                <tr>
+                                    <td>#2026-0158</td>
+                                    <td>Williams, Risk</td>
+                                    <td>Risk Assessment</td>
+                                    <td><span class="status-pill pending">Pending Review</span></td>
+                                    <td>Mar 18</td>
+                                </tr>
+                                <tr>
+                                    <td>#2026-0160</td>
+                                    <td>Brown, Competency</td>
+                                    <td>Competency</td>
+                                    <td><span class="status-pill completed">Completed</span></td>
+                                    <td>Mar 17</td>
+                                </tr>
+                                <tr>
+                                    <td>#2026-0165</td>
+                                    <td>Davis, SSI</td>
+                                    <td>SSI Eval</td>
+                                    <td><span class="status-pill in-progress">In Progress</span></td>
+                                    <td>Mar 16</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TAB CONTENT: CASE OVERVIEW -->
+                    <div class="tab-content" id="tab-overview">
+                        <div class="content-header">
+                            <div>
+                                <div class="content-title">#2026-0147 — Johnson, CST</div>
+                                <span class="status-pill in-progress" style="margin-top: 8px;">In Progress</span>
+                            </div>
+                        </div>
+
+                        <div class="action-bar">
+                            <button class="btn">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Edit in Word
+                            </button>
+                            <button class="btn">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                </svg>
+                                Publish to PDF
+                            </button>
+                        </div>
+
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Referral Source</div>
+                                <div class="info-value">Denver District Court</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Referral Date</div>
+                                <div class="info-value">February 28, 2026</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Evaluation Questions</div>
+                                <div class="info-value">Is defendant competent to stand trial?</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Jurisdiction</div>
+                                <div class="info-value">Colorado</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Court Deadline</div>
+                                <div class="info-value">April 15, 2026</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Assigned To</div>
+                                <div class="info-value">Dr. Irwin</div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Progress</h3>
+                        <div class="gate-stepper">
+                            <div class="gate-step">
+                                <div class="gate-step-indicator completed">✓</div>
+                                <span>Gate 1: Data Collection</span>
+                            </div>
+                            <div class="gate-step">
+                                <div class="gate-step-indicator active">2</div>
+                                <span>Gate 2: Diagnostic</span>
+                            </div>
+                            <div class="gate-step">
+                                <div class="gate-step-indicator pending">3</div>
+                                <span>Gate 3: Attestation</span>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Activity</h3>
+                        <div class="timeline">
+                            <div class="timeline-entry">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-time">Mar 20, 2026</div>
+                                    <div class="timeline-text">Started Gate 2: Diagnostic Review</div>
+                                </div>
+                            </div>
+                            <div class="timeline-entry">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-time">Mar 19, 2026</div>
+                                    <div class="timeline-text">Completed all psychological testing</div>
+                                </div>
+                            </div>
+                            <div class="timeline-entry">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-time">Mar 12, 2026</div>
+                                    <div class="timeline-text">Clinical interview conducted</div>
+                                </div>
+                            </div>
+                            <div class="timeline-entry">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-time">Mar 5, 2026</div>
+                                    <div class="timeline-text">Collateral records received</div>
+                                </div>
+                            </div>
+                            <div class="timeline-entry">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-time">Feb 28, 2026</div>
+                                    <div class="timeline-text">Case assigned and intake completed</div>
+                                </div>
+                            </div>
+                            <div class="timeline-entry">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-time">Feb 28, 2026</div>
+                                    <div class="timeline-text">Referral received from court</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB CONTENT: TEST RESULTS -->
+                    <div class="tab-content" id="tab-test-results">
+                        <div class="content-header">
+                            <div class="content-title">Test Results Summary</div>
+                        </div>
+
+                        <div class="card card-success">
+                            <div class="card-header">
+                                <span>Validity & Effort Assessment</span>
+                                <span style="color: var(--success); font-weight: 600;">✓ Valid</span>
+                            </div>
+                            <div style="font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div>TOMM: 48/50 ✓</div>
+                                <div>SIRS-2: Valid ✓</div>
+                                <div>MMPI-3 Validity: Acceptable ✓</div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Standardized Instruments</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Instrument</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Key Finding</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="cursor: pointer; color: var(--primary);" onclick="openTab('mmpi3', 'MMPI-3', 'activity')">MMPI-3</td>
+                                    <td>Mar 15, 2026</td>
+                                    <td><span class="status-pill completed">Complete</span></td>
+                                    <td>RC6 & RC8 elevated (72T, 78T)</td>
+                                </tr>
+                                <tr>
+                                    <td style="cursor: pointer; color: var(--primary);" onclick="openTab('pai', 'PAI', 'activity')">PAI</td>
+                                    <td>Mar 15, 2026</td>
+                                    <td><span class="status-pill completed">Complete</span></td>
+                                    <td>Paranoia & Schizophrenia scales elevated</td>
+                                </tr>
+                                <tr>
+                                    <td style="cursor: pointer; color: var(--primary);" onclick="openTab('wais', 'WAIS-V', 'activity')">WAIS-V</td>
+                                    <td>Mar 14, 2026</td>
+                                    <td><span class="status-pill completed">Complete</span></td>
+                                    <td>FSIQ 87 (Low Average); Processing Speed deficit</td>
+                                </tr>
+                                <tr>
+                                    <td>TOMM</td>
+                                    <td>Mar 13, 2026</td>
+                                    <td><span class="status-pill completed">Complete</span></td>
+                                    <td>Trial 2: 48/50 (Excellent effort)</td>
+                                </tr>
+                                <tr>
+                                    <td>SIRS-2</td>
+                                    <td>Mar 13, 2026</td>
+                                    <td><span class="status-pill completed">Complete</span></td>
+                                    <td>Symptom validity: Probable genuine pathology</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TAB CONTENT: MMPI-3 DETAIL -->
+                    <div class="tab-content" id="tab-mmpi3">
+                        <div class="content-header">
+                            <div class="content-title">MMPI-3 — Q-global Score Report</div>
+                            <div style="font-size: 11px; color: var(--fg-secondary);">Administered Mar 15, 2026</div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Validity Scales</h3>
+                        <table class="data-table" style="margin-bottom: 20px;">
+                            <thead>
+                                <tr>
+                                    <th>Scale</th>
+                                    <th>T-Score</th>
+                                    <th>Interpretation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>F-r (Infrequency-revised)</td>
+                                    <td>62T</td>
+                                    <td>Moderately elevated; possible unusual experiences</td>
+                                </tr>
+                                <tr>
+                                    <td>Fp-r (Infrequency-postdictive)</td>
+                                    <td>55T</td>
+                                    <td>Within normal limits</td>
+                                </tr>
+                                <tr>
+                                    <td>L-r (Lie-revised)</td>
+                                    <td>48T</td>
+                                    <td>Within normal limits</td>
+                                </tr>
+                                <tr>
+                                    <td>K-r (Correction-revised)</td>
+                                    <td>44T</td>
+                                    <td>Within normal limits</td>
+                                </tr>
+                                <tr>
+                                    <td>VRIN-r (Variable Response Inconsistency)</td>
+                                    <td>52T</td>
+                                    <td>Within normal limits; consistent responding</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Clinical Scales (Restructured)</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Scale</th>
+                                    <th>T-Score</th>
+                                    <th>Range</th>
+                                    <th>Interpretation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>RCd (Demoralization)</td>
+                                    <td>59T</td>
+                                    <td>Normal</td>
+                                    <td>Within normal limits</td>
+                                </tr>
+                                <tr>
+                                    <td>RC1 (Somatic Complaints)</td>
+                                    <td>54T</td>
+                                    <td>Normal</td>
+                                    <td>Within normal limits</td>
+                                </tr>
+                                <tr>
+                                    <td>RC2 (Low Positive Emotionality)</td>
+                                    <td>56T</td>
+                                    <td>Normal</td>
+                                    <td>Within normal limits</td>
+                                </tr>
+                                <tr>
+                                    <td>RC3 (Cynicism)</td>
+                                    <td>61T</td>
+                                    <td>Normal</td>
+                                    <td>Slightly elevated; cautious interpersonal stance</td>
+                                </tr>
+                                <tr style="background: rgba(255, 193, 7, 0.1);">
+                                    <td><strong>RC6 (Ideas of Persecution)</strong></td>
+                                    <td><strong>72T</strong></td>
+                                    <td><strong>Elevated</strong></td>
+                                    <td><strong>Elevated; paranoid ideation present</strong></td>
+                                </tr>
+                                <tr style="background: rgba(255, 193, 7, 0.1);">
+                                    <td><strong>RC8 (Aberrant Experiences)</strong></td>
+                                    <td><strong>78T</strong></td>
+                                    <td><strong>Significantly Elevated</strong></td>
+                                    <td><strong>Significant psychotic symptomatology</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TAB CONTENT: GATE 2 DIAGNOSTIC -->
+                    <div class="tab-content" id="tab-gate2">
+                        <div class="content-header">
+                            <div class="content-title">Gate 2: Diagnostic Decision</div>
+                        </div>
+
+                        <div class="danger-banner">
+                            ⚠ ALL DIAGNOSTIC DECISIONS ARE MADE BY YOU — NOT BY AI
+                        </div>
+
+                        <div class="card card-success">
+                            <div class="card-header">Validity & Effort Assessment</div>
+                            <div style="font-size: 12px;">
+                                <div>✓ TOMM: 48/50 (Valid)</div>
+                                <div>✓ SIRS-2: Genuine Pathology</div>
+                                <div>✓ MMPI-3: Acceptable Validity</div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Diagnostic Recommendations</h3>
+
+                        <div class="diagnosis-card">
+                            <div class="diagnosis-header">
+                                <span>Schizophrenia Spectrum</span>
+                                <span style="font-size: 11px; color: var(--fg-secondary);">DSM-5-TR 295.x</span>
+                            </div>
+                            <table class="criterion-table">
+                                <tr>
+                                    <td class="criterion-name">A. Active Phase Symptoms</td>
+                                    <td class="criterion-status">✓</td>
+                                </tr>
+                                <tr>
+                                    <td class="criterion-name">B. Duration (1 month minimum)</td>
+                                    <td class="criterion-status">✓</td>
+                                </tr>
+                                <tr>
+                                    <td class="criterion-name">C. Functional Impairment</td>
+                                    <td class="criterion-status">✓</td>
+                                </tr>
+                            </table>
+                            <div class="diagnosis-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="schiz-decision" value="render"> Render
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="schiz-decision" value="rule-out"> Rule Out
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="schiz-decision" value="no-decision" checked> No Decision Yet
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="schiz-decision" value="defer"> Defer
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="diagnosis-card">
+                            <div class="diagnosis-header">
+                                <span>Major Depressive Disorder</span>
+                                <span style="font-size: 11px; color: var(--fg-secondary);">DSM-5-TR 296.20-296.26</span>
+                            </div>
+                            <div style="font-size: 11px; color: var(--fg-secondary); margin-bottom: 8px;">Insufficient symptom presentation</div>
+                            <div class="diagnosis-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="mdd-decision" value="render"> Render
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="mdd-decision" value="rule-out" checked> Rule Out
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="mdd-decision" value="no-decision"> No Decision Yet
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="mdd-decision" value="defer"> Defer
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="diagnosis-card">
+                            <div class="diagnosis-header">
+                                <span>PTSD</span>
+                                <span style="font-size: 11px; color: var(--fg-secondary);">DSM-5-TR 309.81</span>
+                            </div>
+                            <div style="font-size: 11px; color: var(--fg-secondary); margin-bottom: 8px;">Trauma history reported; minimal current symptomatology</div>
+                            <div class="diagnosis-options">
+                                <label class="radio-option">
+                                    <input type="radio" name="ptsd-decision" value="render"> Render
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="ptsd-decision" value="rule-out"> Rule Out
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="ptsd-decision" value="no-decision" checked> No Decision Yet
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="ptsd-decision" value="defer"> Defer
+                                </label>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" style="margin-top: 16px;">Submit Diagnostic Decisions</button>
+                    </div>
+
+                    <!-- TAB CONTENT: AUDIT TRAIL -->
+                    <div class="tab-content" id="tab-audit">
+                        <div class="content-header">
+                            <div class="content-title">Audit Trail</div>
+                        </div>
+
+                        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                            <button class="btn" style="background: var(--primary); color: white; border: none;">All</button>
+                            <button class="btn">Gates</button>
+                            <button class="btn">Diagnoses</button>
+                            <button class="btn">Documents</button>
+                            <button class="btn">Agent Runs</button>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                    <th>Actor</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Mar 20, 2026</td>
+                                    <td>Gate Entry</td>
+                                    <td>Dr. Irwin</td>
+                                    <td>Started Gate 2: Diagnostic Review</td>
+                                </tr>
+                                <tr>
+                                    <td>Mar 19, 2026</td>
+                                    <td>Document Upload</td>
+                                    <td>System</td>
+                                    <td>MMPI-3 report imported from Q-global</td>
+                                </tr>
+                                <tr>
+                                    <td>Mar 19, 2026</td>
+                                    <td>Document Upload</td>
+                                    <td>System</td>
+                                    <td>PAI report imported from PARiConnect</td>
+                                </tr>
+                                <tr>
+                                    <td>Mar 19, 2026</td>
+                                    <td>Document Upload</td>
+                                    <td>System</td>
+                                    <td>WAIS-V report imported from Q-global</td>
+                                </tr>
+                                <tr>
+                                    <td>Mar 19, 2026</td>
+                                    <td>Gate Entry</td>
+                                    <td>Dr. Irwin</td>
+                                    <td>Completed Gate 1: Data Collection</td>
+                                </tr>
+                                <tr>
+                                    <td>Mar 12, 2026</td>
+                                    <td>Session Record</td>
+                                    <td>System</td>
+                                    <td>Clinical interview transcript recorded</td>
+                                </tr>
+                                <tr>
+                                    <td>Mar 5, 2026</td>
+                                    <td>Document Upload</td>
+                                    <td>Dr. Irwin</td>
+                                    <td>5 collateral documents received and indexed</td>
+                                </tr>
+                                <tr>
+                                    <td>Mar 5, 2026</td>
+                                    <td>Case Initialize</td>
+                                    <td>Dr. Irwin</td>
+                                    <td>Case intake form completed</td>
+                                </tr>
+                                <tr>
+                                    <td>Feb 28, 2026</td>
+                                    <td>Case Assign</td>
+                                    <td>System</td>
+                                    <td>Case #2026-0147 assigned to Dr. Irwin</td>
+                                </tr>
+                                <tr>
+                                    <td>Feb 28, 2026</td>
+                                    <td>Case Create</td>
+                                    <td>System</td>
+                                    <td>Case #2026-0147 created from court referral</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TAB CONTENT: SETTINGS -->
+                    <div class="tab-content" id="tab-settings">
+                        <div class="content-header">
+                            <div class="content-title">Settings</div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Application</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Version</div>
+                                <div class="info-value">v0.1.0-alpha</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Database</div>
+                                <div class="info-value">SQLite (OPFS)</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Encryption</div>
+                                <div class="info-value">AES-256 (Local)</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">PII Mode</div>
+                                <div class="info-value">Safe Harbor ✓</div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">UI Preferences</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Theme</div>
+                                <div style="font-size: 12px;">
+                                    <button class="btn" onclick="setTheme('light')" style="margin-top: 4px;">Light</button>
+                                    <button class="btn" onclick="setTheme('medium')" style="margin-top: 4px;">Medium</button>
+                                    <button class="btn" onclick="setTheme('dark')" style="margin-top: 4px;">Dark</button>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Density</div>
+                                <div class="info-value">Compact</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB CONTENT: REPORT EDITOR -->
+                    <div class="tab-content" id="tab-report-editor">
+                        <div class="content-header">
+                            <div>
+                                <div class="content-title">Draft_v2.docx</div>
+                                <div style="font-size: 11px; color: var(--fg-secondary); margin-top: 4px;">Forensic Psychological Evaluation Report</div>
+                            </div>
+                        </div>
+
+                        <div class="action-bar">
+                            <button class="btn">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Edit in Word
+                            </button>
+                            <button class="btn">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                </svg>
+                                Publish to PDF
+                            </button>
+                        </div>
+
+                        <div class="editor-toolbar">
+                            <button class="toolbar-btn">⏚ Heading 1</button>
+                            <button class="toolbar-btn">⏚ Heading 2</button>
+                            <div class="toolbar-separator"></div>
+                            <button class="toolbar-btn">B Bold</button>
+                            <button class="toolbar-btn">I Italic</button>
+                            <button class="toolbar-btn">U Underline</button>
+                            <div class="toolbar-separator"></div>
+                            <label class="radio-option" style="margin: 0 8px;">
+                                <input type="checkbox"> Track Changes
+                            </label>
+                        </div>
+
+                        <div class="editor-content">
+FORENSIC PSYCHOLOGICAL EVALUATION REPORT
+
+Referral & Evaluation Questions
+Patient: Johnson, [First Name]
+Referral Source: Denver District Court, Honorable [Judge Name]
+Evaluation Date: March 12, 2026
+Report Date: March 20, 2026
+Referred for: Competency to Stand Trial (CST) Evaluation
+
+The following questions are addressed in this evaluation:
+1. Is the defendant competent to stand trial?
+2. Is there evidence of malingering or invalid responding?
+3. What is the defendant's current level of cognitive and emotional functioning?
+
+<span class="ai-draft-badge">[AI Draft — Review Required]</span>
+
+DSM-5-TR Diagnostic Impression (Preliminary)
+
+Current Diagnostic Considerations:
+- Schizophrenia Spectrum (Pending your decision)
+- Differential: PTSD, Anxiety Disorder NOS
+
+Psychological Testing Summary
+All administered tests showed adequate validity and effort.
+
+MMPI-3 Results: [See Test Results tab for details]
+- Validity Scales: Within acceptable limits (F-r=62T, elevated but interpretable)
+- Clinical Elevations: RC6 (Ideas of Persecution) = 72T; RC8 (Aberrant Experiences) = 78T
+- Interpretation: Significant psychotic symptomatology consistent with psychotic spectrum disorder
+
+This report is in draft status and awaiting your diagnostic and attestation review.
+                        </div>
+                    </div>
+
+                    <!-- TAB CONTENT: PAI DETAIL -->
+                    <div class="tab-content" id="tab-pai">
+                        <div class="content-header">
+                            <div class="content-title">PAI — Personality Assessment Inventory</div>
+                            <div style="font-size: 11px; color: var(--fg-secondary);">Administered Mar 15, 2026</div>
+                        </div>
+
+                        <div class="card card-success">
+                            <div class="card-header">Validity Assessment</div>
+                            <div style="font-size: 12px;">
+                                <div>Inconsistency Index: 59 (Valid)</div>
+                                <div>Infrequency Index: 62 (Acceptable)</div>
+                                <div>Negative Impression Management: 51 (Normal)</div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Clinical Scales</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Scale</th>
+                                    <th>T-Score</th>
+                                    <th>Interpretation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="background: rgba(255, 193, 7, 0.1);">
+                                    <td><strong>Paranoia (PAR)</strong></td>
+                                    <td><strong>75T</strong></td>
+                                    <td><strong>Elevated; suspicious ideation, persecutory beliefs</strong></td>
+                                </tr>
+                                <tr style="background: rgba(255, 193, 7, 0.1);">
+                                    <td><strong>Schizophrenia (SCZ)</strong></td>
+                                    <td><strong>81T</strong></td>
+                                    <td><strong>Significantly elevated; psychotic symptomatology present</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Negative Affect (NegAff)</td>
+                                    <td>58T</td>
+                                    <td>Within normal limits</td>
+                                </tr>
+                                <tr>
+                                    <td>Disinhibition (DIS)</td>
+                                    <td>45T</td>
+                                    <td>Within normal limits</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TAB CONTENT: WAIS-V DETAIL -->
+                    <div class="tab-content" id="tab-wais">
+                        <div class="content-header">
+                            <div class="content-title">WAIS-V — Wechsler Adult Intelligence Scale</div>
+                            <div style="font-size: 11px; color: var(--fg-secondary);">Administered Mar 14, 2026</div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">Global Composite Scores</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px;">
+                                <div>
+                                    <div class="info-label">FSIQ (Full Scale IQ)</div>
+                                    <div style="font-size: 18px; font-weight: 600; color: var(--fg);">87</div>
+                                    <div style="font-size: 11px; color: var(--fg-secondary);">Low Average (6th percentile)</div>
+                                </div>
+                                <div>
+                                    <div class="info-label">Confidence Interval</div>
+                                    <div style="font-size: 14px; font-weight: 600;">83-91 (95% CI)</div>
+                                    <div style="font-size: 11px; color: var(--fg-secondary);">Range: Low Average</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 12px; font-weight: 600;">Primary Index Scores</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Index</th>
+                                    <th>Score</th>
+                                    <th>Percentile</th>
+                                    <th>Classification</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Verbal Comprehension Index (VCI)</td>
+                                    <td>92</td>
+                                    <td>30th</td>
+                                    <td>Average</td>
+                                </tr>
+                                <tr>
+                                    <td>Perceptual Reasoning Index (PRI)</td>
+                                    <td>89</td>
+                                    <td>23rd</td>
+                                    <td>Average</td>
+                                </tr>
+                                <tr style="background: rgba(255, 193, 7, 0.1);">
+                                    <td><strong>Processing Speed Index (PSI)</strong></td>
+                                    <td><strong>74</strong></td>
+                                    <td><strong>4th</strong></td>
+                                    <td><strong>Significantly Below Average</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Working Memory Index (WMI)</td>
+                                    <td>86</td>
+                                    <td>18th</td>
+                                    <td>Low Average</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- STATUS PANEL -->
+                <div class="status-panel">
+                    <div class="gate-tab active" data-gate="1">Gate 1: Data Collection ✓</div>
+                    <div class="gate-tab" data-gate="2">Gate 2: Diagnostic ●</div>
+                    <div class="gate-tab" data-gate="3">Gate 3: Attestation ○</div>
+                </div>
+            </div>
+
+            <div class="v-splitter"></div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="right-column">
+                <div class="panel">
+                    <div class="panel-header" id="right-panel-header">Case Notes</div>
+                    <div class="panel-content" id="right-panel-content">
+                        <div style="padding: 8px; font-size: 12px; color: var(--fg-secondary);">
+                            Select a case or tab to view context information
+                        </div>
+                    </div>
+                </div>
+                <div class="h-splitter"></div>
+                <div class="panel" style="max-height: 200px;">
+                    <div class="panel-header">AI Assistant</div>
+                    <div class="chat-container">
+                        <div class="chat-messages">
+                            <div class="message ai">
+                                Ready to help with documentation, evidence analysis, or case review. All decisions are yours.
+                            </div>
+                        </div>
+                        <div class="chat-input">
+                            <textarea placeholder="Ask about test results, evidence patterns, or case specifics..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATUSBAR -->
+        <div class="statusbar">
+            <div class="statusbar-left">
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>Connected</span>
+                </div>
+                <div class="status-item">LLM: Claude Sonnet</div>
+                <div class="status-item">PII: Safe Harbor ✓</div>
+                <div class="status-item">Storage: Local</div>
+            </div>
+            <div class="statusbar-right">
+                <div class="status-item">Audit: Decision Record</div>
+                <div class="status-item">47 Cases</div>
+                <div class="status-item">v0.1.0-alpha</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // STATE MANAGEMENT
+        const state = {
+            currentTab: 'dashboard',
+            openTabs: [{ id: 'dashboard', title: 'Dashboard', icon: 'layout-grid' }],
+            theme: 'light',
+            leftColumnWidth: 260,
+            rightColumnWidth: 340,
+            caseTreeCollapsed: {}
+        };
+
+        // TREE DATA
+        const treeData = {
+            id: 'root',
+            label: 'Active Cases (12)',
+            expanded: true,
+            children: [
+                {
+                    id: 'case-2026-0147',
+                    label: '#2026-0147 — Johnson, CST',
+                    expanded: true,
+                    icon: '📁',
+                    children: [
+                        { id: 'case-2026-0147-overview', label: 'Overview', icon: '📄', leaf: true },
+                        {
+                            id: 'case-2026-0147-tests',
+                            label: 'Test Results',
+                            icon: '📊',
+                            expanded: true,
+                            children: [
+                                { id: 'case-2026-0147-mmpi3', label: 'MMPI-3_Q-global.pdf', icon: '📋', leaf: true },
+                                { id: 'case-2026-0147-pai', label: 'PAI_PARiConnect.pdf', icon: '📋', leaf: true },
+                                { id: 'case-2026-0147-wais', label: 'WAIS-V_Q-global.pdf', icon: '📋', leaf: true }
+                            ]
+                        },
+                        {
+                            id: 'case-2026-0147-collateral',
+                            label: 'Collateral',
+                            icon: '📁',
+                            expanded: false,
+                            children: [
+                                { id: 'case-2026-0147-hospital', label: 'Hospital_Records.pdf', icon: '📋', leaf: true },
+                                { id: 'case-2026-0147-court', label: 'Court_Order_CST.pdf', icon: '📋', leaf: true },
+                                { id: 'case-2026-0147-prior', label: 'Prior_Eval_Dr_Smith.pdf', icon: '📋', leaf: true }
+                            ]
+                        },
+                        {
+                            id: 'case-2026-0147-transcripts',
+                            label: 'Transcripts',
+                            icon: '📁',
+                            expanded: false,
+                            children: [
+                                { id: 'case-2026-0147-session1', label: 'Session1.vtt', icon: '🔊', leaf: true },
+                                { id: 'case-2026-0147-session2', label: 'Session2.vtt', icon: '🔊', leaf: true }
+                            ]
+                        },
+                        { id: 'case-2026-0147-evidence', label: 'Evidence Map', icon: '🗺️', leaf: true },
+                        {
+                            id: 'case-2026-0147-report',
+                            label: 'Report',
+                            icon: '📄',
+                            expanded: false,
+                            children: [
+                                { id: 'case-2026-0147-report-draft', label: 'Draft_v2.docx', icon: '✍️', leaf: true }
+                            ]
+                        },
+                        { id: 'case-2026-0147-gate2', label: 'Gate 2: Diagnostic', icon: '🚪', leaf: true },
+                        { id: 'case-2026-0147-gate3', label: 'Gate 3: Attestation', icon: '🚪', leaf: true },
+                        { id: 'case-2026-0147-audit', label: 'Audit Trail', icon: '📋', leaf: true },
+                        { id: 'case-2026-0147-review', label: 'Review Notes', icon: '💬', leaf: true }
+                    ]
+                },
+                {
+                    id: 'case-2026-0152',
+                    label: '#2026-0152 — Martinez, Custody',
+                    expanded: false,
+                    icon: '📁',
+                    children: []
+                },
+                {
+                    id: 'case-2026-0158',
+                    label: '#2026-0158 — Williams, Risk',
+                    expanded: false,
+                    icon: '📁',
+                    children: []
+                }
+            ]
+        };
+
+        // TAB MANAGEMENT
+        function openTab(tabId, tabTitle, tabIcon = 'file') {
+            // Check if already open
+            const existing = state.openTabs.find(t => t.id === tabId);
+            if (existing) {
+                switchTab(tabId);
+                return;
+            }
+
+            // Add new tab
+            state.openTabs.push({ id: tabId, title: tabTitle, icon: tabIcon });
+            state.currentTab = tabId;
+
+            renderTabs();
+            showTabContent(tabId);
+            updateTreeSelection(tabId);
+        }
+
+        function closeTab(tabId) {
+            const index = state.openTabs.findIndex(t => t.id === tabId);
+            if (index === -1) return;
+
+            state.openTabs.splice(index, 1);
+
+            if (state.currentTab === tabId) {
+                const nextTab = state.openTabs[Math.max(0, index - 1)];
+                state.currentTab = nextTab.id;
+            }
+
+            renderTabs();
+            showTabContent(state.currentTab);
+        }
+
+        function switchTab(tabId) {
+            state.currentTab = tabId;
+            renderTabs();
+            showTabContent(tabId);
+            updateTreeSelection(tabId);
+        }
+
+        function renderTabs() {
+            const tabBar = document.getElementById('tab-bar');
+            tabBar.innerHTML = state.openTabs.map(tab => `
+                <div class="tab ${state.currentTab === tab.id ? 'active' : ''}">
+                    <div class="tab-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <span>${tab.title}</span>
+                    <div class="tab-close" onclick="event.stopPropagation(); closeTab('${tab.id}')">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </div>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.tab').forEach(tabEl => {
+                tabEl.onclick = () => {
+                    const title = tabEl.querySelector('span').textContent;
+                    const tabId = state.openTabs.find(t => t.title === title)?.id;
+                    if (tabId) switchTab(tabId);
+                };
+            });
+        }
+
+        function showTabContent(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            const content = document.getElementById(`tab-${tabId}`);
+            if (content) content.classList.add('active');
+        }
+
+        function updateTreeSelection(tabId) {
+            document.querySelectorAll('.tree-node').forEach(el => el.classList.remove('selected'));
+            const node = document.querySelector(`[data-tree-id="${tabId}"]`);
+            if (node) node.classList.add('selected');
+        }
+
+        // TREE RENDERING
+        function renderTree(node, parent = null, indent = 0) {
+            const container = parent || document.getElementById('cases-panel');
+
+            const nodeEl = document.createElement('div');
+            nodeEl.className = `tree-node ${node.leaf ? 'leaf' : ''} ${indent > 0 ? '' : 'root-node'}`;
+            nodeEl.setAttribute('data-tree-id', node.id);
+            nodeEl.style.paddingLeft = `${8 + indent * 12}px`;
+
+            let content = '';
+
+            if (!node.leaf && node.children) {
+                content += `
+                    <div class="tree-toggle" onclick="toggleNode('${node.id}', event)">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="transform: rotate(${state.caseTreeCollapsed[node.id] ? '-90deg' : '0deg'}); transition: transform 0.1s;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                `;
+            }
+
+            content += `
+                <div class="tree-icon">${node.icon || '📄'}</div>
+                <span>${node.label}</span>
+            `;
+
+            nodeEl.innerHTML = content;
+            nodeEl.onclick = (e) => {
+                if (e.target.closest('.tree-toggle')) return;
+                openTab(node.id, node.label, node.icon);
+            };
+
+            container.appendChild(nodeEl);
+
+            // Render children if expanded
+            if (!node.leaf && node.children && !state.caseTreeCollapsed[node.id]) {
+                node.children.forEach(child => renderTree(child, container, indent + 1));
+            }
+        }
+
+        function toggleNode(nodeId, event) {
+            event.stopPropagation();
+            state.caseTreeCollapsed[nodeId] = !state.caseTreeCollapsed[nodeId];
+            document.getElementById('cases-panel').innerHTML = '';
+            treeData.children.forEach(node => renderTree(node));
+        }
+
+        // THEME MANAGEMENT
+        function setTheme(themeName) {
+            state.theme = themeName;
+            document.documentElement.setAttribute('data-theme', themeName);
+        }
+
+        function cycleTheme() {
+            const themes = ['light', 'medium', 'dark'];
+            const current = themes.indexOf(state.theme);
+            const next = (current + 1) % themes.length;
+            setTheme(themes[next]);
+        }
+
+        // GATE TABS
+        document.querySelectorAll('.gate-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.gate-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // EVENT LISTENERS
+        document.getElementById('theme-btn').addEventListener('click', cycleTheme);
+        document.getElementById('settings-btn').addEventListener('click', () => {
+            openTab('settings', 'Settings', 'settings');
+        });
+
+        // SPLITTER DRAGGING
+        let draggingVSplitter = false;
+        let draggingHSplitter = false;
+
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('v-splitter')) {
+                draggingVSplitter = true;
+            } else if (e.target.classList.contains('h-splitter')) {
+                draggingHSplitter = true;
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (draggingVSplitter) {
+                const app = document.getElementById('app');
+                const mainContainer = document.querySelector('.main-container');
+                const newLeftWidth = Math.max(200, Math.min(400, e.clientX));
+                const leftCol = document.querySelector('.left-column');
+                leftCol.style.width = newLeftWidth + 'px';
+                state.leftColumnWidth = newLeftWidth;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            draggingVSplitter = false;
+            draggingHSplitter = false;
+        });
+
+        // INITIALIZE
+        treeData.children.forEach(node => renderTree(node));
+        renderTabs();
+        showTabContent('dashboard');
+
+        // Set initial theme to light
+        setTheme('light');
+    </script>
+</body>
+</html>

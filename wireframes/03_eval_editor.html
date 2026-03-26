@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psygil - Report Editor</title>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
+    <style>
+        :root {
+            --color-bg-primary: #ffffff;
+            --color-bg-secondary: #f5f5f5;
+            --color-bg-tertiary: #ebebeb;
+            --color-text-primary: #1a1a1a;
+            --color-text-secondary: #666666;
+            --color-text-tertiary: #999999;
+            --color-border: #d0d0d0;
+            --color-accent: #0078D4;
+            --color-accent-light: #dbeafe;
+            --color-success: #107c10;
+            --color-warning: #ffb900;
+            --color-error: #d83b01;
+            --color-highlight-blue: #cfe8fc;
+            --color-flag-high: #f4b183;
+            --titlebar-height: 36px;
+            --statusbar-height: 24px;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Monaco', monospace;
+            --font-size: 13px;
+            --line-height: 1.5;
+        }
+
+        html[data-theme="dark"] {
+            --color-bg-primary: #1e1e1e;
+            --color-bg-secondary: #252525;
+            --color-bg-tertiary: #2d2d2d;
+            --color-text-primary: #e0e0e0;
+            --color-text-secondary: #a0a0a0;
+            --color-text-tertiary: #707070;
+            --color-border: #404040;
+            --color-accent: #58A6FF;
+            --color-accent-light: #1e3a8a;
+            --color-highlight-blue: #0e4a8b;
+            --color-flag-high: #c96f2a;
+        }
+
+        html[data-theme="high-contrast"] {
+            --color-bg-primary: #000000;
+            --color-bg-secondary: #1a1a1a;
+            --color-bg-tertiary: #262626;
+            --color-text-primary: #ffffff;
+            --color-text-secondary: #cccccc;
+            --color-text-tertiary: #999999;
+            --color-border: #555555;
+            --color-accent: #FFD700;
+            --color-accent-light: #1a1a1a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            font-size: var(--font-size);
+            line-height: var(--line-height);
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* TITLEBAR */
+        .titlebar {
+            height: var(--titlebar-height);
+            background-color: var(--color-bg-secondary);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .titlebar-logo {
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: -0.5px;
+        }
+
+        .titlebar-separator {
+            width: 1px;
+            height: 20px;
+            background-color: var(--color-border);
+        }
+
+        .titlebar-spacer {
+            flex: 1;
+        }
+
+        .theme-switch {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            padding: 4px 8px;
+            background-color: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border);
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .theme-switch button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 4px;
+            color: var(--color-text-secondary);
+            font-size: 11px;
+        }
+
+        .theme-switch button.active {
+            color: var(--color-accent);
+            font-weight: 600;
+        }
+
+        /* MAIN CONTAINER */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* SPLITTER */
+        .splitter {
+            width: 2px;
+            background-color: var(--color-border);
+            cursor: col-resize;
+            flex-shrink: 0;
+        }
+
+        .splitter:hover {
+            background-color: var(--color-accent);
+        }
+
+        /* LEFT COLUMN - Cases Tree */
+        .left-column {
+            width: 280px;
+            background-color: var(--color-bg-secondary);
+            border-right: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .cases-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--color-border);
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cases-tree {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .tree-node {
+            user-select: none;
+        }
+
+        .tree-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            border-left: 2px solid transparent;
+        }
+
+        .tree-item:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .tree-item.active {
+            background-color: var(--color-accent-light);
+            border-left-color: var(--color-accent);
+            color: var(--color-accent);
+            font-weight: 500;
+        }
+
+        html[data-theme="dark"] .tree-item.active {
+            background-color: var(--color-bg-tertiary);
+            color: var(--color-accent);
+        }
+
+        .tree-toggle {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .tree-toggle svg {
+            width: 12px;
+            height: 12px;
+            transition: transform 0.2s;
+        }
+
+        .tree-toggle.collapsed svg {
+            transform: rotate(-90deg);
+        }
+
+        .tree-icon {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .tree-label {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tree-badge {
+            font-size: 10px;
+            color: var(--color-text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .tree-indent-1 { padding-left: 28px; }
+        .tree-indent-2 { padding-left: 44px; }
+        .tree-indent-3 { padding-left: 60px; }
+
+        .resources-section {
+            border-top: 1px solid var(--color-border);
+            padding: 12px 16px;
+            font-size: 11px;
+            color: var(--color-text-secondary);
+        }
+
+        /* CENTER COLUMN - Report Editor */
+        .center-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--color-bg-primary);
+            overflow: hidden;
+        }
+
+        .editor-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--color-border);
+            background-color: var(--color-bg-secondary);
+            padding: 0;
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+
+        .editor-tab {
+            padding: 8px 16px;
+            border-right: 1px solid var(--color-border);
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 2px solid transparent;
+            background-color: var(--color-bg-secondary);
+        }
+
+        .editor-tab:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .editor-tab.active {
+            color: var(--color-accent);
+            border-bottom-color: var(--color-accent);
+            font-weight: 500;
+            background-color: var(--color-bg-primary);
+        }
+
+        .editor-tab-close {
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+        }
+
+        .editor-tab:hover .editor-tab-close {
+            opacity: 1;
+        }
+
+        .editor-tab-close:hover {
+            background-color: var(--color-bg-tertiary);
+            border-radius: 2px;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--color-border);
+            background-color: var(--color-bg-secondary);
+            flex-shrink: 0;
+            gap: 12px;
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toolbar-document-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .toolbar-document-name input {
+            background: none;
+            border: 1px solid var(--color-border);
+            padding: 4px 6px;
+            border-radius: 2px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--color-text-primary);
+            width: 200px;
+        }
+
+        .toolbar-document-name input:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            background-color: var(--color-accent-light);
+        }
+
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-button {
+            padding: 6px 12px;
+            border: 1px solid var(--color-border);
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .toolbar-button:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .toolbar-button.primary {
+            background-color: var(--color-accent);
+            color: white;
+            border-color: var(--color-accent);
+            font-weight: 500;
+        }
+
+        .toolbar-button.primary:hover {
+            opacity: 0.9;
+        }
+
+        .editor-content-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            gap: 0;
+        }
+
+        .document-outline {
+            width: 160px;
+            background-color: var(--color-bg-secondary);
+            border-right: 1px solid var(--color-border);
+            overflow-y: auto;
+            padding: 12px 0;
+            flex-shrink: 0;
+        }
+
+        .outline-item {
+            padding: 6px 12px;
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            border-left: 2px solid transparent;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .outline-item:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .outline-item.active {
+            background-color: var(--color-accent-light);
+            border-left-color: var(--color-accent);
+            color: var(--color-accent);
+            font-weight: 500;
+        }
+
+        html[data-theme="dark"] .outline-item.active {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .outline-item.level-1 { padding-left: 12px; }
+        .outline-item.level-2 { padding-left: 24px; font-size: 10px; }
+
+        .editor-main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            background-color: var(--color-bg-primary);
+        }
+
+        .report-content {
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .report-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: var(--color-text-primary);
+        }
+
+        .report-section-title:first-child {
+            margin-top: 0;
+        }
+
+        .report-paragraph {
+            margin-bottom: 12px;
+            color: var(--color-text-primary);
+            line-height: 1.6;
+        }
+
+        .ai-draft {
+            border-left: 3px solid var(--color-accent);
+            padding-left: 12px;
+            background-color: var(--color-highlight-blue);
+            margin-left: -12px;
+            padding-right: 12px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border-radius: 2px;
+            font-size: 12px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .ai-draft-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--color-accent);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ai-draft-text {
+            color: var(--color-text-primary);
+        }
+
+        .requires-review {
+            background-color: #fff8dc;
+            border-left: 3px solid var(--color-warning);
+            padding: 8px 12px;
+            margin: 12px 0;
+            border-radius: 2px;
+            font-size: 12px;
+        }
+
+        html[data-theme="dark"] .requires-review {
+            background-color: #5c3d1f;
+        }
+
+        .requires-review-label {
+            font-weight: 600;
+            color: var(--color-warning);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .comment-bubble {
+            position: absolute;
+            right: -140px;
+            top: 0;
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 11px;
+            width: 120px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        html[data-theme="dark"] .comment-bubble {
+            background-color: #78350f;
+            border-color: #b45309;
+            color: #fcd34d;
+        }
+
+        .comment-bubble-header {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--color-text-primary);
+        }
+
+        .comment-bubble-icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        .editor-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 24px;
+            border-top: 1px solid var(--color-border);
+            background-color: var(--color-bg-secondary);
+            font-size: 11px;
+            color: var(--color-text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .editor-footer-left {
+            display: flex;
+            gap: 16px;
+        }
+
+        .editor-footer-right {
+            display: flex;
+            gap: 16px;
+        }
+
+        /* RIGHT COLUMN - Flags and Chat */
+        .right-column {
+            width: 300px;
+            background-color: var(--color-bg-secondary);
+            border-left: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            height: 50%;
+            border-bottom: 1px solid var(--color-border);
+            overflow: hidden;
+        }
+
+        .right-panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--color-border);
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background-color: var(--color-bg-secondary);
+        }
+
+        .flags-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .flag-item {
+            padding: 10px;
+            margin-bottom: 6px;
+            border-left: 3px solid transparent;
+            border-radius: 2px;
+            background-color: var(--color-bg-primary);
+            font-size: 11px;
+            border-left-color: var(--color-text-tertiary);
+        }
+
+        .flag-item.high {
+            border-left-color: var(--color-flag-high);
+            background-color: rgba(244, 177, 131, 0.1);
+        }
+
+        .flag-item.medium {
+            border-left-color: var(--color-warning);
+            background-color: rgba(255, 185, 0, 0.1);
+        }
+
+        .flag-item.resolved {
+            border-left-color: var(--color-success);
+            background-color: rgba(16, 124, 16, 0.1);
+        }
+
+        .flag-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: var(--color-text-primary);
+        }
+
+        .flag-icon {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .flag-location {
+            font-size: 10px;
+            color: var(--color-text-tertiary);
+            margin-bottom: 4px;
+        }
+
+        .flag-text {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            line-height: 1.4;
+        }
+
+        .chat-panel {
+            display: flex;
+            flex-direction: column;
+            height: 50%;
+            overflow: hidden;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-message {
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .chat-message.assistant {
+            background-color: var(--color-bg-tertiary);
+            color: var(--color-text-primary);
+        }
+
+        .chat-message.user {
+            background-color: var(--color-accent-light);
+            color: var(--color-accent);
+            margin-left: 16px;
+        }
+
+        html[data-theme="dark"] .chat-message.user {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .chat-input-area {
+            padding: 8px;
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            gap: 6px;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 1px solid var(--color-border);
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            padding: 6px 8px;
+            border-radius: 2px;
+            font-family: var(--font-family);
+            font-size: 11px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--color-accent);
+        }
+
+        .chat-send {
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--color-border);
+            background-color: var(--color-accent);
+            color: white;
+            border-radius: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-send svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* STATUSBAR */
+        .statusbar {
+            height: var(--statusbar-height);
+            background-color: var(--color-bg-secondary);
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 16px;
+            font-size: 11px;
+            color: var(--color-text-tertiary);
+            flex-shrink: 0;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--color-success);
+        }
+
+        .status-dot.warning {
+            background-color: var(--color-warning);
+        }
+
+        .status-dot.error {
+            background-color: var(--color-error);
+        }
+
+        .status-spacer {
+            flex: 1;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background-color: var(--color-bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--color-border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--color-text-tertiary);
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <!-- TITLEBAR -->
+    <div class="titlebar">
+        <div class="titlebar-logo">PSYGIL</div>
+        <div class="titlebar-separator"></div>
+        <div class="titlebar-spacer"></div>
+        <div class="theme-switch">
+            <button class="active" onclick="setTheme('light')">Light</button>
+            <button onclick="setTheme('dark')">Dark</button>
+            <button onclick="setTheme('high-contrast')">HC</button>
+        </div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="main-container">
+        <!-- LEFT COLUMN - Cases Tree (Persistent) -->
+        <div class="left-column">
+            <div class="cases-header">Active Cases (12)</div>
+            <div class="cases-tree">
+                <div class="tree-node">
+                    <div class="tree-item">
+                        <div class="tree-toggle">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">#2026-0147 — Johnson, CST</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Overview</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-toggle collapsed">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Test Results</div>
+                        <div class="tree-badge">3</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-2">
+                        <div class="tree-label">MMPI-3_Q-global.pdf</div>
+                        <div class="tree-badge">Score</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-2">
+                        <div class="tree-label">PAI_PARiConnect.pdf</div>
+                        <div class="tree-badge">Score</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-2">
+                        <div class="tree-label">WAIS-V_Q-global.pdf</div>
+                        <div class="tree-badge">Score</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-toggle collapsed">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Collateral</div>
+                        <div class="tree-badge">3</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-2">
+                        <div class="tree-label">Hospital_Records_2024.pdf</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-2">
+                        <div class="tree-label">Court_Order_CST.pdf</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-2">
+                        <div class="tree-label">Prior_Eval_Dr_Smith.pdf</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-toggle collapsed">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Transcripts</div>
+                        <div class="tree-badge">2</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-2">
+                        <div class="tree-label">Interview_Session1.vtt</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-2">
+                        <div class="tree-label">Interview_Session2.vtt</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Evidence Map</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-toggle">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Report</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-2 active">
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Draft_v2.docx</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Gate 2: Diagnostic</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Gate 3: Attestation</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Audit Trail</div>
+                    </div>
+
+                    <div class="tree-item tree-indent-1">
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Review Notes</div>
+                    </div>
+                </div>
+
+                <div class="tree-node" style="margin-top: 12px;">
+                    <div class="tree-item">
+                        <div class="tree-toggle collapsed">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                            </svg>
+                        </div>
+                        <div class="tree-label">Other cases...</div>
+                        <div class="tree-badge">11</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="resources-section">
+                <div style="margin-bottom: 8px; font-weight: 600;">Resources</div>
+                <div style="font-size: 10px; margin-bottom: 4px;">Documentation</div>
+                <div style="font-size: 10px;">API Reference</div>
+            </div>
+        </div>
+
+        <div class="splitter"></div>
+
+        <!-- CENTER COLUMN - Report Editor -->
+        <div class="center-column">
+            <!-- Editor Tabs -->
+            <div class="editor-tabs">
+                <div class="editor-tab">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"></path>
+                    </svg>
+                    <span>Dashboard</span>
+                </div>
+                <div class="editor-tab">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>#2026-0147 Overview</span>
+                </div>
+                <div class="editor-tab active">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Draft_v2.docx</span>
+                    <div class="editor-tab-close">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="editor-toolbar">
+                <div class="toolbar-left">
+                    <div class="toolbar-document-name">
+                        <input type="text" value="Johnson_CST_Report_Draft_v2.docx" readonly>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="toolbar-right">
+                    <button class="toolbar-button">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Save
+                    </button>
+                    <button class="toolbar-button">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6-6m0 0l6 6"></path>
+                        </svg>
+                        Undo
+                    </button>
+                    <button class="toolbar-button">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10l-6 6m0 0l6 6m-6-6H3a8 8 0 008-8v-2"></path>
+                        </svg>
+                        Redo
+                    </button>
+                    <button class="toolbar-button">
+                        Version History
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        </svg>
+                    </button>
+                    <button class="toolbar-button primary">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                        Edit in Word ↗
+                    </button>
+                    <button class="toolbar-button primary">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Publish to PDF ↓
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor Content Wrapper -->
+            <div class="editor-content-wrapper">
+                <!-- Document Outline -->
+                <div class="document-outline">
+                    <div class="outline-item level-1">1. Cover Page</div>
+                    <div class="outline-item level-1">2. Identifying Information</div>
+                    <div class="outline-item level-1">3. Referral Information</div>
+                    <div class="outline-item level-1">4. Informed Consent</div>
+                    <div class="outline-item level-1 active">5. Background History</div>
+                    <div class="outline-item level-1">6. Behavioral Observations</div>
+                    <div class="outline-item level-1">7. Test Results</div>
+                    <div class="outline-item level-1">8. Clinical Formulation</div>
+                    <div class="outline-item level-1">9. Diagnostic Impressions</div>
+                    <div class="outline-item level-1">10. Competency Opinion</div>
+                    <div class="outline-item level-1">11. Recommendations</div>
+                    <div class="outline-item level-1">12. Signature / Attestation</div>
+                </div>
+
+                <!-- Main Editor Area -->
+                <div class="editor-main">
+                    <div class="report-content">
+                        <div class="report-section-title">Background History</div>
+
+                        <div class="report-paragraph">
+                            <span style="font-weight: 600;">Early Development & Family Context</span>
+                        </div>
+
+                        <div class="report-paragraph">
+                            Mr. Johnson was born in 1985 and is the second of three children raised in a middle-class, two-parent household in the Portland, Oregon area. According to collateral information from the prior evaluation completed by Dr. Helen Smith in 2019, his childhood was characterized by moderate parental conflict, though neither parent has a documented history of mental illness or substance abuse. Mr. Johnson reported that his father worked in construction and was "emotionally distant" while his mother was a school teacher and served as the primary emotional support figure in the family.
+                        </div>
+
+                        <div class="ai-draft" style="position: relative;">
+                            <div class="ai-draft-label">AI Draft — Writer Agent</div>
+                            <div class="ai-draft-text">
+                                Educational history indicates completion of a high school diploma with average grades. Mr. Johnson reports attending community college for one year without completing a degree program. No history of learning disabilities or special education services is documented in available records.
+                            </div>
+                            <div class="comment-bubble">
+                                <div class="comment-bubble-header">
+                                    <svg class="comment-bubble-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0 0v2m0-6v-2m0 0v-2"></path>
+                                    </svg>
+                                    Reviewer
+                                </div>
+                                Speculative language: "It is likely that..." — Consider replacing with "The evidence suggests..."
+                            </div>
+                        </div>
+
+                        <div class="requires-review">
+                            <div class="requires-review-label">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Extracted from interview transcript — requires clinician review
+                            </div>
+                            Mr. Johnson stated during the clinical interview that "things were hard at home" and that he "felt alone most of the time." He described his relationship with his father as distant and punitive.
+                        </div>
+
+                        <div class="report-paragraph">
+                            <span style="font-weight: 600;">Adolescence & First Psychiatric Contact</span>
+                        </div>
+
+                        <div class="report-paragraph">
+                            Mr. Johnson's adolescence was marked by increasing behavioral dysregulation beginning in his early teens. Teacher reports from his high school files indicate frequent absenteeism and conflicts with authority figures. He first engaged with mental health services at age 14 following a school suspension for disruptive behavior. That initial intervention lasted approximately three months and concluded with his stated refusal to continue treatment.
+                        </div>
+
+                        <div class="report-paragraph">
+                            <span style="font-weight: 600;">Adult Psychiatric History</span>
+                        </div>
+
+                        <div class="report-paragraph">
+                            Mr. Johnson's adult psychiatric history is characterized by episodic treatment engagement. Between 2005 and 2010, he received outpatient counseling through a community mental health center for complaints of depression and anxiety. That treatment was discontinued when Mr. Johnson moved out of state for employment purposes. No psychiatric medication history is documented in available records prior to 2015.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editor Footer -->
+            <div class="editor-footer">
+                <div class="editor-footer-left">
+                    <span>Word count: 4,847</span>
+                    <span>Pages: 12 of ~28</span>
+                    <span>Last saved: 2 min ago</span>
+                </div>
+                <div class="editor-footer-right">
+                    <span>Auto-save: Enabled</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="splitter"></div>
+
+        <!-- RIGHT COLUMN - Flags & Chat -->
+        <div class="right-column">
+            <!-- Editor Flags Panel -->
+            <div class="right-panel">
+                <div class="right-panel-header">Editor Flags</div>
+                <div class="flags-list">
+                    <div class="flag-item high">
+                        <div class="flag-header">
+                            <svg class="flag-icon" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
+                            </svg>
+                            Page 5: Speculative Language
+                        </div>
+                        <div class="flag-location">Line 47-52</div>
+                        <div class="flag-text">"It is likely that..." — Consider replacing with "The evidence suggests..."</div>
+                    </div>
+
+                    <div class="flag-item high">
+                        <div class="flag-header">
+                            <svg class="flag-icon" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
+                            </svg>
+                            Page 8: Unsupported Causation
+                        </div>
+                        <div class="flag-location">Line 103-107</div>
+                        <div class="flag-text">"This caused..." — Requires evidentiary support or temporal link</div>
+                    </div>
+
+                    <div class="flag-item medium">
+                        <div class="flag-header">
+                            <svg class="flag-icon" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15h4v2h-4zm0-5h4v4h-4zm0-5h4v4h-4z"></path>
+                            </svg>
+                            Page 12: Missing Citation
+                        </div>
+                        <div class="flag-location">Line 157-159</div>
+                        <div class="flag-text">Actuarial data for MMPI-3 base rates — add reference</div>
+                    </div>
+
+                    <div class="flag-item resolved">
+                        <div class="flag-header">
+                            <svg class="flag-icon" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 10l-2 2-4-4 1.41-1.41L8 9.17l2.59-2.58L12 8l-2 4z"></path>
+                            </svg>
+                            Page 3: Informed Consent
+                        </div>
+                        <div class="flag-location">Line 34-41</div>
+                        <div class="flag-text">Language verified ✓</div>
+                    </div>
+
+                    <div class="flag-item resolved">
+                        <div class="flag-header">
+                            <svg class="flag-icon" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 10l-2 2-4-4 1.41-1.41L8 9.17l2.59-2.58L12 8l-2 4z"></path>
+                            </svg>
+                            Page 10: Dusky Standard
+                        </div>
+                        <div class="flag-location">Line 141-145</div>
+                        <div class="flag-text">Properly cited ✓</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Assistant Chat Panel -->
+            <div class="chat-panel">
+                <div class="right-panel-header">AI Assistant</div>
+                <div class="chat-messages">
+                    <div class="chat-message assistant">
+                        How can I help with the Background History section? I can assist with clarifying forensic language, identifying evidentiary gaps, or suggesting clinical formulations.
+                    </div>
+                    <div class="chat-message user">
+                        Rephrase the paragraph about causation on page 8
+                    </div>
+                    <div class="chat-message assistant">
+                        Looking at page 8, I recommend changing "This caused..." to "This temporal sequence, combined with clinical observations, suggests..." — Do you want me to draft the full revision?
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" class="chat-input" placeholder="Ask about this section...">
+                    <button class="chat-send">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUSBAR -->
+    <div class="statusbar">
+        <div class="status-item">
+            <div class="status-dot"></div>
+            <span>Connected</span>
+        </div>
+        <div class="status-item">
+            <span>Writer Agent: Complete</span>
+        </div>
+        <div class="status-item">
+            <span>Editor/Legal: 3 flags, 2 resolved</span>
+        </div>
+        <div class="status-spacer"></div>
+        <div class="status-item">
+            <span>Words: 4,847</span>
+        </div>
+        <div class="status-item">
+            <span>Page 12/28</span>
+        </div>
+    </div>
+
+    <script>
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            document.querySelectorAll('.theme-switch button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        // Tree toggle functionality
+        document.querySelectorAll('.tree-toggle').forEach(toggle => {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.classList.toggle('collapsed');
+            });
+        });
+
+        // Outline click functionality
+        document.querySelectorAll('.outline-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.outline-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Chat send button
+        document.querySelector('.chat-send').addEventListener('click', function() {
+            const input = document.querySelector('.chat-input');
+            if (input.value.trim()) {
+                const message = input.value;
+                const messagesDiv = document.querySelector('.chat-messages');
+                const userMsg = document.createElement('div');
+                userMsg.className = 'chat-message user';
+                userMsg.textContent = message;
+                messagesDiv.appendChild(userMsg);
+                input.value = '';
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        });
+
+        // Splitter drag functionality
+        let dragging = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        document.querySelectorAll('.splitter').forEach(splitter => {
+            splitter.addEventListener('mousedown', function(e) {
+                dragging = true;
+                startX = e.clientX;
+                startWidth = this.previousElementSibling.offsetWidth;
+                e.preventDefault();
+            });
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (dragging) {
+                const diff = e.clientX - startX;
+                document.querySelector('.left-column').style.width = (startWidth + diff) + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            dragging = false;
+        });
+    </script>
+</body>
+</html>

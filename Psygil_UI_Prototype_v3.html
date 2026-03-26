@@ -1,0 +1,2526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PSYGIL — Forensic Psychology IDE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-light-bg: #ffffff;
+            --color-light-panel: #f3f3f3;
+            --color-light-border: #e0e0e0;
+            --color-light-text: #1e1e1e;
+            --color-light-text-secondary: #666666;
+            --color-light-accent: #0078d4;
+            --color-light-highlight: #e8f4fd;
+
+            --color-medium-bg: #1e1e1e;
+            --color-medium-panel: #2d2d2d;
+            --color-medium-border: #3e3e3e;
+            --color-medium-text: #e0e0e0;
+            --color-medium-text-secondary: #a0a0a0;
+            --color-medium-accent: #58a6ff;
+            --color-medium-highlight: #1f4b7c;
+
+            --color-dark-bg: #0d1117;
+            --color-dark-panel: #161b22;
+            --color-dark-border: #30363d;
+            --color-dark-text: #c9d1d9;
+            --color-dark-text-secondary: #8b949e;
+            --color-dark-accent: #58a6ff;
+            --color-dark-highlight: #1f4b7c;
+
+            --theme: light;
+        }
+
+        html[data-theme="medium"] {
+            --theme: medium;
+            --bg: var(--color-medium-bg);
+            --panel: var(--color-medium-panel);
+            --border: var(--color-medium-border);
+            --text: var(--color-medium-text);
+            --text-secondary: var(--color-medium-text-secondary);
+            --accent: var(--color-medium-accent);
+            --highlight: var(--color-medium-highlight);
+        }
+
+        html[data-theme="dark"] {
+            --theme: dark;
+            --bg: var(--color-dark-bg);
+            --panel: var(--color-dark-panel);
+            --border: var(--color-dark-border);
+            --text: var(--color-dark-text);
+            --text-secondary: var(--color-dark-text-secondary);
+            --accent: var(--color-dark-accent);
+            --highlight: var(--color-dark-highlight);
+        }
+
+        html[data-theme="light"] {
+            --bg: var(--color-light-bg);
+            --panel: var(--color-light-panel);
+            --border: var(--color-light-border);
+            --text: var(--color-light-text);
+            --text-secondary: var(--color-light-text-secondary);
+            --accent: var(--color-light-accent);
+            --highlight: var(--color-light-highlight);
+        }
+
+        body {
+            font-family: Inter, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        code, pre, .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+        }
+
+        /* TITLEBAR */
+        .titlebar {
+            height: 36px;
+            background-color: var(--panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        .titlebar-left {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .titlebar-right {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .titlebar-icon {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+
+        .titlebar-icon:hover {
+            color: var(--accent);
+        }
+
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: var(--accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* MAIN CONTAINER */
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 36px - 24px);
+        }
+
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* COLUMNS */
+        .left-column, .center-column, .right-column {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: var(--bg);
+        }
+
+        .left-column {
+            width: 260px;
+            border-right: 1px solid var(--border);
+        }
+
+        .center-column {
+            flex: 1;
+            border-right: 1px solid var(--border);
+        }
+
+        .right-column {
+            width: 340px;
+        }
+
+        /* SPLITTERS */
+        .h-splitter {
+            height: 2px;
+            background-color: var(--border);
+            cursor: row-resize;
+            transition: background-color 0.2s;
+        }
+
+        .h-splitter:hover {
+            background-color: var(--accent);
+        }
+
+        .v-splitter {
+            width: 2px;
+            background-color: var(--border);
+            cursor: col-resize;
+            transition: background-color 0.2s;
+        }
+
+        .v-splitter:hover {
+            background-color: var(--accent);
+        }
+
+        /* PANELS */
+        .panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .panel-header {
+            height: 32px;
+            padding: 0 12px;
+            background-color: var(--panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--text-secondary);
+            user-select: none;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 4px 0;
+        }
+
+        /* TREE */
+        .tree-node {
+            padding: 2px 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text);
+            user-select: none;
+            transition: background-color 0.15s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tree-node:hover {
+            background-color: var(--highlight);
+        }
+
+        .tree-node.active {
+            background-color: var(--accent);
+            color: white;
+            font-weight: 500;
+        }
+
+        .tree-chevron {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tree-chevron svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .tree-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tree-icon svg {
+            width: 14px;
+            height: 14px;
+            color: var(--text-secondary);
+        }
+
+        .tree-label {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tree-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            background-color: var(--accent);
+            color: white;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 4px;
+            flex-shrink: 0;
+        }
+
+        .tree-children {
+            margin-left: 12px;
+        }
+
+        .tree-children.collapsed {
+            display: none;
+        }
+
+        /* TABS */
+        .tab-bar {
+            display: flex;
+            height: 28px;
+            background-color: var(--panel);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            overflow-y: hidden;
+            align-items: center;
+        }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 12px;
+            height: 28px;
+            border-right: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            transition: all 0.2s;
+            background-color: var(--bg);
+        }
+
+        .tab:hover {
+            background-color: var(--highlight);
+            color: var(--text);
+        }
+
+        .tab.active {
+            background-color: var(--panel);
+            color: var(--text);
+            border-bottom: 2px solid var(--accent);
+            border-right: 1px solid var(--border);
+        }
+
+        .tab-icon {
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .tab-icon svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .tab-close {
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 4px;
+            flex-shrink: 0;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+
+        .tab-close:hover {
+            opacity: 1;
+        }
+
+        .tab-close svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* TAB CONTENT */
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: none;
+            background-color: var(--bg);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-content h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .tab-content h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-content h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 10px;
+        }
+
+        .tab-content p {
+            margin-bottom: 12px;
+            line-height: 1.5;
+            color: var(--text);
+        }
+
+        /* TABLES */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        th {
+            background-color: var(--panel);
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        td {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        tr:nth-child(even) td {
+            background-color: var(--highlight);
+        }
+
+        tr:hover td {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .elevated-row td {
+            background-color: var(--accent);
+            color: white;
+            font-weight: 500;
+        }
+
+        .elevated-row:hover td {
+            background-color: var(--accent);
+        }
+
+        /* CARDS */
+        .card {
+            background-color: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .card-content {
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .info-item {
+            padding: 8px;
+            background-color: var(--highlight);
+            border-radius: 4px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 13px;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* GATES */
+        .gate-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .gate-tab {
+            flex: 1;
+            padding: 8px;
+            background-color: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .gate-tab:hover {
+            background-color: var(--highlight);
+        }
+
+        .gate-tab.active {
+            background-color: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        /* WORD EDITOR TOOLBAR */
+        .word-toolbar {
+            background-color: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 8px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 4px;
+            padding-right: 8px;
+            border-right: 1px solid var(--border);
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .toolbar-btn {
+            padding: 4px 8px;
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            cursor: pointer;
+            color: var(--text);
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            background-color: var(--highlight);
+            border-color: var(--accent);
+        }
+
+        .toolbar-select {
+            padding: 4px 8px;
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            color: var(--text);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .toolbar-icon {
+            width: 14px;
+            height: 14px;
+            display: inline-block;
+        }
+
+        /* DOCUMENT EDITOR */
+        .document-editor {
+            background-color: white;
+            color: #000;
+            padding: 40px 60px;
+            line-height: 1.6;
+            font-family: 'Times New Roman', serif;
+            font-size: 12px;
+        }
+
+        .document-editor h1 {
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .document-editor h2 {
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 16px;
+            margin-bottom: 8px;
+            text-decoration: underline;
+        }
+
+        .document-editor h3 {
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 12px;
+            margin-bottom: 6px;
+        }
+
+        .document-editor p {
+            text-align: justify;
+            margin-bottom: 8px;
+        }
+
+        .document-editor table {
+            margin-top: 12px;
+            margin-bottom: 12px;
+            border-collapse: collapse;
+            font-size: 11px;
+            width: 100%;
+        }
+
+        .document-editor th,
+        .document-editor td {
+            border: 1px solid black;
+            padding: 6px;
+            text-align: left;
+        }
+
+        .document-editor th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+
+        .ai-draft-section {
+            border-left: 4px solid #0078d4;
+            padding-left: 12px;
+            margin: 12px 0;
+            background-color: #e8f4fd;
+            padding: 8px 12px;
+        }
+
+        .ai-draft-label {
+            font-size: 10px;
+            font-weight: bold;
+            color: #0078d4;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .margin-comment {
+            position: absolute;
+            right: -40px;
+            width: 30px;
+            height: 20px;
+            background-color: #ffc107;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        /* STATUS BAR */
+        .statusbar {
+            height: 24px;
+            background-color: var(--panel);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .status-left, .status-right {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-icon {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4caf50;
+        }
+
+        /* RIGHT COLUMN CONTEXT */
+        .context-panel {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .context-section {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .context-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .context-content {
+            font-size: 12px;
+            color: var(--text);
+            line-height: 1.4;
+        }
+
+        /* SCROLLBARS */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* BUTTONS */
+        .btn {
+            padding: 6px 12px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background-color: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        /* BADGE */
+        .badge {
+            display: inline-block;
+            padding: 3px 6px;
+            background-color: var(--accent);
+            color: white;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        /* ACCESSIBILITY */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+<body data-theme="light">
+
+<div class="titlebar">
+    <div class="titlebar-left">
+        <span style="font-size: 16px; letter-spacing: 2px;">PSYGIL</span>
+    </div>
+    <div class="titlebar-right">
+        <svg class="titlebar-icon" id="settings-btn" onclick="openSettings()">
+            <use href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='3'%3E%3C/circle%3E%3Cpath d='M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24'%3E%3C/path%3E%3C/svg%3E" />
+        </svg>
+        <svg class="titlebar-icon" id="theme-btn" onclick="cycleTheme()">
+            <use href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='5'%3E%3C/circle%3E%3Cline x1='12' y1='1' x2='12' y2='3'%3E%3C/line%3E%3Cline x1='12' y1='21' x2='12' y2='23'%3E%3C/line%3E%3Cline x1='4.22' y1='4.22' x2='5.64' y2='5.64'%3E%3C/line%3E%3Cline x1='18.36' y1='18.36' x2='19.78' y2='19.78'%3E%3C/line%3E%3Cline x1='1' y1='12' x2='3' y2='12'%3E%3C/line%3E%3Cline x1='21' y1='12' x2='23' y2='12'%3E%3C/line%3E%3Cline x1='4.22' y1='19.78' x2='5.64' y2='18.36'%3E%3C/line%3E%3Cline x1='18.36' y1='5.64' x2='19.78' y2='4.22'%3E%3C/line%3E%3C/svg%3E" />
+        </svg>
+        <div class="user-avatar">TI</div>
+        <span style="font-size: 12px; color: var(--text-secondary);">Dr. Irwin</span>
+    </div>
+</div>
+
+<div class="container">
+    <div class="main-layout">
+        <!-- LEFT COLUMN: CASES TREE -->
+        <div class="left-column">
+            <div class="panel">
+                <div class="panel-header">Cases</div>
+                <div class="panel-content" id="cases-tree">
+                    <!-- Tree will be populated by JS -->
+                </div>
+            </div>
+            <div class="h-splitter" draggable="true" id="left-splitter"></div>
+            <div class="panel">
+                <div class="panel-header">Resources</div>
+                <div class="panel-content">
+                    <!-- Resources panel -->
+                </div>
+            </div>
+        </div>
+
+        <div class="v-splitter" draggable="true" id="left-v-splitter"></div>
+
+        <!-- CENTER COLUMN: EDITOR -->
+        <div class="center-column">
+            <div class="tab-bar" id="tab-bar">
+                <!-- Tabs will be populated by JS -->
+            </div>
+            <div id="tab-container" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                <!-- Tab content will be populated by JS -->
+            </div>
+            <div class="h-splitter" draggable="true" id="center-splitter"></div>
+            <div class="panel" style="height: 120px;">
+                <div class="panel-header">Status & Gates</div>
+                <div class="panel-content">
+                    <div class="gate-tabs">
+                        <div class="gate-tab active" onclick="switchGate(1)">✓ Gate 1: Data</div>
+                        <div class="gate-tab" onclick="switchGate(2)">● Gate 2: Diagnostic</div>
+                        <div class="gate-tab" onclick="switchGate(3)">○ Gate 3: Attestation</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="v-splitter" draggable="true" id="right-v-splitter"></div>
+
+        <!-- RIGHT COLUMN: CONTEXT -->
+        <div class="right-column">
+            <div class="panel">
+                <div class="panel-header">Context</div>
+                <div class="context-panel" id="context-panel">
+                    <div class="context-section">
+                        <div class="context-title">Case Notes</div>
+                        <div class="context-content">
+                            <p><strong>Session 1 (Mar 8):</strong> Initial interview, 2.5 hrs. Patient reported persecutory concerns, mild disorganization.</p>
+                            <p><strong>Session 2 (Mar 10):</strong> Psychological testing (MMPI-3, PAI). Patient cooperative.</p>
+                            <p><strong>Session 3 (Mar 12):</strong> Cognitive testing (WAIS-V, TOMM, SIRS-2). Effort adequate.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="statusbar">
+    <div class="status-left">
+        <div class="status-item">
+            <div class="status-icon"></div>
+            <span>Connected</span>
+        </div>
+        <div class="status-item">
+            <span>LLM: Claude Sonnet</span>
+        </div>
+        <div class="status-item">
+            <span>PII: Safe Harbor ✓</span>
+        </div>
+        <div class="status-item">
+            <span>Storage: Local</span>
+        </div>
+    </div>
+    <div class="status-right">
+        <div class="status-item">
+            <span>12 active cases</span>
+        </div>
+        <div class="status-item">
+            <span>v0.1.0-alpha</span>
+        </div>
+    </div>
+</div>
+
+<script>
+// These functions replace the placeholder implementations in Part 1
+
+function getDashboardContent() {
+    return `
+        <h1>Dashboard</h1>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;">
+            <div class="card">
+                <div class="card-title">Active Cases</div>
+                <div style="font-size: 28px; font-weight: 700; color: var(--accent);">12</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Pending Review</div>
+                <div style="font-size: 28px; font-weight: 700; color: #ff9800;">5</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Completed</div>
+                <div style="font-size: 28px; font-weight: 700; color: #4caf50;">23</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Archived</div>
+                <div style="font-size: 28px; font-weight: 700; color: #9e9e9e;">142</div>
+            </div>
+        </div>
+        <h2>Recent Cases</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Case #</th>
+                    <th>Client</th>
+                    <th>Type</th>
+                    <th>Referral Date</th>
+                    <th>Deadline</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>#2026-0147</td>
+                    <td>Johnson, Marcus D.</td>
+                    <td>CST</td>
+                    <td>Feb 28, 2026</td>
+                    <td>Apr 15, 2026</td>
+                    <td><span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px;">Gate 2</span></td>
+                </tr>
+                <tr>
+                    <td>#2026-0152</td>
+                    <td>Martinez, Jose</td>
+                    <td>Custody</td>
+                    <td>Mar 1, 2026</td>
+                    <td>Apr 20, 2026</td>
+                    <td><span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px;">Gate 1</span></td>
+                </tr>
+                <tr>
+                    <td>#2026-0158</td>
+                    <td>Williams, Sarah</td>
+                    <td>Risk</td>
+                    <td>Feb 15, 2026</td>
+                    <td>Apr 1, 2026</td>
+                    <td><span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px;">Gate 2</span></td>
+                </tr>
+                <tr>
+                    <td>#2026-0161</td>
+                    <td>Chen, Wei</td>
+                    <td>PTSD Dx</td>
+                    <td>Feb 20, 2026</td>
+                    <td>Apr 10, 2026</td>
+                    <td><span style="background: #4caf50; color: white; padding: 2px 6px; border-radius: 3px;">Complete</span></td>
+                </tr>
+                <tr>
+                    <td>#2026-0165</td>
+                    <td>Okafor, Yinka</td>
+                    <td>ADHD Dx</td>
+                    <td>Mar 5, 2026</td>
+                    <td>Apr 25, 2026</td>
+                    <td><span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px;">Gate 1</span></td>
+                </tr>
+                <tr>
+                    <td>#2025-0989</td>
+                    <td>Thompson, Robert</td>
+                    <td>Malingering</td>
+                    <td>Jan 10, 2026</td>
+                    <td>Mar 20, 2026</td>
+                    <td><span style="background: #4caf50; color: white; padding: 2px 6px; border-radius: 3px;">Complete</span></td>
+                </tr>
+                <tr>
+                    <td>#2025-0988</td>
+                    <td>Anderson, Lisa</td>
+                    <td>Fitness</td>
+                    <td>Jan 5, 2026</td>
+                    <td>Mar 15, 2026</td>
+                    <td><span style="background: #4caf50; color: white; padding: 2px 6px; border-radius: 3px;">Complete</span></td>
+                </tr>
+                <tr>
+                    <td>#2025-0987</td>
+                    <td>Garcia, Miguel</td>
+                    <td>Capacity</td>
+                    <td>Dec 20, 2025</td>
+                    <td>Feb 28, 2026</td>
+                    <td><span style="background: #4caf50; color: white; padding: 2px 6px; border-radius: 3px;">Complete</span></td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+}
+
+function getOverviewContent() {
+    return `
+        <h1>Case #2026-0147 — Johnson, CST</h1>
+        <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+            <button class="btn">Edit in Word</button>
+            <button class="btn btn-secondary">Publish to PDF</button>
+        </div>
+        <h2>Case Information</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Case #</div>
+                <div class="info-value">2026-0147</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">De-identified ID</div>
+                <div class="info-value">PT-4821</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Evaluation Type</div>
+                <div class="info-value">Competency to Stand Trial (CST)</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Referral Source</div>
+                <div class="info-value">Denver District Court, Division 3</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Referring Attorney</div>
+                <div class="info-value">ADA Rachel Thornton</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Defense Counsel</div>
+                <div class="info-value">PD Marcus Washington</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Referral Date</div>
+                <div class="info-value">February 28, 2026</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Court Deadline</div>
+                <div class="info-value">April 15, 2026</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Charges</div>
+                <div class="info-value">Assault in the First Degree (F3), Criminal Mischief (M1)</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Jurisdiction</div>
+                <div class="info-value">Colorado, 2nd Judicial District</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Assigned Clinician</div>
+                <div class="info-value">Dr. Truck Irwin, Psy.D., ABPP</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Sessions Completed</div>
+                <div class="info-value">3 of 3 (6.5 hours total)</div>
+            </div>
+        </div>
+        <h2>Evaluation Progress</h2>
+        <div class="gate-tabs">
+            <div class="gate-tab active">✓ Gate 1: Data</div>
+            <div class="gate-tab">● Gate 2: Diagnostic</div>
+            <div class="gate-tab">○ Gate 3: Attestation</div>
+        </div>
+        <h2>Activity Timeline</h2>
+        <div style="font-size: 13px; line-height: 1.8;">
+            <p><strong>Mar 19, 2026 14:45</strong> — Report sections reviewed and updated by Editor Agent</p>
+            <p><strong>Mar 19, 2026 14:30</strong> — Final diagnostic decision recorded: Schizophrenia, First Episode</p>
+            <p><strong>Mar 19, 2026 14:15</strong> — Competency opinion drafted and flagged for review</p>
+            <p><strong>Mar 12, 2026 16:00</strong> — Session 3 completed: Cognitive testing (WAIS-V, TOMM, SIRS-2)</p>
+            <p><strong>Mar 12, 2026 14:00</strong> — Interview transcripts uploaded and parsed</p>
+            <p><strong>Mar 10, 2026 17:30</strong> — Session 2 completed: Personality testing (MMPI-3, PAI)</p>
+            <p><strong>Mar 10, 2026 15:00</strong> — Test scores imported from Q-global and PARiConnect</p>
+            <p><strong>Mar 8, 2026 16:30</strong> — Session 1 completed: Initial clinical interview</p>
+            <p><strong>Mar 8, 2026 09:00</strong> — All collateral records uploaded</p>
+            <p><strong>Feb 28, 2026 14:00</strong> — Case created from court order</p>
+        </div>
+    `;
+}
+
+function getTestResultsContent() {
+    return `
+        <h1>Test Results Summary</h1>
+        <div class="card">
+            <div class="card-title">Validity & Effort Testing</div>
+            <div class="card-content">
+                <p><strong>TOMM Trial 1:</strong> 42/50 | <strong>Trial 2:</strong> 48/50 — <span style="color: #4caf50; font-weight: 600;">PASS</span> (above chance)</p>
+                <p><strong>SIRS-2:</strong> Total Score within normal limits — <span style="color: #4caf50; font-weight: 600;">No feigning detected</span></p>
+                <p><strong>MMPI-3 Validity:</strong> All scales within acceptable limits — <span style="color: #4caf50; font-weight: 600;">No over/under-reporting</span></p>
+            </div>
+        </div>
+        <h2>Administered Instruments</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Instrument</th>
+                    <th>Admin Date</th>
+                    <th>Administered By</th>
+                    <th>Scales/Items</th>
+                    <th>Import Source</th>
+                    <th>Key Findings</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>MMPI-3</strong></td>
+                    <td>Mar 10, 2026</td>
+                    <td>Dr. Irwin</td>
+                    <td>52 scales</td>
+                    <td>Q-global PDF</td>
+                    <td>RC6=72T, RC8=78T elevated</td>
+                </tr>
+                <tr>
+                    <td><strong>PAI</strong></td>
+                    <td>Mar 10, 2026</td>
+                    <td>Dr. Irwin</td>
+                    <td>22 scales</td>
+                    <td>PARiConnect PDF</td>
+                    <td>PAR=68T, SCZ=72T elevated</td>
+                </tr>
+                <tr>
+                    <td><strong>WAIS-V</strong></td>
+                    <td>Mar 11, 2026</td>
+                    <td>J. Torres (psych.)</td>
+                    <td>5 indices + FSIQ</td>
+                    <td>Q-global PDF</td>
+                    <td>FSIQ=82 (Low Average)</td>
+                </tr>
+                <tr>
+                    <td><strong>TOMM</strong></td>
+                    <td>Mar 11, 2026</td>
+                    <td>J. Torres</td>
+                    <td>2 trials</td>
+                    <td>Manual entry</td>
+                    <td>Trial 2: 48/50 — Valid</td>
+                </tr>
+                <tr>
+                    <td><strong>SIRS-2</strong></td>
+                    <td>Mar 12, 2026</td>
+                    <td>Dr. Irwin</td>
+                    <td>8 scales</td>
+                    <td>Manual entry</td>
+                    <td>Total WNL — No feigning</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Cross-Test Pattern Analysis</h2>
+        <div class="card">
+            <div class="card-title">Clinical Summary</div>
+            <div class="card-content">
+                <p>Test results demonstrate consistent elevation on psychotic spectrum measures. Both MMPI-3 (RC6=72T, RC8=78T, THD=75T) and PAI (PAR=68T, SCZ=72T) indicate significant thought disturbance and persecutory ideation. WAIS-V shows low-average cognitive functioning (FSIQ=82). Validity measures (TOMM, SIRS-2) confirm adequate effort and no malingering. Pattern is consistent with primary psychotic disorder.</p>
+            </div>
+        </div>
+    `;
+}
+
+function getMMPI3Content() {
+    return `
+        <h1>MMPI-3 — Minnesota Multiphasic Personality Inventory-3</h1>
+        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 16px;">Q-global Score Report | Administered: Mar 10, 2026 | Administration Time: 45 min | 335 items</p>
+        <h2>Validity Scales</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Scale</th>
+                    <th>Abbrev</th>
+                    <th>T-Score</th>
+                    <th>Interpretation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Cannot Say</td>
+                    <td>CNS</td>
+                    <td>2</td>
+                    <td>Acceptable (≤15)</td>
+                </tr>
+                <tr>
+                    <td>Variable Response Inconsistency</td>
+                    <td>VRIN-r</td>
+                    <td>52T</td>
+                    <td>Consistent responding</td>
+                </tr>
+                <tr>
+                    <td>True Response Inconsistency</td>
+                    <td>TRIN-r</td>
+                    <td>55T</td>
+                    <td>Acceptable</td>
+                </tr>
+                <tr>
+                    <td>Infrequent Responses</td>
+                    <td>F-r</td>
+                    <td>62T</td>
+                    <td>Within normal limits</td>
+                </tr>
+                <tr>
+                    <td>Infrequent Psychopathology</td>
+                    <td>Fp-r</td>
+                    <td>55T</td>
+                    <td>No feigned psychopathology</td>
+                </tr>
+                <tr>
+                    <td>Infrequent Somatic</td>
+                    <td>Fs-r</td>
+                    <td>48T</td>
+                    <td>No somatic over-reporting</td>
+                </tr>
+                <tr>
+                    <td>Symptom Validity</td>
+                    <td>FBS-r</td>
+                    <td>52T</td>
+                    <td>No symptom exaggeration</td>
+                </tr>
+                <tr>
+                    <td>Response Bias Scale</td>
+                    <td>RBS</td>
+                    <td>58T</td>
+                    <td>No over-reporting</td>
+                </tr>
+                <tr>
+                    <td>Uncommonly Virtuous</td>
+                    <td>L-r</td>
+                    <td>48T</td>
+                    <td>No positive impression management</td>
+                </tr>
+                <tr>
+                    <td>Adjustment Validity</td>
+                    <td>K-r</td>
+                    <td>44T</td>
+                    <td>No defensiveness</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Higher-Order Scales</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Scale</th>
+                    <th>Abbrev</th>
+                    <th>T-Score</th>
+                    <th>Interpretation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Emotional/Internalizing</td>
+                    <td>EID</td>
+                    <td>65T</td>
+                    <td>Moderate emotional distress</td>
+                </tr>
+                <tr>
+                    <td>Thought Dysfunction</td>
+                    <td>THD</td>
+                    <td>75T</td>
+                    <td><strong>Significant thought disturbance</strong></td>
+                </tr>
+                <tr>
+                    <td>Behavioral/Externalizing</td>
+                    <td>BXD</td>
+                    <td>58T</td>
+                    <td>Within normal limits</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Restructured Clinical Scales (RC)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Scale</th>
+                    <th>Abbrev</th>
+                    <th>T-Score</th>
+                    <th>Clinical Range</th>
+                    <th>Interpretation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Demoralization</td>
+                    <td>RCd</td>
+                    <td>62T</td>
+                    <td>Normal</td>
+                    <td>Mild distress</td>
+                </tr>
+                <tr>
+                    <td>Somatic Complaints</td>
+                    <td>RC1</td>
+                    <td>48T</td>
+                    <td>Normal</td>
+                    <td>No somatic concerns</td>
+                </tr>
+                <tr>
+                    <td>Low Positive Emotions</td>
+                    <td>RC2</td>
+                    <td>55T</td>
+                    <td>Normal</td>
+                    <td>Mildly reduced positive affect</td>
+                </tr>
+                <tr>
+                    <td>Cynicism</td>
+                    <td>RC3</td>
+                    <td>52T</td>
+                    <td>Normal</td>
+                    <td>Average interpersonal trust</td>
+                </tr>
+                <tr>
+                    <td>Antisocial Behavior</td>
+                    <td>RC4</td>
+                    <td>58T</td>
+                    <td>Normal</td>
+                    <td>Slightly elevated rule-breaking</td>
+                </tr>
+                <tr class="elevated-row">
+                    <td>Ideas of Persecution</td>
+                    <td>RC6</td>
+                    <td>72T</td>
+                    <td><strong>Elevated</strong></td>
+                    <td><strong>Persecutory ideation endorsed</strong></td>
+                </tr>
+                <tr>
+                    <td>Dysfunctional Negative Emotions</td>
+                    <td>RC7</td>
+                    <td>60T</td>
+                    <td>Normal</td>
+                    <td>Some anxiety/irritability</td>
+                </tr>
+                <tr class="elevated-row">
+                    <td>Aberrant Experiences</td>
+                    <td>RC8</td>
+                    <td>78T</td>
+                    <td><strong>Elevated</strong></td>
+                    <td><strong>Unusual perceptual experiences</strong></td>
+                </tr>
+                <tr>
+                    <td>Hypomanic Activation</td>
+                    <td>RC9</td>
+                    <td>52T</td>
+                    <td>Normal</td>
+                    <td>Average energy/activation</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Clinical Interpretation</h2>
+        <p>Mr. Johnson's MMPI-3 profile is consistent with a primary psychotic disorder. Significant elevations on THD (75T), RC6 (72T), and RC8 (78T) indicate substantial thought disturbance, persecutory ideation, and unusual perceptual experiences. Validity scales are all within acceptable limits, confirming that this profile reflects genuine psychopathology rather than malingering or defensive responding. The pattern of elevations is consistent with active psychotic symptoms.</p>
+    `;
+}
+
+function getPAIContent() {
+    return `
+        <h1>PAI — Personality Assessment Inventory</h1>
+        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 16px;">PARiConnect Score Report | Administered: Mar 10, 2026 | 344 items | 50 min</p>
+        <h2>Validity Scales</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Scale</th>
+                    <th>T-Score</th>
+                    <th>Interpretation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Inconsistency (INC)</td>
+                    <td>52T</td>
+                    <td>Consistent</td>
+                </tr>
+                <tr>
+                    <td>Infrequency (INF)</td>
+                    <td>48T</td>
+                    <td>Acceptable</td>
+                </tr>
+                <tr>
+                    <td>Negative Impression (NIM)</td>
+                    <td>58T</td>
+                    <td>No over-reporting</td>
+                </tr>
+                <tr>
+                    <td>Positive Impression (PIM)</td>
+                    <td>45T</td>
+                    <td>No defensiveness</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Clinical Scales</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Scale</th>
+                    <th>Abbrev</th>
+                    <th>T-Score</th>
+                    <th>Interpretation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Somatic Complaints</td>
+                    <td>SOM</td>
+                    <td>52T</td>
+                    <td>Normal</td>
+                </tr>
+                <tr>
+                    <td>Anxiety</td>
+                    <td>ANX</td>
+                    <td>62T</td>
+                    <td>Mild anxiety</td>
+                </tr>
+                <tr>
+                    <td>Anxiety-Related Disorders</td>
+                    <td>ARD</td>
+                    <td>58T</td>
+                    <td>Normal</td>
+                </tr>
+                <tr>
+                    <td>Depression</td>
+                    <td>DEP</td>
+                    <td>60T</td>
+                    <td>Mild depressive features</td>
+                </tr>
+                <tr>
+                    <td>Mania</td>
+                    <td>MAN</td>
+                    <td>55T</td>
+                    <td>Normal</td>
+                </tr>
+                <tr class="elevated-row">
+                    <td>Paranoia</td>
+                    <td>PAR</td>
+                    <td>68T</td>
+                    <td><strong>Elevated — persecutory ideation</strong></td>
+                </tr>
+                <tr class="elevated-row">
+                    <td>Schizophrenia</td>
+                    <td>SCZ</td>
+                    <td>72T</td>
+                    <td><strong>Elevated — thought disturbance</strong></td>
+                </tr>
+                <tr>
+                    <td>Borderline Features</td>
+                    <td>BOR</td>
+                    <td>55T</td>
+                    <td>Normal</td>
+                </tr>
+                <tr>
+                    <td>Antisocial Features</td>
+                    <td>ANT</td>
+                    <td>58T</td>
+                    <td>Normal</td>
+                </tr>
+                <tr>
+                    <td>Alcohol Problems</td>
+                    <td>ALC</td>
+                    <td>48T</td>
+                    <td>No concerns</td>
+                </tr>
+                <tr>
+                    <td>Drug Problems</td>
+                    <td>DRG</td>
+                    <td>45T</td>
+                    <td>No concerns</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Treatment Scales</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Scale</th>
+                    <th>T-Score</th>
+                    <th>Interpretation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Aggression</td>
+                    <td>55T</td>
+                    <td>Normal</td>
+                </tr>
+                <tr>
+                    <td>Suicidal Ideation</td>
+                    <td>48T</td>
+                    <td>No current SI</td>
+                </tr>
+                <tr>
+                    <td>Stress</td>
+                    <td>62T</td>
+                    <td>Moderate stress</td>
+                </tr>
+                <tr>
+                    <td>Nonsupport</td>
+                    <td>58T</td>
+                    <td>Some perceived lack of support</td>
+                </tr>
+                <tr>
+                    <td>Treatment Rejection</td>
+                    <td>42T</td>
+                    <td>Open to treatment</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Clinical Interpretation</h2>
+        <p>The PAI profile corroborates the MMPI-3 findings. Significant elevations on SCZ (72T) and PAR (68T) are consistent with a primary psychotic disorder featuring prominent thought disturbance and persecutory delusions. Treatment scales are favorable, indicating Mr. Johnson remains open to psychiatric intervention. Substance abuse is ruled out. No elevated aggression or suicidality. Overall profile is consistent with schizophrenia spectrum disorder.</p>
+    `;
+}
+
+function getWAISVContent() {
+    return `
+        <h1>WAIS-V — Wechsler Adult Intelligence Scale, Fifth Edition</h1>
+        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 16px;">Q-global Score Report | Administered: Mar 11, 2026 | Administered by: J. Torres, Psychometrist</p>
+        <h2>Composite Scores</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>Score</th>
+                    <th>95% CI</th>
+                    <th>Percentile</th>
+                    <th>Classification</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Full Scale IQ (FSIQ)</strong></td>
+                    <td>82</td>
+                    <td>78-87</td>
+                    <td>12th</td>
+                    <td>Low Average</td>
+                </tr>
+                <tr>
+                    <td>Verbal Comprehension (VCI)</td>
+                    <td>78</td>
+                    <td>73-85</td>
+                    <td>7th</td>
+                    <td>Borderline</td>
+                </tr>
+                <tr>
+                    <td>Visual Spatial (VSI)</td>
+                    <td>88</td>
+                    <td>82-95</td>
+                    <td>21st</td>
+                    <td>Low Average</td>
+                </tr>
+                <tr>
+                    <td>Fluid Reasoning (FRI)</td>
+                    <td>85</td>
+                    <td>79-92</td>
+                    <td>16th</td>
+                    <td>Low Average</td>
+                </tr>
+                <tr>
+                    <td>Working Memory (WMI)</td>
+                    <td>80</td>
+                    <td>74-88</td>
+                    <td>9th</td>
+                    <td>Low Average</td>
+                </tr>
+                <tr>
+                    <td>Processing Speed (PSI)</td>
+                    <td>86</td>
+                    <td>79-95</td>
+                    <td>18th</td>
+                    <td>Low Average</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Primary Subtests (Scaled Scores)</h2>
+        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">Mean = 10, SD = 3</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subtest</th>
+                    <th>Index</th>
+                    <th>Scaled Score</th>
+                    <th>Percentile</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Similarities</td>
+                    <td>VCI</td>
+                    <td>6</td>
+                    <td>9th</td>
+                </tr>
+                <tr>
+                    <td>Vocabulary</td>
+                    <td>VCI</td>
+                    <td>5</td>
+                    <td>5th</td>
+                </tr>
+                <tr>
+                    <td>Block Design</td>
+                    <td>VSI</td>
+                    <td>8</td>
+                    <td>25th</td>
+                </tr>
+                <tr>
+                    <td>Visual Puzzles</td>
+                    <td>VSI</td>
+                    <td>7</td>
+                    <td>16th</td>
+                </tr>
+                <tr>
+                    <td>Matrix Reasoning</td>
+                    <td>FRI</td>
+                    <td>7</td>
+                    <td>16th</td>
+                </tr>
+                <tr>
+                    <td>Figure Weights</td>
+                    <td>FRI</td>
+                    <td>8</td>
+                    <td>25th</td>
+                </tr>
+                <tr>
+                    <td>Digit Span</td>
+                    <td>WMI</td>
+                    <td>6</td>
+                    <td>9th</td>
+                </tr>
+                <tr>
+                    <td>Arithmetic</td>
+                    <td>WMI</td>
+                    <td>7</td>
+                    <td>16th</td>
+                </tr>
+                <tr>
+                    <td>Symbol Search</td>
+                    <td>PSI</td>
+                    <td>7</td>
+                    <td>16th</td>
+                </tr>
+                <tr>
+                    <td>Coding</td>
+                    <td>PSI</td>
+                    <td>8</td>
+                    <td>25th</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Clinical Interpretation</h2>
+        <p>Mr. Johnson's WAIS-V results indicate low-average to borderline intellectual functioning (FSIQ=82, 12th percentile). Notable weakness in verbal comprehension (VCI=78) relative to visual-spatial skills (VSI=88). Working memory is also impaired (WMI=80), which may reflect attention difficulties common in active psychosis. These cognitive limitations are relevant to his competency to stand trial, particularly regarding his capacity to understand complex legal concepts and instructions from counsel.</p>
+    `;
+}
+
+function getTOMMContent() {
+    return `
+        <h1>TOMM — Test of Memory Malingering</h1>
+        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 16px;">Administered: Mar 11, 2026 | Manual Entry</p>
+        <h2>Results</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Trial</th>
+                    <th>Score</th>
+                    <th>Cut Score</th>
+                    <th>Interpretation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Trial 1</strong></td>
+                    <td>42/50</td>
+                    <td>—</td>
+                    <td>Adequate performance</td>
+                </tr>
+                <tr class="elevated-row">
+                    <td><strong>Trial 2</strong></td>
+                    <td>48/50</td>
+                    <td>&lt;45 = Fail</td>
+                    <td><strong>PASS — Above chance performance</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Interpretation</h2>
+        <p><strong>Conclusion: No indication of feigned memory impairment.</strong> Mr. Johnson's performance on Trial 2 (48/50) is well above the cut score of 45, indicating genuine memory functioning and adequate effort on cognitive testing. This result rules out intentional malingering of memory deficits.</p>
+    `;
+}
+
+function getSIRS2Content() {
+    return `
+        <h1>SIRS-2 — Structured Interview of Reported Symptoms, 2nd Edition</h1>
+        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 16px;">Administered: Mar 12, 2026 | Manual Entry</p>
+        <h2>Primary Scales</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Scale</th>
+                    <th>Raw Score</th>
+                    <th>Classification</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Reported Cognition Problems (RC)</td>
+                    <td>3</td>
+                    <td>Honest</td>
+                </tr>
+                <tr>
+                    <td>Reported Affective Problems (RA)</td>
+                    <td>2</td>
+                    <td>Honest</td>
+                </tr>
+                <tr>
+                    <td>Reported Neurological Symptoms (RN)</td>
+                    <td>4</td>
+                    <td>Honest</td>
+                </tr>
+                <tr>
+                    <td>Reported Low Awareness (RLA)</td>
+                    <td>1</td>
+                    <td>Honest</td>
+                </tr>
+                <tr>
+                    <td>Unusual Symptom Combinations (USC)</td>
+                    <td>2</td>
+                    <td>Honest</td>
+                </tr>
+                <tr>
+                    <td>Rare Symptoms (RS)</td>
+                    <td>1</td>
+                    <td>Honest</td>
+                </tr>
+                <tr>
+                    <td>Symptom Combinations (SC)</td>
+                    <td>0</td>
+                    <td>Honest</td>
+                </tr>
+                <tr>
+                    <td>Inconsistency of Symptoms (IS)</td>
+                    <td>1</td>
+                    <td>Honest</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Interpretation</h2>
+        <p><strong>Overall Classification: Honest Responding</strong> — All eight primary scales fall within the "Honest" classification range, indicating that Mr. Johnson's reported symptoms are consistent with genuine psychopathology and not feigned or exaggerated. There is no evidence of symptom fabrication or malingering on the SIRS-2.</p>
+    `;
+}
+
+function getHospitalRecordsContent() {
+    return `
+        <h1>Hospital Records — Denver Health Medical Center</h1>
+        <h2>Admission History</h2>
+        <p><strong>Facility:</strong> Denver Health Medical Center</p>
+        <p><strong>Number of Admissions on Record:</strong> 3</p>
+        <h2>Admission 1 — June 2024</h2>
+        <div class="card">
+            <div class="card-content">
+                <p><strong>Admission Date:</strong> June 15, 2024</p>
+                <p><strong>Discharge Date:</strong> June 29, 2024</p>
+                <p><strong>Length of Stay:</strong> 14 days</p>
+                <p><strong>Chief Complaint:</strong> "Patient brought in by police after found wandering near downtown mall, disoriented and speaking to unseen persons"</p>
+                <p><strong>Initial Diagnosis:</strong> Unspecified Psychotic Disorder, Rule out Schizophrenia</p>
+                <p><strong>Treatment:</strong> Psychiatric hospitalization, antipsychotic medication initiation (Risperidone 2mg daily)</p>
+                <p><strong>Discharge Diagnosis:</strong> Unspecified Psychotic Disorder, Rule out Schizophrenia</p>
+                <p><strong>Discharge Medications:</strong> Risperidone 2mg daily, Benztropine 1mg daily PRN</p>
+            </div>
+        </div>
+        <h2>Admission 2 — September 2024</h2>
+        <div class="card">
+            <div class="card-content">
+                <p><strong>Admission Date:</strong> September 8, 2024</p>
+                <p><strong>Discharge Date:</strong> September 22, 2024</p>
+                <p><strong>Length of Stay:</strong> 14 days</p>
+                <p><strong>Chief Complaint:</strong> "Patient stopped taking medication, re-emergence of paranoid ideation and auditory hallucinations"</p>
+                <p><strong>Diagnosis:</strong> Schizophrenia, Unspecified Type</p>
+                <p><strong>Treatment:</strong> Medication adjustment (Risperidone increased to 3mg daily)</p>
+                <p><strong>Discharge Diagnosis:</strong> Schizophrenia, Unspecified Type</p>
+                <p><strong>Discharge Medications:</strong> Risperidone 3mg daily, Benztropine 1mg daily PRN</p>
+            </div>
+        </div>
+        <h2>Admission 3 — January 2025</h2>
+        <div class="card">
+            <div class="card-content">
+                <p><strong>Admission Date:</strong> January 18, 2025</p>
+                <p><strong>Discharge Date:</strong> January 31, 2025</p>
+                <p><strong>Length of Stay:</strong> 13 days</p>
+                <p><strong>Chief Complaint:</strong> "Patient arrested after altercation with police. Brought to hospital for psychiatric evaluation"</p>
+                <p><strong>Diagnosis:</strong> Schizophrenia, Unspecified Type, with acute exacerbation</p>
+                <p><strong>Clinical Notes:</strong> Patient reported hearing command hallucinations telling him people were conspiring against him. Staff noted paranoid behavior, limited insight into illness.</p>
+                <p><strong>Treatment:</strong> Medication adjustment (Risperidone increased to 4mg daily)</p>
+                <p><strong>Discharge Diagnosis:</strong> Schizophrenia, Unspecified Type</p>
+                <p><strong>Discharge Medications:</strong> Risperidone 4mg daily, Benztropine 1mg daily PRN</p>
+            </div>
+        </div>
+    `;
+}
+
+function getCourtOrderContent() {
+    return `
+        <h1>Court Order for Competency Evaluation</h1>
+        <div style="background: white; color: black; padding: 20px; border-radius: 4px; font-family: 'Times New Roman', serif; line-height: 1.8;">
+            <p style="text-align: center; text-transform: uppercase; font-weight: bold;">IN THE DISTRICT COURT</p>
+            <p style="text-align: center; text-transform: uppercase; font-weight: bold;">CITY AND COUNTY OF DENVER, COLORADO</p>
+            <p style="text-align: center; margin-top: 20px;"><strong>Case No.:</strong> 2025CR-4821</p>
+            <p style="text-align: center; margin-bottom: 20px;"><strong>People of the State of Colorado</strong></p>
+            <p style="text-align: center; margin-bottom: 30px;">v.</p>
+            <p style="text-align: center; margin-bottom: 30px;"><strong>Marcus D. Johnson</strong></p>
+            <p style="text-align: center; margin-bottom: 30px; text-transform: uppercase; font-weight: bold;">ORDER FOR COMPETENCY EVALUATION</p>
+            <p><strong>I. BACKGROUND</strong></p>
+            <p>The above-named Defendant, Marcus D. Johnson, has been charged with Assault in the First Degree (F3) and Criminal Mischief (M1) pursuant to C.R.S. § 18-3-202 and C.R.S. § 18-4-503, respectively.</p>
+            <p>The Court, on its own motion and in the interest of justice, orders that the Defendant undergo a competency to stand trial evaluation pursuant to C.R.S. § 16-8.5-101.</p>
+            <p><strong>II. EVALUATION DIRECTIVE</strong></p>
+            <p>The Defendant is hereby directed to submit to a competency to stand trial evaluation by a qualified mental health professional. The evaluation shall address the following:</p>
+            <ol style="padding-left: 20px;">
+                <li>Factual understanding of the nature and object of the proceedings</li>
+                <li>Rational understanding of the proceedings</li>
+                <li>Ability to assist in the preparation of a defense and to cooperate with counsel</li>
+                <li>Current mental status and any mental illness or intellectual disability</li>
+                <li>Prognosis and potential for restoration to competency</li>
+            </ol>
+            <p><strong>III. EVALUATOR</strong></p>
+            <p>The evaluation shall be conducted by: <strong>Dr. Truck Irwin, Psy.D., ABPP</strong>, a qualified forensic psychologist.</p>
+            <p><strong>IV. DEADLINE</strong></p>
+            <p>The complete evaluation report shall be filed with the Court no later than April 15, 2026.</p>
+            <p><strong>V. NOTIFICATION</strong></p>
+            <p>Counsel for both the People and the Defendant shall be notified of the evaluation date and time.</p>
+            <p style="margin-top: 30px;">IT IS HEREBY ORDERED this 28th day of February, 2026.</p>
+            <p style="margin-top: 40px;">_____________________________________</p>
+            <p>The Honorable Patricia Morales</p>
+            <p>Judge, District Court</p>
+            <p>Division 3</p>
+        </div>
+    `;
+}
+
+function getPriorEvalContent() {
+    return `
+        <h1>Prior Competency Evaluation (2023)</h1>
+        <div class="card">
+            <div class="card-title">Evaluator Information</div>
+            <div class="card-content">
+                <p><strong>Evaluator:</strong> Robert Smith, Ph.D.</p>
+                <p><strong>Evaluation Date:</strong> September 14, 2023</p>
+                <p><strong>Case Number:</strong> 2023CR-1247</p>
+            </div>
+        </div>
+        <h2>Prior Clinical Summary</h2>
+        <p>At the time of the 2023 evaluation, Mr. Johnson presented with unmedicated psychotic symptoms including auditory hallucinations and persecutory delusions. He demonstrated limited factual and rational understanding of the legal proceedings. Dr. Smith concluded that Mr. Johnson was incompetent to proceed to trial.</p>
+        <h2>Prior Diagnosis</h2>
+        <ul style="padding-left: 20px; margin-bottom: 16px;">
+            <li>Unspecified Psychotic Disorder</li>
+            <li>Possible Schizophrenia (requiring longer observation)</li>
+        </ul>
+        <h2>Prior Recommendation</h2>
+        <p>Dr. Smith recommended restoration treatment at Colorado Mental Health Institute at Pueblo (CDMH-P), with anticipated restoration timeline of 4-6 months with appropriate psychiatric treatment and medication compliance.</p>
+        <h2>Restoration Outcome</h2>
+        <p><strong>Status:</strong> RESTORED — Mr. Johnson was referred to CDMH-P for competency restoration treatment and was discharged as competent approximately 4 months later in January 2024. He was then returned to the district court for trial proceedings.</p>
+        <p><strong>Note:</strong> The current charges (2026) likely relate to behavior that occurred during a relapse of psychotic symptoms following medication non-compliance.</p>
+    `;
+}
+
+function getPoliceReportContent() {
+    return `
+        <h1>Police Report — Incident #2025-DPD-48721</h1>
+        <div class="card">
+            <div class="card-title">Incident Summary</div>
+            <div class="card-content">
+                <p><strong>Reporting Officer:</strong> Officer James Rodriguez, Badge #4821, Denver Police Department</p>
+                <p><strong>Report Date:</strong> January 15, 2025</p>
+                <p><strong>Incident Date/Time:</strong> January 15, 2025, approximately 8:45 PM</p>
+                <p><strong>Location:</strong> 16th and Blake Street, Downtown Denver, Colorado</p>
+            </div>
+        </div>
+        <h2>Incident Description</h2>
+        <p>Officers responded to a call of an assault in progress near 16th and Blake. Upon arrival, officers observed a male individual (later identified as Marcus D. Johnson) engaged in a physical altercation with another individual. Officers attempted to separate the parties and detain Mr. Johnson for questioning. Mr. Johnson resisted officers and made statements that officers were "part of the conspiracy" and that he could "hear them talking to him through radio signals." Officer Rodriguez reported that Mr. Johnson appeared confused and disoriented during the encounter and referenced hearing voices telling him to "fight back."</p>
+        <h2>Charges</h2>
+        <ul style="padding-left: 20px; margin-bottom: 16px;">
+            <li>Assault in the First Degree (F3) — Alleged injury to the other individual with a weapon (object picked up from the ground)</li>
+            <li>Criminal Mischief (M1) — Alleged damage to nearby property during the incident</li>
+        </ul>
+        <h2>Victim Information</h2>
+        <p><strong>Victim:</strong> [NAME REDACTED] — Male, age 28, sustained injuries to the head and left arm. Treated at Denver Health Medical Center and released.</p>
+    `;
+}
+
+function getJailRecordsContent() {
+    return `
+        <h1>Denver County Jail — Medical Records</h1>
+        <div class="card">
+            <div class="card-title">Current Status</div>
+            <div class="card-content">
+                <p><strong>Inmate ID:</strong> DCJ-78942</p>
+                <p><strong>Admission Date:</strong> January 16, 2025</p>
+                <p><strong>Housing Unit:</strong> Medical Hold 3 (Psychiatric)</p>
+                <p><strong>Current Medications:</strong> Risperidone 4mg daily, Benztropine 1mg daily PRN</p>
+            </div>
+        </div>
+        <h2>Medical History (Current Incarceration)</h2>
+        <p><strong>Initial Health Screening (Jan 16):</strong> Mr. Johnson was screened upon admission to DCJ. He reported active auditory hallucinations and paranoid thoughts. Medical staff noted moderate disorganization and paranoid behavior.</p>
+        <p><strong>Psychiatric Consultation (Jan 17):</strong> Consulting psychiatrist Dr. Michael Torres evaluated Mr. Johnson and confirmed diagnosis of Schizophrenia, Unspecified Type. Medication was restarted (Risperidone 4mg daily, same as discharge medication from January 2025 hospitalization).</p>
+        <h2>Recent Vital Signs &amp; Observations</h2>
+        <p><strong>As of Mar 12, 2026:</strong></p>
+        <ul style="padding-left: 20px; margin-bottom: 16px;">
+            <li>BP: 128/82 (normal)</li>
+            <li>HR: 76 (normal)</li>
+            <li>Mental Status: Cooperative, but continues to endorse auditory hallucinations. Reports "voices" telling him people at the jail are monitoring him.</li>
+            <li>Medication Compliance: Good — Observed taking medications daily</li>
+            <li>Behavioral Incidents: 2 minor incidents (loud vocalizations, suspicious behavior toward other inmates)</li>
+        </ul>
+    `;
+}
+
+function getInterview1Content() {
+    return `
+        <h1>Interview Session 1 — Clinical Notes</h1>
+        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 16px;">Date: March 8, 2026 | Duration: 2.5 hours | Location: Interview Room 3, Denver County Jail</p>
+        <h2>Timestamped Transcript Excerpts</h2>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--highlight); padding: 12px; border-radius: 4px; margin-bottom: 16px; line-height: 1.6;">
+            <p><strong>[00:00]</strong> Dr. Irwin: Good morning, Mr. Johnson. Thank you for meeting with me. I'm Dr. Irwin, a psychologist. The court has asked me to evaluate you to see how well you understand what's happening with your case. Is that okay with you?</p>
+            <p><strong>[02:15]</strong> Dr. Irwin: I want to make clear that I'm not your doctor, and I'm not here to help your case specifically. I'm here to give the court my honest opinion about what I find. Okay?</p>
+            <p><strong>[02:45]</strong> Mr. Johnson: Okay. I understand.</p>
+            <p><strong>[05:30]</strong> Dr. Irwin: Let's start with some background. Tell me about where you grew up.</p>
+            <p><strong>[05:45]</strong> Mr. Johnson: I grew up in the northeast part of Denver. My mom worked at a hospital. My dad, we don't talk much. I had some trouble in school.</p>
+            <p><strong>[10:15]</strong> Dr. Irwin: Have you ever been told you have a mental illness?</p>
+            <p><strong>[10:30]</strong> Mr. Johnson: Yeah, the doctors say I got schizophrenia or something like that. But I think they're wrong. I think they're trying to... like, they say I got a disease, but I think it's something else.</p>
+            <p><strong>[15:45]</strong> Dr. Irwin: What do you mean by "something else"?</p>
+            <p><strong>[16:00]</strong> Mr. Johnson: Like, people are listening. There's... I can hear them sometimes. It's not my brain. They're doing it to me.</p>
+            <p><strong>[23:12]</strong> Mr. Johnson: I know they say I did something but I don't really understand what a felony means different from the other one. Like, I know I'm in trouble, but I don't really get it.</p>
+            <p><strong>[34:45]</strong> Mr. Johnson: The voices say don't trust him... but I know he's trying to help, I think.</p>
+            <p><strong>[45:00]</strong> Dr. Irwin: Have you talked with your lawyer about what happened?</p>
+            <p><strong>[45:15]</strong> Mr. Johnson: Yeah, he comes by. He's trying to explain stuff. Sometimes it makes sense, but then the voices... they tell me different things. Like, they say he might be in on it too.</p>
+            <p><strong>[90:00]</strong> [End Session 1 - Additional clinical observations continue below]</p>
+        </div>
+        <h2>Behavioral Observations</h2>
+        <p><strong>Appearance:</strong> Mr. Johnson presented as a thin, 34-year-old African American male appearing his stated age. Clothing was clean but somewhat disheveled. Hair unkempt.</p>
+        <p><strong>Psychomotor:</strong> Mild restlessness noted. Occasional fidgeting. Minimal sustained eye contact.</p>
+        <p><strong>Speech:</strong> Speech rate normal but pressured at times. Volume normal. Coherent but with frequent tangential comments related to paranoid concerns.</p>
+        <p><strong>Mood/Affect:</strong> Mood reported as "okay I guess," but affect appeared constricted with occasional irritability. Limited range of emotional expression.</p>
+        <p><strong>Thought Process:</strong> Thought process linear but interrupted by preoccupation with persecutory themes.</p>
+        <p><strong>Thought Content:</strong> Endorsed paranoid ideation and possible auditory hallucinations. Frequent references to "people listening" and "voices."</p>
+    `;
+}
+
+function getInterview2Content() {
+    return `
+        <h1>Interview Session 2 — Competency-Specific Questions</h1>
+        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 16px;">Date: March 10, 2026 | Duration: 2.0 hours | Location: Interview Room 3, Denver County Jail</p>
+        <h2>Timestamped Transcript Excerpts</h2>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--highlight); padding: 12px; border-radius: 4px; margin-bottom: 16px; line-height: 1.6;">
+            <p><strong>[00:05]</strong> Dr. Irwin: Today I want to ask you some questions about your case and the legal process. Let's start with the charges. What are you charged with?</p>
+            <p><strong>[00:45]</strong> Mr. Johnson: Um... assault? And... something with property?</p>
+            <p><strong>[01:15]</strong> Dr. Irwin: Do you understand what "assault" means?</p>
+            <p><strong>[01:30]</strong> Mr. Johnson: Like, hurting someone?</p>
+            <p><strong>[02:00]</strong> Dr. Irwin: Yes. And do you remember what happened on January 15th?</p>
+            <p><strong>[02:30]</strong> Mr. Johnson: I remember being downtown. There was people there, and... I don't know, it's confusing. They were saying things, and I thought... I thought he was part of it.</p>
+            <p><strong>[05:15]</strong> Dr. Irwin: Who is your lawyer?</p>
+            <p><strong>[05:30]</strong> Mr. Johnson: Public Defender. Marcus Washington. He's okay. He comes to see me.</p>
+            <p><strong>[12:30]</strong> Dr. Irwin: What does the judge do?</p>
+            <p><strong>[12:45]</strong> Mr. Johnson: The judge decides if I'm guilty.</p>
+            <p><strong>[13:00]</strong> Dr. Irwin: Okay. And what does your attorney do?</p>
+            <p><strong>[13:15]</strong> Mr. Johnson: He's supposed to help me, I guess. But he doesn't really believe me about what's happening.</p>
+            <p><strong>[25:45]</strong> Dr. Irwin: Do you think there's anything wrong with your thinking or your mind?</p>
+            <p><strong>[26:00]</strong> Mr. Johnson: No. I think everybody else has got it wrong. The doctors don't understand.</p>
+            <p><strong>[45:00]</strong> Dr. Irwin: Do you think medication could help you?</p>
+            <p><strong>[45:15]</strong> Mr. Johnson: They give me medication here, and it doesn't really help. The problem is out there, not in here [points to head].</p>
+            <p><strong>[65:00]</strong> [Session continues with additional mental status and competency questions]</p>
+        </div>
+        <h2>Competency Domain Summary</h2>
+        <p><strong>Factual Understanding:</strong> Mr. Johnson demonstrates a basic but incomplete factual understanding. He knows the general charges and knows his attorney and judge, but cannot articulate specifics of the charges or legal process.</p>
+        <p><strong>Rational Understanding:</strong> Mr. Johnson's rational understanding is significantly impaired. His psychotic symptoms (especially paranoid ideation) prevent him from rationally understanding the proceedings or assisting in his defense.</p>
+    `;
+}
+
+function getInterview3Content() {
+    return `
+        <h1>Interview Session 3 — Cognitive Testing & Observations</h1>
+        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 16px;">Date: March 12, 2026 | Duration: 2.0 hours | Location: Testing Room 1, Denver County Jail</p>
+        <h2>Session Notes</h2>
+        <p><strong>Objective:</strong> Administration of cognitive and effort testing (WAIS-V, TOMM, SIRS-2)</p>
+        <p><strong>Effort & Cooperation:</strong> Mr. Johnson was cooperative throughout testing. He appeared to be putting forth genuine effort. No signs of intentional poor performance or malingering.</p>
+        <p><strong>Behavioral Observations:</strong></p>
+        <ul style="padding-left: 20px; margin-bottom: 16px;">
+            <li><strong>WAIS-V Administration (60 min):</strong> Mr. Johnson was fidgety but compliant. Performance was consistent with low-average functioning (FSIQ=82). Verbal skills notably weaker than visual-spatial skills.</li>
+            <li><strong>TOMM Administration (15 min):</strong> Memory testing was completed without difficulty. Trial 2 score of 48/50 indicates valid effort and adequate memory functioning.</li>
+            <li><strong>SIRS-2 Interview (30 min):</strong> Structured interview regarding reported symptoms. Mr. Johnson's responses were consistent with genuine symptomatology without evidence of feigning.</li>
+        </ul>
+        <h2>Mental Status During Testing</h2>
+        <p><strong>Attention:</strong> Fair — some difficulty sustaining attention, particularly on longer tasks. Likely related to psychotic symptoms.</p>
+        <p><strong>Memory:</strong> Adequate performance on testing (TOMM valid), but reported subjective memory difficulties in everyday life.</p>
+        <p><strong>Concentration:</strong> Mild difficulty — occasionally distracted by internal stimuli (likely hallucinations).</p>
+        <p><strong>Orientation:</strong> Oriented to person, place, time. No significant disorientation.</p>
+        <p><strong>Judgment/Insight:</strong> Impaired judgment and minimal insight into illness. Continued denial of mental illness, attributing symptoms to external persecution.</p>
+    `;
+}
+
+function getEvidenceMapContent() {
+    return `
+        <h1>Evidence Map — Diagnosis × Source</h1>
+        <h2>Schizophrenia (Primary Diagnosis)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Criterion/Symptom</th>
+                    <th>MMPI-3</th>
+                    <th>PAI</th>
+                    <th>Interview</th>
+                    <th>Medical Records</th>
+                    <th>Hospital Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Auditory Hallucinations</td>
+                    <td>RC8=78T</td>
+                    <td>SCZ=72T</td>
+                    <td>✓ Endorsed</td>
+                    <td>✓ Documented</td>
+                    <td>✓ Noted in 3 admissions</td>
+                </tr>
+                <tr>
+                    <td>Persecutory Delusions</td>
+                    <td>RC6=72T</td>
+                    <td>PAR=68T</td>
+                    <td>✓ Endorsed</td>
+                    <td>✓ Documented</td>
+                    <td>✓ Prominent in recent admission</td>
+                </tr>
+                <tr>
+                    <td>Disorganized Thinking</td>
+                    <td>THD=75T</td>
+                    <td>SCZ=72T</td>
+                    <td>✓ Observed (tangential)</td>
+                    <td>✓ Noted</td>
+                    <td>✓ Documented</td>
+                </tr>
+                <tr>
+                    <td>Lack of Insight</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>✓ Absent insight into illness</td>
+                    <td>✓ Noted</td>
+                    <td>✓ Prominent</td>
+                </tr>
+                <tr>
+                    <td>Functional Impairment</td>
+                    <td>EID=65T</td>
+                    <td>Multiple elevations</td>
+                    <td>✓ Significant impairment</td>
+                    <td>✓ Multiple hospitalizations</td>
+                    <td>✓ Cannot maintain stability</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Major Depressive Disorder (Ruled Out)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Criterion</th>
+                    <th>Evidence</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Depressed Mood</td>
+                    <td>PAI DEP=60T (mild); not primary complaint</td>
+                    <td>Minimal</td>
+                </tr>
+                <tr>
+                    <td>Anhedonia</td>
+                    <td>MMPI-3 RC2=55T (mildly reduced); not prominent</td>
+                    <td>Minimal</td>
+                </tr>
+                <tr>
+                    <td>Guilt/Worthlessness</td>
+                    <td>Not endorsed in interview</td>
+                    <td>Absent</td>
+                </tr>
+                <tr>
+                    <td>Primary Presentation</td>
+                    <td>Psychotic symptoms predominate; depression secondary if present</td>
+                    <td>Ruled out as primary</td>
+                </tr>
+            </tbody>
+        </table>
+        <h2>Cross-Test Coherence</h2>
+        <p>All evidence sources (psychological tests, clinical interview, medical records, hospital documentation) converge on a diagnosis of Schizophrenia as primary, with possible secondary depressive features. No evidence contradicts this formulation.</p>
+    `;
+}
+
+function getEvalReportContent() {
+    return `
+        <div class="word-toolbar">
+            <div class="toolbar-group">
+                <button class="toolbar-btn">File ▾</button>
+                <button class="toolbar-btn">Edit ▾</button>
+                <button class="toolbar-btn">View ▾</button>
+            </div>
+            <div class="toolbar-group">
+                <button class="toolbar-btn">Edit in Word ↗</button>
+                <button class="toolbar-btn">Publish to PDF ↓</button>
+            </div>
+            <div class="toolbar-group">
+                <span style="font-size: 11px;">Track Changes: ON | Comments: 3 | Page: 1 of 24</span>
+            </div>
+        </div>
+        <div class="document-editor">
+            <p style="text-align: center; text-transform: uppercase; font-weight: bold; font-size: 14px; margin-bottom: 8px;">CONFIDENTIAL FORENSIC EVALUATION REPORT</p>
+            <p style="text-align: center; text-transform: uppercase; font-weight: bold; font-size: 14px; margin-bottom: 30px;">COMPETENCY TO STAND TRIAL EVALUATION</p>
+
+            <p style="margin-bottom: 12px;"><strong>Evaluator:</strong> Truck Irwin, Psy.D., ABPP (Forensic Psychology)<br>
+            <strong>License:</strong> CO-PSY-12847<br>
+            <strong>Date of Report:</strong> March 19, 2026</p>
+
+            <p style="margin-top: 24px; margin-bottom: 12px;"><strong>IDENTIFYING INFORMATION</strong></p>
+            <p style="margin-bottom: 6px;"><strong>Name:</strong> Marcus D. Johnson<br>
+            <strong>Date of Birth:</strong> [REDACTED — PII]<br>
+            <strong>Age:</strong> 34 years<br>
+            <strong>Gender:</strong> Male<br>
+            <strong>Ethnicity:</strong> African American<br>
+            <strong>Education:</strong> 11th grade (no diploma)<br>
+            <strong>Marital Status:</strong> Single<br>
+            <strong>Current Location:</strong> Denver County Jail<br>
+            <strong>Case Number:</strong> 2025CR-4821<br>
+            <strong>Charges:</strong> Assault in the First Degree (F3), Criminal Mischief (M1)</p>
+
+            <p style="margin-top: 20px; margin-bottom: 12px;"><strong>REFERRAL INFORMATION</strong></p>
+            <p>Mr. Johnson was referred for a competency to stand trial evaluation by the Honorable Judge Patricia Morales, Denver District Court, Division 3, pursuant to C.R.S. § 16-8.5-101. The court order, dated February 28, 2026, requests assessment of the defendant's competency to proceed to trial.</p>
+
+            <p style="margin-top: 20px; margin-bottom: 12px;"><strong>NOTIFICATION AND CONSENT</strong></p>
+            <p>Mr. Johnson was advised that the purpose of this evaluation is not therapeutic. He was informed that this evaluation is being conducted for the court, that I am not his treating clinician, and that my report will be provided to the court and shared with prosecution and defense. He was advised that communications made during this evaluation are not protected by clinician-patient privilege and can be disclosed to the court. Mr. Johnson acknowledged understanding of these limitations and agreed to proceed.</p>
+
+            <p style="margin-top: 20px; margin-bottom: 12px;"><strong>SOURCES OF INFORMATION</strong></p>
+            <ol style="padding-left: 20px; margin-bottom: 12px;">
+                <li>Clinical interview with Mr. Johnson (3 sessions, 6.5 total hours)
+                    <ul style="padding-left: 20px; margin-top: 6px;">
+                        <li>Session 1: March 8, 2026 (2.5 hours)</li>
+                        <li>Session 2: March 10, 2026 (2.0 hours)</li>
+                        <li>Session 3: March 12, 2026 (2.0 hours)</li>
+                    </ul>
+                </li>
+                <li>Psychological Testing:
+                    <ul style="padding-left: 20px; margin-top: 6px;">
+                        <li>Minnesota Multiphasic Personality Inventory-3 (MMPI-3)</li>
+                        <li>Personality Assessment Inventory (PAI)</li>
+                        <li>Wechsler Adult Intelligence Scale, Fifth Edition (WAIS-V)</li>
+                        <li>Test of Memory Malingering (TOMM)</li>
+                        <li>Structured Interview of Reported Symptoms, 2nd Edition (SIRS-2)</li>
+                    </ul>
+                </li>
+                <li>Records Reviewed:
+                    <ul style="padding-left: 20px; margin-top: 6px;">
+                        <li>Court Order for Competency Evaluation (Feb 28, 2026)</li>
+                        <li>Police Report, Incident #2025-DPD-48721</li>
+                        <li>Denver Health Medical Center records (June 2024 – January 2025)</li>
+                        <li>Denver County Jail medical records (February – March 2026)</li>
+                        <li>Prior Competency Evaluation by Robert Smith, Ph.D. (2023)</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <div class="ai-draft-section">
+                <div class="ai-draft-label">AI Draft — Clinician Review Required</div>
+                <p style="margin-bottom: 8px;"><strong>RELEVANT BACKGROUND HISTORY</strong></p>
+                <p>Mr. Johnson is a 34-year-old African American male with an 11th-grade education, currently incarcerated at Denver County Jail pending trial. He reports a history of intermittent homelessness and unstable housing over the past 3-4 years. Employment history is sporadic, with most recent employment ending approximately two years ago when Mr. Johnson stopped working due to what he describes as "people interfering with my work."</p>
+                <p style="margin-top: 8px;">Psychiatric history is significant for first hospitalization in June 2024 at Denver Health Medical Center following police contact during an episode of acute psychosis. He was diagnosed at that time with Unspecified Psychotic Disorder and started on Risperidone 2mg daily. Mr. Johnson had a second hospitalization in September 2024 after discontinuing medication, and a third hospitalization in January 2025 following his arrest for the current charges.</p>
+                <p style="margin-top: 8px;">Mr. Johnson's substance use history includes occasional marijuana use in his 20s, but he denies current substance abuse. He reports no significant medical history beyond the psychiatric illnesses noted above. Family psychiatric history is unknown.</p>
+            </div>
+
+            <p style="margin-top: 20px; margin-bottom: 12px;"><strong>BEHAVIORAL OBSERVATIONS</strong></p>
+            <p>Mr. Johnson presented as a thin, 34-year-old African American male appearing his stated age. He was neatly dressed in jail clothing but somewhat disheveled in appearance. Speech was normal in rate and volume but occasionally pressured, with frequent tangential comments related to persecutory concerns. Affect was constricted with limited emotional range. Eye contact was poor, with occasional suspiciousness observed during the evaluation.</p>
+            <p style="margin-top: 8px;">Throughout all three sessions, Mr. Johnson endorsed auditory hallucinations ("hearing voices") and persecutory delusions (beliefs that people are conspiring against him, using technology to monitor him). His thought process was linear but interrupted by preoccupation with these paranoid themes. Most notably, Mr. Johnson demonstrated limited insight into his mental illness, attributing his symptoms to external persecution rather than internal mental health processes.</p>
+
+            <p style="margin-top: 20px; margin-bottom: 12px;"><strong>ASSESSMENT RESULTS</strong></p>
+            <p style="margin-top: 12px; margin-bottom: 8px;"><strong>Validity and Effort Testing</strong></p>
+            <p>Mr. Johnson's performance on effort tests was entirely adequate. TOMM Trial 2 score of 48/50 (above the cut-score of 45) and SIRS-2 results showing honest responding across all eight scales confirm genuine effort and absence of malingering. These results indicate that his performance on personality and cognitive testing reflects genuine functioning rather than intentional poor performance or symptom exaggeration.</p>
+
+            <p style="margin-top: 12px; margin-bottom: 8px;"><strong>Cognitive Functioning (WAIS-V)</strong></p>
+            <p>Mr. Johnson's WAIS-V composite scores indicate low-average intellectual functioning (FSIQ=82, 12th percentile). Notable weaknesses in verbal comprehension (VCI=78, 7th percentile) and working memory (WMI=80, 9th percentile) relative to visual-spatial abilities (VSI=88, 21st percentile). These cognitive limitations are relevant to his ability to understand complex legal concepts and instructions.</p>
+
+            <p style="margin-top: 12px; margin-bottom: 8px;"><strong>Personality and Psychopathology (MMPI-3)</strong></p>
+            <p>Mr. Johnson's MMPI-3 profile shows significant elevations on THD (75T — Thought Dysfunction), RC6 (72T — Ideas of Persecution), and RC8 (78T — Aberrant Experiences). All validity scales are within acceptable limits. This pattern is consistent with a primary psychotic disorder with prominent thought disturbance and persecutory ideation. No evidence of malingering or defensive responding.</p>
+
+            <p style="margin-top: 12px; margin-bottom: 8px;"><strong>Personality and Psychopathology (PAI)</strong></p>
+            <p>The PAI corroborates MMPI-3 findings. Mr. Johnson shows elevated SCZ (72T) and PAR (68T) scales, consistent with schizophrenia-spectrum disorder with persecutory features. Treatment scales show openness to treatment (RXR=42T, well below the elevation threshold), and no current suicidality (SUI=48T).</p>
+
+            <div class="ai-draft-section">
+                <div class="ai-draft-label">AI Draft — Clinician Review Required</div>
+                <p style="margin-bottom: 8px;"><strong>CLINICAL FORMULATION</strong></p>
+                <p>Results of the current evaluation are consistent with a diagnosis of Schizophrenia, First Episode, Currently in Acute Episode. Onset appears to have occurred in June 2024 (first hospitalization). The constellation of psychotic symptoms (auditory hallucinations, persecutory delusions), thought disturbance (elevated THD and RC8 on MMPI-3, elevated SCZ on PAI), and poor insight into illness are all consistent with schizophrenia.</p>
+                <p style="margin-top: 8px;">The patient's symptom presentation in the clinical interview aligns with test findings. His endorsed auditory hallucinations and persecutory ideation match his MMPI-3 RC8 and RC6 elevations and PAI SCZ and PAR elevations. His low-average cognitive functioning (FSIQ=82) and notable verbal weakness (VCI=78) must be considered in the context of his competency assessment.</p>
+                <p style="margin-top: 8px;">Mr. Johnson's medications (Risperodone 4mg daily) have stabilized his acute presentation somewhat since incarceration, but breakthrough symptoms persist, particularly auditory hallucinations and paranoid ideation. His history of medication non-compliance (stopping medications after prior hospitalizations) is a significant prognostic factor.</p>
+            </div>
+
+            <p style="margin-top: 20px; margin-bottom: 12px;"><strong>DIAGNOSTIC IMPRESSIONS</strong></p>
+            <p><strong>Axis I Diagnosis:</strong></p>
+            <p style="margin-left: 20px; margin-top: 8px;"><strong>Primary:</strong> Schizophrenia, First Episode, Currently in Acute Episode (F20.9)<br>
+            <strong>Secondary (Ruled Out):</strong> Major Depressive Disorder — Insufficient evidence; depressive symptoms mild and secondary to psychosis</p>
+
+            <div class="ai-draft-section" style="margin-top: 20px;">
+                <div class="ai-draft-label">AI Draft — Clinician Review Required</div>
+                <p style="margin-bottom: 8px;"><strong>COMPETENCY OPINION</strong></p>
+                <p>The legal standard for competency to stand trial is established by Dusky v. United States, 362 U.S. 402 (1960). The defendant must have: (1) a factual understanding of the charges and proceedings, (2) a rational understanding of the charges and proceedings, and (3) the ability to consult with counsel and assist in his defense.</p>
+
+                <p style="margin-top: 12px; margin-bottom: 8px;"><strong>Factual Understanding of the Proceedings</strong></p>
+                <p>Mr. Johnson demonstrates a basic but incomplete factual understanding of the legal proceedings. He can name his charges (Assault and Criminal Mischief) but cannot articulate what these charges mean or distinguish between felonies and misdemeanors. He knows the names and roles of his attorney (Public Defender Marcus Washington) and the judge (Judge Morales) but has limited understanding of their functions in the legal process. He correctly understands that he is in court for something that happened in January 2026, but his understanding of causality and consequences is limited.</p>
+
+                <p style="margin-top: 12px; margin-bottom: 8px;"><strong>Rational Understanding of the Proceedings</strong></p>
+                <p>Mr. Johnson's rational understanding of the proceedings is significantly impaired. His active psychotic symptoms — particularly his persecutory delusions — substantially interfere with his ability to rationally appreciate the proceedings and their likely consequences. During interviews, Mr. Johnson expressed beliefs that people at the jail are conspiring against him and that the legal system is part of a larger conspiracy to harm him. These beliefs prevented him from engaging in rational discussion about the facts of his case or possible legal strategies.</p>
+                <p style="margin-top: 8px;">Most critically, Mr. Johnson's auditory hallucinations and persecutory ideation cause him to distrust his own attorney, expressing concerns that his attorney "might be in on it too." This fundamental lack of trust in counsel, driven by psychotic symptoms, severely compromises his ability to work rationally with his attorney or appreciate the proceedings.</p>
+
+                <p style="margin-top: 12px; margin-bottom: 8px;"><strong>Ability to Consult with Counsel</strong></p>
+                <p>Mr. Johnson's ability to assist counsel and participate meaningfully in his defense is substantially compromised by his psychotic symptoms. While he reports that his attorney visits and attempts to explain legal matters, Mr. Johnson's paranoia prevents him from trusting the information provided. He second-guesses his attorney's motives, interprets discussions through a lens of conspiracy, and relies on hallucinatory input ("the voices") to make sense of information.</p>
+                <p style="margin-top: 8px;">Mr. Johnson has also expressed doubts about the factual events of January 15, 2026, claiming confusion about what occurred and attributing his actions to external influences rather than his own judgment. This makes meaningful collaboration with counsel extremely difficult.</p>
+
+                <p style="margin-top: 12px; margin-bottom: 8px;"><strong>Overall Competency Opinion</strong></p>
+                <p><strong>OPINION: Mr. Marcus D. Johnson is NOT COMPETENT to stand trial at this time.</strong></p>
+                <p style="margin-top: 8px;">The primary basis for this opinion is his impaired rational understanding of the proceedings and his severely compromised ability to assist counsel, both directly caused by active psychotic symptoms (auditory hallucinations, persecutory delusions, paranoid ideation). While his basic factual understanding is adequate, the Dusky standard requires all three prongs to be met. Mr. Johnson meets the first prong at a basic level but fails prongs two and three.</p>
+                <p style="margin-top: 8px;">His thought disturbance (confirmed by elevated THD, RC8, and RC6 on MMPI-3 and elevated SCZ and PAR on PAI) and cognitive limitations (FSIQ=82, verbal weakness) compound the impairment caused by his psychotic symptoms. The combination creates a substantial barrier to rational participation in trial proceedings.</p>
+            </div>
+
+            <p style="margin-top: 20px; margin-bottom: 12px;"><strong>RECOMMENDATIONS</strong></p>
+            <ol style="padding-left: 20px; margin-bottom: 12px;">
+                <li>Referral to Colorado Mental Health Institute at Pueblo (CDMH-P) for competency restoration treatment, including psychiatric care and psychopharmacological management.</li>
+                <li>Continue psychiatric medication (Risperidone or equivalent antipsychotic at current or higher dose) with regular monitoring by a psychiatrist.</li>
+                <li>Individual psychotherapy aimed at improving insight into illness and medication compliance.</li>
+                <li>Re-evaluation upon completion of restoration treatment or after 6 months, whichever comes first.</li>
+                <li>Estimated restoration timeline: 3-6 months based on prior restoration history in 2023 (Mr. Johnson was restored to competency within approximately 4 months at CDMH-P).</li>
+            </ol>
+
+            <p style="margin-top: 20px; margin-bottom: 12px;"><strong>ATTESTATION</strong></p>
+            <p>I certify that this report reflects my independent professional judgment based on a comprehensive evaluation, including clinical interview, psychological testing, review of collateral records, and assessment of the referral questions. This evaluation was conducted without bias and in accordance with established forensic psychological standards. The opinions expressed are based on a reasonable degree of psychological certainty.</p>
+
+            <p style="margin-top: 30px;">_____________________________________<br>
+            Truck Irwin, Psy.D., ABPP<br>
+            Board Certified in Forensic Psychology<br>
+            Colorado License #PSY-12847<br>
+            Date: March 19, 2026</p>
+        </div>
+    `;
+}
+
+function getGate2Content() {
+    return `
+        <h1>Gate 2: Diagnostic Decision</h1>
+        <div style="background: #ffcccc; padding: 12px; border-radius: 4px; border-left: 4px solid #cc0000; margin-bottom: 20px;">
+            <p style="color: #cc0000; font-weight: 600; margin: 0;">⚠ ALL DIAGNOSTIC DECISIONS ARE MADE BY YOU</p>
+            <p style="font-size: 12px; color: #333; margin: 8px 0 0;">You are the clinician. These diagnoses are for documentation only. Final decision is yours.</p>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Validity & Effort Summary</div>
+            <div class="card-content">
+                <p><strong style="color: #4caf50;">✓ VALID EFFORT CONFIRMED</strong></p>
+                <p>TOMM Trial 2: 48/50 (pass) | SIRS-2: All scales honest | MMPI-3 Validity: All acceptable</p>
+            </div>
+        </div>
+
+        <h2>Diagnosis 1 — Primary (Select One)</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <label style="display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 2px solid var(--accent); border-radius: 4px; cursor: pointer; background: var(--highlight);">
+                <input type="radio" name="diagnosis1" value="schizophrenia" checked>
+                <div>
+                    <div style="font-weight: 600;">Schizophrenia, First Episode, Acute (F20.9)</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">Primary presentation: Thought disturbance, auditory hallucinations, persecutory delusions</div>
+                </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 2px solid var(--border); border-radius: 4px; cursor: pointer;">
+                <input type="radio" name="diagnosis1" value="brief-psychotic">
+                <div>
+                    <div style="font-weight: 600;">Brief Psychotic Disorder (F23)</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">Duration &lt;1 month (less likely given 8+ month history)</div>
+                </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 2px solid var(--border); border-radius: 4px; cursor: pointer;">
+                <input type="radio" name="diagnosis1" value="schizoaffective">
+                <div>
+                    <div style="font-weight: 600;">Schizoaffective Disorder (F25)</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">Requires prominent mood episode; depressive features are mild here</div>
+                </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 2px solid var(--border); border-radius: 4px; cursor: pointer;">
+                <input type="radio" name="diagnosis1" value="substance-psychotic">
+                <div>
+                    <div style="font-weight: 600;">Substance/Medication-Induced Psychotic (F1X.5)</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">Ruled out: No substance abuse; psychosis predates jail meds</div>
+                </div>
+            </label>
+        </div>
+
+        <h2>Diagnosis 2 — Secondary (Select One)</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <label style="display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 2px solid var(--border); border-radius: 4px; cursor: pointer;">
+                <input type="radio" name="diagnosis2" value="none" checked>
+                <div>
+                    <div style="font-weight: 600;">No Secondary Diagnosis</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">Depressive features are mild and secondary to psychosis</div>
+                </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 2px solid var(--border); border-radius: 4px; cursor: pointer;">
+                <input type="radio" name="diagnosis2" value="mdd">
+                <div>
+                    <div style="font-weight: 600;">Major Depressive Disorder (F32)</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">PAI DEP=60T; MMPI-3 RC2=55T — Below threshold</div>
+                </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 2px solid var(--border); border-radius: 4px; cursor: pointer;">
+                <input type="radio" name="diagnosis2" value="anxiety">
+                <div>
+                    <div style="font-weight: 600;">Anxiety Disorder (F4X)</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">PAI ANX=62T; anxiety secondary to paranoia</div>
+                </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 8px; padding: 12px; border: 2px solid var(--border); border-radius: 4px; cursor: pointer;">
+                <input type="radio" name="diagnosis2" value="cognitive">
+                <div>
+                    <div style="font-weight: 600;">Neurocognitive Disorder (F09)</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);">WAIS-V FSIQ=82; cognitive impairment mild to moderate</div>
+                </div>
+            </label>
+        </div>
+
+        <h2>Psychometric Summary</h2>
+        <div class="card">
+            <div class="card-title">Test Pattern Consistency</div>
+            <div class="card-content">
+                <p><strong>MMPI-3:</strong> THD=75T, RC6=72T, RC8=78T → Schizophrenia-consistent</p>
+                <p><strong>PAI:</strong> SCZ=72T, PAR=68T → Schizophrenia-consistent</p>
+                <p><strong>WAIS-V:</strong> FSIQ=82, VCI=78 (verbal weakness) → Cognitive limitations</p>
+                <p><strong>Clinical Interview:</strong> Auditory hallucinations, persecutory delusions, poor insight → Psychotic features present</p>
+                <p style="margin-top: 12px; color: #4caf50; font-weight: 600;">All sources converge on Schizophrenia diagnosis.</p>
+            </div>
+        </div>
+
+        <button class="btn" style="margin-top: 20px;" onclick="alert('Diagnosis locked: Schizophrenia, First Episode, Acute. Proceed to Gate 3 Attestation.')">Lock Diagnoses & Proceed to Gate 3</button>
+    `;
+}
+
+function getGate3Content() {
+    return `
+        <h1>Gate 3: Attestation — Awaiting Gate 2 Completion</h1>
+        <div style="background: #fff3cd; padding: 16px; border-radius: 4px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+            <p style="color: #856404; font-weight: 600; margin: 0;">⏳ GATE 2 INCOMPLETE</p>
+            <p style="font-size: 12px; color: #333; margin: 8px 0 0;">Complete Gate 2 (Diagnostic Decision) before proceeding to attestation.</p>
+        </div>
+
+        <h2>Attestation Checklist</h2>
+        <div style="padding: 16px; background: var(--highlight); border-radius: 4px;">
+            <div style="margin-bottom: 12px;">
+                <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" disabled>
+                    <span style="font-size: 13px;">All sections reviewed and finalized</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" disabled>
+                    <span style="font-size: 13px;">All AI drafts approved or revised</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" disabled>
+                    <span style="font-size: 13px;">All Editor/Legal comments resolved</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" disabled>
+                    <span style="font-size: 13px;">Diagnostic impressions confirmed</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" disabled>
+                    <span style="font-size: 13px;">Signature block completed</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" disabled>
+                    <span style="font-size: 13px;">Integrity hash generated (SHA-256)</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 0;">
+                <label style="display: flex; gap: 8px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" disabled>
+                    <span style="font-size: 13px;">Document locked and audit trail finalized</span>
+                </label>
+            </div>
+        </div>
+    `;
+}
+
+function getAuditTrailContent() {
+    return `
+        <h1>Audit Trail — Case #2026-0147</h1>
+        <h2>All Events (Filtered)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date/Time</th>
+                    <th>Event</th>
+                    <th>Agent/User</th>
+                    <th>Gate</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Mar 19, 14:45</td>
+                    <td>Report sections reviewed and formatted</td>
+                    <td>Editor Agent</td>
+                    <td>Gate 2</td>
+                </tr>
+                <tr>
+                    <td>Mar 19, 14:30</td>
+                    <td>Diagnostic decision recorded</td>
+                    <td>Dr. Irwin</td>
+                    <td>Gate 2</td>
+                </tr>
+                <tr>
+                    <td>Mar 19, 14:15</td>
+                    <td>Competency opinion drafted and reviewed</td>
+                    <td>Diagnostician Agent</td>
+                    <td>Gate 2</td>
+                </tr>
+                <tr>
+                    <td>Mar 12, 16:00</td>
+                    <td>Session 3 completed: Cognitive testing</td>
+                    <td>Dr. Irwin</td>
+                    <td>Gate 1</td>
+                </tr>
+                <tr>
+                    <td>Mar 12, 14:00</td>
+                    <td>Interview transcripts uploaded and parsed</td>
+                    <td>Documenter Agent</td>
+                    <td>Gate 1</td>
+                </tr>
+                <tr>
+                    <td>Mar 10, 17:30</td>
+                    <td>Session 2 completed: Personality testing</td>
+                    <td>Dr. Irwin</td>
+                    <td>Gate 1</td>
+                </tr>
+                <tr>
+                    <td>Mar 10, 15:00</td>
+                    <td>Test scores imported from Q-global and PARiConnect</td>
+                    <td>Data Agent</td>
+                    <td>Gate 1</td>
+                </tr>
+                <tr>
+                    <td>Mar 8, 16:30</td>
+                    <td>Session 1 completed: Clinical interview</td>
+                    <td>Dr. Irwin</td>
+                    <td>Gate 1</td>
+                </tr>
+                <tr>
+                    <td>Mar 8, 09:00</td>
+                    <td>Collateral records uploaded (5 documents)</td>
+                    <td>Dr. Irwin</td>
+                    <td>Gate 1</td>
+                </tr>
+                <tr>
+                    <td>Feb 28, 14:00</td>
+                    <td>Case created from court order</td>
+                    <td>System</td>
+                    <td>Gate 1</td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+}
+
+function getReviewNotesContent() {
+    return `
+        <h1>Review Notes — Case #2026-0147</h1>
+        <h2>Peer Review by Dr. Sarah Chen, Psy.D.</h2>
+        <div class="card">
+            <div class="card-title">Review Date: March 16, 2026</div>
+            <div class="card-content">
+                <p><strong>Overall Assessment:</strong> Strong comprehensive evaluation. Competency opinion is well-supported by data.</p>
+                <p style="margin-top: 12px;"><strong>Strengths:</strong></p>
+                <ul style="padding-left: 20px; margin-bottom: 12px;">
+                    <li>Thorough multi-method assessment (interview + 5 psychological tests)</li>
+                    <li>Validity measures confirm genuine responding; no malingering concerns</li>
+                    <li>Clear organization and logical flow from data to opinion</li>
+                    <li>Appropriate Dusky analysis addressing all three prongs</li>
+                    <li>Concrete examples from interview supporting clinical impressions</li>
+                </ul>
+                <p style="margin-top: 12px;"><strong>Suggestions for Revision:</strong></p>
+                <ul style="padding-left: 20px; margin-bottom: 12px;">
+                    <li>Consider adding brief statement about restorability prognosis in Recommendations section. Courts often request this.</li>
+                    <li>In Clinical Formulation, consider explicitly linking MMPI-3 RC8 elevation to patient's own reported hallucinations from interview.</li>
+                    <li>Consider adding one sentence about why psychotic symptoms specifically impair rational understanding (not just factual understanding).</li>
+                </ul>
+                <p style="margin-top: 12px;"><strong>Recommendation:</strong> Approve with minor revisions suggested above. This is a clear incompetency case with strong documentation for restoration recommendation.</p>
+            </div>
+        </div>
+    `;
+}
+
+// Replace placeholder functions in Part 1 with these real implementations
+</script>
+
+</body>
+</html>

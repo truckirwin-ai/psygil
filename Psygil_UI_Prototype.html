@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Psygil</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+:root {
+  --bg-app: #F8F8F8;
+  --bg-panel: #FFFFFF;
+  --bg-sidebar: #F3F3F3;
+  --bg-titlebar: #E8E8E8;
+  --bg-input: #FFFFFF;
+  --bg-hover: #E8E8EC;
+  --bg-active: #E0ECF5;
+  --bg-active-sidebar: #D3E7F5;
+  --bg-badge: #F0F0F0;
+  --bg-card: #FFFFFF;
+  --bg-status: #F3F3F3;
+  --bg-splitter: #E0E0E0;
+  --bg-splitter-hover: #C0C0C0;
+  --text-primary: #1E1E1E;
+  --text-secondary: #616161;
+  --text-muted: #9E9E9E;
+  --text-accent: #0078D4;
+  --text-sidebar-group: #8B8B8B;
+  --border: #E5E5E5;
+  --border-focus: #0078D4;
+  --border-splitter: #D4D4D4;
+  --accent: #0078D4;
+  --accent-hover: #106EBE;
+  --accent-light: #E0ECF5;
+  --success: #16A34A; --success-bg: #DCFCE7;
+  --warning: #D97706; --warning-bg: #FEF3C7;
+  --error: #DC2626; --error-bg: #FEE2E2;
+  --info: #2563EB; --info-bg: #DBEAFE;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --radius: 6px; --radius-sm: 4px;
+  --titlebar-height: 36px; --statusbar-height: 24px; --panel-header-height: 30px;
+}
+[data-theme="medium"] {
+  --bg-app:#1E1E2E; --bg-panel:#252536; --bg-sidebar:#1A1A28; --bg-titlebar:#181826;
+  --bg-input:#2A2A3C; --bg-hover:#2F2F42; --bg-active:#1E3A5F; --bg-active-sidebar:#1E3A5F;
+  --bg-badge:#333348; --bg-card:#2A2A3C; --bg-status:#181826; --bg-splitter:#333348;
+  --bg-splitter-hover:#4A4A5E; --text-primary:#E0E0E0; --text-secondary:#A0A0B0;
+  --text-muted:#6E6E80; --text-accent:#58A6FF; --text-sidebar-group:#6E6E80;
+  --border:#333348; --border-focus:#58A6FF; --border-splitter:#333348;
+  --accent:#58A6FF; --accent-hover:#79B8FF; --accent-light:#1E3A5F;
+  --success:#3FB950; --success-bg:#1B3A2A; --warning:#D29922; --warning-bg:#3A2E1A;
+  --error:#F85149; --error-bg:#3A1A1A; --info:#58A6FF; --info-bg:#1A2A3A;
+}
+[data-theme="dark"] {
+  --bg-app:#0D1117; --bg-panel:#161B22; --bg-sidebar:#0D1117; --bg-titlebar:#0A0E14;
+  --bg-input:#1C2128; --bg-hover:#1C2128; --bg-active:#1A3050; --bg-active-sidebar:#1A3050;
+  --bg-badge:#21262D; --bg-card:#1C2128; --bg-status:#0A0E14; --bg-splitter:#21262D;
+  --bg-splitter-hover:#3A3F47; --text-primary:#C9D1D9; --text-secondary:#8B949E;
+  --text-muted:#484F58; --text-accent:#58A6FF; --text-sidebar-group:#484F58;
+  --border:#21262D; --border-focus:#58A6FF; --border-splitter:#21262D;
+  --accent:#58A6FF; --accent-hover:#79B8FF; --accent-light:#1A3050;
+  --success:#3FB950; --success-bg:#122A1A; --warning:#D29922; --warning-bg:#2A2010;
+  --error:#F85149; --error-bg:#2A1010; --info:#58A6FF; --info-bg:#0D2240;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',-apple-system,sans-serif; font-size:13px; color:var(--text-primary); background:var(--bg-app); overflow:hidden; height:100vh; }
+::-webkit-scrollbar { width:7px; height:7px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--bg-splitter); border-radius:4px; }
+::-webkit-scrollbar-thumb:hover { background:var(--bg-splitter-hover); }
+
+.titlebar { height:var(--titlebar-height); background:var(--bg-titlebar); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 12px; user-select:none; }
+.titlebar-left,.titlebar-right { display:flex; align-items:center; gap:12px; }
+.breadcrumb { font-size:12px; color:var(--text-secondary); }
+.breadcrumb span { color:var(--text-muted); }
+.brand { font-weight:600; font-size:13px; color:var(--text-primary); letter-spacing:-0.3px; }
+.titlebar-btn { background:none; border:none; border-radius:var(--radius-sm); padding:4px 6px; cursor:pointer; color:var(--text-secondary); font-size:11px; display:flex; align-items:center; gap:4px; font-family:inherit; }
+.titlebar-btn:hover { background:var(--bg-hover); color:var(--text-primary); }
+.user-profile { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-secondary); cursor:pointer; padding:2px 6px; border-radius:var(--radius-sm); }
+.user-profile:hover { background:var(--bg-hover); }
+.user-avatar { width:22px; height:22px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; }
+
+.main-layout { display:flex; height:calc(100vh - var(--titlebar-height) - var(--statusbar-height)); }
+
+/* Section headers inside panels */
+.section-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-sidebar-group); padding:8px 10px 4px; }
+.upload-btn { display:flex; align-items:center; gap:6px; padding:5px 10px; cursor:pointer; font-size:11px; color:var(--accent); border:1px dashed var(--border); border-radius:var(--radius-sm); margin:4px 10px; text-align:center; justify-content:center; }
+.upload-btn:hover { background:var(--bg-active); border-color:var(--accent); }
+
+/* Three columns */
+.content-area { display:flex; flex:1; overflow:hidden; }
+.splitter { width:2px; min-width:2px; cursor:col-resize; background:var(--border-splitter); z-index:10; transition:background 0.15s; }
+.splitter:hover,.splitter.dragging { background:var(--accent); }
+.h-splitter { height:2px; min-height:2px; cursor:row-resize; background:var(--border-splitter); transition:background 0.15s; }
+.h-splitter:hover,.h-splitter.dragging { background:var(--accent); }
+.panel-column { display:flex; flex-direction:column; overflow:hidden; }
+.left-col { width:260px; min-width:160px; }
+.center-col { flex:1; min-width:300px; }
+.right-col { width:340px; min-width:200px; }
+.panel { flex:1; display:flex; flex-direction:column; overflow:hidden; border-bottom:1px solid var(--border); }
+.panel:last-child { border-bottom:none; }
+.panel-header { height:var(--panel-header-height); min-height:var(--panel-header-height); display:flex; align-items:center; justify-content:space-between; padding:0 10px; background:var(--bg-sidebar); border-bottom:1px solid var(--border); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary); user-select:none; }
+.panel-header-actions { display:flex; gap:4px; }
+.panel-header-actions button { background:none; border:none; color:var(--text-muted); cursor:pointer; padding:2px; border-radius:3px; display:flex; }
+.panel-header-actions button:hover { background:var(--bg-hover); color:var(--text-primary); }
+.panel-body { flex:1; overflow-y:auto; background:var(--bg-panel); }
+
+/* Tree */
+.tree-item { display:flex; align-items:center; gap:6px; padding:3px 10px; cursor:pointer; font-size:12px; color:var(--text-secondary); white-space:nowrap; }
+.tree-item:hover { background:var(--bg-hover); }
+.tree-item.active { background:var(--bg-active); color:var(--text-accent); }
+.tree-item i { width:14px; height:14px; flex-shrink:0; color:var(--text-muted); }
+.tree-item.folder i { color:var(--accent); }
+.tree-item .count { margin-left:auto; font-size:10px; color:var(--text-muted); background:var(--bg-badge); padding:0 5px; border-radius:8px; }
+
+/* Templates */
+.template-item { display:flex; align-items:center; gap:8px; padding:5px 10px; cursor:pointer; font-size:12px; color:var(--text-secondary); }
+.template-item:hover { background:var(--bg-hover); }
+.template-item i { width:14px; height:14px; color:var(--text-muted); }
+.template-item .meta { font-size:10px; color:var(--text-muted); margin-left:auto; }
+
+/* Editor tabs */
+.editor-tabs { display:flex; background:var(--bg-sidebar); border-bottom:1px solid var(--border); height:30px; overflow-x:auto; flex-shrink:0; }
+.editor-tab { display:flex; align-items:center; gap:6px; padding:0 12px; font-size:12px; color:var(--text-secondary); cursor:pointer; border-right:1px solid var(--border); white-space:nowrap; position:relative; }
+.editor-tab:hover { background:var(--bg-hover); }
+.editor-tab.active { background:var(--bg-panel); color:var(--text-primary); }
+.editor-tab.active::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--accent); }
+.editor-tab .close { font-size:14px; color:var(--text-muted); margin-left:4px; opacity:0; }
+.editor-tab:hover .close { opacity:1; }
+.editor-tab i { width:12px; height:12px; }
+
+/* KPI */
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:10px; }
+.kpi-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px; }
+.kpi-card .label { font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:2px; }
+.kpi-card .value { font-size:20px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.kpi-card .delta { font-size:10px; margin-top:1px; }
+.kpi-card .delta.up { color:var(--success); }
+.kpi-card .delta.down { color:var(--error); }
+
+/* Data table */
+.data-table { width:100%; border-collapse:collapse; font-size:12px; }
+.data-table th { text-align:left; padding:5px 10px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); border-bottom:1px solid var(--border); background:var(--bg-sidebar); position:sticky; top:0; z-index:1; }
+.data-table td { padding:4px 10px; border-bottom:1px solid var(--border); }
+.data-table tr:hover td { background:var(--bg-hover); cursor:pointer; }
+.data-table tr.active td { background:var(--bg-active); }
+.mono { font-family:'JetBrains Mono',monospace; font-size:11px; }
+.pill { display:inline-block; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:600; }
+.pill.ingestion { background:var(--info-bg); color:var(--info); }
+.pill.evidence { background:var(--warning-bg); color:var(--warning); }
+.pill.writing { background:#F3E8FF; color:#7C3AED; }
+.pill.review { background:var(--accent-light); color:var(--accent); }
+.pill.complete { background:var(--success-bg); color:var(--success); }
+
+/* Notes */
+.note-entry { padding:7px 10px; border-bottom:1px solid var(--border); }
+.note-entry .note-header { display:flex; justify-content:space-between; margin-bottom:2px; }
+.note-entry .note-time { font-size:10px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
+.note-entry .note-author { font-size:11px; font-weight:600; }
+.note-entry .note-type { font-size:10px; color:var(--text-accent); margin-bottom:2px; }
+.note-entry .note-text { font-size:11px; color:var(--text-secondary); line-height:1.5; }
+
+/* Chat */
+.chat-container { display:flex; flex-direction:column; height:100%; }
+.chat-messages { flex:1; overflow-y:auto; padding:8px; }
+.chat-msg { margin-bottom:8px; }
+.chat-msg .msg-header { font-size:10px; font-weight:600; margin-bottom:2px; display:flex; align-items:center; gap:4px; }
+.chat-msg .msg-header.ai { color:var(--accent); }
+.chat-msg .msg-header.user { color:var(--success); }
+.chat-msg .msg-body { font-size:11px; color:var(--text-secondary); line-height:1.5; padding:5px 8px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); }
+.chat-msg .msg-body.ai { border-left:2px solid var(--accent); }
+.chat-input-area { padding:6px 8px; border-top:1px solid var(--border); display:flex; gap:6px; background:var(--bg-sidebar); }
+.chat-input { flex:1; padding:5px 8px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px; font-family:inherit; background:var(--bg-input); color:var(--text-primary); outline:none; }
+.chat-input:focus { border-color:var(--border-focus); }
+.chat-send { background:var(--accent); color:white; border:none; border-radius:var(--radius-sm); padding:4px 10px; cursor:pointer; font-size:11px; font-weight:600; }
+
+/* Settings */
+.settings-container { padding:16px 24px; max-width:720px; }
+.settings-section { margin-bottom:20px; }
+.settings-section-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-primary); padding-bottom:6px; border-bottom:1px solid var(--border); margin-bottom:10px; }
+.settings-row { display:flex; align-items:flex-start; gap:16px; padding:7px 0; border-bottom:1px solid var(--border); }
+.settings-row:last-child { border-bottom:none; }
+.settings-label { flex:0 0 180px; }
+.settings-label .label-main { font-size:12px; font-weight:600; color:var(--text-primary); }
+.settings-label .label-desc { font-size:10px; color:var(--text-muted); line-height:1.4; margin-top:2px; }
+.settings-control { flex:1; }
+.settings-input { width:100%; padding:5px 8px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px; font-family:inherit; background:var(--bg-input); color:var(--text-primary); outline:none; }
+.settings-input:focus { border-color:var(--border-focus); }
+.settings-select { width:100%; padding:5px 8px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px; font-family:inherit; background:var(--bg-input); color:var(--text-primary); outline:none; cursor:pointer; }
+.settings-select:focus { border-color:var(--border-focus); }
+.settings-toggle { display:flex; align-items:center; gap:8px; }
+.toggle-switch { width:34px; height:18px; background:var(--border); border-radius:9px; position:relative; cursor:pointer; transition:background 0.2s; }
+.toggle-switch.on { background:var(--accent); }
+.toggle-switch::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; background:white; border-radius:50%; transition:transform 0.2s; }
+.toggle-switch.on::after { transform:translateX(16px); }
+.toggle-label { font-size:11px; color:var(--text-secondary); }
+.settings-btn { padding:5px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:11px; font-weight:600; font-family:inherit; cursor:pointer; background:var(--bg-input); color:var(--text-primary); }
+.settings-btn:hover { background:var(--bg-hover); }
+.settings-btn.primary { background:var(--accent); color:white; border-color:var(--accent); }
+.settings-btn.primary:hover { background:var(--accent-hover); }
+.settings-btn.danger { color:var(--error); border-color:var(--error); }
+.settings-btn.danger:hover { background:var(--error-bg); }
+.settings-btn-row { display:flex; gap:8px; margin-top:4px; }
+.settings-badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:600; }
+.settings-badge.connected { background:var(--success-bg); color:var(--success); }
+.settings-badge.disconnected { background:var(--bg-badge); color:var(--text-muted); }
+.settings-nav { display:flex; flex-direction:column; gap:1px; }
+.settings-nav-item { display:flex; align-items:center; gap:8px; padding:6px 12px; cursor:pointer; font-size:12px; color:var(--text-secondary); border-radius:var(--radius-sm); }
+.settings-nav-item:hover { background:var(--bg-hover); }
+.settings-nav-item.active { background:var(--bg-active); color:var(--text-accent); font-weight:600; }
+.settings-nav-item i { width:14px; height:14px; }
+.settings-layout { display:flex; gap:0; height:100%; }
+.settings-sidebar { width:180px; border-right:1px solid var(--border); padding:8px; background:var(--bg-sidebar); overflow-y:auto; }
+.settings-content { flex:1; overflow-y:auto; }
+.settings-panel { display:none; }
+.settings-panel.active { display:block; }
+
+/* Info grid */
+.info-grid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--border); }
+.info-cell { background:var(--bg-panel); padding:5px 10px; }
+.info-cell .info-label { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:1px; }
+.info-cell .info-value { font-size:11px; font-weight:600; }
+
+/* Gate progress */
+.gate-progress { padding:6px 10px; }
+.gate-step { display:flex; align-items:flex-start; gap:8px; padding:3px 0; }
+.gate-dot { width:16px; height:16px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; flex-shrink:0; }
+.gate-dot.done { background:var(--success); border-color:var(--success); color:white; }
+.gate-dot.current { background:var(--accent); border-color:var(--accent); color:white; }
+.gate-dot.pending { color:var(--text-muted); }
+.gate-line { width:2px; height:10px; background:var(--border); margin-left:7px; }
+.gate-line.done { background:var(--success); }
+.gate-label .gate-name { font-size:11px; font-weight:600; }
+.gate-label .gate-desc { font-size:10px; color:var(--text-muted); }
+
+/* Status bar */
+.statusbar { height:var(--statusbar-height); background:var(--bg-status); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 10px; font-size:11px; color:var(--text-muted); }
+.statusbar-left,.statusbar-right { display:flex; align-items:center; gap:12px; }
+.status-dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+.status-dot.ok { background:var(--success); }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="titlebar">
+  <div class="titlebar-left">
+    <span class="brand">PSYGIL</span>
+  </div>
+  <div class="titlebar-right">
+    <button class="titlebar-btn" onclick="openSettings()" title="Settings"><i data-lucide="settings" style="width:14px;height:14px"></i></button>
+    <button class="titlebar-btn" onclick="cycleTheme()" id="themeBtn" title="Toggle theme"><i data-lucide="sun" style="width:14px;height:14px"></i></button>
+    <div class="user-profile"><span class="user-avatar">TI</span> Dr. Irwin <i data-lucide="chevron-down" style="width:12px;height:12px;color:var(--text-muted)"></i></div>
+  </div>
+</div>
+
+<div class="main-layout">
+  <div class="content-area">
+    <!-- LEFT COLUMN -->
+    <div class="panel-column left-col" id="leftCol">
+      <div class="panel" style="flex:3">
+        <div class="panel-header"><span>Cases</span><div class="panel-header-actions"><button title="Open Folder"><i data-lucide="folder-open" style="width:12px;height:12px"></i></button><button title="Import Documents"><i data-lucide="upload" style="width:12px;height:12px"></i></button><button title="New Case"><i data-lucide="plus-circle" style="width:12px;height:12px"></i></button></div></div>
+        <div class="panel-body" style="padding:4px 0">
+          <div class="tree-item folder active"><i data-lucide="folder-open"></i> Active Cases <span class="count">12</span></div>
+          <div class="tree-item folder" style="padding-left:26px"><i data-lucide="folder-open"></i> #2026-0147 — Johnson, CST</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file-spreadsheet"></i> MMPI-3_Q-global.pdf <span class="count">Score</span></div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file-spreadsheet"></i> PAI_PARiConnect.pdf <span class="count">Score</span></div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file-spreadsheet"></i> WAIS-V_Q-global.pdf <span class="count">Score</span></div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> Hospital_Records_2024.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> Court_Order_CST.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> Prior_Eval_Dr_Smith.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="mic"></i> Interview_Session1.vtt</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="mic"></i> Interview_Session2.vtt</div>
+          <div class="tree-item folder" style="padding-left:26px"><i data-lucide="folder-open"></i> #2026-0152 — Martinez, Custody</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> Court_Order_Custody_Eval.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> Petition_for_Custody_Mod.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file-spreadsheet"></i> MMPI-3_Mother_Q-global.pdf <span class="count">Score</span></div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file-spreadsheet"></i> MMPI-3_Father_Q-global.pdf <span class="count">Score</span></div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file-spreadsheet"></i> PAI_Mother_PARiConnect.pdf <span class="count">Score</span></div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file-spreadsheet"></i> PAI_Father_PARiConnect.pdf <span class="count">Score</span></div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> CPS_Investigation_Report.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> School_Records_Child_A.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> School_Records_Child_B.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> Pediatrician_Records.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> Prior_Custody_Eval_2023.pdf</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="mic"></i> Interview_Mother_Session1.vtt</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="mic"></i> Interview_Mother_Session2.vtt</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="mic"></i> Interview_Father_Session1.vtt</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="mic"></i> Interview_Father_Session2.vtt</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="mic"></i> Collateral_Teacher_ChildA.m4a</div>
+          <div class="tree-item" style="padding-left:46px"><i data-lucide="file"></i> Parent_Child_Observation_Notes.docx</div>
+          <div class="tree-item folder" style="padding-left:26px"><i data-lucide="folder"></i> #2026-0158 — Williams, Risk</div>
+          <div class="tree-item folder" style="padding-left:26px"><i data-lucide="folder"></i> #2026-0161 — Chen, PTSD</div>
+          <div class="tree-item folder" style="padding-left:26px"><i data-lucide="folder"></i> #2026-0165 — Okafor, ADHD</div>
+          <div class="tree-item folder"><i data-lucide="folder"></i> Pending Review <span class="count">5</span></div>
+          <div class="tree-item folder"><i data-lucide="folder"></i> Completed <span class="count">23</span></div>
+          <div class="tree-item folder"><i data-lucide="folder"></i> Archived <span class="count">142</span></div>
+        </div>
+      </div>
+      <div class="h-splitter"></div>
+      <div class="panel" style="flex:2">
+        <div class="panel-header"><span>Resources</span><div class="panel-header-actions"><button title="Upload"><i data-lucide="upload" style="width:12px;height:12px"></i></button></div></div>
+        <div class="panel-body" style="padding:4px 0">
+          <div class="section-label">Report Templates</div>
+          <div class="template-item"><i data-lucide="shield"></i> Competency to Stand Trial <span class="meta">Forensic</span></div>
+          <div class="template-item"><i data-lucide="users"></i> Child Custody Evaluation <span class="meta">Forensic</span></div>
+          <div class="template-item"><i data-lucide="alert-triangle"></i> Violence Risk Assessment <span class="meta">Forensic</span></div>
+          <div class="template-item"><i data-lucide="brain"></i> Diagnostic Assessment <span class="meta">Clinical</span></div>
+          <div class="template-item"><i data-lucide="activity"></i> Cognitive Screening <span class="meta">Clinical</span></div>
+          <div class="template-item"><i data-lucide="clipboard-check"></i> Disability Determination <span class="meta">Clinical</span></div>
+          <div class="section-label">Writing Samples</div>
+          <div class="template-item"><i data-lucide="file-text"></i> CST_Sample_Report_2024.docx <span class="meta">32pg</span></div>
+          <div class="template-item"><i data-lucide="file-text"></i> Custody_Sample_2023.docx <span class="meta">28pg</span></div>
+          <div class="template-item"><i data-lucide="file-text"></i> Risk_Assessment_Sample.docx <span class="meta">18pg</span></div>
+          <div class="section-label">Practice Documents</div>
+          <div class="template-item"><i data-lucide="file"></i> Style_Guide_DrIrwin.json <span class="meta">Auto</span></div>
+          <div class="template-item"><i data-lucide="file"></i> Informed_Consent_Forensic.docx <span class="meta">2pg</span></div>
+          <div class="template-item"><i data-lucide="file"></i> Fee_Agreement_Template.docx <span class="meta">1pg</span></div>
+          <div class="section-label">Support Documents</div>
+          <div class="template-item"><i data-lucide="book-open"></i> DSM-5-TR Quick Reference <span class="meta">Ref</span></div>
+          <div class="template-item"><i data-lucide="book-open"></i> Dusky Standard Guide <span class="meta">Ref</span></div>
+          <div class="template-item"><i data-lucide="book-open"></i> Court Formatting Rules — CO <span class="meta">Ref</span></div>
+          <div class="upload-btn"><i data-lucide="plus" style="width:12px;height:12px"></i> Upload document...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="splitter" id="leftSplitter"></div>
+
+    <!-- CENTER COLUMN -->
+    <div class="panel-column center-col" id="centerCol">
+      <div class="editor-tabs" id="editorTabs">
+        <div class="editor-tab active" onclick="switchEditorTab('dashboard')"><i data-lucide="layout-dashboard"></i> Dashboard <span class="close">&times;</span></div>
+        <div class="editor-tab" onclick="switchEditorTab('case')"><i data-lucide="file-text"></i> #2026-0147 <span class="close">&times;</span></div>
+        <div class="editor-tab" onclick="switchEditorTab('gate')"><i data-lucide="shield-check"></i> Gate 2: Diagnostic <span class="close">&times;</span></div>
+      </div>
+      <!-- Dashboard content (default) -->
+      <div class="panel" style="flex:3" id="editorContent_dashboard">
+        <div class="panel-body">
+          <div class="kpi-row">
+            <div class="kpi-card"><div class="label">Active Cases</div><div class="value" style="color:var(--accent)">47</div><div class="delta up">+3 this week</div></div>
+            <div class="kpi-card"><div class="label">Pending Reviews</div><div class="value" style="color:var(--warning)">12</div><div class="delta down">2 overdue</div></div>
+            <div class="kpi-card"><div class="label">Reports This Month</div><div class="value" style="color:var(--success)">23</div><div class="delta up">+8 vs last month</div></div>
+            <div class="kpi-card"><div class="label">Avg Time / Report</div><div class="value">2.1<span style="font-size:11px;font-weight:400">h</span></div><div class="delta up">-1.4h vs manual</div></div>
+          </div>
+          <div style="padding:0 10px 10px">
+            <table class="data-table">
+              <thead><tr><th>Case #</th><th>Patient ID</th><th>Eval Type</th><th>Status</th><th>Assigned</th><th>Updated</th><th>Priority</th></tr></thead>
+              <tbody>
+                <tr class="active"><td class="mono">#2026-0147</td><td class="mono">PT-4821</td><td>CST</td><td><span class="pill evidence">Evidence Mapping</span></td><td>Dr. Irwin</td><td class="mono">2h ago</td><td><span style="color:var(--error)">&#9679;</span> High</td></tr>
+                <tr><td class="mono">#2026-0152</td><td class="mono">PT-5103</td><td>Custody</td><td><span class="pill writing">Writing</span></td><td>Dr. Irwin</td><td class="mono">4h ago</td><td><span style="color:var(--warning)">&#9679;</span> Med</td></tr>
+                <tr><td class="mono">#2026-0158</td><td class="mono">PT-5247</td><td>Risk Assessment</td><td><span class="pill ingestion">Ingestion</span></td><td>Dr. Irwin</td><td class="mono">1d ago</td><td><span style="color:var(--error)">&#9679;</span> High</td></tr>
+                <tr><td class="mono">#2026-0161</td><td class="mono">PT-5312</td><td>PTSD Dx</td><td><span class="pill review">Gate 3 Review</span></td><td>Dr. Irwin</td><td class="mono">1d ago</td><td><span style="color:var(--text-muted)">&#9679;</span> Low</td></tr>
+                <tr><td class="mono">#2026-0165</td><td class="mono">PT-5401</td><td>ADHD Dx</td><td><span class="pill ingestion">Ingestion</span></td><td>J. Torres (psych)</td><td class="mono">2d ago</td><td><span style="color:var(--warning)">&#9679;</span> Med</td></tr>
+                <tr><td class="mono">#2026-0139</td><td class="mono">PT-4710</td><td>CST</td><td><span class="pill complete">Complete</span></td><td>Dr. Irwin</td><td class="mono">3d ago</td><td><span style="color:var(--text-muted)">&#9679;</span> —</td></tr>
+                <tr><td class="mono">#2026-0134</td><td class="mono">PT-4655</td><td>Custody</td><td><span class="pill complete">Complete</span></td><td>Dr. Irwin</td><td class="mono">5d ago</td><td><span style="color:var(--text-muted)">&#9679;</span> —</td></tr>
+                <tr><td class="mono">#2026-0128</td><td class="mono">PT-4590</td><td>Dementia Dx</td><td><span class="pill complete">Complete</span></td><td>Dr. Irwin</td><td class="mono">1w ago</td><td><span style="color:var(--text-muted)">&#9679;</span> —</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="h-splitter"></div>
+      <div class="panel" style="flex:1;min-height:130px">
+        <div class="panel-header"><span>Status — #2026-0147</span></div>
+        <div class="panel-body" style="padding:0">
+          <!-- Gate tabs (horizontal) -->
+          <div style="display:flex;border-bottom:1px solid var(--border);background:var(--bg-sidebar)">
+            <div class="gate-tab done active" onclick="switchGateTab(0)" id="gateTab0" style="flex:1;display:flex;align-items:center;gap:5px;padding:5px 10px;cursor:pointer;font-size:11px;border-bottom:2px solid var(--accent)">
+              <span style="width:14px;height:14px;border-radius:50%;background:var(--success);color:white;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0">&#10003;</span>
+              <span style="font-weight:600;color:var(--text-primary)">Gate 1: Data</span>
+            </div>
+            <div class="gate-tab" onclick="switchGateTab(1)" id="gateTab1" style="flex:1;display:flex;align-items:center;gap:5px;padding:5px 10px;cursor:pointer;font-size:11px;border-bottom:2px solid transparent">
+              <span style="width:14px;height:14px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0">2</span>
+              <span style="font-weight:600;color:var(--text-secondary)">Gate 2: Diagnostic</span>
+            </div>
+            <div class="gate-tab" onclick="switchGateTab(2)" id="gateTab2" style="flex:1;display:flex;align-items:center;gap:5px;padding:5px 10px;cursor:pointer;font-size:11px;border-bottom:2px solid transparent">
+              <span style="width:14px;height:14px;border-radius:50%;border:2px solid var(--border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0">3</span>
+              <span style="font-weight:500;color:var(--text-muted)">Gate 3: Attestation</span>
+            </div>
+          </div>
+          <!-- Gate detail panels -->
+          <div id="gateDetail0" class="gate-detail" style="display:none">
+            <div class="info-grid">
+              <div class="info-cell"><div class="info-label">Status</div><div class="info-value" style="color:var(--success)">&#10003; Complete</div></div>
+              <div class="info-cell"><div class="info-label">Completed</div><div class="info-value mono">Mar 17, 2026</div></div>
+              <div class="info-cell"><div class="info-label">Agent</div><div class="info-value">Ingestor Agent</div></div>
+              <div class="info-cell"><div class="info-label">Documents Ingested</div><div class="info-value mono">8 files</div></div>
+              <div class="info-cell"><div class="info-label">Score Reports Parsed</div><div class="info-value mono">3 (MMPI-3, PAI, WAIS-V)</div></div>
+              <div class="info-cell"><div class="info-label">Transcripts Processed</div><div class="info-value mono">2 sessions (94 min)</div></div>
+              <div class="info-cell"><div class="info-label">PII Entities Redacted</div><div class="info-value mono">147 entities</div></div>
+              <div class="info-cell"><div class="info-label">Confirmed By</div><div class="info-value">Dr. Irwin</div></div>
+            </div>
+          </div>
+          <div id="gateDetail1" class="gate-detail">
+            <div class="info-grid">
+              <div class="info-cell"><div class="info-label">Status</div><div class="info-value" style="color:var(--accent)">&#9679; Awaiting Clinician</div></div>
+              <div class="info-cell"><div class="info-label">Agent</div><div class="info-value" style="color:var(--accent)">Diagnostician Agent</div></div>
+              <div class="info-cell"><div class="info-label">Validity Assessment</div><div class="info-value" style="color:var(--success)">&#10003; No effort concerns</div></div>
+              <div class="info-cell"><div class="info-label">Diagnoses Mapped</div><div class="info-value mono">4 potential</div></div>
+              <div class="info-cell"><div class="info-label">LLM Provider</div><div class="info-value mono">Claude Sonnet</div></div>
+              <div class="info-cell"><div class="info-label">Token Usage</div><div class="info-value mono">12,847 / 200K</div></div>
+              <div class="info-cell"><div class="info-label">PII Status</div><div class="info-value" style="color:var(--success)">&#10003; Safe Harbor</div></div>
+              <div class="info-cell"><div class="info-label">Cost This Eval</div><div class="info-value mono">$1.84</div></div>
+            </div>
+          </div>
+          <div id="gateDetail2" class="gate-detail" style="display:none">
+            <div class="info-grid">
+              <div class="info-cell"><div class="info-label">Status</div><div class="info-value" style="color:var(--text-muted)">&#9679; Pending</div></div>
+              <div class="info-cell"><div class="info-label">Agents</div><div class="info-value" style="color:var(--text-muted)">Writer + Editor/Legal</div></div>
+              <div class="info-cell"><div class="info-label">Blocked By</div><div class="info-value mono">Gate 2 not complete</div></div>
+              <div class="info-cell"><div class="info-label">Report Draft</div><div class="info-value" style="color:var(--text-muted)">Not started</div></div>
+              <div class="info-cell"><div class="info-label">Legal Review</div><div class="info-value" style="color:var(--text-muted)">Not started</div></div>
+              <div class="info-cell"><div class="info-label">Attestation</div><div class="info-value" style="color:var(--text-muted)">Not started</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <!-- Settings content (hidden by default) -->
+      <div class="panel" style="flex:1;display:none" id="editorContent_settings">
+        <div class="panel-body" style="padding:0">
+          <div class="settings-layout">
+            <div class="settings-sidebar">
+              <div class="settings-nav">
+                <div class="settings-nav-item active" onclick="switchSettingsPanel('general')"><i data-lucide="sliders-horizontal"></i> General</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('storage')"><i data-lucide="hard-drive"></i> Storage</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('llm')"><i data-lucide="cpu"></i> AI / LLM</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('pii')"><i data-lucide="shield"></i> PII / Privacy</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('audit')"><i data-lucide="scroll-text"></i> Audit Trail</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('diagnoses')"><i data-lucide="stethoscope"></i> Diagnoses</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('instruments')"><i data-lucide="clipboard-list"></i> Instruments</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('templates')"><i data-lucide="file-text"></i> Templates</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('editor')"><i data-lucide="pen-tool"></i> Editor</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('practice')"><i data-lucide="building-2"></i> Practice</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('users')"><i data-lucide="users"></i> Users &amp; Roles</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('appearance')"><i data-lucide="palette"></i> Appearance</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('backup')"><i data-lucide="database"></i> Backup</div>
+                <div class="settings-nav-item" onclick="switchSettingsPanel('about')"><i data-lucide="info"></i> About</div>
+              </div>
+            </div>
+            <div class="settings-content">
+              <!-- GENERAL -->
+              <div class="settings-panel active" id="settingsPanel_general">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">General Settings</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Application Name</div><div class="label-desc">Displayed in titlebar and exports</div></div>
+                      <div class="settings-control"><input class="settings-input" value="PSYGIL" placeholder="Application name"></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Default Evaluation Type</div><div class="label-desc">Pre-selected when creating a new case</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>Competency to Stand Trial</option><option>Child Custody</option><option>Violence Risk Assessment</option><option>Diagnostic Assessment</option><option>Cognitive Screening</option><option>Disability Determination</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Auto-Save Interval</div><div class="label-desc">Seconds between automatic saves</div></div>
+                      <div class="settings-control"><input class="settings-input" type="number" value="30" min="10" max="300" style="width:80px"> <span style="font-size:11px;color:var(--text-muted);margin-left:4px">seconds</span></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Startup View</div><div class="label-desc">What to show when the app opens</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>Dashboard</option><option>Last open case</option><option>New case wizard</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Jurisdiction</div><div class="label-desc">Default court formatting and legal standards</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>Colorado</option><option>California</option><option>New York</option><option>Texas</option><option>Florida</option><option>Federal</option></select></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- STORAGE -->
+              <div class="settings-panel" id="settingsPanel_storage">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Storage Configuration</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Storage Mode</div><div class="label-desc">How and where case files are stored</div></div>
+                      <div class="settings-control">
+                        <select class="settings-select" id="storageModeSelect" onchange="toggleStorageOptions()">
+                          <option value="local">Local Only (Solo Practitioner)</option>
+                          <option value="shared">Shared Network Drive</option>
+                          <option value="o365">Microsoft Office 365</option>
+                          <option value="gdrive">Google Drive</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div id="storageLocal">
+                      <div class="settings-row">
+                        <div class="settings-label"><div class="label-main">Local Data Path</div><div class="label-desc">Where the encrypted database lives</div></div>
+                        <div class="settings-control"><div style="display:flex;gap:6px"><input class="settings-input" value="~/Library/Application Support/Psygil/data" readonly style="flex:1"><button class="settings-btn">Browse</button></div></div>
+                      </div>
+                      <div class="settings-row">
+                        <div class="settings-label"><div class="label-main">Encryption</div><div class="label-desc">SQLCipher AES-256 at rest</div></div>
+                        <div class="settings-control"><div class="settings-toggle"><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div><span class="toggle-label">Enabled (recommended)</span></div></div>
+                      </div>
+                    </div>
+                    <div id="storageShared" style="display:none">
+                      <div class="settings-row">
+                        <div class="settings-label"><div class="label-main">Network Path</div><div class="label-desc">UNC path or mounted volume</div></div>
+                        <div class="settings-control"><div style="display:flex;gap:6px"><input class="settings-input" placeholder="\\\\server\\psygil or /Volumes/Share/psygil" style="flex:1"><button class="settings-btn">Browse</button></div></div>
+                      </div>
+                      <div class="settings-row">
+                        <div class="settings-label"><div class="label-main">Connection Test</div><div class="label-desc">Verify network share is accessible</div></div>
+                        <div class="settings-control"><div class="settings-btn-row"><button class="settings-btn primary">Test Connection</button><span class="settings-badge disconnected">Not tested</span></div></div>
+                      </div>
+                    </div>
+                    <div id="storageCloud" style="display:none">
+                      <div class="settings-row">
+                        <div class="settings-label"><div class="label-main">Account</div><div class="label-desc">Sign in to connect cloud storage</div></div>
+                        <div class="settings-control"><div class="settings-btn-row"><button class="settings-btn primary">Sign In with Microsoft</button><span class="settings-badge disconnected">Not connected</span></div></div>
+                      </div>
+                      <div class="settings-row">
+                        <div class="settings-label"><div class="label-main">SharePoint Site</div><div class="label-desc">Select the document library for case files</div></div>
+                        <div class="settings-control"><select class="settings-select" disabled><option>Sign in to see sites...</option></select></div>
+                      </div>
+                      <div class="settings-row">
+                        <div class="settings-label"><div class="label-main">BAA Status</div><div class="label-desc">HIPAA Business Associate Agreement</div></div>
+                        <div class="settings-control"><span class="settings-badge disconnected">Verify after sign-in</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="settings-section">
+                    <div class="settings-section-title">Database</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Database Size</div><div class="label-desc">Current SQLCipher database</div></div>
+                      <div class="settings-control"><span style="font-size:12px;font-family:'JetBrains Mono',monospace">148.2 MB</span></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">WAL Mode</div><div class="label-desc">Write-Ahead Logging for concurrent access</div></div>
+                      <div class="settings-control"><div class="settings-toggle"><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div><span class="toggle-label">Enabled</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- AI / LLM -->
+              <div class="settings-panel" id="settingsPanel_llm">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">AI Model Configuration</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Primary LLM</div><div class="label-desc">Used for all agent processing</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>Claude Sonnet (Anthropic)</option><option>Claude Opus (Anthropic)</option><option>GPT-4o (OpenAI)</option><option>Local — Ollama</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Fallback LLM</div><div class="label-desc">Used when primary is unavailable</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>GPT-4o (OpenAI)</option><option>Claude Sonnet (Anthropic)</option><option>None — fail if primary down</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Anthropic API Key</div><div class="label-desc">Stored in OS keychain, never on disk</div></div>
+                      <div class="settings-control"><div style="display:flex;gap:6px"><input class="settings-input" type="password" value="sk-ant-••••••••••••" style="flex:1"><button class="settings-btn">Update</button></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">OpenAI API Key</div><div class="label-desc">Stored in OS keychain, never on disk</div></div>
+                      <div class="settings-control"><div style="display:flex;gap:6px"><input class="settings-input" type="password" value="sk-••••••••••••" style="flex:1"><button class="settings-btn">Update</button></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Max Tokens / Request</div><div class="label-desc">Upper limit per agent invocation</div></div>
+                      <div class="settings-control"><input class="settings-input" type="number" value="8192" style="width:100px"></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Monthly Spend Limit</div><div class="label-desc">Alert when LLM costs approach this</div></div>
+                      <div class="settings-control"><div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px">$</span><input class="settings-input" type="number" value="50" style="width:80px"></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">PHI Review Queue</div><div class="label-desc">Review de-identified text before sending to LLM</div></div>
+                      <div class="settings-control"><div class="settings-toggle"><div class="toggle-switch" onclick="this.classList.toggle('on')"></div><span class="toggle-label">Disabled (auto-send after PII pass)</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- PII / PRIVACY -->
+              <div class="settings-panel" id="settingsPanel_pii">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">PII Detection &amp; Privacy</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">PII Engine</div><div class="label-desc">Microsoft Presidio via Python sidecar</div></div>
+                      <div class="settings-control"><span class="settings-badge connected">Running</span> <span style="font-size:10px;color:var(--text-muted);margin-left:6px">v2.2.35 • spaCy en_core_web_lg</span></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Detection Threshold</div><div class="label-desc">Confidence score for auto-redaction</div></div>
+                      <div class="settings-control"><input class="settings-input" type="number" value="0.75" min="0.5" max="1.0" step="0.05" style="width:80px"> <span style="font-size:10px;color:var(--text-muted);margin-left:4px">Below this → human review queue</span></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Redaction Style</div><div class="label-desc">How PII appears after redaction</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>[PERSON_1], [DATE_1], etc.</option><option>[REDACTED]</option><option>████████</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Safe Harbor Validation</div><div class="label-desc">All 18 HIPAA identifier categories</div></div>
+                      <div class="settings-control"><div class="settings-toggle"><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div><span class="toggle-label">Enforce Safe Harbor (recommended)</span></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Custom PII Patterns</div><div class="label-desc">Add practice-specific patterns (case numbers, etc.)</div></div>
+                      <div class="settings-control"><div class="settings-btn-row"><button class="settings-btn">Manage Patterns</button><span style="font-size:10px;color:var(--text-muted)">3 custom patterns</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- AUDIT TRAIL -->
+              <div class="settings-panel" id="settingsPanel_audit">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Audit Trail Configuration</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Granularity</div><div class="label-desc">Level of detail recorded in audit log</div></div>
+                      <div class="settings-control"><select class="settings-select"><option selected>Decision Record Only (recommended)</option><option>Full Detail</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Timestamp Precision</div><div class="label-desc">Date-only is safer for cross-examination</div></div>
+                      <div class="settings-control"><select class="settings-select"><option selected>Date only (recommended)</option><option>Date + time</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Log Rejected Diagnoses</div><div class="label-desc">Legal panel strongly recommends OFF</div></div>
+                      <div class="settings-control"><div class="settings-toggle"><div class="toggle-switch" onclick="this.classList.toggle('on')"></div><span class="toggle-label">Disabled (recommended)</span></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Export Audit Trail</div><div class="label-desc">Generate a report for a specific case</div></div>
+                      <div class="settings-control"><div class="settings-btn-row"><button class="settings-btn">Export for Case...</button><button class="settings-btn">Export All</button></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- DIAGNOSES -->
+              <div class="settings-panel" id="settingsPanel_diagnoses">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Diagnosis Catalog</div>
+                    <div style="margin-bottom:10px;font-size:11px;color:var(--text-secondary)">Built-in diagnoses with DSM-5-TR codes. Add custom diagnoses for your practice specialization.</div>
+                    <table class="data-table" style="font-size:11px">
+                      <thead><tr><th>Code</th><th>Diagnosis</th><th>Category</th><th>Primary Instruments</th><th></th></tr></thead>
+                      <tbody>
+                        <tr><td class="mono">F32.1</td><td>Major Depressive Disorder</td><td>Mood</td><td>BDI-2, MMPI-3, PHQ-9</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                        <tr><td class="mono">F20.x</td><td>Schizophrenia Spectrum</td><td>Psychotic</td><td>MMPI-3, PAI, SIRS-2</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                        <tr><td class="mono">F43.10</td><td>PTSD</td><td>Trauma</td><td>CAPS-5, PCL-5, MMPI-3</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                        <tr><td class="mono">F31.x</td><td>Bipolar Disorder</td><td>Mood</td><td>MMPI-3, PAI, MDQ</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                        <tr><td class="mono">F60.2</td><td>Antisocial Personality Disorder</td><td>Personality</td><td>PCL-R, MMPI-3, PAI</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                        <tr><td class="mono">F1x.x</td><td>Substance Use Disorders</td><td>Substance</td><td>AUDIT, DAST-10, SASSI-4</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                        <tr><td class="mono">F02/G31</td><td>Neurocognitive / Dementia</td><td>Cognitive</td><td>WAIS-V, MoCA, RBANS</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                        <tr><td class="mono">F84.0</td><td>Autism Spectrum Disorder</td><td>Developmental</td><td>ADOS-2, CARS-2, SRS-2</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                        <tr><td class="mono">F90.x</td><td>ADHD</td><td>Developmental</td><td>Conners-4, CAARS-2</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                        <tr><td class="mono">F7x</td><td>Intellectual Disability</td><td>Cognitive</td><td>WAIS-V, WISC-V, ABAS-3</td><td style="color:var(--text-muted)">Built-in</td></tr>
+                      </tbody>
+                    </table>
+                    <div style="margin-top:8px"><button class="settings-btn primary">+ Add Custom Diagnosis</button></div>
+                  </div>
+                </div>
+              </div>
+              <!-- INSTRUMENTS -->
+              <div class="settings-panel" id="settingsPanel_instruments">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Instrument Library</div>
+                    <div style="margin-bottom:10px;font-size:11px;color:var(--text-secondary)">Assessment tools and measures. Configured for score report parsing from Q-global, PARiConnect, and manual entry.</div>
+                    <table class="data-table" style="font-size:11px">
+                      <thead><tr><th>Abbrev</th><th>Full Name</th><th>Category</th><th>Import</th></tr></thead>
+                      <tbody>
+                        <tr><td class="mono">WAIS-V</td><td>Wechsler Adult Intelligence Scale</td><td>Cognitive</td><td><span class="pill evidence">Q-global</span></td></tr>
+                        <tr><td class="mono">MMPI-3</td><td>Minnesota Multiphasic Personality Inventory</td><td>Personality</td><td><span class="pill evidence">Q-global</span></td></tr>
+                        <tr><td class="mono">PAI</td><td>Personality Assessment Inventory</td><td>Personality</td><td><span class="pill writing">PARiConnect</span></td></tr>
+                        <tr><td class="mono">PCL-R</td><td>Psychopathy Checklist — Revised</td><td>Risk</td><td><span class="pill ingestion">Manual</span></td></tr>
+                        <tr><td class="mono">CAPS-5</td><td>Clinician-Administered PTSD Scale</td><td>Trauma</td><td><span class="pill ingestion">Manual</span></td></tr>
+                        <tr><td class="mono">HCR-20v3</td><td>Historical-Clinical-Risk Management</td><td>Risk</td><td><span class="pill ingestion">Manual</span></td></tr>
+                        <tr><td class="mono">TOMM</td><td>Test of Memory Malingering</td><td>Effort</td><td><span class="pill ingestion">Manual</span></td></tr>
+                        <tr><td class="mono">SIRS-2</td><td>Structured Interview of Reported Symptoms</td><td>Effort</td><td><span class="pill ingestion">Manual</span></td></tr>
+                      </tbody>
+                    </table>
+                    <div style="margin-top:8px;display:flex;gap:8px"><button class="settings-btn primary">+ Add Instrument</button><button class="settings-btn">Manage Mappings</button></div>
+                  </div>
+                </div>
+              </div>
+              <!-- TEMPLATES -->
+              <div class="settings-panel" id="settingsPanel_templates">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Report Templates</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Active Templates</div><div class="label-desc">Available when creating new evaluations</div></div>
+                      <div class="settings-control"><span style="font-size:12px;font-family:'JetBrains Mono',monospace">6 templates active</span></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Manage Templates</div><div class="label-desc">Edit sections, ordering, and formatting</div></div>
+                      <div class="settings-control"><button class="settings-btn">Open Template Editor</button></div>
+                    </div>
+                  </div>
+                  <div class="settings-section">
+                    <div class="settings-section-title">Writing Style</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Style Rules</div><div class="label-desc">Pre-computed from your writing samples</div></div>
+                      <div class="settings-control"><span style="font-size:11px;color:var(--text-secondary)">3 writing samples analyzed • 47 rules extracted</span></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Upload Samples</div><div class="label-desc">Add prior reports to improve voice matching</div></div>
+                      <div class="settings-control"><div class="settings-btn-row"><button class="settings-btn primary">Upload .docx</button><button class="settings-btn">Re-analyze All</button></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- EDITOR -->
+              <div class="settings-panel" id="settingsPanel_editor">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Document Editor</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Editor Engine</div><div class="label-desc">OnlyOffice Document Editor</div></div>
+                      <div class="settings-control"><span class="settings-badge connected">Community Edition</span></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Edit in Word</div><div class="label-desc">Enable "Open in Word" button on documents</div></div>
+                      <div class="settings-control"><div class="settings-toggle"><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div><span class="toggle-label">Enabled</span></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Default PDF Engine</div><div class="label-desc">Used for "Publish to PDF" button</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>OnlyOffice (built-in)</option><option>System print-to-PDF</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Track Changes</div><div class="label-desc">Show AI-generated content as tracked changes</div></div>
+                      <div class="settings-control"><div class="settings-toggle"><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div><span class="toggle-label">Enabled (recommended)</span></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Spell Check Language</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>English (US)</option><option>English (UK)</option><option>Spanish</option></select></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- PRACTICE -->
+              <div class="settings-panel" id="settingsPanel_practice">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Practice Information</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Practice Name</div></div>
+                      <div class="settings-control"><input class="settings-input" value="Irwin Forensic Psychology, PLLC"></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Address</div></div>
+                      <div class="settings-control"><input class="settings-input" placeholder="123 Main St, Denver, CO 80202"></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Phone / Fax</div></div>
+                      <div class="settings-control"><div style="display:flex;gap:6px"><input class="settings-input" placeholder="Phone" style="flex:1"><input class="settings-input" placeholder="Fax" style="flex:1"></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Practice Profile</div><div class="label-desc">Pre-loads common diagnoses and instruments</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>Forensic — Criminal</option><option>Forensic — Civil</option><option>Clinical General</option><option>Neuropsychology</option><option>Custom</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">NPI Number</div></div>
+                      <div class="settings-control"><input class="settings-input" placeholder="10-digit NPI" style="width:140px"></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">License Number</div></div>
+                      <div class="settings-control"><div style="display:flex;gap:6px"><input class="settings-input" placeholder="License #" style="flex:1"><select class="settings-select" style="width:60px"><option>CO</option><option>CA</option><option>NY</option></select></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- USERS & ROLES -->
+              <div class="settings-panel" id="settingsPanel_users">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Users &amp; Roles</div>
+                    <div style="margin-bottom:10px;font-size:11px;color:var(--text-secondary)">Manage team members and their access levels. Only visible in shared storage modes.</div>
+                    <table class="data-table" style="font-size:11px">
+                      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+                      <tbody>
+                        <tr><td><strong>Dr. Truck Irwin</strong></td><td class="mono">truckirwin@gmail.com</td><td>Psychologist (Admin)</td><td><span class="settings-badge connected">Active</span></td><td style="color:var(--text-muted)">Owner</td></tr>
+                        <tr><td>J. Torres</td><td class="mono">jtorres@practice.com</td><td>Psychometrist</td><td><span class="settings-badge connected">Active</span></td><td><button class="settings-btn" style="padding:2px 8px;font-size:10px">Edit</button></td></tr>
+                        <tr><td>M. Chen</td><td class="mono">mchen@practice.com</td><td>Receptionist</td><td><span class="settings-badge connected">Active</span></td><td><button class="settings-btn" style="padding:2px 8px;font-size:10px">Edit</button></td></tr>
+                      </tbody>
+                    </table>
+                    <div style="margin-top:8px"><button class="settings-btn primary">+ Invite User</button></div>
+                  </div>
+                </div>
+              </div>
+              <!-- APPEARANCE -->
+              <div class="settings-panel" id="settingsPanel_appearance">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Appearance</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Theme</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>Light</option><option>Medium (Dark Blue)</option><option>Dark</option><option>System default</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Font Size</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>Small (12px)</option><option selected>Default (13px)</option><option>Large (14px)</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Panel Density</div></div>
+                      <div class="settings-control"><select class="settings-select"><option selected>Compact</option><option>Comfortable</option><option>Spacious</option></select></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Reset Layout</div><div class="label-desc">Restore default panel sizes and positions</div></div>
+                      <div class="settings-control"><button class="settings-btn danger">Reset to Defaults</button></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- BACKUP -->
+              <div class="settings-panel" id="settingsPanel_backup">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">Backup &amp; Recovery</div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Auto-Backup</div><div class="label-desc">Encrypted local backups</div></div>
+                      <div class="settings-control"><div class="settings-toggle"><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div><span class="toggle-label">Every 24 hours</span></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Backup Location</div></div>
+                      <div class="settings-control"><div style="display:flex;gap:6px"><input class="settings-input" value="~/Library/Application Support/Psygil/backups" readonly style="flex:1"><button class="settings-btn">Browse</button></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Last Backup</div></div>
+                      <div class="settings-control"><span style="font-size:12px;font-family:'JetBrains Mono',monospace">Mar 19, 2026 — 148.2 MB</span></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Manual Actions</div></div>
+                      <div class="settings-control"><div class="settings-btn-row"><button class="settings-btn primary">Backup Now</button><button class="settings-btn">Restore from Backup</button><button class="settings-btn">Export All Data</button></div></div>
+                    </div>
+                    <div class="settings-row">
+                      <div class="settings-label"><div class="label-main">Retention</div><div class="label-desc">How many backups to keep</div></div>
+                      <div class="settings-control"><select class="settings-select"><option>Last 7 backups</option><option>Last 14 backups</option><option selected>Last 30 backups</option><option>Keep all</option></select></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- ABOUT -->
+              <div class="settings-panel" id="settingsPanel_about">
+                <div class="settings-container">
+                  <div class="settings-section">
+                    <div class="settings-section-title">About Psygil</div>
+                    <div class="settings-row"><div class="settings-label"><div class="label-main">Version</div></div><div class="settings-control"><span class="mono">0.1.0-alpha</span></div></div>
+                    <div class="settings-row"><div class="settings-label"><div class="label-main">Electron</div></div><div class="settings-control"><span class="mono">v30.x</span></div></div>
+                    <div class="settings-row"><div class="settings-label"><div class="label-main">OnlyOffice</div></div><div class="settings-control"><span class="mono">Community Edition 8.x</span></div></div>
+                    <div class="settings-row"><div class="settings-label"><div class="label-main">Presidio</div></div><div class="settings-control"><span class="mono">v2.2.35 (Python sidecar)</span></div></div>
+                    <div class="settings-row"><div class="settings-label"><div class="label-main">Database</div></div><div class="settings-control"><span class="mono">SQLCipher 4.x (SQLite 3.x)</span></div></div>
+                    <div class="settings-row"><div class="settings-label"><div class="label-main">Company</div></div><div class="settings-control">Foundry SMB</div></div>
+                    <div class="settings-row"><div class="settings-label"><div class="label-main">License</div></div><div class="settings-control"><div class="settings-btn-row"><button class="settings-btn">View EULA</button><button class="settings-btn">View Privacy Policy</button></div></div></div>
+                    <div class="settings-row"><div class="settings-label"><div class="label-main">Check for Updates</div></div><div class="settings-control"><button class="settings-btn primary">Check Now</button></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    <div class="splitter" id="rightSplitter"></div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="panel-column right-col" id="rightCol">
+      <div class="panel" style="flex:3">
+        <div class="panel-header"><span>Case Notes</span><div class="panel-header-actions"><button><i data-lucide="plus" style="width:12px;height:12px"></i></button><button><i data-lucide="filter" style="width:12px;height:12px"></i></button></div></div>
+        <div class="panel-body">
+          <div class="note-entry"><div class="note-header"><span class="note-author">Ingestor Agent</span><span class="note-time">14:23</span></div><div class="note-type">Score Report Parsed</div><div class="note-text">MMPI-3 from Q-global: 52 scales. Validity: F-r=62T, Fp-r=55T, L-r=48T. Clinical scales extracted.</div></div>
+          <div class="note-entry"><div class="note-header"><span class="note-author">Ingestor Agent</span><span class="note-time">14:18</span></div><div class="note-type">Score Report Parsed</div><div class="note-text">PAI from PARiConnect: 22 scales. Validity: INC=52T, INF=48T, NIM=58T. All acceptable.</div></div>
+          <div class="note-entry"><div class="note-header"><span class="note-author">Dr. Irwin</span><span class="note-time">13:45</span></div><div class="note-type">Clinical Note</div><div class="note-text">Patient cooperative, oriented x4. Speech coherent but tangential. Affect constricted. Denied SI/HI. Endorsed auditory hallucinations — "voices telling me not to trust my lawyer."</div></div>
+          <div class="note-entry"><div class="note-header"><span class="note-author">Ingestor Agent</span><span class="note-time">11:30</span></div><div class="note-type">Transcript Processed</div><div class="note-text">Session 2 (47 min): 312 observations extracted. Flagged: possible psychotic symptoms, competency-relevant statements re: charges.</div></div>
+          <div class="note-entry"><div class="note-header"><span class="note-author">System</span><span class="note-time">11:22</span></div><div class="note-type">Gate 1 Complete</div><div class="note-text">Data confirmed by Dr. Irwin. 8 docs, 3 score reports, 2 transcripts.</div></div>
+          <div class="note-entry"><div class="note-header"><span class="note-author">Diagnostician Agent</span><span class="note-time">11:25</span></div><div class="note-type">Validity Assessment</div><div class="note-text">TOMM Trial 2: 48/50 (adequate). MMPI-3 validity acceptable. No effort concerns. Proceeding with evidence mapping.</div></div>
+        </div>
+      </div>
+      <div class="h-splitter"></div>
+      <div class="panel" style="flex:2">
+        <div class="panel-header"><span>AI Assistant</span><div class="panel-header-actions"><button><i data-lucide="trash-2" style="width:12px;height:12px"></i></button></div></div>
+        <div class="panel-body" style="padding:0">
+          <div class="chat-container">
+            <div class="chat-messages">
+              <div class="chat-msg"><div class="msg-header user"><i data-lucide="user" style="width:10px;height:10px"></i> You</div><div class="msg-body">Summarize the MMPI-3 validity picture.</div></div>
+              <div class="chat-msg"><div class="msg-header ai"><i data-lucide="cpu" style="width:10px;height:10px"></i> Psygil</div><div class="msg-body ai">Valid and interpretable profile. F-r (62T) within normal limits — no over-reporting. Fp-r (55T) no feigned psychopathology. L-r (48T) and K-r (44T) no defensiveness. RBS (58T) no somatic over-reporting. All validity scales acceptable. No caveats needed.</div></div>
+              <div class="chat-msg"><div class="msg-header user"><i data-lucide="user" style="width:10px;height:10px"></i> You</div><div class="msg-body">Competency-relevant statements from the interview?</div></div>
+              <div class="chat-msg"><div class="msg-header ai"><i data-lucide="cpu" style="width:10px;height:10px"></i> Psygil</div><div class="msg-body ai">Three excerpts flagged (Dusky standard):<br><br><strong>1. Understanding of charges:</strong> "I know they say I did something but I don't really understand what a felony means different from the other one"<br><strong>2. Attorney relationship:</strong> "The voices say don't trust him... but I know he's trying to help, I think"<br><strong>3. Courtroom procedures:</strong> "The judge decides if I'm guilty" (partially correct — omitted jury)<br><br>Flagged for Gate 2 psycho-legal analysis. Your clinical assessment will be incorporated.</div></div>
+            </div>
+            <div class="chat-input-area"><input class="chat-input" placeholder="Ask about this case..."><button class="chat-send">Send</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="statusbar-left">
+    <span style="display:flex;align-items:center;gap:4px"><span class="status-dot ok"></span> Connected</span>
+    <span>LLM: Claude Sonnet</span>
+    <span>PII: Safe Harbor &#10003;</span>
+  </div>
+  <div class="statusbar-right">
+    <span>Audit: Decision Record</span>
+    <span>12 cases | 3 pending</span>
+    <span class="mono">v0.1.0-alpha</span>
+  </div>
+</div>
+
+<script>
+lucide.createIcons();
+const themes=['light','medium','dark'],icons=['sun','cloud','moon'];
+let t=parseInt(localStorage.getItem('psygil_theme')||'0');
+document.body.setAttribute('data-theme',themes[t]);
+function cycleTheme(){t=(t+1)%3;document.body.setAttribute('data-theme',themes[t]);localStorage.setItem('psygil_theme',t);document.getElementById('themeBtn').innerHTML=`<i data-lucide="${icons[t]}" style="width:14px;height:14px"></i>`;lucide.createIcons();}
+
+function switchGateTab(idx){
+  document.querySelectorAll('.gate-detail').forEach(d=>d.style.display='none');
+  document.getElementById('gateDetail'+idx).style.display='block';
+  for(let i=0;i<3;i++){
+    const tab=document.getElementById('gateTab'+i);
+    tab.style.borderBottom=i===idx?'2px solid var(--accent)':'2px solid transparent';
+  }
+}
+
+// Settings tab
+function openSettings() {
+  // Add settings tab if not present
+  const tabs = document.getElementById('editorTabs');
+  if (!document.getElementById('settingsTab')) {
+    const tab = document.createElement('div');
+    tab.className = 'editor-tab';
+    tab.id = 'settingsTab';
+    tab.onclick = () => switchEditorTab('settings');
+    tab.innerHTML = '<i data-lucide="settings"></i> Settings <span class="close" onclick="event.stopPropagation();closeSettings()">&times;</span>';
+    tabs.appendChild(tab);
+    lucide.createIcons();
+  }
+  switchEditorTab('settings');
+}
+
+function closeSettings() {
+  const tab = document.getElementById('settingsTab');
+  if (tab) tab.remove();
+  switchEditorTab('dashboard');
+}
+
+function switchEditorTab(tabId) {
+  // Hide all editor content panels
+  document.querySelectorAll('[id^="editorContent_"]').forEach(p => p.style.display = 'none');
+  // Deactivate all tabs
+  document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+  // Show selected content
+  const content = document.getElementById('editorContent_' + tabId);
+  if (content) { content.style.display = ''; content.style.flex = tabId === 'settings' ? '1' : '3'; }
+  // Activate tab
+  if (tabId === 'settings') {
+    const st = document.getElementById('settingsTab');
+    if (st) st.classList.add('active');
+  } else if (tabId === 'dashboard') {
+    document.querySelector('.editor-tab').classList.add('active');
+  } else if (tabId === 'case') {
+    document.querySelectorAll('.editor-tab')[1].classList.add('active');
+  } else if (tabId === 'gate') {
+    document.querySelectorAll('.editor-tab')[2].classList.add('active');
+  }
+  // Also show/hide the status panel below
+  const statusPanel = document.querySelector('.center-col .h-splitter');
+  const statusContent = statusPanel ? statusPanel.nextElementSibling : null;
+  if (statusPanel && statusContent) {
+    statusPanel.style.display = tabId === 'settings' ? 'none' : '';
+    statusContent.style.display = tabId === 'settings' ? 'none' : '';
+  }
+}
+
+function switchSettingsPanel(panelId) {
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.remove('active'));
+  const panel = document.getElementById('settingsPanel_' + panelId);
+  if (panel) panel.classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function toggleStorageOptions() {
+  const mode = document.getElementById('storageModeSelect').value;
+  document.getElementById('storageLocal').style.display = mode === 'local' ? '' : 'none';
+  document.getElementById('storageShared').style.display = mode === 'shared' ? '' : 'none';
+  document.getElementById('storageCloud').style.display = (mode === 'o365' || mode === 'gdrive') ? '' : 'none';
+}
+
+// Splitter: fully draggable, no constraints, persists to localStorage
+function initVSplitter(id, leftEl, rightEl, key) {
+  const s = document.getElementById(id); if (!s) return;
+  // Restore saved size
+  const saved = localStorage.getItem('psygil_' + key);
+  if (saved) { leftEl.style.width = saved + 'px'; leftEl.style.flex = 'none'; }
+  s.addEventListener('mousedown', e => {
+    e.preventDefault(); s.classList.add('dragging');
+    const startX = e.clientX, startW = leftEl.getBoundingClientRect().width;
+    function mv(e) {
+      const w = startW + (e.clientX - startX);
+      if (w > 40) { leftEl.style.width = w + 'px'; leftEl.style.flex = 'none'; }
+    }
+    function up() {
+      s.classList.remove('dragging');
+      localStorage.setItem('psygil_' + key, leftEl.getBoundingClientRect().width);
+      document.removeEventListener('mousemove', mv);
+      document.removeEventListener('mouseup', up);
+    }
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  });
+}
+
+function initHSplitter(splitterEl, topPanel, bottomPanel, key) {
+  if (!splitterEl) return;
+  const saved = localStorage.getItem('psygil_' + key);
+  if (saved) { topPanel.style.flex = 'none'; topPanel.style.height = saved + 'px'; bottomPanel.style.flex = '1'; }
+  splitterEl.addEventListener('mousedown', e => {
+    e.preventDefault(); splitterEl.classList.add('dragging');
+    const startY = e.clientY, startH = topPanel.getBoundingClientRect().height;
+    function mv(e) {
+      const h = startH + (e.clientY - startY);
+      if (h > 40) { topPanel.style.flex = 'none'; topPanel.style.height = h + 'px'; bottomPanel.style.flex = '1'; }
+    }
+    function up() {
+      splitterEl.classList.remove('dragging');
+      localStorage.setItem('psygil_' + key, topPanel.getBoundingClientRect().height);
+      document.removeEventListener('mousemove', mv);
+      document.removeEventListener('mouseup', up);
+    }
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  });
+}
+
+// Init vertical splitters (columns)
+initVSplitter('leftSplitter', document.getElementById('leftCol'), document.getElementById('centerCol'), 'leftColW');
+initVSplitter('rightSplitter', document.getElementById('centerCol'), document.getElementById('rightCol'), 'centerColW');
+
+// Init horizontal splitters (panels within columns)
+document.querySelectorAll('.h-splitter').forEach((hs, i) => {
+  const top = hs.previousElementSibling;
+  const bottom = hs.nextElementSibling;
+  if (top && bottom) initHSplitter(hs, top, bottom, 'hSplit_' + i);
+});
+</script>
+</body>
+</html>

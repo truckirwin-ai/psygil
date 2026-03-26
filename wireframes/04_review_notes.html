@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psygil — Peer Review</title>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-bg-primary: #ffffff;
+            --color-bg-secondary: #f5f5f5;
+            --color-bg-tertiary: #eeeeee;
+            --color-text-primary: #1a1a1a;
+            --color-text-secondary: #666666;
+            --color-text-tertiary: #999999;
+            --color-border: #e0e0e0;
+            --color-accent: #0066cc;
+            --color-accent-light: #e6f0ff;
+            --color-success: #22863a;
+            --color-success-light: #e8f5e9;
+            --color-warning: #d4a500;
+            --color-warning-light: #fff8e1;
+            --color-danger: #cb2431;
+            --color-danger-light: #ffe8e8;
+            --color-info: #0066cc;
+            --color-info-light: #e6f0ff;
+            --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-family-mono: 'JetBrains Mono', 'Monaco', monospace;
+        }
+
+        body.theme-dark {
+            --color-bg-primary: #1e1e1e;
+            --color-bg-secondary: #252525;
+            --color-bg-tertiary: #2d2d2d;
+            --color-text-primary: #e0e0e0;
+            --color-text-secondary: #a0a0a0;
+            --color-text-tertiary: #707070;
+            --color-border: #404040;
+            --color-accent: #4a9eff;
+            --color-accent-light: #1a3a52;
+            --color-success: #4caf50;
+            --color-success-light: #1b5e20;
+            --color-warning: #ffa726;
+            --color-warning-light: #4d2200;
+            --color-danger: #ef5350;
+            --color-danger-light: #5d1f1a;
+            --color-info: #4a9eff;
+            --color-info-light: #1a3a52;
+        }
+
+        body.theme-high-contrast {
+            --color-bg-primary: #000000;
+            --color-bg-secondary: #1a1a1a;
+            --color-bg-tertiary: #333333;
+            --color-text-primary: #ffffff;
+            --color-text-secondary: #cccccc;
+            --color-text-tertiary: #999999;
+            --color-border: #555555;
+            --color-accent: #00aaff;
+            --color-accent-light: #003366;
+            --color-success: #00ff00;
+            --color-success-light: #003300;
+            --color-warning: #ffff00;
+            --color-warning-light: #333300;
+            --color-danger: #ff0000;
+            --color-danger-light: #330000;
+            --color-info: #00aaff;
+            --color-info-light: #003366;
+        }
+
+        body {
+            font-family: var(--font-family-sans);
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            font-size: 13px;
+            line-height: 1.4;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Titlebar */
+        .titlebar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 36px;
+            background-color: var(--color-bg-secondary);
+            border-bottom: 1px solid var(--color-border);
+            padding: 0 12px;
+            flex-shrink: 0;
+        }
+
+        .titlebar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        .titlebar-center {
+            flex: 1;
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--color-text-secondary);
+        }
+
+        .titlebar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle:hover {
+            color: var(--color-text-primary);
+        }
+
+        /* Main content */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Left sidebar - Review queue */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            width: 280px;
+            border-right: 1px solid var(--color-border);
+            background-color: var(--color-bg-primary);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+
+        .panel-header-title {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .panel-header-icon {
+            background: none;
+            border: none;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+        }
+
+        .panel-header-icon:hover {
+            color: var(--color-text-primary);
+        }
+
+        .queue-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        /* Tree structure */
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 13px;
+            user-select: none;
+        }
+
+        .tree-node.expanded {
+            font-weight: 500;
+        }
+
+        .tree-toggle {
+            width: 20px;
+            min-width: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--color-text-secondary);
+            font-size: 12px;
+        }
+
+        .tree-label {
+            flex: 1;
+            padding: 2px 4px;
+            cursor: pointer;
+            color: var(--color-text-primary);
+            border-radius: 3px;
+            transition: all 0.15s;
+        }
+
+        .tree-label:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .tree-label.active-case {
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        .tree-label.active-highlight {
+            background-color: var(--color-accent-light);
+            color: var(--color-accent);
+            font-weight: 600;
+            border-left: 2px solid var(--color-accent);
+            padding-left: 2px;
+        }
+
+        .tree-node-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tree-indent {
+            display: flex;
+            flex-direction: column;
+            margin-left: 16px;
+        }
+
+        /* Original queue item styles kept for backward compatibility */
+        .queue-item {
+            padding: 10px;
+            margin-bottom: 6px;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            background-color: var(--color-bg-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .queue-item:hover {
+            background-color: var(--color-bg-tertiary);
+            border-color: var(--color-accent);
+        }
+
+        .queue-item.active {
+            border-color: var(--color-accent);
+            background-color: var(--color-accent-light);
+        }
+
+        .queue-item-id {
+            font-family: var(--font-family-mono);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        .queue-item-case {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin-top: 2px;
+        }
+
+        .queue-item-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-size: 11px;
+        }
+
+        .queue-item-author {
+            color: var(--color-text-tertiary);
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .status-pill.ready {
+            background-color: var(--color-info-light);
+            color: var(--color-info);
+        }
+
+        .status-pill.revisions {
+            background-color: var(--color-warning-light);
+            color: var(--color-warning);
+        }
+
+        .status-pill.approved {
+            background-color: var(--color-success-light);
+            color: var(--color-success);
+        }
+
+        .queue-timestamp {
+            color: var(--color-text-tertiary);
+            font-size: 11px;
+        }
+
+        .stats-card {
+            padding: 12px;
+            margin: 8px;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            background-color: var(--color-bg-secondary);
+            flex-shrink: 0;
+        }
+
+        .stats-card-title {
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .stats-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .stats-label {
+            color: var(--color-text-secondary);
+        }
+
+        .stats-value {
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        /* Center panel - Report content */
+        .center-panel {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            background-color: var(--color-bg-primary);
+            overflow: hidden;
+        }
+
+        .report-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--color-border);
+            background-color: var(--color-bg-secondary);
+            flex-shrink: 0;
+            padding: 0 12px;
+        }
+
+        .report-tab {
+            padding: 10px 12px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--color-text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .report-tab:hover {
+            color: var(--color-text-primary);
+        }
+
+        .report-tab.active {
+            color: var(--color-accent);
+            border-bottom-color: var(--color-accent);
+        }
+
+        .report-header {
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+            background-color: var(--color-bg-secondary);
+            flex-shrink: 0;
+        }
+
+        .report-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .report-header-title {
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .report-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--color-text-secondary);
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font-family-sans);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-primary {
+            background-color: var(--color-success);
+            color: white;
+            border-color: var(--color-success);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background-color: var(--color-warning);
+            color: white;
+            border-color: var(--color-warning);
+        }
+
+        .btn-secondary:hover {
+            opacity: 0.9;
+        }
+
+        .report-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .section {
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: var(--color-text-primary);
+        }
+
+        .section-content {
+            background-color: var(--color-bg-secondary);
+            padding: 12px;
+            border-radius: 4px;
+            border-left: 3px solid var(--color-border);
+            line-height: 1.5;
+        }
+
+        .diagnosis-item {
+            padding: 8px;
+            margin-bottom: 6px;
+            background-color: var(--color-bg-primary);
+            border: 1px solid var(--color-border);
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .diagnosis-text {
+            flex: 1;
+        }
+
+        .diagnosis-code {
+            font-family: var(--font-family-mono);
+            font-size: 11px;
+            color: var(--color-text-tertiary);
+        }
+
+        .diagnosis-name {
+            font-weight: 500;
+        }
+
+        .diagnosis-evidence {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin-top: 2px;
+        }
+
+        .ai-flag {
+            background-color: var(--color-warning-light);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--color-warning);
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            white-space: nowrap;
+        }
+
+        .comment-marker {
+            background-color: var(--color-info-light);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--color-info);
+            cursor: pointer;
+        }
+
+        .comment-thread {
+            background-color: var(--color-accent-light);
+            padding: 8px;
+            margin-top: 8px;
+            border-left: 3px solid var(--color-accent);
+            border-radius: 2px;
+            font-size: 12px;
+        }
+
+        .comment-entry {
+            margin-bottom: 8px;
+        }
+
+        .comment-entry:last-child {
+            margin-bottom: 0;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            font-size: 11px;
+            color: var(--color-text-primary);
+        }
+
+        .comment-time {
+            color: var(--color-text-tertiary);
+            font-size: 10px;
+            margin-left: 4px;
+        }
+
+        .comment-text {
+            margin-top: 2px;
+            color: var(--color-text-primary);
+            line-height: 1.4;
+        }
+
+        /* Right panel - Review summary and comments */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            width: 280px;
+            border-left: 1px solid var(--color-border);
+            background-color: var(--color-bg-primary);
+            overflow: hidden;
+        }
+
+        .summary-card {
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+
+        .summary-card-title {
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .summary-label {
+            color: var(--color-text-secondary);
+        }
+
+        .summary-value {
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        .summary-progress {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background-color: var(--color-bg-secondary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--color-accent);
+        }
+
+        .recommendation-pending {
+            padding: 8px;
+            background-color: var(--color-warning-light);
+            border-left: 3px solid var(--color-warning);
+            font-size: 12px;
+            color: var(--color-warning);
+            font-weight: 500;
+        }
+
+        /* Peer Review Styles */
+        .review-status-card {
+            background-color: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .review-status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--color-border);
+            font-size: 13px;
+        }
+
+        .review-status-row:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .review-status-label {
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            width: 100px;
+        }
+
+        .review-status-value {
+            color: var(--color-text-primary);
+            font-weight: 500;
+        }
+
+        .status-pill-amber {
+            display: inline-block;
+            background-color: var(--color-warning-light);
+            color: var(--color-warning);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .review-comment {
+            background-color: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .comment-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--color-text-primary);
+        }
+
+        .comment-location {
+            font-size: 12px;
+            color: var(--color-text-tertiary);
+            margin-top: 2px;
+        }
+
+        .comment-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .comment-tag.factual {
+            background-color: var(--color-info-light);
+            color: var(--color-info);
+        }
+
+        .comment-tag.suggestion {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .comment-tag.enhancement {
+            background-color: var(--color-success-light);
+            color: var(--color-success);
+        }
+
+        .comment-tag.general {
+            background-color: var(--color-border);
+            color: var(--color-text-secondary);
+        }
+
+        .comment-body {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--color-text-primary);
+            margin-bottom: 12px;
+        }
+
+        .comment-status {
+            font-size: 12px;
+            color: var(--color-text-tertiary);
+            margin-bottom: 12px;
+            padding: 6px 8px;
+            background-color: var(--color-bg-tertiary);
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .comment-status.acknowledged {
+            background-color: var(--color-success-light);
+            color: var(--color-success);
+            font-weight: 600;
+        }
+
+        .comment-response-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .response-textarea {
+            width: 100%;
+            padding: 10px;
+            font-size: 12px;
+            font-family: var(--font-family-sans);
+            border: 1px solid var(--color-border);
+            border-radius: 3px;
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 8px;
+        }
+
+        .response-textarea::placeholder {
+            color: var(--color-text-tertiary);
+        }
+
+        .response-textarea:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 2px var(--color-accent-light);
+        }
+
+        .btn-response {
+            padding: 6px 12px;
+            background-color: var(--color-accent);
+            color: white;
+            border: none;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-response:hover {
+            opacity: 0.9;
+        }
+
+        .review-actions-footer {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .comments-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .comments-header {
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+            font-weight: 600;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .queue-list-right {
+            padding: 8px;
+            flex-shrink: 0;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .queue-item-right {
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .queue-item-right:hover {
+            background-color: var(--color-bg-tertiary);
+            border-color: var(--color-accent);
+        }
+
+        .queue-item-right .queue-item-id {
+            font-family: var(--font-family-mono);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        .queue-item-right .queue-item-case {
+            font-size: 12px;
+            color: var(--color-text-primary);
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .queue-item-right .queue-item-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 6px;
+            font-size: 10px;
+        }
+
+        .queue-item-right .queue-item-author {
+            color: var(--color-text-tertiary);
+        }
+
+        .queue-item-right .queue-timestamp {
+            color: var(--color-text-tertiary);
+            font-size: 10px;
+        }
+
+        .ai-assistant-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid var(--color-border);
+            overflow: hidden;
+        }
+
+        .ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ai-message {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 100%;
+        }
+
+        .ai-message.assistant-msg {
+            align-self: flex-start;
+        }
+
+        .ai-message.user-msg {
+            align-self: flex-end;
+        }
+
+        .ai-message-text {
+            padding: 8px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .ai-message.assistant-msg .ai-message-text {
+            background-color: var(--color-bg-secondary);
+            color: var(--color-text-primary);
+            border-left: 2px solid var(--color-accent);
+        }
+
+        .ai-message.user-msg .ai-message-text {
+            background-color: var(--color-accent);
+            color: white;
+        }
+
+        .ai-message-time {
+            font-size: 10px;
+            color: var(--color-text-tertiary);
+            padding: 0 8px;
+        }
+
+        .ai-input-section {
+            padding: 10px;
+            border-top: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+
+        .ai-input {
+            width: 100%;
+            padding: 8px;
+            font-size: 12px;
+            font-family: var(--font-family-sans);
+            border: 1px solid var(--color-border);
+            border-radius: 3px;
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+        }
+
+        .ai-input::placeholder {
+            color: var(--color-text-tertiary);
+        }
+
+        .ai-input:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 2px var(--color-accent-light);
+        }
+
+        .comments-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .comment-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: var(--color-bg-secondary);
+            border-radius: 4px;
+            border-left: 3px solid var(--color-accent);
+            font-size: 12px;
+        }
+
+        .comment-item-author {
+            font-weight: 600;
+            margin-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .comment-item-time {
+            font-size: 10px;
+            color: var(--color-text-tertiary);
+        }
+
+        .comment-item-text {
+            color: var(--color-text-primary);
+            margin: 4px 0;
+            line-height: 1.4;
+        }
+
+        .comment-reply-btn {
+            background: none;
+            border: none;
+            color: var(--color-accent);
+            cursor: pointer;
+            font-size: 11px;
+            padding: 0;
+            text-decoration: underline;
+        }
+
+        .comment-reply-btn:hover {
+            color: var(--color-info);
+        }
+
+        /* Statusbar */
+        .statusbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 24px;
+            background-color: var(--color-bg-secondary);
+            border-top: 1px solid var(--color-border);
+            padding: 0 12px;
+            flex-shrink: 0;
+            font-size: 11px;
+            color: var(--color-text-secondary);
+        }
+
+        .statusbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--color-success);
+        }
+
+        .statusbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-text-tertiary);
+        }
+    </style>
+</head>
+<body class="theme-light">
+    <div class="app-container">
+        <!-- Titlebar -->
+        <div class="titlebar">
+            <div class="titlebar-left">
+                <span style="letter-spacing: 2px;">◈</span>
+                <span>PSYGIL</span>
+            </div>
+            <div class="titlebar-center">Peer Review</div>
+            <div class="titlebar-right">
+                <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="main-content">
+            <!-- Left panel: Cases tree -->
+            <div class="left-panel">
+                <div class="panel-header">
+                    <span class="panel-header-title">Cases</span>
+                    <button class="panel-header-icon" title="Filter">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="queue-list">
+                    <!-- Active case tree -->
+                    <div class="tree-node expanded">
+                        <div class="tree-toggle">▼</div>
+                        <div class="tree-label">Active Cases (12)</div>
+                    </div>
+
+                    <div class="tree-node-container">
+                        <div class="tree-indent">
+                            <div class="tree-node expanded">
+                                <div class="tree-toggle">▼</div>
+                                <div class="tree-label active-case">#2026-0147 — Johnson, CST</div>
+                            </div>
+
+                            <div class="tree-node-container">
+                                <div class="tree-indent">
+                                    <div class="tree-node">
+                                        <div class="tree-toggle" style="visibility: hidden;"></div>
+                                        <div class="tree-label">Overview</div>
+                                    </div>
+
+                                    <div class="tree-node expanded">
+                                        <div class="tree-toggle">▼</div>
+                                        <div class="tree-label">Test Results</div>
+                                    </div>
+
+                                    <div class="tree-node-container">
+                                        <div class="tree-indent">
+                                            <div class="tree-node">
+                                                <div class="tree-toggle" style="visibility: hidden;"></div>
+                                                <div class="tree-label">MMPI-3_Q-global.pdf <span style="color: var(--color-text-tertiary);">Score</span></div>
+                                            </div>
+                                            <div class="tree-node">
+                                                <div class="tree-toggle" style="visibility: hidden;"></div>
+                                                <div class="tree-label">PAI_PARiConnect.pdf <span style="color: var(--color-text-tertiary);">Score</span></div>
+                                            </div>
+                                            <div class="tree-node">
+                                                <div class="tree-toggle" style="visibility: hidden;"></div>
+                                                <div class="tree-label">WAIS-V_Q-global.pdf <span style="color: var(--color-text-tertiary);">Score</span></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="tree-node">
+                                        <div class="tree-toggle">▸</div>
+                                        <div class="tree-label">Collateral</div>
+                                    </div>
+
+                                    <div class="tree-node">
+                                        <div class="tree-toggle">▸</div>
+                                        <div class="tree-label">Transcripts</div>
+                                    </div>
+
+                                    <div class="tree-node">
+                                        <div class="tree-toggle" style="visibility: hidden;"></div>
+                                        <div class="tree-label">Evidence Map</div>
+                                    </div>
+
+                                    <div class="tree-node expanded">
+                                        <div class="tree-toggle">▼</div>
+                                        <div class="tree-label">Report</div>
+                                    </div>
+
+                                    <div class="tree-node-container">
+                                        <div class="tree-indent">
+                                            <div class="tree-node">
+                                                <div class="tree-toggle" style="visibility: hidden;"></div>
+                                                <div class="tree-label">Draft_v2.docx</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="tree-node">
+                                        <div class="tree-toggle" style="visibility: hidden;"></div>
+                                        <div class="tree-label">Gate 2: Diagnostic</div>
+                                    </div>
+
+                                    <div class="tree-node">
+                                        <div class="tree-toggle" style="visibility: hidden;"></div>
+                                        <div class="tree-label">Gate 3: Attestation</div>
+                                    </div>
+
+                                    <div class="tree-node">
+                                        <div class="tree-toggle" style="visibility: hidden;"></div>
+                                        <div class="tree-label">Audit Trail</div>
+                                    </div>
+
+                                    <div class="tree-node active-highlight">
+                                        <div class="tree-toggle" style="visibility: hidden;"></div>
+                                        <div class="tree-label">Review Notes</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tree-node">
+                                <div class="tree-toggle">▸</div>
+                                <div class="tree-label">Other cases...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-card">
+                    <div class="stats-card-title">Resources</div>
+                    <div class="stats-row">
+                        <span class="stats-label">Cases</span>
+                        <span class="stats-value">12</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stats-label">In review</span>
+                        <span class="stats-value">3</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center panel: Peer Review Interface -->
+            <div class="center-panel">
+                <div class="report-tabs">
+                    <button class="report-tab active">Dashboard</button>
+                    <button class="report-tab">#2026-0147 Overview</button>
+                    <button class="report-tab">Review Notes</button>
+                </div>
+
+                <div class="report-header">
+                    <div class="report-header-top">
+                        <div class="report-header-title">
+                            <span>Peer Review — #2026-0147 Johnson, CST</span>
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: var(--color-text-secondary);">
+                        Requested by Dr. Irwin | Reviewer: Dr. Sarah Chen | Status: In Review
+                    </div>
+                </div>
+
+                <div class="report-content">
+                    <!-- Review Status Card -->
+                    <div class="review-status-card">
+                        <div class="review-status-row">
+                            <div class="review-status-label">Requested</div>
+                            <div class="review-status-value">Mar 19, 2026</div>
+                        </div>
+                        <div class="review-status-row">
+                            <div class="review-status-label">Document</div>
+                            <div class="review-status-value">
+                                <a href="#" style="color: var(--color-accent); text-decoration: none;">Draft_v2.docx</a>
+                            </div>
+                        </div>
+                        <div class="review-status-row">
+                            <div class="review-status-label">Review Type</div>
+                            <div class="review-status-value">Senior clinician review</div>
+                        </div>
+                        <div class="review-status-row">
+                            <div class="review-status-label">Priority</div>
+                            <div class="review-status-value">
+                                <span style="background-color: var(--color-danger-light); color: var(--color-danger); padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 500;">High — court deadline Apr 15</span>
+                            </div>
+                        </div>
+                        <div class="review-status-row">
+                            <div class="review-status-label">Status</div>
+                            <div class="review-status-value">
+                                <span class="status-pill-amber">In Review</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <div style="margin-top: 24px;">
+                        <div class="section-title">Review Comments (3)</div>
+
+                        <!-- Comment 1 -->
+                        <div class="review-comment">
+                            <div class="comment-header">
+                                <div style="flex: 1;">
+                                    <div class="comment-author">Dr. Chen</div>
+                                    <div class="comment-location">Mar 19 • Page 5 — "Background History"</div>
+                                </div>
+                                <div class="comment-tag factual">Factual</div>
+                            </div>
+                            <div class="comment-body">
+                                The hospital records indicate 3 prior admissions, but only 2 are discussed in the report. Please verify whether the 2019 admission is relevant to competency.
+                            </div>
+                            <div class="comment-status">Status: Open</div>
+                            <div class="comment-response-section">
+                                <textarea class="response-textarea" placeholder="Dr. Irwin's response..."></textarea>
+                                <button class="btn-response">Submit Response</button>
+                            </div>
+                        </div>
+
+                        <!-- Comment 2 -->
+                        <div class="review-comment">
+                            <div class="comment-header">
+                                <div style="flex: 1;">
+                                    <div class="comment-author">Dr. Chen</div>
+                                    <div class="comment-location">Mar 19 • Page 8 — "Clinical Formulation"</div>
+                                </div>
+                                <div class="comment-tag suggestion">Suggestion</div>
+                            </div>
+                            <div class="comment-body">
+                                Strong integration of test data with behavioral observations. I'd suggest adding a sentence bridging the MMPI-3 RC8 elevation to the interview observations of hallucinations for continuity.
+                            </div>
+                            <div class="comment-status">Status: Open</div>
+                            <div class="comment-response-section">
+                                <textarea class="response-textarea" placeholder="Dr. Irwin's response..."></textarea>
+                                <button class="btn-response">Submit Response</button>
+                            </div>
+                        </div>
+
+                        <!-- Comment 3 -->
+                        <div class="review-comment">
+                            <div class="comment-header">
+                                <div style="flex: 1;">
+                                    <div class="comment-author">Dr. Chen</div>
+                                    <div class="comment-location">Mar 19 • Page 10 — "Competency Opinion"</div>
+                                </div>
+                                <div class="comment-tag enhancement">Enhancement</div>
+                            </div>
+                            <div class="comment-body">
+                                The opinion is well-supported. Consider adding a prognosis statement regarding restorability — courts often want to know if competency can be restored with treatment.
+                            </div>
+                            <div class="comment-status">Status: Open</div>
+                            <div class="comment-response-section">
+                                <textarea class="response-textarea" placeholder="Dr. Irwin's response..."></textarea>
+                                <button class="btn-response">Submit Response</button>
+                            </div>
+                        </div>
+
+                        <!-- Comment 4 -->
+                        <div class="review-comment">
+                            <div class="comment-header">
+                                <div style="flex: 1;">
+                                    <div class="comment-author">Dr. Chen</div>
+                                    <div class="comment-location">Mar 19 • General</div>
+                                </div>
+                                <div class="comment-tag general">General</div>
+                            </div>
+                            <div class="comment-body">
+                                Overall this is a thorough and well-organized report. The diagnostic reasoning is sound and well-documented. Three items above should be addressed before finalization.
+                            </div>
+                            <div class="comment-status acknowledged">Status: Acknowledged</div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="review-actions-footer">
+                        <button class="btn btn-primary">Approve Report</button>
+                        <button class="btn btn-secondary">Request Revisions</button>
+                        <button class="btn" style="background-color: var(--color-bg-tertiary); color: var(--color-text-primary); border-color: var(--color-border);">Return to Author</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right panel: Review Queue & Assistant -->
+            <div class="right-panel">
+                <!-- Review Queue Panel -->
+                <div class="summary-card">
+                    <div class="summary-card-title">Review Queue</div>
+                </div>
+
+                <div class="queue-list-right">
+                    <div class="queue-item-right">
+                        <div class="queue-item-id">#2026-0152</div>
+                        <div class="queue-item-case">Martinez, Custody</div>
+                        <div class="queue-item-meta">
+                            <span class="queue-item-author">Dr. Patel reviewing</span>
+                            <span class="queue-timestamp">Mar 18</span>
+                        </div>
+                    </div>
+
+                    <div class="queue-item-right">
+                        <div class="queue-item-id">#2026-0161</div>
+                        <div class="queue-item-case">Chen, PTSD</div>
+                        <div class="queue-item-meta">
+                            <span class="queue-item-author">Pending assignment</span>
+                            <span class="queue-timestamp">Mar 17</span>
+                        </div>
+                    </div>
+
+                    <div class="queue-item-right">
+                        <div class="queue-item-id">#2026-0165</div>
+                        <div class="queue-item-case">Okafor, ADHD</div>
+                        <div class="queue-item-meta">
+                            <span class="queue-item-author">Dr. Chen reviewing</span>
+                            <span class="queue-timestamp">Mar 16</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Assistant Panel -->
+                <div class="ai-assistant-panel">
+                    <div class="comments-header">AI Assistant</div>
+                    <div class="ai-messages">
+                        <div class="ai-message assistant-msg">
+                            <div class="ai-message-text">
+                                This report appears clinically sound. All three diagnoses are well-supported by test data. Would you like me to highlight specific sections that strengthen the formulation?
+                            </div>
+                            <div class="ai-message-time">2m ago</div>
+                        </div>
+
+                        <div class="ai-message user-msg">
+                            <div class="ai-message-text">
+                                What about the competency opinion section?
+                            </div>
+                            <div class="ai-message-time">1m ago</div>
+                        </div>
+
+                        <div class="ai-message assistant-msg">
+                            <div class="ai-message-text">
+                                The competency opinion is thorough but could benefit from a prognosis statement. Courts often want to know if competency can be restored with treatment — this is the exact feedback Dr. Chen provided in comment 3.
+                            </div>
+                            <div class="ai-message-time">30s ago</div>
+                        </div>
+                    </div>
+
+                    <div class="ai-input-section">
+                        <input type="text" class="ai-input" placeholder="Ask me about this report...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statusbar -->
+        <div class="statusbar">
+            <div class="statusbar-left">
+                <div class="status-item">
+                    <div class="status-indicator"></div>
+                    <span>Connected</span>
+                </div>
+                <div class="status-item">
+                    <span>Review: 3 open comments, 1 acknowledged</span>
+                </div>
+            </div>
+            <div class="statusbar-right">
+                <div class="status-item">
+                    <span>Reviewer: Dr. Chen</span>
+                </div>
+                <div class="status-item">
+                    <span>Deadline: Apr 15</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.body;
+        const themes = ['theme-light', 'theme-dark', 'theme-high-contrast'];
+        let currentThemeIndex = 0;
+
+        // Initialize theme from localStorage
+        const savedTheme = localStorage.getItem('psygil-theme') || 'theme-light';
+        currentThemeIndex = themes.indexOf(savedTheme);
+        body.className = savedTheme;
+
+        themeToggle.addEventListener('click', () => {
+            currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+            const newTheme = themes[currentThemeIndex];
+            body.className = newTheme;
+            localStorage.setItem('psygil-theme', newTheme);
+        });
+
+        // Queue item selection
+        const queueItems = document.querySelectorAll('.queue-item');
+        queueItems.forEach(item => {
+            item.addEventListener('click', () => {
+                queueItems.forEach(q => q.classList.remove('active'));
+                item.classList.add('active');
+            });
+        });
+
+        // Tab switching
+        const reportTabs = document.querySelectorAll('.report-tab');
+        reportTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                reportTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

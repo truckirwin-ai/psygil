@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gate 2: Diagnostic Decision — Psygil</title>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Theme Variables */
+        :root {
+            --color-bg-primary: #ffffff;
+            --color-bg-secondary: #f5f5f5;
+            --color-bg-tertiary: #ececec;
+            --color-text-primary: #1a1a1a;
+            --color-text-secondary: #666666;
+            --color-text-tertiary: #999999;
+            --color-border: #d0d0d0;
+            --color-border-light: #e8e8e8;
+            --color-accent: #0078D4;
+            --color-danger: #cc0000;
+            --color-warning: #ff9800;
+            --color-success: #228b22;
+            --color-info: #0078D4;
+        }
+
+        body.theme-medium {
+            --color-bg-primary: #0d1117;
+            --color-bg-secondary: #161b22;
+            --color-bg-tertiary: #21262d;
+            --color-text-primary: #c9d1d9;
+            --color-text-secondary: #8b949e;
+            --color-text-tertiary: #6e7681;
+            --color-border: #30363d;
+            --color-border-light: #21262d;
+            --color-accent: #58A6FF;
+        }
+
+        body.theme-dark {
+            --color-bg-primary: #010409;
+            --color-bg-secondary: #0d1117;
+            --color-bg-tertiary: #161b22;
+            --color-text-primary: #c9d1d9;
+            --color-text-secondary: #8b949e;
+            --color-text-tertiary: #6e7681;
+            --color-border: #21262d;
+            --color-border-light: #161b22;
+            --color-accent: #58A6FF;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 13px;
+            line-height: 1.4;
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* TITLEBAR */
+        .titlebar {
+            height: 36px;
+            background-color: var(--color-bg-secondary);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .titlebar-logo {
+            font-weight: 600;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            color: var(--color-accent);
+        }
+
+        .titlebar-tabs {
+            display: flex;
+            gap: 0;
+            flex: 1;
+            align-items: center;
+            border-left: 1px solid var(--color-border);
+            padding-left: 12px;
+        }
+
+        .titlebar-tab {
+            padding: 8px 12px;
+            border-right: 1px solid var(--color-border);
+            cursor: pointer;
+            color: var(--color-text-secondary);
+            font-size: 12px;
+            white-space: nowrap;
+            background-color: var(--color-bg-primary);
+            transition: background-color 0.2s;
+        }
+
+        .titlebar-tab:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .titlebar-tab.active {
+            color: var(--color-text-primary);
+            background-color: var(--color-bg-primary);
+            border-bottom: 2px solid var(--color-accent);
+        }
+
+        .titlebar-controls {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .theme-switcher {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background-color: var(--color-bg-tertiary);
+            border-radius: 4px;
+        }
+
+        .theme-btn {
+            width: 24px;
+            height: 24px;
+            border: 1px solid transparent;
+            background-color: transparent;
+            cursor: pointer;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-secondary);
+            font-size: 12px;
+        }
+
+        .theme-btn.active {
+            background-color: var(--color-accent);
+            color: white;
+            border-color: var(--color-accent);
+        }
+
+        /* MAIN LAYOUT */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* LEFT COLUMN - Cases Tree */
+        .sidebar-left {
+            width: 280px;
+            background-color: var(--color-bg-secondary);
+            border-right: 2px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 12px;
+            border-bottom: 1px solid var(--color-border);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--color-text-tertiary);
+        }
+
+        .tree-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .tree-node {
+            padding: 6px 8px;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.15s;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tree-node:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .tree-node.active {
+            background-color: var(--color-accent);
+            color: white;
+            font-weight: 500;
+        }
+
+        .tree-toggle {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .tree-toggle svg {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.2s;
+        }
+
+        .tree-node.collapsed .tree-toggle svg {
+            transform: rotate(-90deg);
+        }
+
+        .tree-node-indent {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            gap: 2px;
+        }
+
+        .tree-level-1 { padding-left: 0; }
+        .tree-level-2 { padding-left: 20px; }
+        .tree-level-3 { padding-left: 40px; }
+
+        .tree-node-label {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .resources-header {
+            padding: 12px;
+            border-top: 1px solid var(--color-border);
+            border-bottom: 1px solid var(--color-border);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--color-text-tertiary);
+            background-color: var(--color-bg-tertiary);
+        }
+
+        /* CENTER COLUMN - Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: var(--color-bg-primary);
+        }
+
+        .content-inner {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        /* RED CALLOUT BANNER */
+        .banner-critical {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            border-left: 4px solid #cc0000;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .banner-critical svg {
+            width: 20px;
+            height: 20px;
+            color: #cc0000;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .banner-critical-text {
+            color: #1a1a1a;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .banner-critical-text strong {
+            color: #cc0000;
+            font-weight: 600;
+        }
+
+        /* VALIDITY CARD */
+        .validity-card {
+            background-color: var(--color-bg-secondary);
+            border: 2px solid #228b22;
+            border-radius: 6px;
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #228b22;
+        }
+
+        .validity-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 12px;
+        }
+
+        .validity-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .validity-check {
+            color: #228b22;
+            font-weight: 600;
+        }
+
+        .validity-summary {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
+            font-size: 12px;
+        }
+
+        /* DIAGNOSIS CARDS */
+        .diagnosis-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .diagnosis-card {
+            background-color: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .diagnosis-header {
+            padding: 12px 14px;
+            background-color: var(--color-bg-tertiary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--color-border);
+            transition: background-color 0.15s;
+            user-select: none;
+        }
+
+        .diagnosis-header:hover {
+            background-color: var(--color-border);
+        }
+
+        .diagnosis-header.collapsed {
+            border-bottom: none;
+        }
+
+        .diagnosis-toggle {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .diagnosis-toggle svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+
+        .diagnosis-card.collapsed .diagnosis-toggle svg {
+            transform: rotate(-90deg);
+        }
+
+        .diagnosis-title {
+            flex: 1;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .diagnosis-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--color-text-secondary);
+        }
+
+        .diagnosis-body {
+            padding: 14px;
+            display: none;
+        }
+
+        .diagnosis-card:not(.collapsed) .diagnosis-body {
+            display: block;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background-color: var(--color-bg-tertiary);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--color-accent);
+            width: 77%;
+        }
+
+        .diagnosis-options {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            transition: background-color 0.15s;
+        }
+
+        .radio-option:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .radio-option input[type="radio"] {
+            cursor: pointer;
+        }
+
+        .radio-option.selected {
+            font-weight: 500;
+        }
+
+        .radio-option.selected.render {
+            color: #228b22;
+        }
+
+        .radio-option.selected.rule-out {
+            color: var(--color-text-tertiary);
+            text-decoration: line-through;
+        }
+
+        .criteria-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 12px;
+        }
+
+        .criteria-table th {
+            text-align: left;
+            padding: 8px;
+            background-color: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border);
+            font-weight: 600;
+            font-size: 11px;
+            color: var(--color-text-secondary);
+        }
+
+        .criteria-table td {
+            padding: 8px;
+            border: 1px solid var(--color-border);
+            color: var(--color-text-primary);
+        }
+
+        .criteria-table tr:hover td {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .criteria-strength {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .strength-strong { color: #228b22; }
+        .strength-moderate { color: #ff9800; }
+        .strength-weak { color: #cc0000; }
+
+        .add-diagnosis {
+            color: var(--color-accent);
+            cursor: pointer;
+            font-size: 12px;
+            padding: 8px 0;
+            transition: opacity 0.2s;
+        }
+
+        .add-diagnosis:hover {
+            opacity: 0.7;
+        }
+
+        /* BUTTONS */
+        .submit-button {
+            background-color: var(--color-accent);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: opacity 0.2s;
+            margin-bottom: 14px;
+        }
+
+        .submit-button:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+
+        .submit-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button-info {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            margin-top: 6px;
+        }
+
+        /* RIGHT COLUMN - Analysis */
+        .sidebar-right {
+            width: 320px;
+            background-color: var(--color-bg-secondary);
+            border-left: 2px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .right-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .panel-title {
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 12px;
+            color: var(--color-text-primary);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 8px;
+        }
+
+        .psycho-legal-section {
+            margin-bottom: 12px;
+        }
+
+        .section-header {
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: var(--color-accent);
+        }
+
+        .subsection {
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: var(--color-bg-tertiary);
+            border-radius: 3px;
+            border-left: 2px solid var(--color-accent);
+        }
+
+        .subsection-title {
+            font-weight: 600;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .quote {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            margin-bottom: 4px;
+            font-style: italic;
+            padding: 4px;
+            background-color: var(--color-bg-primary);
+            border-radius: 2px;
+            border-left: 2px solid var(--color-text-tertiary);
+            padding-left: 8px;
+        }
+
+        .assessment {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+        }
+
+        .overall-assessment {
+            margin-top: 12px;
+            padding: 10px;
+            background-color: var(--color-bg-primary);
+            border-left: 3px solid var(--color-accent);
+            border-radius: 3px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        /* STATUSBAR */
+        .statusbar {
+            height: 24px;
+            background-color: var(--color-bg-secondary);
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            flex-shrink: 0;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #228b22;
+        }
+
+        .status-decisions {
+            margin-left: auto;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .status-doctor-warning {
+            color: #cc0000;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background-color: var(--color-bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--color-border);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--color-text-tertiary);
+        }
+    </style>
+</head>
+<body class="theme-light">
+    <div class="container">
+        <!-- TITLEBAR -->
+        <div class="titlebar">
+            <div class="titlebar-logo">PSYGIL</div>
+            <div class="titlebar-tabs">
+                <div class="titlebar-tab">Dashboard</div>
+                <div class="titlebar-tab">#2026-0147 Overview</div>
+                <div class="titlebar-tab active">Gate 2: Diagnostic</div>
+            </div>
+            <div class="titlebar-controls">
+                <div class="theme-switcher">
+                    <button class="theme-btn active" data-theme="light" title="Light Theme">☀️</button>
+                    <button class="theme-btn" data-theme="medium" title="Medium Theme">◐</button>
+                    <button class="theme-btn" data-theme="dark" title="Dark Theme">🌙</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WORKSPACE -->
+        <div class="workspace">
+            <!-- LEFT SIDEBAR - CASES TREE -->
+            <div class="sidebar-left">
+                <div class="sidebar-header">Cases (12)</div>
+                <div class="tree-container">
+                    <div class="tree-node tree-level-1">
+                        <div class="tree-toggle">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="tree-node-label">Active Cases (12)</div>
+                    </div>
+
+                    <div class="tree-node tree-level-2">
+                        <div class="tree-toggle">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="tree-node-label">#2026-0147 — Johnson, CST</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Overview</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3">
+                        <div class="tree-toggle">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="tree-node-label">Test Results</div>
+                    </div>
+
+                    <div class="tree-node tree-level-4" style="padding-left: 60px;">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">MMPI-3_Q-global.pdf</div>
+                    </div>
+
+                    <div class="tree-node tree-level-4" style="padding-left: 60px;">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">PAI_PARiConnect.pdf</div>
+                    </div>
+
+                    <div class="tree-node tree-level-4" style="padding-left: 60px;">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">WAIS-V_Q-global.pdf</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3">
+                        <div class="tree-toggle">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="tree-node-label">Collateral</div>
+                    </div>
+
+                    <div class="tree-node tree-level-4" style="padding-left: 60px;">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Hospital_Records_2024.pdf</div>
+                    </div>
+
+                    <div class="tree-node tree-level-4" style="padding-left: 60px;">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Court_Order_CST.pdf</div>
+                    </div>
+
+                    <div class="tree-node tree-level-4" style="padding-left: 60px;">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Prior_Eval_Dr_Smith.pdf</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3">
+                        <div class="tree-toggle">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="tree-node-label">Transcripts</div>
+                    </div>
+
+                    <div class="tree-node tree-level-4" style="padding-left: 60px;">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Interview_Session1.vtt</div>
+                    </div>
+
+                    <div class="tree-node tree-level-4" style="padding-left: 60px;">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Interview_Session2.vtt</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Evidence Map</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3">
+                        <div class="tree-toggle">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="tree-node-label">Report</div>
+                    </div>
+
+                    <div class="tree-node tree-level-4" style="padding-left: 60px;">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Draft_v2.docx</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3 active">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Gate 2: Diagnostic</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Gate 3: Attestation</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Audit Trail</div>
+                    </div>
+
+                    <div class="tree-node tree-level-3">
+                        <div style="width: 18px;"></div>
+                        <div class="tree-node-label">Review Notes</div>
+                    </div>
+
+                    <div class="tree-node tree-level-2">
+                        <div class="tree-toggle" style="visibility: hidden;">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="tree-node-label">#2026-0152 — Martinez, Custody</div>
+                    </div>
+
+                    <div class="tree-node tree-level-2">
+                        <div class="tree-toggle" style="visibility: hidden;">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="tree-node-label">+ 10 more cases...</div>
+                    </div>
+                </div>
+
+                <div class="resources-header">Resources</div>
+            </div>
+
+            <!-- CENTER - MAIN CONTENT -->
+            <div class="main-content">
+                <div class="content-inner">
+                    <!-- CRITICAL BANNER -->
+                    <div class="banner-critical">
+                        <svg fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                        </svg>
+                        <div class="banner-critical-text">
+                            <strong>ALL DIAGNOSTIC DECISIONS ARE MADE BY YOU.</strong> The Diagnostician Agent maps evidence to criteria. You render the clinical judgment.
+                        </div>
+                    </div>
+
+                    <!-- VALIDITY/EFFORT ASSESSMENT -->
+                    <div class="validity-card">
+                        <div class="card-title">Validity/Effort Assessment</div>
+                        <div class="validity-items">
+                            <div class="validity-item">
+                                <span>TOMM Trial 2: 48/50</span>
+                                <span class="validity-check">✓</span>
+                            </div>
+                            <div class="validity-item">
+                                <span>SIRS-2: Valid</span>
+                                <span class="validity-check">✓</span>
+                            </div>
+                            <div class="validity-item">
+                                <span>MMPI-3 Validity: Acceptable</span>
+                                <span class="validity-check">✓</span>
+                            </div>
+                        </div>
+                        <div class="validity-summary">
+                            No effort concerns. All test data valid for interpretation.
+                        </div>
+                    </div>
+
+                    <!-- DIAGNOSIS CARDS -->
+                    <div class="diagnosis-cards">
+                        <!-- CARD 1 - SCHIZOPHRENIA (EXPANDED) -->
+                        <div class="diagnosis-card">
+                            <div class="diagnosis-header">
+                                <div class="diagnosis-toggle">
+                                    <svg fill="currentColor" viewBox="0 0 24 24">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="diagnosis-title">Schizophrenia Spectrum Disorders (F20.x)</div>
+                                <div class="diagnosis-meta">
+                                    <span>7 of 9</span>
+                                </div>
+                            </div>
+                            <div class="diagnosis-body">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 77%;"></div>
+                                </div>
+                                <div class="diagnosis-options">
+                                    <div class="radio-group">
+                                        <label class="radio-option">
+                                            <input type="radio" name="schiz-decision" value="no-decision">
+                                            <span>No Decision</span>
+                                        </label>
+                                        <label class="radio-option selected render">
+                                            <input type="radio" name="schiz-decision" value="render" checked>
+                                            <span>● Render Diagnosis</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="schiz-decision" value="rule-out">
+                                            <span>Rule Out</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="schiz-decision" value="defer">
+                                            <span>Defer</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <table class="criteria-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Criterion</th>
+                                            <th>Evidence For</th>
+                                            <th>Evidence Against</th>
+                                            <th>Source</th>
+                                            <th>Strength</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>A1: Delusions</td>
+                                            <td>Persecutory beliefs re: lawyer and guards</td>
+                                            <td>None identified</td>
+                                            <td>Interview S1, S2</td>
+                                            <td><span class="criteria-strength strength-strong">Strong</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>A2: Hallucinations</td>
+                                            <td>Auditory — voices telling him not to trust lawyer</td>
+                                            <td>None identified</td>
+                                            <td>Interview S1, MMPI-3 RC8=78T</td>
+                                            <td><span class="criteria-strength strength-strong">Strong</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>A3: Disorganized speech</td>
+                                            <td>Tangential at times, loose associations noted</td>
+                                            <td>Largely coherent during structured testing</td>
+                                            <td>Interview S1</td>
+                                            <td><span class="criteria-strength strength-moderate">Moderate</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>A4: Disorganized behavior</td>
+                                            <td>None identified</td>
+                                            <td>Cooperative during testing</td>
+                                            <td>Behavioral obs</td>
+                                            <td><span class="criteria-strength strength-weak">Weak</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>A5: Negative symptoms</td>
+                                            <td>Constricted affect</td>
+                                            <td>Engaged in conversation</td>
+                                            <td>Interview S1, S2</td>
+                                            <td><span class="criteria-strength strength-moderate">Moderate</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>B: Functioning</td>
+                                            <td>Significant decline per hospital records</td>
+                                            <td>None identified</td>
+                                            <td>Hospital Records</td>
+                                            <td><span class="criteria-strength strength-strong">Strong</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>C: Duration</td>
+                                            <td>Symptoms >6 months per records</td>
+                                            <td>None identified</td>
+                                            <td>Hospital Records</td>
+                                            <td><span class="criteria-strength strength-strong">Strong</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- CARD 2 - MAJOR DEPRESSIVE DISORDER (COLLAPSED) -->
+                        <div class="diagnosis-card collapsed">
+                            <div class="diagnosis-header collapsed">
+                                <div class="diagnosis-toggle">
+                                    <svg fill="currentColor" viewBox="0 0 24 24">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="diagnosis-title">Major Depressive Disorder (F32.1)</div>
+                                <div class="diagnosis-meta">
+                                    <span>4 of 9</span>
+                                </div>
+                            </div>
+                            <div class="diagnosis-body">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 44%;"></div>
+                                </div>
+                                <div class="diagnosis-options">
+                                    <div class="radio-group">
+                                        <label class="radio-option">
+                                            <input type="radio" name="mdd-decision" value="no-decision">
+                                            <span>No Decision</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="mdd-decision" value="render">
+                                            <span>Render Diagnosis</span>
+                                        </label>
+                                        <label class="radio-option selected rule-out">
+                                            <input type="radio" name="mdd-decision" value="rule-out" checked>
+                                            <span>● Rule Out</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="mdd-decision" value="defer">
+                                            <span>Defer</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CARD 3 - PTSD (COLLAPSED) -->
+                        <div class="diagnosis-card collapsed">
+                            <div class="diagnosis-header collapsed">
+                                <div class="diagnosis-toggle">
+                                    <svg fill="currentColor" viewBox="0 0 24 24">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="diagnosis-title">PTSD (F43.10)</div>
+                                <div class="diagnosis-meta">
+                                    <span>3 of 8</span>
+                                </div>
+                            </div>
+                            <div class="diagnosis-body">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 37%;"></div>
+                                </div>
+                                <div class="diagnosis-options">
+                                    <div class="radio-group">
+                                        <label class="radio-option">
+                                            <input type="radio" name="ptsd-decision" value="no-decision" checked>
+                                            <span>No Decision</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="ptsd-decision" value="render">
+                                            <span>Render Diagnosis</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="ptsd-decision" value="rule-out">
+                                            <span>Rule Out</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="ptsd-decision" value="defer">
+                                            <span>Defer</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CARD 4 - ANTISOCIAL PERSONALITY DISORDER (COLLAPSED) -->
+                        <div class="diagnosis-card collapsed">
+                            <div class="diagnosis-header collapsed">
+                                <div class="diagnosis-toggle">
+                                    <svg fill="currentColor" viewBox="0 0 24 24">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="diagnosis-title">Antisocial Personality Disorder (F60.2)</div>
+                                <div class="diagnosis-meta">
+                                    <span>2 of 7</span>
+                                </div>
+                            </div>
+                            <div class="diagnosis-body">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 28%;"></div>
+                                </div>
+                                <div class="diagnosis-options">
+                                    <div class="radio-group">
+                                        <label class="radio-option">
+                                            <input type="radio" name="aspd-decision" value="no-decision" checked>
+                                            <span>No Decision</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="aspd-decision" value="render">
+                                            <span>Render Diagnosis</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="aspd-decision" value="rule-out">
+                                            <span>Rule Out</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="aspd-decision" value="defer">
+                                            <span>Defer</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="add-diagnosis">+ Add Additional Diagnosis</div>
+
+                    <div>
+                        <button class="submit-button">Submit Diagnostic Decisions</button>
+                        <div class="button-info">2 of 4 decisions rendered</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT SIDEBAR - ANALYSIS -->
+            <div class="sidebar-right">
+                <div class="right-panel">
+                    <!-- PSYCHO-LEGAL ANALYSIS -->
+                    <div class="psycho-legal-section">
+                        <div class="panel-title">Psycho-Legal Analysis</div>
+                        <div class="section-header">Competency Standard — Dusky v. United States (1960)</div>
+
+                        <div class="subsection">
+                            <div class="subsection-title">1. Understanding of Charges</div>
+                            <div class="quote">
+                                "I know they say I did something but I don't really understand what a felony means different from the other one"
+                            </div>
+                            <div class="assessment"><strong>Assessment:</strong> Impaired understanding</div>
+                            <div class="assessment" style="font-size: 10px; margin-top: 4px;">Interview S1, 23:12</div>
+                        </div>
+
+                        <div class="subsection">
+                            <div class="subsection-title">2. Ability to Consult with Attorney</div>
+                            <div class="quote">
+                                "The voices say don't trust him... but I know he's trying to help, I think"
+                            </div>
+                            <div class="assessment"><strong>Assessment:</strong> Compromised by psychotic symptoms</div>
+                            <div class="assessment" style="font-size: 10px; margin-top: 4px;">Interview S1, 34:45</div>
+                        </div>
+
+                        <div class="subsection">
+                            <div class="subsection-title">3. Rational Understanding of Proceedings</div>
+                            <div class="quote">
+                                "The judge decides if I'm guilty" (partially correct — omitted jury role)
+                            </div>
+                            <div class="assessment"><strong>Assessment:</strong> Partial understanding, affected by thought disorder</div>
+                            <div class="assessment" style="font-size: 10px; margin-top: 4px;">Interview S2, 12:30</div>
+                        </div>
+
+                        <div class="overall-assessment">
+                            <strong>Overall:</strong> Evidence suggests significant impairment in rational understanding of proceedings, primarily attributable to active psychotic symptoms.
+                        </div>
+                    </div>
+
+                    <!-- AI ASSISTANT CHAT -->
+                    <div class="psycho-legal-section">
+                        <div class="panel-title">Assistant</div>
+                        <div style="padding: 8px; background-color: var(--color-bg-tertiary); border-radius: 3px; font-size: 11px; color: var(--color-text-secondary); text-align: center;">
+                            Ready to help. Click to expand.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATUSBAR -->
+        <div class="statusbar">
+            <div class="status-item">
+                <div class="status-indicator"></div>
+                <span>Connected</span>
+            </div>
+            <div class="status-item">
+                <span>Gate 2: Diagnostic Decision</span>
+            </div>
+            <div class="status-decisions">
+                <span>Decisions: 2 of 4</span>
+                <span class="status-doctor-warning">DOCTOR DECIDES — NOT AI</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme switching
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const theme = btn.dataset.theme;
+                document.body.className = theme === 'light' ? 'theme-light' : `theme-${theme}`;
+                document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Card expansion/collapse
+        document.querySelectorAll('.diagnosis-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const card = header.parentElement;
+                card.classList.toggle('collapsed');
+            });
+        });
+
+        // Radio button updates
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const group = e.target.name;
+                const card = e.target.closest('.diagnosis-card');
+                const labels = card.querySelectorAll('.radio-option');
+                labels.forEach(label => {
+                    label.classList.remove('selected', 'render', 'rule-out');
+                    if (label.querySelector('input').checked) {
+                        label.classList.add('selected');
+                        if (e.target.value === 'render') label.classList.add('render');
+                        if (e.target.value === 'rule-out') label.classList.add('rule-out');
+                    }
+                });
+            });
+        });
+
+        // Initialize radio button styling
+        document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+            radio.closest('.radio-option').classList.add('selected');
+            if (radio.value === 'render') radio.closest('.radio-option').classList.add('render');
+            if (radio.value === 'rule-out') radio.closest('.radio-option').classList.add('rule-out');
+        });
+
+        // Decision counter
+        function updateDecisionCount() {
+            const decisions = document.querySelectorAll('input[type="radio"]:checked');
+            const nonDefaults = Array.from(decisions).filter(d => {
+                return d.value !== 'no-decision' && d.value !== '';
+            }).length;
+            document.querySelector('.button-info').textContent = `${nonDefaults} of 4 decisions rendered`;
+        }
+
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', updateDecisionCount);
+        });
+    </script>
+</body>
+</html>
