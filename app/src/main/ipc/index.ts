@@ -1,0 +1,1 @@
+export { registerAllHandlers } from './handlers'

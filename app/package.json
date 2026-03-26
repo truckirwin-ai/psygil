@@ -1,0 +1,34 @@
+{
+  "name": "psygil-app",
+  "version": "0.1.0",
+  "description": "Psygil — Forensic Psychology IDE",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "postinstall": "ln -sf better-sqlite3-multiple-ciphers node_modules/better-sqlite3",
+    "db:migrate": "tsx src/main/db/migrate.ts",
+    "db:seed": "tsx src/main/db/seed.ts",
+    "db:verify": "tsx src/main/db/verify.ts"
+  },
+  "dependencies": {
+    "argon2": "^0.44.0",
+    "better-sqlite3-multiple-ciphers": "^12.8.0",
+    "drizzle-orm": "^0.45.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "drizzle-kit": "^0.31.10",
+    "electron": "^33.0.0",
+    "electron-vite": "^2.3.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.0"
+  }
+}
