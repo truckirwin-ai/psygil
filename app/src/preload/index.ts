@@ -8,6 +8,10 @@ import type {
   IntakeGetParams,
   OnboardingSaveParams,
   OnboardingGetParams,
+  IngestFileParams,
+  DocumentsGetParams,
+  DocumentsListParams,
+  DocumentsDeleteParams,
 } from '../shared/types'
 
 // IPC channel constants — must match main/ipc/handlers.ts
@@ -26,6 +30,11 @@ const CH = {
   AUTH_LOGOUT: 'auth:logout',
   CONFIG_GET: 'config:get',
   CONFIG_SET: 'config:set',
+  DOCS_INGEST: 'documents:ingest',
+  DOCS_LIST: 'documents:list',
+  DOCS_GET: 'documents:get',
+  DOCS_DELETE: 'documents:delete',
+  DOCS_PICK_FILE: 'documents:pickFile',
   WS_GET_PATH: 'workspace:getPath',
   WS_SET_PATH: 'workspace:setPath',
   WS_GET_TREE: 'workspace:getTree',
@@ -71,6 +80,14 @@ const api: PsygilApi = {
   config: {
     get: (params) => ipcRenderer.invoke(CH.CONFIG_GET, params),
     set: (params) => ipcRenderer.invoke(CH.CONFIG_SET, params)
+  },
+
+  documents: {
+    ingest: (params: IngestFileParams) => ipcRenderer.invoke(CH.DOCS_INGEST, params),
+    list: (params: DocumentsListParams) => ipcRenderer.invoke(CH.DOCS_LIST, params),
+    get: (params: DocumentsGetParams) => ipcRenderer.invoke(CH.DOCS_GET, params),
+    delete: (params: DocumentsDeleteParams) => ipcRenderer.invoke(CH.DOCS_DELETE, params),
+    pickFile: () => ipcRenderer.invoke(CH.DOCS_PICK_FILE),
   },
 
   pii: {

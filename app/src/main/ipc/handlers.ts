@@ -27,7 +27,12 @@ import type {
   PiiDetectResult,
   PiiBatchDetectParams,
   PiiBatchDetectResult,
-  FolderNode
+  FolderNode,
+  IngestFileParams,
+  DocumentsGetParams,
+  DocumentsListParams,
+  DocumentsDeleteParams,
+  DocumentRow,
 } from '../../shared/types'
 import { getAuthStatus } from '../auth'
 import { performLogin } from '../auth/login'
@@ -52,6 +57,12 @@ import {
   saveOnboardingSection,
   getOnboardingSections,
 } from '../cases'
+import {
+  ingestFile,
+  getDocument,
+  listDocuments,
+  deleteDocument,
+} from '../documents'
 
 // ---------------------------------------------------------------------------
 // Stub helper — returns a typed success envelope
@@ -344,6 +355,83 @@ function registerWorkspaceHandlers(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Document handlers
+// ---------------------------------------------------------------------------
+
+function registerDocumentHandlers(): void {
+  ipcMain.handle(
+    'documents:ingest',
+    async (_event, params: IngestFileParams): Promise<IpcResponse<DocumentRow>> => {
+      try {
+        const row = await ingestFile(params.case_id, params.file_path, params.subfolder)
+        return ok(row)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to ingest file'
+        return fail('DOCUMENT_INGEST_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'documents:list',
+    (_event, params: DocumentsListParams): IpcResponse<readonly DocumentRow[]> => {
+      try {
+        const rows = listDocuments(params.case_id)
+        return ok(rows)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to list documents'
+        return fail('DOCUMENTS_LIST_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'documents:get',
+    (_event, params: DocumentsGetParams): IpcResponse<DocumentRow | null> => {
+      try {
+        const row = getDocument(params.document_id)
+        return ok(row)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get document'
+        return fail('DOCUMENTS_GET_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'documents:delete',
+    (_event, params: DocumentsDeleteParams): IpcResponse<void> => {
+      try {
+        deleteDocument(params.document_id)
+        return ok(undefined)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to delete document'
+        return fail('DOCUMENTS_DELETE_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'documents:pickFile',
+    async (event): Promise<IpcResponse<string | null>> => {
+      const parentWindow = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(parentWindow!, {
+        title: 'Select Document to Upload',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Documents', extensions: ['pdf', 'docx', 'doc', 'txt', 'csv', 'rtf'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        return ok(null)
+      }
+      return ok(result.filePaths[0])
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
 // PII handlers
 // ---------------------------------------------------------------------------
 
@@ -386,6 +474,7 @@ export function registerAllHandlers(): void {
   registerDbHandlers()
   registerAuthHandlers()
   registerConfigHandlers()
+  registerDocumentHandlers()
   registerPiiHandlers()
   registerWorkspaceHandlers()
 }

@@ -10,9 +10,11 @@
     "postinstall": "ln -sf better-sqlite3-multiple-ciphers node_modules/better-sqlite3",
     "db:migrate": "tsx src/main/db/migrate.ts",
     "db:seed": "tsx src/main/db/seed.ts",
-    "db:verify": "tsx src/main/db/verify.ts"
+    "db:verify": "tsx src/main/db/verify.ts",
+    "db:seed-demo": "tsx src/main/db/seed-demo.ts"
   },
   "dependencies": {
+    "@types/pdf-parse": "^1.1.5",
     "argon2": "^0.44.0",
     "better-sqlite3-multiple-ciphers": "^12.8.0",
     "chokidar": "^5.0.0",

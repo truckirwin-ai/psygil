@@ -290,6 +290,56 @@ export interface PiiBatchDetectResult {
 }
 
 // ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
+
+export type CaseSubfolder =
+  | '_Inbox'
+  | 'Collateral'
+  | 'Testing'
+  | 'Interviews'
+  | 'Diagnostics'
+  | 'Reports'
+  | 'Archive'
+
+export interface DocumentRow {
+  readonly document_id: number
+  readonly case_id: number
+  readonly session_id: number | null
+  readonly document_type: string
+  readonly original_filename: string
+  readonly file_path: string
+  readonly file_size_bytes: number | null
+  readonly mime_type: string | null
+  readonly uploaded_by_user_id: number
+  readonly upload_date: string
+  readonly description: string | null
+  readonly indexed_content: string | null
+  readonly remote_path: string | null
+  readonly remote_version: string | null
+  readonly sync_status: string
+  readonly last_synced_at: string | null
+}
+
+export interface IngestFileParams {
+  readonly case_id: number
+  readonly file_path: string
+  readonly subfolder: CaseSubfolder
+}
+
+export interface DocumentsGetParams {
+  readonly document_id: number
+}
+
+export interface DocumentsListParams {
+  readonly case_id: number
+}
+
+export interface DocumentsDeleteParams {
+  readonly document_id: number
+}
+
+// ---------------------------------------------------------------------------
 // Workspace
 // ---------------------------------------------------------------------------
 
@@ -336,6 +386,13 @@ export interface PsygilApi {
   readonly config: {
     readonly get: (params: ConfigGetParams) => Promise<IpcResponse<ConfigGetResult>>
     readonly set: (params: ConfigSetParams) => Promise<IpcResponse<ConfigSetResult>>
+  }
+  readonly documents: {
+    readonly ingest: (params: IngestFileParams) => Promise<IpcResponse<DocumentRow>>
+    readonly list: (params: DocumentsListParams) => Promise<IpcResponse<readonly DocumentRow[]>>
+    readonly get: (params: DocumentsGetParams) => Promise<IpcResponse<DocumentRow | null>>
+    readonly delete: (params: DocumentsDeleteParams) => Promise<IpcResponse<void>>
+    readonly pickFile: () => Promise<IpcResponse<string | null>>
   }
   readonly pii: {
     readonly detect: (params: PiiDetectParams) => Promise<IpcResponse<PiiDetectResult>>

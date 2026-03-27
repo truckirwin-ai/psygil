@@ -1,4 +1,26 @@
 "use strict";
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 const electron = require("electron");
 const path = require("path");
 const node_crypto = require("node:crypto");
@@ -1340,6 +1362,133 @@ function getOnboardingSections(caseId) {
   const rows = sqlite.prepare("SELECT * FROM patient_onboarding WHERE case_id = ? ORDER BY section").all(caseId);
   return rows;
 }
+const VALID_SUBFOLDERS = [
+  "_Inbox",
+  "Collateral",
+  "Testing",
+  "Interviews",
+  "Diagnostics",
+  "Reports",
+  "Archive"
+];
+async function extractText(filePath, mimeType) {
+  try {
+    if (mimeType === "application/pdf") {
+      const pdfParse = (await import("pdf-parse")).default;
+      const buffer = fs.readFileSync(filePath);
+      const result = await pdfParse(buffer);
+      return result.text || null;
+    }
+    if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || mimeType === "application/msword") {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ path: filePath });
+      return result.value || null;
+    }
+    if (mimeType.startsWith("text/")) {
+      return fs.readFileSync(filePath, "utf-8");
+    }
+    return null;
+  } catch (err) {
+    console.error(`[documents] Text extraction failed for ${filePath}:`, err);
+    return null;
+  }
+}
+function mimeFromExt(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const map = {
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".doc": "application/msword",
+    ".txt": "text/plain",
+    ".csv": "text/csv",
+    ".rtf": "application/rtf",
+    ".vtt": "text/vtt",
+    ".json": "application/json"
+  };
+  return map[ext] ?? "application/octet-stream";
+}
+function docTypeFromExt(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const map = {
+    ".pdf": "pdf",
+    ".docx": "docx",
+    ".doc": "docx",
+    ".vtt": "transcript_vtt",
+    ".mp3": "audio",
+    ".wav": "audio",
+    ".m4a": "audio"
+  };
+  return map[ext] ?? "other";
+}
+async function ingestFile(caseId, filePath, subfolder, uploadedByUserId = 1) {
+  const caseRow = getCaseById(caseId);
+  if (caseRow === null) {
+    throw new Error(`Case ${caseId} not found`);
+  }
+  if (caseRow.folder_path === null) {
+    throw new Error(`Case ${caseId} has no workspace folder`);
+  }
+  if (!VALID_SUBFOLDERS.includes(subfolder)) {
+    throw new Error(`Invalid subfolder: ${subfolder}. Must be one of: ${VALID_SUBFOLDERS.join(", ")}`);
+  }
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Source file does not exist: ${filePath}`);
+  }
+  const fileName = path.basename(filePath);
+  const destDir = path.join(caseRow.folder_path, subfolder);
+  const destPath = path.join(destDir, fileName);
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+  }
+  fs.copyFileSync(filePath, destPath);
+  const stat = fs.statSync(destPath);
+  const mime = mimeFromExt(filePath);
+  const docType = docTypeFromExt(filePath);
+  const extractedText = await extractText(destPath, mime);
+  const sqlite = getSqlite();
+  const stmt = sqlite.prepare(`
+    INSERT INTO documents (
+      case_id, document_type, original_filename, file_path,
+      file_size_bytes, mime_type, uploaded_by_user_id,
+      description, indexed_content
+    ) VALUES (
+      @case_id, @document_type, @original_filename, @file_path,
+      @file_size_bytes, @mime_type, @uploaded_by_user_id,
+      @description, @indexed_content
+    )
+  `);
+  const result = stmt.run({
+    case_id: caseId,
+    document_type: docType,
+    original_filename: fileName,
+    file_path: destPath,
+    file_size_bytes: stat.size,
+    mime_type: mime,
+    uploaded_by_user_id: uploadedByUserId,
+    description: null,
+    indexed_content: extractedText
+  });
+  const docId = Number(result.lastInsertRowid);
+  return getDocument(docId);
+}
+function getDocument(docId) {
+  const sqlite = getSqlite();
+  const row = sqlite.prepare("SELECT * FROM documents WHERE document_id = ?").get(docId);
+  return row ?? null;
+}
+function listDocuments(caseId) {
+  const sqlite = getSqlite();
+  const rows = sqlite.prepare("SELECT * FROM documents WHERE case_id = ? ORDER BY upload_date DESC").all(caseId);
+  return rows;
+}
+function deleteDocument(docId) {
+  const sqlite = getSqlite();
+  const existing = getDocument(docId);
+  if (existing === null) {
+    throw new Error(`Document ${docId} not found`);
+  }
+  sqlite.prepare("DELETE FROM documents WHERE document_id = ?").run(docId);
+}
 function ok(data) {
   return { status: "success", data };
 }
@@ -1570,6 +1719,74 @@ function registerWorkspaceHandlers() {
     () => ok(getDefaultWorkspacePath())
   );
 }
+function registerDocumentHandlers() {
+  electron.ipcMain.handle(
+    "documents:ingest",
+    async (_event, params) => {
+      try {
+        const row = await ingestFile(params.case_id, params.file_path, params.subfolder);
+        return ok(row);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to ingest file";
+        return fail("DOCUMENT_INGEST_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "documents:list",
+    (_event, params) => {
+      try {
+        const rows = listDocuments(params.case_id);
+        return ok(rows);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to list documents";
+        return fail("DOCUMENTS_LIST_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "documents:get",
+    (_event, params) => {
+      try {
+        const row = getDocument(params.document_id);
+        return ok(row);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to get document";
+        return fail("DOCUMENTS_GET_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "documents:delete",
+    (_event, params) => {
+      try {
+        deleteDocument(params.document_id);
+        return ok(void 0);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to delete document";
+        return fail("DOCUMENTS_DELETE_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "documents:pickFile",
+    async (event) => {
+      const parentWindow = electron.BrowserWindow.fromWebContents(event.sender);
+      const result = await electron.dialog.showOpenDialog(parentWindow, {
+        title: "Select Document to Upload",
+        properties: ["openFile"],
+        filters: [
+          { name: "Documents", extensions: ["pdf", "docx", "doc", "txt", "csv", "rtf"] },
+          { name: "All Files", extensions: ["*"] }
+        ]
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return ok(null);
+      }
+      return ok(result.filePaths[0]);
+    }
+  );
+}
 function registerPiiHandlers() {
   electron.ipcMain.handle(
     "pii:detect",
@@ -1603,6 +1820,7 @@ function registerAllHandlers() {
   registerDbHandlers();
   registerAuthHandlers();
   registerConfigHandlers();
+  registerDocumentHandlers();
   registerPiiHandlers();
   registerWorkspaceHandlers();
 }

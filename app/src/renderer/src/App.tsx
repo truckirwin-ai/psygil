@@ -5,6 +5,9 @@ import LeftColumn from './components/layout/LeftColumn'
 import CenterColumn from './components/layout/CenterColumn'
 import RightColumn from './components/layout/RightColumn'
 import VSplitter from './components/layout/VSplitter'
+import IntakeModal from './components/modals/IntakeModal'
+import OnboardingModal from './components/modals/OnboardingModal'
+import type { Tab, TabState } from './types/tabs'
 
 const THEMES = ['light', 'medium', 'dark'] as const
 type Theme = (typeof THEMES)[number]
@@ -36,6 +39,37 @@ export default function App(): React.JSX.Element {
   const [theme, setTheme] = useState<Theme>(loadTheme)
   const [leftWidth, setLeftWidth] = useState(() => loadWidth(STORAGE_KEY_LEFT_W, DEFAULT_LEFT))
   const [rightWidth, setRightWidth] = useState(() => loadWidth(STORAGE_KEY_RIGHT_W, DEFAULT_RIGHT))
+  const [showIntake, setShowIntake] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  // Tab state — managed here, passed down to LeftColumn + CenterColumn
+  const [tabState, setTabState] = useState<TabState>({ tabs: [], activeId: null })
+
+  const openTab = useCallback((tab: Tab) => {
+    setTabState((prev) => {
+      if (prev.tabs.some((t) => t.id === tab.id)) {
+        return { ...prev, activeId: tab.id }
+      }
+      return { tabs: [...prev.tabs, tab], activeId: tab.id }
+    })
+  }, [])
+
+  const closeTab = useCallback((id: string) => {
+    setTabState((prev) => {
+      const idx = prev.tabs.findIndex((t) => t.id === id)
+      if (idx === -1) return prev
+      const next = [...prev.tabs.slice(0, idx), ...prev.tabs.slice(idx + 1)]
+      let activeId = prev.activeId
+      if (activeId === id) {
+        activeId = next.length === 0 ? null : next[Math.min(idx, next.length - 1)].id
+      }
+      return { tabs: next, activeId }
+    })
+  }, [])
+
+  const setActiveTab = useCallback((id: string) => {
+    setTabState((prev) => ({ ...prev, activeId: id }))
+  }, [])
 
   // Apply theme to <html>
   useEffect(() => {
@@ -84,7 +118,11 @@ export default function App(): React.JSX.Element {
         overflow: 'hidden',
       }}
     >
-      <Titlebar onCycleTheme={cycleTheme} />
+      <Titlebar
+        onCycleTheme={cycleTheme}
+        onOpenIntake={() => setShowIntake(true)}
+        onOpenOnboarding={() => setShowOnboarding(true)}
+      />
 
       <div
         className="main-layout"
@@ -104,7 +142,7 @@ export default function App(): React.JSX.Element {
             overflow: 'hidden',
           }}
         >
-          <LeftColumn />
+          <LeftColumn onOpenTab={openTab} />
         </div>
 
         <VSplitter onResize={handleLeftResize} onResizeEnd={handleLeftResizeEnd} />
@@ -118,7 +156,12 @@ export default function App(): React.JSX.Element {
             minWidth: 0,
           }}
         >
-          <CenterColumn />
+          <CenterColumn
+            tabs={tabState.tabs}
+            activeTabId={tabState.activeId}
+            onCloseTab={closeTab}
+            onSetActiveTab={setActiveTab}
+          />
         </div>
 
         <VSplitter onResize={handleRightResize} onResizeEnd={handleRightResizeEnd} />
@@ -138,6 +181,9 @@ export default function App(): React.JSX.Element {
       </div>
 
       <Statusbar />
+
+      <IntakeModal isOpen={showIntake} onClose={() => setShowIntake(false)} />
+      <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </div>
   )
 }

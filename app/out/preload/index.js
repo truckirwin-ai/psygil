@@ -15,6 +15,11 @@ const CH = {
   AUTH_LOGOUT: "auth:logout",
   CONFIG_GET: "config:get",
   CONFIG_SET: "config:set",
+  DOCS_INGEST: "documents:ingest",
+  DOCS_LIST: "documents:list",
+  DOCS_GET: "documents:get",
+  DOCS_DELETE: "documents:delete",
+  DOCS_PICK_FILE: "documents:pickFile",
   WS_GET_PATH: "workspace:getPath",
   WS_SET_PATH: "workspace:setPath",
   WS_GET_TREE: "workspace:getTree",
@@ -50,6 +55,13 @@ const api = {
   config: {
     get: (params) => electron.ipcRenderer.invoke(CH.CONFIG_GET, params),
     set: (params) => electron.ipcRenderer.invoke(CH.CONFIG_SET, params)
+  },
+  documents: {
+    ingest: (params) => electron.ipcRenderer.invoke(CH.DOCS_INGEST, params),
+    list: (params) => electron.ipcRenderer.invoke(CH.DOCS_LIST, params),
+    get: (params) => electron.ipcRenderer.invoke(CH.DOCS_GET, params),
+    delete: (params) => electron.ipcRenderer.invoke(CH.DOCS_DELETE, params),
+    pickFile: () => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILE)
   },
   pii: {
     detect: (params) => electron.ipcRenderer.invoke("pii:detect", params),

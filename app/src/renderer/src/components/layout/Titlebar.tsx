@@ -2,6 +2,8 @@ type ElectronCSS = React.CSSProperties & Record<string, unknown>
 
 interface TitlebarProps {
   readonly onCycleTheme: () => void
+  readonly onOpenIntake: () => void
+  readonly onOpenOnboarding: () => void
 }
 
 const LOGO_SVG = (
@@ -17,7 +19,11 @@ const LOGO_SVG = (
   </svg>
 )
 
-export default function Titlebar({ onCycleTheme }: TitlebarProps): React.JSX.Element {
+export default function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding }: TitlebarProps): React.JSX.Element {
+  const navActions: Record<string, (() => void) | undefined> = {
+    Intake: onOpenIntake,
+    Onboarding: onOpenOnboarding,
+  }
   return (
     <div
       style={{
@@ -71,6 +77,8 @@ export default function Titlebar({ onCycleTheme }: TitlebarProps): React.JSX.Ele
         {['Setup', 'Intake', 'Onboarding', 'Docs'].map((label) => (
           <span
             key={label}
+            role="button"
+            tabIndex={0}
             style={{
               fontSize: 12,
               fontWeight: 500,
@@ -78,6 +86,10 @@ export default function Titlebar({ onCycleTheme }: TitlebarProps): React.JSX.Ele
               cursor: 'pointer',
               WebkitAppRegion: 'no-drag',
             } as ElectronCSS}
+            onClick={navActions[label]}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') navActions[label]?.()
+            }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = 'var(--accent)'
               e.currentTarget.style.textDecoration = 'underline'

@@ -12446,7 +12446,11 @@ const LOGO_SVG = /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "22", he
   /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "40", cy: "42", r: "2", fill: "#ffffff" }),
   /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "60", cy: "42", r: "2", fill: "#ffffff" })
 ] });
-function Titlebar({ onCycleTheme }) {
+function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding }) {
+  const navActions = {
+    Intake: onOpenIntake,
+    Onboarding: onOpenOnboarding
+  };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -12505,12 +12509,18 @@ function Titlebar({ onCycleTheme }) {
             children: ["Setup", "Intake", "Onboarding", "Docs"].map((label) => /* @__PURE__ */ jsxRuntimeExports.jsx(
               "span",
               {
+                role: "button",
+                tabIndex: 0,
                 style: {
                   fontSize: 12,
                   fontWeight: 500,
                   color: "var(--text-secondary)",
                   cursor: "pointer",
                   WebkitAppRegion: "no-drag"
+                },
+                onClick: navActions[label],
+                onKeyDown: (e) => {
+                  if (e.key === "Enter" || e.key === " ") navActions[label]?.();
                 },
                 onMouseEnter: (e) => {
                   e.currentTarget.style.color = "var(--accent)";
@@ -12648,77 +12658,141 @@ function Statusbar() {
     }
   );
 }
-function LeftColumn() {
-  const [wsState, setWsState] = reactExports.useState({ status: "loading" });
+const STAGE_COLORS = {
+  onboarding: "#2196f3",
+  testing: "#9c27b0",
+  interview: "#e91e63",
+  diagnostics: "#ff9800",
+  review: "#ff5722",
+  complete: "#4caf50"
+};
+const STAGE_LABELS = {
+  onboarding: "Onboarding",
+  testing: "Testing",
+  interview: "Interview",
+  diagnostics: "Diagnostics",
+  review: "Review",
+  complete: "Complete"
+};
+const CASE_SUBFOLDERS = [
+  "_Inbox",
+  "Collateral",
+  "Testing",
+  "Interviews",
+  "Diagnostics",
+  "Reports",
+  "Archive"
+];
+function buildTreeLookup(nodes) {
+  const map = /* @__PURE__ */ new Map();
+  function walk(node) {
+    map.set(node.path, node);
+    if (node.children) {
+      for (const child of node.children) {
+        walk(child);
+      }
+    }
+  }
+  for (const n of nodes) {
+    walk(n);
+  }
+  return map;
+}
+function LeftColumn({ onOpenTab }) {
+  const [viewMode, setViewMode] = reactExports.useState("cases");
+  const [wsStatus, setWsStatus] = reactExports.useState("loading");
+  const [cases, setCases] = reactExports.useState([]);
+  const [wsTree, setWsTree] = reactExports.useState([]);
+  const [treeLookup, setTreeLookup] = reactExports.useState(/* @__PURE__ */ new Map());
+  reactExports.useEffect(() => {
+    setTreeLookup(buildTreeLookup(wsTree));
+  }, [wsTree]);
   const loadTree = reactExports.useCallback(async () => {
-    const treeResp = await window.psygil.workspace.getTree();
-    if (treeResp.status === "success") {
-      setWsState({ status: "ready", tree: treeResp.data });
+    const resp = await window.psygil?.workspace?.getTree?.();
+    if (resp?.status === "success") {
+      setWsTree(resp.data);
+    }
+  }, []);
+  const loadCases = reactExports.useCallback(async () => {
+    const resp = await window.psygil?.cases?.list?.();
+    if (resp?.status === "success") {
+      setCases(resp.data.cases);
     }
   }, []);
   reactExports.useEffect(() => {
     let cancelled = false;
     async function init() {
-      const resp = await window.psygil.workspace.getPath();
+      const resp = await window.psygil?.workspace?.getPath?.();
       if (cancelled) return;
-      if (resp.status === "success" && resp.data !== null) {
-        await loadTree();
+      if (resp?.status === "success" && resp.data !== null) {
+        setWsStatus("ready");
+        await Promise.all([loadTree(), loadCases()]);
       } else {
-        setWsState({ status: "no-workspace" });
+        setWsStatus("no-workspace");
       }
     }
     init();
     return () => {
       cancelled = true;
     };
-  }, [loadTree]);
+  }, [loadTree, loadCases]);
   reactExports.useEffect(() => {
-    if (wsState.status !== "ready") return;
-    window.psygil.workspace.onFileChanged(() => {
+    if (wsStatus !== "ready") return;
+    window.psygil?.workspace?.onFileChanged?.(() => {
       loadTree();
     });
     return () => {
-      window.psygil.workspace.offFileChanged();
+      window.psygil?.workspace?.offFileChanged?.();
     };
-  }, [wsState.status, loadTree]);
+  }, [wsStatus, loadTree]);
   const handleChooseFolder = reactExports.useCallback(async () => {
-    const pickResp = await window.psygil.workspace.pickFolder();
-    if (pickResp.status !== "success" || pickResp.data === null) return;
-    const setResp = await window.psygil.workspace.setPath(pickResp.data);
-    if (setResp.status === "success") {
-      await loadTree();
+    const pickResp = await window.psygil?.workspace?.pickFolder?.();
+    if (pickResp?.status !== "success" || pickResp.data === null) return;
+    const setResp = await window.psygil?.workspace?.setPath?.(pickResp.data);
+    if (setResp?.status === "success") {
+      setWsStatus("ready");
+      await Promise.all([loadTree(), loadCases()]);
     }
-  }, [loadTree]);
+  }, [loadTree, loadCases]);
   const handleUseDefault = reactExports.useCallback(async () => {
-    const defaultResp = await window.psygil.workspace.getDefaultPath();
-    if (defaultResp.status !== "success") return;
-    const setResp = await window.psygil.workspace.setPath(defaultResp.data);
-    if (setResp.status === "success") {
-      await loadTree();
+    const defaultResp = await window.psygil?.workspace?.getDefaultPath?.();
+    if (defaultResp?.status !== "success") return;
+    const setResp = await window.psygil?.workspace?.setPath?.(defaultResp.data);
+    if (setResp?.status === "success") {
+      setWsStatus("ready");
+      await Promise.all([loadTree(), loadCases()]);
     }
-  }, [loadTree]);
-  if (wsState.status === "no-workspace") {
+  }, [loadTree, loadCases]);
+  const handleRefresh = reactExports.useCallback(async () => {
+    await Promise.all([loadTree(), loadCases()]);
+  }, [loadTree, loadCases]);
+  if (wsStatus === "no-workspace") {
     return /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeOverlay, { onChoose: handleChooseFolder, onUseDefault: handleUseDefault });
   }
-  if (wsState.status === "loading") {
+  if (wsStatus === "loading") {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-secondary)", fontSize: 13 }, children: "Loading…" });
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" }, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-header", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Workspace" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Refresh", title: "Refresh", onClick: loadTree, children: "↻" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Open in Finder", title: "Open in Finder", onClick: async () => {
-        const resp = await window.psygil.workspace.getPath();
-        if (resp.status === "success" && resp.data !== null) {
-          window.psygil.workspace.openInFinder(resp.data);
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: viewMode === "cases" ? "Cases" : "Workspace" }),
+      viewMode === "cases" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "New Case", title: "New Case", children: "＋" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Browse Cases", title: "Browse Cases", children: "⊞" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Refresh", title: "Refresh", onClick: handleRefresh, children: "↻" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          className: "panel-hdr-btn",
+          "aria-label": viewMode === "cases" ? "Show Files" : "Show Cases",
+          title: viewMode === "cases" ? "Show Files" : "Show Cases",
+          onClick: () => setViewMode((p) => p === "cases" ? "files" : "cases"),
+          style: viewMode === "files" ? { background: "var(--highlight)", color: "var(--accent)" } : void 0,
+          children: viewMode === "cases" ? "📁" : "📋"
         }
-      }, children: "↗" })
+      )
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: "4px 0" }, children: wsState.tree.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px 12px", fontSize: 12, color: "var(--text-secondary)", textAlign: "center" }, children: [
-      "Workspace is empty.",
-      /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
-      "Drop files into this folder to get started."
-    ] }) : wsState.tree.map((node) => /* @__PURE__ */ jsxRuntimeExports.jsx(TreeNode, { node, depth: 0 }, node.path)) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: "4px 0" }, children: viewMode === "cases" ? /* @__PURE__ */ jsxRuntimeExports.jsx(CasesView, { cases, treeLookup, onOpenTab }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FilesView, { tree: wsTree, onOpenTab }) }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { borderTop: "1px solid var(--border)", flexShrink: 0 }, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Resources" }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px 12px" }, children: [
@@ -12729,18 +12803,198 @@ function LeftColumn() {
     ] })
   ] });
 }
-function TreeNode({
+function CasesView({
+  cases,
+  treeLookup,
+  onOpenTab
+}) {
+  if (cases.length === 0) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "16px 12px", fontSize: 12, color: "var(--text-secondary)", textAlign: "center" }, children: "No cases yet. Click + to create one." });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: cases.map((c) => /* @__PURE__ */ jsxRuntimeExports.jsx(CaseNode, { caseRow: c, treeLookup, onOpenTab }, c.case_id)) });
+}
+function CaseNode({
+  caseRow,
+  treeLookup,
+  onOpenTab
+}) {
+  const [expanded, setExpanded] = reactExports.useState(false);
+  const stage = caseRow.workflow_current_stage ?? "onboarding";
+  const stageColor = STAGE_COLORS[stage] ?? "#9e9e9e";
+  const stageLabel = STAGE_LABELS[stage] ?? stage;
+  const caseName = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`;
+  const evalType = caseRow.evaluation_type ?? "";
+  const caseFolder = caseRow.folder_path ? treeLookup.get(caseRow.folder_path) : void 0;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          padding: "3px 8px",
+          gap: 4,
+          cursor: "pointer",
+          fontSize: 13,
+          color: "var(--text)"
+        },
+        onMouseEnter: (e) => {
+          e.currentTarget.style.background = "var(--highlight)";
+        },
+        onMouseLeave: (e) => {
+          e.currentTarget.style.background = "transparent";
+        },
+        onClick: () => setExpanded((p) => !p),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0, textAlign: "center" }, children: expanded ? "▾" : "▸" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, minWidth: 0 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis" }, children: caseName }),
+            evalType !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, color: "var(--text-secondary)", flexShrink: 0 }, children: evalType })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              style: {
+                background: stageColor,
+                color: "#ffffff",
+                fontSize: 10,
+                fontWeight: 600,
+                borderRadius: 3,
+                padding: "2px 6px",
+                flexShrink: 0,
+                whiteSpace: "nowrap"
+              },
+              children: stageLabel
+            }
+          )
+        ]
+      }
+    ),
+    expanded && CASE_SUBFOLDERS.map((sub) => {
+      const subNode = caseFolder?.children?.find((c) => c.name === sub);
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(FolderSubNode, { name: sub, folderNode: subNode, depth: 1, onOpenTab }, sub);
+    })
+  ] });
+}
+function FolderSubNode({
+  name,
+  folderNode,
+  depth,
+  onOpenTab
+}) {
+  const [expanded, setExpanded] = reactExports.useState(false);
+  const children = folderNode?.children ?? [];
+  const fileCount = children.filter((c) => !c.isDirectory).length;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          padding: "3px 8px",
+          paddingLeft: 8 + depth * 16,
+          gap: 4,
+          cursor: "pointer",
+          fontSize: 13,
+          color: "var(--text)"
+        },
+        onMouseEnter: (e) => {
+          e.currentTarget.style.background = "var(--highlight)";
+        },
+        onMouseLeave: (e) => {
+          e.currentTarget.style.background = "transparent";
+        },
+        onClick: () => setExpanded((p) => !p),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0, textAlign: "center" }, children: expanded ? "▾" : "▸" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, height: 16, fontSize: 14, flexShrink: 0, color: "var(--text-secondary)" }, children: "📁" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: name }),
+          fileCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              style: {
+                background: "var(--accent)",
+                color: "#ffffff",
+                fontSize: 10,
+                fontWeight: 600,
+                borderRadius: 3,
+                padding: "1px 5px",
+                flexShrink: 0
+              },
+              children: fileCount
+            }
+          )
+        ]
+      }
+    ),
+    expanded && children.map(
+      (child) => child.isDirectory ? /* @__PURE__ */ jsxRuntimeExports.jsx(FolderSubNode, { name: child.name, folderNode: child, depth: depth + 1, onOpenTab }, child.path) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileLeafNode, { node: child, depth: depth + 1, onOpenTab }, child.path)
+    )
+  ] });
+}
+function FileLeafNode({
   node,
-  depth
+  depth,
+  onOpenTab
+}) {
+  const handleClick = reactExports.useCallback(() => {
+    onOpenTab({ id: `doc:${node.path}`, title: node.name, type: "document", filePath: node.path });
+  }, [node.path, node.name, onOpenTab]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        padding: "3px 8px",
+        paddingLeft: 8 + depth * 16,
+        gap: 4,
+        cursor: "pointer",
+        fontSize: 13,
+        color: "var(--text)"
+      },
+      onMouseEnter: (e) => {
+        e.currentTarget.style.background = "var(--highlight)";
+      },
+      onMouseLeave: (e) => {
+        e.currentTarget.style.background = "transparent";
+      },
+      onClick: handleClick,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, flexShrink: 0 } }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, height: 16, fontSize: 14, flexShrink: 0, color: "var(--text-secondary)" }, children: "📄" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: node.name })
+      ]
+    }
+  );
+}
+function FilesView({
+  tree,
+  onOpenTab
+}) {
+  if (tree.length === 0) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px 12px", fontSize: 12, color: "var(--text-secondary)", textAlign: "center" }, children: [
+      "Workspace is empty.",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+      "Drop files into this folder to get started."
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: tree.map((node) => /* @__PURE__ */ jsxRuntimeExports.jsx(FileTreeNode, { node, depth: 0, onOpenTab }, node.path)) });
+}
+function FileTreeNode({
+  node,
+  depth,
+  onOpenTab
 }) {
   const [expanded, setExpanded] = reactExports.useState(depth < 1);
   const handleClick = reactExports.useCallback(() => {
     if (node.isDirectory) {
-      setExpanded((prev) => !prev);
+      setExpanded((p) => !p);
     } else {
-      window.psygil.workspace.openInFinder(node.path);
+      onOpenTab({ id: `doc:${node.path}`, title: node.name, type: "document", filePath: node.path });
     }
-  }, [node.isDirectory, node.path]);
+  }, [node.isDirectory, node.path, node.name, onOpenTab]);
   const icon = node.isDirectory ? "📁" : "📄";
   const arrow = node.isDirectory ? expanded ? "▾" : "▸" : "";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
@@ -12771,7 +13025,7 @@ function TreeNode({
         ]
       }
     ),
-    node.isDirectory && expanded && node.children != null && node.children.map((child) => /* @__PURE__ */ jsxRuntimeExports.jsx(TreeNode, { node: child, depth: depth + 1 }, child.path))
+    node.isDirectory && expanded && node.children?.map((child) => /* @__PURE__ */ jsxRuntimeExports.jsx(FileTreeNode, { node: child, depth: depth + 1, onOpenTab }, child.path))
   ] });
 }
 function WelcomeOverlay({
@@ -12846,7 +13100,13 @@ const PIPELINE_STAGES = [
   { label: "Review", color: "#ff5722" },
   { label: "Complete", color: "#4caf50" }
 ];
-function CenterColumn() {
+function CenterColumn({
+  tabs,
+  activeTabId,
+  onCloseTab,
+  onSetActiveTab
+}) {
+  const activeTab = tabs.find((t) => t.id === activeTabId);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -12861,55 +13121,42 @@ function CenterColumn() {
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "div",
           {
+            className: "tab-bar",
             style: {
               height: 32,
               display: "flex",
-              alignItems: "center",
+              alignItems: "stretch",
               background: "var(--panel)",
               borderBottom: "1px solid var(--border)",
               flexShrink: 0,
               overflowX: "auto"
             },
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            children: tabs.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
               "span",
               {
                 style: {
                   padding: "0 16px",
                   fontSize: 12,
                   color: "var(--text-secondary)",
-                  fontStyle: "italic"
+                  fontStyle: "italic",
+                  display: "flex",
+                  alignItems: "center"
                 },
                 children: "No open tabs"
               }
-            )
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            style: {
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "auto"
-            },
-            children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "div",
+            ) : tabs.map((tab) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+              TabButton,
               {
-                style: {
-                  textAlign: "center",
-                  color: "var(--text-secondary)"
-                },
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 8, opacity: 0.3 }, children: "📋" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 500 }, children: "Open a case to begin" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, marginTop: 4 }, children: "Select a case from the tree or create a new one" })
-                ]
-              }
-            )
+                tab,
+                isActive: tab.id === activeTabId,
+                onActivate: () => onSetActiveTab(tab.id),
+                onClose: () => onCloseTab(tab.id)
+              },
+              tab.id
+            ))
           }
         ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, position: "relative", overflow: "hidden" }, children: activeTab == null ? /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeContent, {}) : activeTab.type === "clinical-overview" ? /* @__PURE__ */ jsxRuntimeExports.jsx(ClinicalOverviewContent, { tab: activeTab }) : /* @__PURE__ */ jsxRuntimeExports.jsx(DocumentContent, { tab: activeTab }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "div",
           {
@@ -12921,53 +13168,167 @@ function CenterColumn() {
             },
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", style: { borderBottom: "none" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Evaluation Pipeline" }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "div",
-                {
-                  style: {
-                    display: "flex",
-                    gap: 4,
-                    padding: "8px 12px",
-                    flexWrap: "wrap"
-                  },
-                  children: PIPELINE_STAGES.map((stage) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "span",
-                    {
-                      style: {
-                        padding: "4px 12px",
-                        borderRadius: 4,
-                        fontSize: 12,
-                        fontWeight: 500,
-                        border: "1px solid var(--border)",
-                        color: "var(--text-secondary)",
-                        background: "var(--panel)",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4
-                      },
-                      onMouseEnter: (e) => {
-                        e.currentTarget.style.background = stage.color;
-                        e.currentTarget.style.color = "#ffffff";
-                        e.currentTarget.style.borderColor = stage.color;
-                      },
-                      onMouseLeave: (e) => {
-                        e.currentTarget.style.background = "var(--panel)";
-                        e.currentTarget.style.color = "var(--text-secondary)";
-                        e.currentTarget.style.borderColor = "var(--border)";
-                      },
-                      children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10 }, children: "○" }),
-                        stage.label
-                      ]
-                    },
-                    stage.label
-                  ))
-                }
-              )
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 4, padding: "8px 12px", flexWrap: "wrap" }, children: PIPELINE_STAGES.map((stage) => /* @__PURE__ */ jsxRuntimeExports.jsx(PipelinePill, { label: stage.label, color: stage.color }, stage.label)) })
             ]
           }
         )
+      ]
+    }
+  );
+}
+function TabButton({
+  tab,
+  isActive,
+  onActivate,
+  onClose
+}) {
+  const [hovered, setHovered] = reactExports.useState(false);
+  const [closeHovered, setCloseHovered] = reactExports.useState(false);
+  const showClose = isActive || hovered;
+  const handleClose = reactExports.useCallback(
+    (e) => {
+      e.stopPropagation();
+      onClose();
+    },
+    [onClose]
+  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        height: 32,
+        display: "flex",
+        alignItems: "center",
+        padding: "0 12px",
+        gap: 6,
+        borderRight: "1px solid var(--border)",
+        fontSize: 12,
+        cursor: "pointer",
+        color: isActive || hovered ? "var(--text)" : "var(--text-secondary)",
+        background: isActive ? "var(--bg)" : hovered ? "var(--highlight)" : "transparent",
+        fontWeight: isActive ? 500 : 400,
+        borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
+        flexShrink: 0,
+        whiteSpace: "nowrap"
+      },
+      onMouseEnter: () => setHovered(true),
+      onMouseLeave: () => setHovered(false),
+      onClick: onActivate,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { overflow: "hidden", textOverflow: "ellipsis", maxWidth: 140 }, children: tab.title }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            style: {
+              width: 16,
+              height: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 3,
+              fontSize: 12,
+              opacity: showClose ? closeHovered ? 1 : 0.6 : 0,
+              background: closeHovered ? "rgba(0,0,0,0.1)" : "transparent",
+              flexShrink: 0,
+              transition: "opacity 0.1s"
+            },
+            onMouseEnter: () => setCloseHovered(true),
+            onMouseLeave: () => setCloseHovered(false),
+            onClick: handleClose,
+            children: "✕"
+          }
+        )
+      ]
+    }
+  );
+}
+function WelcomeContent() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", color: "var(--text-secondary)" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 8, opacity: 0.3 }, children: "📋" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 500 }, children: "Open a case to begin" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, marginTop: 4 }, children: "Select a case from the tree or create a new one" })
+  ] }) });
+}
+function ClinicalOverviewContent({ tab }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px", overflow: "auto", height: "100%" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 12 }, children: "Clinical Overview" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { fontSize: 13, color: "var(--text-secondary)" }, children: [
+      "Case #",
+      tab.caseId,
+      " — summary view will be populated in a later sprint."
+    ] })
+  ] });
+}
+function DocumentContent({ tab }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px", overflow: "auto", height: "100%" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          padding: 16,
+          background: "var(--panel)",
+          borderRadius: 4,
+          border: "1px solid var(--border)"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                fontSize: 11,
+                textTransform: "uppercase",
+                fontWeight: 600,
+                color: "var(--text-secondary)",
+                marginBottom: 8
+              },
+              children: "Document"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 4 }, children: tab.title }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                fontSize: 11,
+                color: "var(--text-secondary)",
+                fontFamily: "'JetBrains Mono', monospace"
+              },
+              children: tab.filePath
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontSize: 13, color: "var(--text-secondary)", marginTop: 16 }, children: "Document viewer will render file content in a later sprint." })
+  ] });
+}
+function PipelinePill({
+  label,
+  color
+}) {
+  const [hovered, setHovered] = reactExports.useState(false);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "span",
+    {
+      style: {
+        padding: "4px 12px",
+        borderRadius: 4,
+        fontSize: 12,
+        fontWeight: 500,
+        border: `1px solid ${hovered ? color : "var(--border)"}`,
+        color: hovered ? "#ffffff" : "var(--text-secondary)",
+        background: hovered ? color : "var(--panel)",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        transition: "all 0.15s"
+      },
+      onMouseEnter: () => setHovered(true),
+      onMouseLeave: () => setHovered(false),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10 }, children: "○" }),
+        label
       ]
     }
   );
@@ -13323,6 +13684,671 @@ function VSplitter({ onResize, onResizeEnd }) {
     }
   );
 }
+const EVAL_TYPES = [
+  "CST",
+  "Custody",
+  "Risk",
+  "Fitness",
+  "PTSD",
+  "ADHD",
+  "Malingering",
+  "Capacity"
+];
+const REFERRAL_TYPES = [
+  "Court-Ordered",
+  "Attorney-Referred",
+  "Self-Referred",
+  "Walk-In"
+];
+const EMPTY_FORM = {
+  lastName: "",
+  firstName: "",
+  middleInitial: "",
+  dob: "",
+  gender: "",
+  evalType: "",
+  referralType: "",
+  referralSource: "",
+  presentingComplaint: "",
+  jurisdiction: "",
+  charges: "",
+  attorney: "",
+  reportDeadline: ""
+};
+function IntakeModal({ isOpen, onClose }) {
+  const [form, setForm] = reactExports.useState(EMPTY_FORM);
+  reactExports.useEffect(() => {
+    if (isOpen) setForm(EMPTY_FORM);
+  }, [isOpen]);
+  reactExports.useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+  const updateField = reactExports.useCallback(
+    (field, value) => {
+      setForm((prev) => ({ ...prev, [field]: value }));
+    },
+    []
+  );
+  const handleSaveDraft = reactExports.useCallback(() => {
+    window.psygil?.intake?.save?.({ ...form, isDraft: true });
+  }, [form]);
+  const handleSubmit = reactExports.useCallback(() => {
+    window.psygil?.intake?.save?.({ ...form, isDraft: false });
+    onClose();
+  }, [form, onClose]);
+  if (!isOpen) return null;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: overlayStyle$1, onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: containerStyle$1, onClick: (e) => e.stopPropagation(), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: headerStyle$1, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" }, children: "New Case Intake" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, style: closeButtonStyle$1, "aria-label": "Close", children: "×" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: 24, display: "flex", flexDirection: "column", gap: 20 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Last Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: form.lastName,
+            onChange: (e) => updateField("lastName", e.target.value),
+            placeholder: "Last name"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "First Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: form.firstName,
+            onChange: (e) => updateField("firstName", e.target.value),
+            placeholder: "First name"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "MI", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: form.middleInitial,
+            onChange: (e) => updateField("middleInitial", e.target.value),
+            maxLength: 1,
+            placeholder: "M"
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Date of Birth", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "date",
+            style: inputStyle,
+            value: form.dob,
+            onChange: (e) => updateField("dob", e.target.value)
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Gender", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: form.gender,
+            onChange: (e) => updateField("gender", e.target.value),
+            placeholder: "Gender"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Evaluation Type", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            style: inputStyle,
+            value: form.evalType,
+            onChange: (e) => updateField("evalType", e.target.value),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select type..." }),
+              EVAL_TYPES.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: t, children: t }, t))
+            ]
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referral Type", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" }, children: REFERRAL_TYPES.map((rt) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => updateField("referralType", rt),
+          style: form.referralType === rt ? activeToggleStyle : inactiveToggleStyle,
+          children: rt
+        },
+        rt
+      )) }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referral Source", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: form.referralSource,
+            onChange: (e) => updateField("referralSource", e.target.value),
+            placeholder: "Referral source"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Jurisdiction", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: form.jurisdiction,
+            onChange: (e) => updateField("jurisdiction", e.target.value),
+            placeholder: "Jurisdiction"
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Charges", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: form.charges,
+            onChange: (e) => updateField("charges", e.target.value),
+            placeholder: "Charges"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Attorney", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: form.attorney,
+            onChange: (e) => updateField("attorney", e.target.value),
+            placeholder: "Attorney name"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Report Deadline", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "date",
+            style: inputStyle,
+            value: form.reportDeadline,
+            onChange: (e) => updateField("reportDeadline", e.target.value)
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Presenting Complaint", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...inputStyle, minHeight: 80, resize: "vertical" },
+          value: form.presentingComplaint,
+          onChange: (e) => updateField("presentingComplaint", e.target.value),
+          placeholder: "Describe the presenting complaint..."
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "flex-end", gap: 12, paddingTop: 8 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSaveDraft, style: secondaryButtonStyle$1, children: "Save Draft" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSubmit, style: primaryButtonStyle$1, children: "Submit" })
+      ] })
+    ] })
+  ] }) });
+}
+function Field({
+  label,
+  flex,
+  children
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: labelStyle$1, children: label }),
+    children
+  ] });
+}
+const overlayStyle$1 = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.55)",
+  zIndex: 9999,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center"
+};
+const containerStyle$1 = {
+  background: "var(--panel)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  maxWidth: 880,
+  width: "90%",
+  maxHeight: "calc(100vh - 64px)",
+  overflowY: "auto"
+};
+const headerStyle$1 = {
+  position: "sticky",
+  top: 0,
+  background: "var(--panel)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "12px 24px",
+  borderBottom: "1px solid var(--border)",
+  zIndex: 1
+};
+const closeButtonStyle$1 = {
+  background: "none",
+  border: "none",
+  fontSize: 20,
+  color: "var(--text-secondary)",
+  cursor: "pointer",
+  padding: 0,
+  lineHeight: 1
+};
+const rowStyle = {
+  display: "flex",
+  gap: 16
+};
+const labelStyle$1 = {
+  fontSize: 11,
+  fontWeight: 500,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: 0.5
+};
+const inputStyle = {
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "6px 10px",
+  fontSize: 13,
+  color: "var(--text)",
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  fontFamily: "inherit"
+};
+const activeToggleStyle = {
+  background: "var(--accent)",
+  color: "#ffffff",
+  border: "1px solid var(--accent)",
+  borderRadius: 4,
+  padding: "5px 14px",
+  fontSize: 12,
+  fontWeight: 500,
+  cursor: "pointer",
+  fontFamily: "inherit"
+};
+const inactiveToggleStyle = {
+  background: "var(--panel)",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "5px 14px",
+  fontSize: 12,
+  fontWeight: 500,
+  cursor: "pointer",
+  fontFamily: "inherit"
+};
+const primaryButtonStyle$1 = {
+  background: "var(--accent)",
+  color: "#ffffff",
+  border: "none",
+  borderRadius: 4,
+  padding: "8px 24px",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: "inherit"
+};
+const secondaryButtonStyle$1 = {
+  background: "var(--panel)",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "8px 24px",
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: "pointer",
+  fontFamily: "inherit"
+};
+const TABS = [
+  {
+    key: "contact",
+    label: "Contact",
+    fields: [
+      { key: "address", label: "Address & Phone", placeholder: "Current address, phone numbers, email..." },
+      { key: "emergency", label: "Emergency Contact", placeholder: "Name, relationship, phone..." },
+      { key: "insurance", label: "Insurance Information", placeholder: "Provider, policy number, group..." }
+    ]
+  },
+  {
+    key: "complaints",
+    label: "Complaints",
+    fields: [
+      { key: "primary", label: "Primary Complaint", placeholder: "Describe the primary concern in your own words..." },
+      { key: "history", label: "History of Present Concern", placeholder: "When did this begin? How has it progressed?" },
+      { key: "impact", label: "Daily Impact", placeholder: "How does this affect daily life, work, relationships?" }
+    ]
+  },
+  {
+    key: "family",
+    label: "Family",
+    fields: [
+      { key: "structure", label: "Family Structure", placeholder: "Household members, marital status, children..." },
+      { key: "history", label: "Family History", placeholder: "Family mental health history, significant events..." },
+      { key: "relationships", label: "Key Relationships", placeholder: "Quality of current family relationships..." }
+    ]
+  },
+  {
+    key: "education",
+    label: "Education",
+    fields: [
+      { key: "level", label: "Educational Background", placeholder: "Highest level completed, schools attended..." },
+      { key: "employment", label: "Employment History", placeholder: "Current and past employment, job performance..." }
+    ]
+  },
+  {
+    key: "health",
+    label: "Health",
+    fields: [
+      { key: "current", label: "Current Health Conditions", placeholder: "Active medical diagnoses, medications..." },
+      { key: "history", label: "Medical History", placeholder: "Past surgeries, hospitalizations, chronic conditions..." },
+      { key: "medications", label: "Current Medications", placeholder: "Medication name, dosage, prescriber, purpose..." }
+    ]
+  },
+  {
+    key: "mentalHealth",
+    label: "Mental Health",
+    fields: [
+      { key: "current", label: "Current Mental Health", placeholder: "Current symptoms, mood, sleep, appetite..." },
+      { key: "history", label: "Treatment History", placeholder: "Past therapy, hospitalizations, medications..." },
+      { key: "selfHarm", label: "Self-Harm & Safety", placeholder: "History of self-harm, suicidal ideation, safety concerns..." }
+    ]
+  },
+  {
+    key: "substanceUse",
+    label: "Substance Use",
+    fields: [
+      { key: "current", label: "Current Use", placeholder: "Substances used, frequency, amount..." },
+      { key: "history", label: "Substance History", placeholder: "Past use, treatment history, sobriety periods..." }
+    ]
+  },
+  {
+    key: "legal",
+    label: "Legal",
+    fields: [
+      { key: "current", label: "Current Legal Matters", placeholder: "Pending charges, court dates, probation status..." },
+      { key: "history", label: "Legal History", placeholder: "Prior arrests, convictions, incarcerations..." },
+      { key: "involvement", label: "System Involvement", placeholder: "CPS, probation, parole, civil matters..." }
+    ]
+  },
+  {
+    key: "recentEvents",
+    label: "Recent Events",
+    fields: [
+      { key: "stressors", label: "Recent Stressors", placeholder: "Major life changes, losses, conflicts..." },
+      { key: "trauma", label: "Trauma History", placeholder: "Significant traumatic experiences, timeline..." },
+      { key: "coping", label: "Coping & Support", placeholder: "Current coping strategies, support systems..." }
+    ]
+  }
+];
+function buildEmptyForm() {
+  const state = {};
+  for (const tab of TABS) {
+    const tabData = { clinicianNotes: "" };
+    for (const field of tab.fields) {
+      tabData[field.key] = "";
+    }
+    state[tab.key] = tabData;
+  }
+  return state;
+}
+function OnboardingModal({
+  isOpen,
+  onClose,
+  caseId
+}) {
+  const [activeTab, setActiveTab] = reactExports.useState("contact");
+  const [mode, setMode] = reactExports.useState("self-report");
+  const [form, setForm] = reactExports.useState(buildEmptyForm);
+  reactExports.useEffect(() => {
+    if (isOpen) {
+      setForm(buildEmptyForm());
+      setActiveTab("contact");
+      setMode("self-report");
+    }
+  }, [isOpen]);
+  reactExports.useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+  const updateField = reactExports.useCallback((tab, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      [tab]: { ...prev[tab], [field]: value }
+    }));
+  }, []);
+  const handleSaveDraft = reactExports.useCallback(() => {
+    window.psygil?.onboarding?.save?.({ caseId, tab: activeTab, data: form[activeTab], isDraft: true });
+  }, [caseId, activeTab, form]);
+  const handleSaveAndContinue = reactExports.useCallback(() => {
+    window.psygil?.onboarding?.save?.({ caseId, tab: activeTab, data: form[activeTab], isDraft: false });
+    const idx = TABS.findIndex((t) => t.key === activeTab);
+    if (idx < TABS.length - 1) {
+      setActiveTab(TABS[idx + 1].key);
+    }
+  }, [caseId, activeTab, form]);
+  const handleComplete = reactExports.useCallback(() => {
+    window.psygil?.onboarding?.save?.({ caseId, data: form, isDraft: false, complete: true });
+    onClose();
+  }, [caseId, form, onClose]);
+  if (!isOpen) return null;
+  const currentTabIdx = TABS.findIndex((t) => t.key === activeTab);
+  const currentTab = TABS[currentTabIdx];
+  const isLastTab = currentTabIdx === TABS.length - 1;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: overlayStyle, onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: containerStyle, onClick: (e) => e.stopPropagation(), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: headerStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" }, children: [
+        "Patient Onboarding",
+        caseId != null ? ` — Case #${caseId}` : ""
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, style: closeButtonStyle, "aria-label": "Close", children: "×" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: tabBarContainerStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 4, marginRight: 16 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ModeButton,
+          {
+            label: "Patient Self-Report",
+            active: mode === "self-report",
+            onClick: () => setMode("self-report")
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ModeButton,
+          {
+            label: "Clinician Interview",
+            active: mode === "clinician",
+            onClick: () => setMode("clinician")
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 0, overflow: "auto" }, children: TABS.map((tab) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => setActiveTab(tab.key),
+          style: activeTab === tab.key ? activeTabStyle : inactiveTabStyle,
+          children: tab.label
+        },
+        tab.key
+      )) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: 24, display: "flex", flexDirection: "column", gap: 20 }, children: [
+      currentTab.fields.map((field) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 4 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: labelStyle, children: field.label }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: textareaStyle,
+            value: form[activeTab][field.key],
+            onChange: (e) => updateField(activeTab, field.key, e.target.value),
+            placeholder: field.placeholder
+          }
+        )
+      ] }, field.key)),
+      mode === "clinician" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 4 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { ...labelStyle, color: "var(--accent)" }, children: "Clinician Notes" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: { ...textareaStyle, borderColor: "var(--accent)" },
+            value: form[activeTab].clinicianNotes,
+            onChange: (e) => updateField(activeTab, "clinicianNotes", e.target.value),
+            placeholder: "Clinical observations, discrepancies, follow-up items..."
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "flex-end", gap: 12, paddingTop: 8 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSaveDraft, style: secondaryButtonStyle, children: "Save Draft" }),
+        isLastTab ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleComplete, style: primaryButtonStyle, children: "Complete Onboarding" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSaveAndContinue, style: primaryButtonStyle, children: "Save & Continue" })
+      ] })
+    ] })
+  ] }) });
+}
+function ModeButton({
+  label,
+  active,
+  onClick
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "button",
+    {
+      onClick,
+      style: {
+        background: active ? "var(--accent)" : "var(--panel)",
+        color: active ? "#ffffff" : "var(--text-secondary)",
+        border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
+        borderRadius: 4,
+        padding: "3px 10px",
+        fontSize: 11,
+        fontWeight: 500,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        whiteSpace: "nowrap"
+      },
+      children: label
+    }
+  );
+}
+const overlayStyle = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.55)",
+  zIndex: 9999,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center"
+};
+const containerStyle = {
+  background: "var(--panel)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  maxWidth: 880,
+  width: "90%",
+  maxHeight: "calc(100vh - 64px)",
+  overflowY: "auto"
+};
+const headerStyle = {
+  position: "sticky",
+  top: 0,
+  background: "var(--panel)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "12px 24px",
+  borderBottom: "1px solid var(--border)",
+  zIndex: 1
+};
+const closeButtonStyle = {
+  background: "none",
+  border: "none",
+  fontSize: 20,
+  color: "var(--text-secondary)",
+  cursor: "pointer",
+  padding: 0,
+  lineHeight: 1
+};
+const tabBarContainerStyle = {
+  position: "sticky",
+  top: 45,
+  background: "var(--panel)",
+  display: "flex",
+  alignItems: "center",
+  padding: "8px 24px 0",
+  borderBottom: "1px solid var(--border)",
+  zIndex: 1,
+  flexWrap: "wrap",
+  gap: 8
+};
+const activeTabStyle = {
+  background: "none",
+  border: "none",
+  borderBottom: "2px solid var(--accent)",
+  color: "var(--accent)",
+  fontSize: 12,
+  fontWeight: 600,
+  padding: "6px 12px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  whiteSpace: "nowrap"
+};
+const inactiveTabStyle = {
+  background: "none",
+  border: "none",
+  borderBottom: "2px solid transparent",
+  color: "var(--text-secondary)",
+  fontSize: 12,
+  fontWeight: 500,
+  padding: "6px 12px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  whiteSpace: "nowrap"
+};
+const labelStyle = {
+  fontSize: 11,
+  fontWeight: 500,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: 0.5
+};
+const textareaStyle = {
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "8px 10px",
+  fontSize: 13,
+  color: "var(--text)",
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
+  minHeight: 80,
+  resize: "vertical"
+};
+const primaryButtonStyle = {
+  background: "var(--accent)",
+  color: "#ffffff",
+  border: "none",
+  borderRadius: 4,
+  padding: "8px 24px",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: "inherit"
+};
+const secondaryButtonStyle = {
+  background: "var(--panel)",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "8px 24px",
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: "pointer",
+  fontFamily: "inherit"
+};
 const THEMES = ["light", "medium", "dark"];
 const STORAGE_KEY_THEME = "psygil-theme";
 const STORAGE_KEY_LEFT_W = "psygil-left-width";
@@ -13347,6 +14373,32 @@ function App() {
   const [theme, setTheme] = reactExports.useState(loadTheme);
   const [leftWidth, setLeftWidth] = reactExports.useState(() => loadWidth(STORAGE_KEY_LEFT_W, DEFAULT_LEFT));
   const [rightWidth, setRightWidth] = reactExports.useState(() => loadWidth(STORAGE_KEY_RIGHT_W, DEFAULT_RIGHT));
+  const [showIntake, setShowIntake] = reactExports.useState(false);
+  const [showOnboarding, setShowOnboarding] = reactExports.useState(false);
+  const [tabState, setTabState] = reactExports.useState({ tabs: [], activeId: null });
+  const openTab = reactExports.useCallback((tab) => {
+    setTabState((prev) => {
+      if (prev.tabs.some((t) => t.id === tab.id)) {
+        return { ...prev, activeId: tab.id };
+      }
+      return { tabs: [...prev.tabs, tab], activeId: tab.id };
+    });
+  }, []);
+  const closeTab = reactExports.useCallback((id) => {
+    setTabState((prev) => {
+      const idx = prev.tabs.findIndex((t) => t.id === id);
+      if (idx === -1) return prev;
+      const next = [...prev.tabs.slice(0, idx), ...prev.tabs.slice(idx + 1)];
+      let activeId = prev.activeId;
+      if (activeId === id) {
+        activeId = next.length === 0 ? null : next[Math.min(idx, next.length - 1)].id;
+      }
+      return { tabs: next, activeId };
+    });
+  }, []);
+  const setActiveTab = reactExports.useCallback((id) => {
+    setTabState((prev) => ({ ...prev, activeId: id }));
+  }, []);
   reactExports.useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem(STORAGE_KEY_THEME, theme);
@@ -13386,7 +14438,14 @@ function App() {
         overflow: "hidden"
       },
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Titlebar, { onCycleTheme: cycleTheme }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          Titlebar,
+          {
+            onCycleTheme: cycleTheme,
+            onOpenIntake: () => setShowIntake(true),
+            onOpenOnboarding: () => setShowOnboarding(true)
+          }
+        ),
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "div",
           {
@@ -13407,7 +14466,7 @@ function App() {
                     flexShrink: 0,
                     overflow: "hidden"
                   },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(LeftColumn, {})
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(LeftColumn, { onOpenTab: openTab })
                 }
               ),
               /* @__PURE__ */ jsxRuntimeExports.jsx(VSplitter, { onResize: handleLeftResize, onResizeEnd: handleLeftResizeEnd }),
@@ -13420,7 +14479,15 @@ function App() {
                     overflow: "hidden",
                     minWidth: 0
                   },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(CenterColumn, {})
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    CenterColumn,
+                    {
+                      tabs: tabState.tabs,
+                      activeTabId: tabState.activeId,
+                      onCloseTab: closeTab,
+                      onSetActiveTab: setActiveTab
+                    }
+                  )
                 }
               ),
               /* @__PURE__ */ jsxRuntimeExports.jsx(VSplitter, { onResize: handleRightResize, onResizeEnd: handleRightResizeEnd }),
@@ -13440,7 +14507,9 @@ function App() {
             ]
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Statusbar, {})
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Statusbar, {}),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeModal, { isOpen: showIntake, onClose: () => setShowIntake(false) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(OnboardingModal, { isOpen: showOnboarding, onClose: () => setShowOnboarding(false) })
       ]
     }
   );

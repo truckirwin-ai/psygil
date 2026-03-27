@@ -38,6 +38,12 @@ export type {
   PiiDetectResult,
   PiiBatchDetectParams,
   PiiBatchDetectResult,
+  CaseSubfolder,
+  DocumentRow,
+  IngestFileParams,
+  DocumentsGetParams,
+  DocumentsListParams,
+  DocumentsDeleteParams,
   FolderNode,
   WorkspaceFileChangedEvent,
   PsygilApi

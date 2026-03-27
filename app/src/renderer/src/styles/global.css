@@ -103,3 +103,11 @@ body.row-resizing .h-splitter {
   background: var(--highlight);
   color: var(--accent);
 }
+
+/* Tab bar — hide scrollbar for horizontal overflow (spec §8.1) */
+.tab-bar {
+  scrollbar-width: none; /* Firefox */
+}
+.tab-bar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Electron */
+}
