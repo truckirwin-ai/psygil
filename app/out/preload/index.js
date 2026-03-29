@@ -23,7 +23,9 @@ const CH = {
   WS_GET_PATH: "workspace:getPath",
   WS_SET_PATH: "workspace:setPath",
   WS_GET_TREE: "workspace:getTree",
+  SEED_DEMO: "seed:demoCases",
   WS_OPEN_FINDER: "workspace:openInFinder",
+  WS_OPEN_NATIVE: "workspace:openNative",
   WS_PICK_FOLDER: "workspace:pickFolder",
   WS_DEFAULT_PATH: "workspace:getDefaultPath",
   WS_FILE_CHANGED: "workspace:file-changed"
@@ -67,11 +69,15 @@ const api = {
     detect: (params) => electron.ipcRenderer.invoke("pii:detect", params),
     batchDetect: (params) => electron.ipcRenderer.invoke("pii:batchDetect", params)
   },
+  seed: {
+    demoCases: () => electron.ipcRenderer.invoke(CH.SEED_DEMO)
+  },
   workspace: {
     getPath: () => electron.ipcRenderer.invoke(CH.WS_GET_PATH),
     setPath: (path) => electron.ipcRenderer.invoke(CH.WS_SET_PATH, path),
     getTree: () => electron.ipcRenderer.invoke(CH.WS_GET_TREE),
     openInFinder: (path) => electron.ipcRenderer.invoke(CH.WS_OPEN_FINDER, path),
+    openNative: (path) => electron.ipcRenderer.invoke(CH.WS_OPEN_NATIVE, path),
     pickFolder: () => electron.ipcRenderer.invoke(CH.WS_PICK_FOLDER),
     getDefaultPath: () => electron.ipcRenderer.invoke(CH.WS_DEFAULT_PATH),
     onFileChanged: (callback) => {

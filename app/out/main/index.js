@@ -21,17 +21,18 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 const electron = require("electron");
 const path = require("path");
 const node_crypto = require("node:crypto");
 const fs = require("fs");
 const chokidar = require("chokidar");
-const net = require("net");
 const Database = require("better-sqlite3");
 const betterSqlite3 = require("drizzle-orm/better-sqlite3");
 const argon2 = require("argon2");
 const drizzleOrm = require("drizzle-orm");
 const sqliteCore = require("drizzle-orm/sqlite-core");
+const net = require("net");
 function _interopNamespaceDefault(e) {
   const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
   if (e) {
@@ -313,188 +314,6 @@ function checkLicense() {
     license_type: "trial",
     expires_at: session.expiresAt
   };
-}
-function getConfigPath() {
-  return path.join(electron.app.getPath("userData"), "config.json");
-}
-function readConfig() {
-  const configPath = getConfigPath();
-  if (!fs.existsSync(configPath)) return {};
-  try {
-    const raw = fs.readFileSync(configPath, "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
-}
-function writeConfig(config) {
-  const configPath = getConfigPath();
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
-}
-function loadWorkspacePath() {
-  const config = readConfig();
-  return config.workspacePath ?? null;
-}
-function saveWorkspacePath(p) {
-  const config = readConfig();
-  writeConfig({ ...config, workspacePath: p });
-}
-const WORKSPACE_SUBFOLDERS = ["_Inbox", "_Templates", "_Reference", "_Shared"];
-function createFolderStructure(root) {
-  if (!fs.existsSync(root)) {
-    fs.mkdirSync(root, { recursive: true });
-  }
-  for (const sub of WORKSPACE_SUBFOLDERS) {
-    const subPath = path.join(root, sub);
-    if (!fs.existsSync(subPath)) {
-      fs.mkdirSync(subPath, { recursive: true });
-    }
-  }
-}
-function getDefaultWorkspacePath() {
-  return path.join(electron.app.getPath("documents"), "Psygil Cases");
-}
-let activeWatcher = null;
-function watchWorkspace(root) {
-  if (activeWatcher !== null) {
-    activeWatcher.close();
-    activeWatcher = null;
-  }
-  const watcher = chokidar.watch(root, {
-    ignoreInitial: true,
-    persistent: true,
-    depth: 10,
-    ignored: [
-      /(^|[/\\])\../,
-      // dotfiles
-      "**/node_modules/**",
-      "**/.DS_Store"
-    ]
-  });
-  const broadcast = (event, filePath) => {
-    const windows = electron.BrowserWindow.getAllWindows();
-    for (const win of windows) {
-      if (!win.isDestroyed()) {
-        win.webContents.send("workspace:file-changed", { event, path: filePath });
-      }
-    }
-  };
-  watcher.on("add", (filePath) => broadcast("add", filePath));
-  watcher.on("change", (filePath) => broadcast("change", filePath));
-  watcher.on("unlink", (filePath) => broadcast("unlink", filePath));
-  watcher.on("addDir", (dirPath) => broadcast("addDir", dirPath));
-  watcher.on("unlinkDir", (dirPath) => broadcast("unlinkDir", dirPath));
-  activeWatcher = watcher;
-}
-function stopWatcher() {
-  if (activeWatcher !== null) {
-    activeWatcher.close();
-    activeWatcher = null;
-  }
-}
-function getWorkspaceTree(root) {
-  if (!fs.existsSync(root)) return [];
-  return buildTree(root);
-}
-function buildTree(dirPath) {
-  let entries;
-  try {
-    entries = fs.readdirSync(dirPath);
-  } catch {
-    return [];
-  }
-  const nodes = [];
-  const sorted = [...entries].sort((a, b) => {
-    const aIsDir = isDirectory(path.join(dirPath, a));
-    const bIsDir = isDirectory(path.join(dirPath, b));
-    if (aIsDir && !bIsDir) return -1;
-    if (!aIsDir && bIsDir) return 1;
-    return a.localeCompare(b);
-  });
-  for (const name of sorted) {
-    if (name.startsWith(".")) continue;
-    const fullPath = path.join(dirPath, name);
-    const isDir = isDirectory(fullPath);
-    const node = {
-      name,
-      path: fullPath,
-      isDirectory: isDir,
-      children: isDir ? buildTree(fullPath) : void 0
-    };
-    nodes.push(node);
-  }
-  return nodes;
-}
-function isDirectory(p) {
-  try {
-    return fs.statSync(p).isDirectory();
-  } catch {
-    return false;
-  }
-}
-const SOCKET_PATH = "/tmp/psygil-sidecar.sock";
-const REQUEST_TIMEOUT_MS = 3e4;
-let _rpcId = 0;
-function rpcCall(method, params) {
-  return new Promise((resolve, reject) => {
-    const client = new net__namespace.Socket();
-    const id = ++_rpcId;
-    const timeout = setTimeout(() => {
-      client.destroy();
-      reject(new Error(`PII sidecar request timed out: ${method}`));
-    }, REQUEST_TIMEOUT_MS);
-    client.connect(SOCKET_PATH, () => {
-      const request = JSON.stringify({ jsonrpc: "2.0", method, params, id });
-      client.write(request + "\n");
-    });
-    let buffer = "";
-    client.on("data", (chunk) => {
-      buffer += chunk.toString();
-      if (buffer.includes("\n")) {
-        clearTimeout(timeout);
-        try {
-          const resp = JSON.parse(buffer.split("\n")[0]);
-          client.destroy();
-          if (resp.error) {
-            reject(new Error(`PII sidecar error: ${resp.error.message}`));
-          } else {
-            resolve(resp.result ?? {});
-          }
-        } catch {
-          client.destroy();
-          reject(new Error(`Failed to parse sidecar response: ${buffer}`));
-        }
-      }
-    });
-    client.on("error", (err) => {
-      clearTimeout(timeout);
-      reject(new Error(`PII sidecar connection error: ${err.message}`));
-    });
-  });
-}
-async function detect(text) {
-  const result = await rpcCall("pii/detect", { text });
-  const entities = result.entities;
-  return entities.map((e) => ({
-    text: e.text,
-    start: e.start,
-    end: e.end,
-    type: e.type,
-    score: e.score
-  }));
-}
-async function batchDetect(texts) {
-  const result = await rpcCall("pii/batch", { texts: [...texts] });
-  const results = result.results;
-  return results.map(
-    (entities) => entities.map((e) => ({
-      text: e.text,
-      start: e.start,
-      end: e.end,
-      type: e.type,
-      score: e.score
-    }))
-  );
 }
 const users = sqliteCore.sqliteTable("users", {
   user_id: sqliteCore.integer("user_id").primaryKey({ autoIncrement: true }),
@@ -1091,6 +910,38 @@ function getDefaultDbPath() {
     return path.join(process.cwd(), "data", "psygil.db");
   }
 }
+const PROTOTYPE_CASE_UPDATES = [
+  { num: "2026-0147", stage: "gate_3", status: "in_progress", eval_type: "CST", referral: "Court", deadline: "2026-04-15", charges: "Assault 1st (F3), Criminal Mischief (M1)", jurisdiction: "Denver District Court" },
+  { num: "2026-0152", stage: "gate_1", status: "in_progress", eval_type: "Custody", referral: "Attorney", deadline: "2026-04-20", charges: null, jurisdiction: "Arapahoe County" },
+  { num: "2026-0158", stage: "gate_3", status: "in_progress", eval_type: "Risk", referral: "Court", deadline: "2026-04-01", charges: "Stalking (F5), Menacing (M1)", jurisdiction: "Jefferson County" },
+  { num: "2026-0161", stage: "finalized", status: "completed", eval_type: "PTSD Dx", referral: "Attorney", deadline: "2026-04-10", charges: null, jurisdiction: null },
+  { num: "2026-0165", stage: "gate_1", status: "in_progress", eval_type: "ADHD Dx", referral: "Physician", deadline: "2026-04-25", charges: null, jurisdiction: null },
+  { num: "2025-0989", stage: "finalized", status: "completed", eval_type: "Malingering", referral: "Court", deadline: "2026-03-20", charges: "Fraud (F4)", jurisdiction: "Adams County" },
+  { num: "2025-0988", stage: "finalized", status: "completed", eval_type: "Fitness", referral: "Court", deadline: "2026-03-15", charges: "Theft (M1)", jurisdiction: "Boulder County" },
+  { num: "2025-0987", stage: "finalized", status: "completed", eval_type: "Capacity", referral: "Attorney", deadline: "2026-02-28", charges: null, jurisdiction: "El Paso County" },
+  { num: "2026-0170", stage: "gate_1", status: "intake", eval_type: "CST", referral: "Court", deadline: "2026-05-01", charges: "Murder 2nd (F2)", jurisdiction: "Denver District Court" },
+  { num: "2026-0171", stage: "gate_2", status: "in_progress", eval_type: "CST", referral: "Court", deadline: "2026-04-28", charges: "Arson 1st (F3)", jurisdiction: "Arapahoe County" },
+  { num: "2026-0172", stage: "finalized", status: "completed", eval_type: "Risk", referral: "Court", deadline: "2026-03-15", charges: "Sexual Assault (F3)", jurisdiction: "Denver District Court" },
+  { num: "2026-0173", stage: "gate_3", status: "in_progress", eval_type: "CST", referral: "Court", deadline: "2026-04-12", charges: "Robbery (F4), Assault 3rd (M1)", jurisdiction: "Adams County" },
+  { num: "2026-0174", stage: "gate_2", status: "in_progress", eval_type: "Custody", referral: "Court", deadline: "2026-05-10", charges: null, jurisdiction: "Jefferson County Family Court" },
+  { num: "2026-0175", stage: "gate_3", status: "in_progress", eval_type: "PTSD Dx", referral: "Attorney", deadline: "2026-04-05", charges: null, jurisdiction: null },
+  { num: "2026-0176", stage: "finalized", status: "completed", eval_type: "Malingering", referral: "Insurance", deadline: "2026-03-28", charges: null, jurisdiction: null },
+  { num: "2026-0177", stage: "finalized", status: "completed", eval_type: "CST", referral: "Court", deadline: "2026-03-10", charges: "Assault 2nd (F4)", jurisdiction: "Denver District Court" },
+  { num: "2026-0178", stage: "gate_3", status: "in_progress", eval_type: "Capacity", referral: "Attorney", deadline: "2026-04-18", charges: null, jurisdiction: "Douglas County Probate" },
+  { num: "2026-0179", stage: "gate_1", status: "in_progress", eval_type: "Risk", referral: "Court", deadline: "2026-05-05", charges: "Menacing (F5), Harassment (M3)", jurisdiction: "Denver District Court" },
+  { num: "2026-0180", stage: "finalized", status: "completed", eval_type: "CST", referral: "Court", deadline: "2026-03-25", charges: "DUI (M1), Eluding (F5)", jurisdiction: "Adams County" },
+  { num: "2026-0181", stage: "gate_3", status: "in_progress", eval_type: "Fitness", referral: "Court", deadline: "2026-04-08", charges: "Forgery (F5)", jurisdiction: "Boulder County" },
+  { num: "2026-0182", stage: "finalized", status: "completed", eval_type: "PTSD Dx", referral: "Attorney", deadline: "2026-03-22", charges: null, jurisdiction: null },
+  { num: "2026-0183", stage: "gate_1", status: "intake", eval_type: "CST", referral: "Court", deadline: "2026-05-12", charges: "Assault 1st (F3), Kidnapping (F2)", jurisdiction: "Denver District Court" },
+  { num: "2026-0184", stage: "gate_3", status: "in_progress", eval_type: "Custody", referral: "Court", deadline: "2026-04-15", charges: null, jurisdiction: "El Paso County Family Court" },
+  { num: "2026-0185", stage: "finalized", status: "completed", eval_type: "Risk", referral: "Court", deadline: "2026-03-05", charges: "Domestic Violence (F4)", jurisdiction: "Arapahoe County" },
+  { num: "2026-0186", stage: "finalized", status: "completed", eval_type: "ADHD Dx", referral: "Physician", deadline: "2026-03-30", charges: null, jurisdiction: null },
+  { num: "2026-0187", stage: "gate_2", status: "in_progress", eval_type: "CST", referral: "Court", deadline: "2026-05-08", charges: "Criminal Mischief (F4), Trespass (M3)", jurisdiction: "Jefferson County" },
+  { num: "2026-0188", stage: "gate_3", status: "in_progress", eval_type: "Malingering", referral: "Court", deadline: "2026-04-02", charges: "Theft (F4)", jurisdiction: "Denver District Court" },
+  { num: "2026-0189", stage: "gate_1", status: "intake", eval_type: "Risk", referral: "Court", deadline: "2026-05-15", charges: "Harassment (M1), Stalking (M1)", jurisdiction: "Adams County" },
+  { num: "2026-0190", stage: "finalized", status: "completed", eval_type: "Fitness", referral: "Court", deadline: "2026-03-18", charges: "DUI (M1)", jurisdiction: "Weld County" },
+  { num: "2026-0191", stage: "gate_3", status: "in_progress", eval_type: "CST", referral: "Court", deadline: "2026-04-08", charges: "Assault 2nd (F4), Resisting Arrest (M2)", jurisdiction: "Denver District Court" }
+];
 const MIGRATIONS = [
   {
     id: "003_case_folder_path",
@@ -1162,6 +1013,12 @@ const MIGRATIONS = [
         UPDATE patient_onboarding SET updated_at = datetime('now') WHERE onboarding_id = NEW.onboarding_id;
       END;
     `
+  },
+  {
+    id: "006_update_prototype_case_stages",
+    description: "Update synced prototype cases with correct stages, eval types, and metadata",
+    sql: "SELECT 1"
+    // placeholder — real logic runs in runMigrations below
   }
 ];
 function runMigrations(sqlite) {
@@ -1179,7 +1036,33 @@ function runMigrations(sqlite) {
     if (applied.has(migration.id)) continue;
     console.log(`[migrations] Applying: ${migration.id} — ${migration.description}`);
     const tx = sqlite.transaction(() => {
-      sqlite.exec(migration.sql);
+      if (migration.id === "006_update_prototype_case_stages") {
+        const cols = sqlite.pragma("table_info(cases)").map((c) => c.name);
+        const hasCharges = cols.includes("charges");
+        const hasJurisdiction = cols.includes("jurisdiction");
+        const hasEvalType = cols.includes("evaluation_type");
+        for (const c of PROTOTYPE_CASE_UPDATES) {
+          let sql = `UPDATE cases SET workflow_current_stage = ?, case_status = ?, referral_source = ?`;
+          const params = [c.stage, c.status, c.referral];
+          if (hasEvalType) {
+            sql += `, evaluation_type = ?`;
+            params.push(c.eval_type);
+          }
+          if (hasCharges) {
+            sql += `, charges = ?`;
+            params.push(c.charges ?? null);
+          }
+          if (hasJurisdiction) {
+            sql += `, jurisdiction = ?`;
+            params.push(c.jurisdiction ?? null);
+          }
+          sql += ` WHERE case_number = ?`;
+          params.push(c.num);
+          sqlite.prepare(sql).run(...params);
+        }
+      } else {
+        sqlite.exec(migration.sql);
+      }
       sqlite.prepare("INSERT INTO _migrations (id, description) VALUES (?, ?)").run(
         migration.id,
         migration.description
@@ -1194,11 +1077,275 @@ async function initDb() {
   if (handle !== null) return;
   const result = await initDatabase();
   handle = result;
+  const tableCount = result.sqlite.prepare("SELECT count(*) as n FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").get().n;
+  if (tableCount === 0) {
+    const { runBaseMigration } = await Promise.resolve().then(() => require("./migrate-DzCI5yzc.js"));
+    runBaseMigration(result.sqlite);
+  }
   runMigrations(result.sqlite);
 }
 function getSqlite() {
   if (handle === null) throw new Error("Database not initialized — call initDb() first");
   return handle.sqlite;
+}
+const CASE_FOLDER_PATTERN = /^(\d{4}-\d{4})\s+([^,]+),\s+(.+)$/;
+function syncWorkspaceToDB(wsPath) {
+  let db;
+  try {
+    db = getSqlite();
+  } catch (e) {
+    console.error("[workspace-sync] DB not ready:", e.message);
+    return;
+  }
+  console.log("[workspace-sync] Scanning:", wsPath);
+  const existingUser = db.prepare("SELECT user_id FROM users WHERE user_id = 1").get();
+  if (!existingUser) {
+    db.prepare(`
+      INSERT OR IGNORE INTO users (user_id, email, full_name, role, is_active, created_at)
+      VALUES (1, 'clinician@psygil.com', 'Dr. Robert Irwin', 'psychologist', 1, CURRENT_DATE)
+    `).run();
+  }
+  let entries;
+  try {
+    entries = fs.readdirSync(wsPath);
+  } catch {
+    return;
+  }
+  let synced = 0;
+  for (const entry of entries) {
+    if (entry.startsWith("_") || entry.startsWith(".")) continue;
+    const fullPath = path.join(wsPath, entry);
+    try {
+      if (!fs.statSync(fullPath).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    const match = CASE_FOLDER_PATTERN.exec(entry);
+    if (!match) continue;
+    const [, caseNumber, lastName, firstAndMi] = match;
+    if (!caseNumber || !lastName || !firstAndMi) continue;
+    const parts = firstAndMi.trim().split(/\s+/);
+    const firstName = parts[0] ?? firstAndMi.trim();
+    const existing = db.prepare("SELECT case_id FROM cases WHERE case_number = ?").get(caseNumber);
+    if (existing) continue;
+    const cols = db.pragma("table_info(cases)").map((c) => c.name);
+    const hasFolderPath = cols.includes("folder_path");
+    try {
+      if (hasFolderPath) {
+        db.prepare(`
+          INSERT INTO cases (
+            case_number, primary_clinician_user_id,
+            examinee_first_name, examinee_last_name,
+            case_status, workflow_current_stage,
+            folder_path, created_at
+          ) VALUES (?, 1, ?, ?, 'intake', 'gate_1', ?, CURRENT_DATE)
+        `).run(caseNumber, firstName, lastName.trim(), fullPath);
+      } else {
+        db.prepare(`
+          INSERT INTO cases (
+            case_number, primary_clinician_user_id,
+            examinee_first_name, examinee_last_name,
+            case_status, workflow_current_stage, created_at
+          ) VALUES (?, 1, ?, ?, 'intake', 'gate_1', CURRENT_DATE)
+        `).run(caseNumber, firstName, lastName.trim());
+      }
+      console.log("[workspace-sync] Indexed:", entry);
+      synced++;
+    } catch (e) {
+      console.error("[workspace-sync] Failed to index", entry, e.message);
+    }
+  }
+  if (synced > 0) {
+    console.log(`[workspace-sync] Indexed ${synced} new case folders`);
+  }
+}
+function getConfigPath() {
+  return path.join(electron.app.getPath("userData"), "config.json");
+}
+function readConfig() {
+  const configPath = getConfigPath();
+  if (!fs.existsSync(configPath)) return {};
+  try {
+    const raw = fs.readFileSync(configPath, "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+function writeConfig(config) {
+  const configPath = getConfigPath();
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+}
+function loadWorkspacePath() {
+  const config = readConfig();
+  return config.workspacePath ?? null;
+}
+function saveWorkspacePath(p) {
+  const config = readConfig();
+  writeConfig({ ...config, workspacePath: p });
+}
+const WORKSPACE_SUBFOLDERS = ["_Inbox", "_Templates", "_Reference", "_Shared"];
+function createFolderStructure(root) {
+  if (!fs.existsSync(root)) {
+    fs.mkdirSync(root, { recursive: true });
+  }
+  for (const sub of WORKSPACE_SUBFOLDERS) {
+    const subPath = path.join(root, sub);
+    if (!fs.existsSync(subPath)) {
+      fs.mkdirSync(subPath, { recursive: true });
+    }
+  }
+}
+function getDefaultWorkspacePath() {
+  return path.join(electron.app.getPath("documents"), "Psygil Cases");
+}
+let activeWatcher = null;
+function watchWorkspace(root) {
+  if (activeWatcher !== null) {
+    activeWatcher.close();
+    activeWatcher = null;
+  }
+  const watcher = chokidar.watch(root, {
+    ignoreInitial: true,
+    persistent: true,
+    depth: 10,
+    ignored: [
+      /(^|[/\\])\../,
+      // dotfiles
+      "**/node_modules/**",
+      "**/.DS_Store"
+    ]
+  });
+  const broadcast = (event, filePath) => {
+    const windows = electron.BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      if (!win.isDestroyed()) {
+        win.webContents.send("workspace:file-changed", { event, path: filePath });
+      }
+    }
+  };
+  watcher.on("add", (filePath) => broadcast("add", filePath));
+  watcher.on("change", (filePath) => broadcast("change", filePath));
+  watcher.on("unlink", (filePath) => broadcast("unlink", filePath));
+  watcher.on("addDir", (dirPath) => {
+    broadcast("addDir", dirPath);
+    const parentDir = dirPath.split("/").slice(0, -1).join("/");
+    if (parentDir === root) {
+      syncWorkspaceToDB(root);
+    }
+  });
+  watcher.on("unlinkDir", (dirPath) => broadcast("unlinkDir", dirPath));
+  activeWatcher = watcher;
+}
+function stopWatcher() {
+  if (activeWatcher !== null) {
+    activeWatcher.close();
+    activeWatcher = null;
+  }
+}
+function getWorkspaceTree(root) {
+  if (!fs.existsSync(root)) return [];
+  return buildTree(root);
+}
+function buildTree(dirPath) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dirPath);
+  } catch {
+    return [];
+  }
+  const nodes = [];
+  const sorted = [...entries].sort((a, b) => {
+    const aIsDir = isDirectory(path.join(dirPath, a));
+    const bIsDir = isDirectory(path.join(dirPath, b));
+    if (aIsDir && !bIsDir) return -1;
+    if (!aIsDir && bIsDir) return 1;
+    return a.localeCompare(b);
+  });
+  for (const name of sorted) {
+    if (name.startsWith(".")) continue;
+    const fullPath = path.join(dirPath, name);
+    const isDir = isDirectory(fullPath);
+    const node = {
+      name,
+      path: fullPath,
+      isDirectory: isDir,
+      children: isDir ? buildTree(fullPath) : void 0
+    };
+    nodes.push(node);
+  }
+  return nodes;
+}
+function isDirectory(p) {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+const SOCKET_PATH = "/tmp/psygil-sidecar.sock";
+const REQUEST_TIMEOUT_MS = 3e4;
+let _rpcId = 0;
+function rpcCall(method, params) {
+  return new Promise((resolve, reject) => {
+    const client = new net__namespace.Socket();
+    const id = ++_rpcId;
+    const timeout = setTimeout(() => {
+      client.destroy();
+      reject(new Error(`PII sidecar request timed out: ${method}`));
+    }, REQUEST_TIMEOUT_MS);
+    client.connect(SOCKET_PATH, () => {
+      const request = JSON.stringify({ jsonrpc: "2.0", method, params, id });
+      client.write(request + "\n");
+    });
+    let buffer = "";
+    client.on("data", (chunk) => {
+      buffer += chunk.toString();
+      if (buffer.includes("\n")) {
+        clearTimeout(timeout);
+        try {
+          const resp = JSON.parse(buffer.split("\n")[0]);
+          client.destroy();
+          if (resp.error) {
+            reject(new Error(`PII sidecar error: ${resp.error.message}`));
+          } else {
+            resolve(resp.result ?? {});
+          }
+        } catch {
+          client.destroy();
+          reject(new Error(`Failed to parse sidecar response: ${buffer}`));
+        }
+      }
+    });
+    client.on("error", (err) => {
+      clearTimeout(timeout);
+      reject(new Error(`PII sidecar connection error: ${err.message}`));
+    });
+  });
+}
+async function detect(text) {
+  const result = await rpcCall("pii/detect", { text });
+  const entities = result.entities;
+  return entities.map((e) => ({
+    text: e.text,
+    start: e.start,
+    end: e.end,
+    type: e.type,
+    score: e.score
+  }));
+}
+async function batchDetect(texts) {
+  const result = await rpcCall("pii/batch", { texts: [...texts] });
+  const results = result.results;
+  return results.map(
+    (entities) => entities.map((e) => ({
+      text: e.text,
+      start: e.start,
+      end: e.end,
+      type: e.type,
+      score: e.score
+    }))
+  );
 }
 const CASE_SUBFOLDERS = [
   "_Inbox",
@@ -1257,7 +1404,10 @@ function createCase(params) {
 }
 function listCases() {
   const sqlite = getSqlite();
-  const rows = sqlite.prepare("SELECT * FROM cases WHERE deleted_at IS NULL AND case_status != ? ORDER BY created_at DESC").all("archived");
+  const cols = sqlite.pragma("table_info(cases)").map((c) => c.name);
+  const hasDeletedAt = cols.includes("deleted_at");
+  const query = hasDeletedAt ? "SELECT * FROM cases WHERE deleted_at IS NULL AND case_status != ? ORDER BY created_at DESC" : "SELECT * FROM cases WHERE case_status != ? ORDER BY created_at DESC";
+  const rows = sqlite.prepare(query).all("archived");
   return rows;
 }
 function getCaseById(caseId) {
@@ -1272,7 +1422,12 @@ function archiveCase(caseId) {
     throw new Error(`Case ${caseId} not found`);
   }
   const now = (/* @__PURE__ */ new Date()).toISOString();
-  sqlite.prepare("UPDATE cases SET case_status = 'archived', deleted_at = ?, last_modified = ? WHERE case_id = ?").run(now, now, caseId);
+  const archCols = sqlite.pragma("table_info(cases)").map((c) => c.name);
+  if (archCols.includes("deleted_at") && archCols.includes("last_modified")) {
+    sqlite.prepare("UPDATE cases SET case_status = 'archived', deleted_at = ?, last_modified = ? WHERE case_id = ?").run(now, now, caseId);
+  } else {
+    sqlite.prepare("UPDATE cases SET case_status = 'archived' WHERE case_id = ?").run(caseId);
+  }
   if (existing.folder_path && fs.existsSync(existing.folder_path)) {
     const wsPath = loadWorkspacePath();
     if (wsPath !== null) {
@@ -1501,9 +1656,11 @@ function registerCasesHandlers() {
     (_event, _params) => {
       try {
         const cases2 = listCases();
+        console.log("[cases:list] returning", cases2.length, "cases");
         return ok({ cases: cases2, total: cases2.length });
       } catch (e) {
         const message = e instanceof Error ? e.message : "Failed to list cases";
+        console.error("[cases:list] error:", message);
         return fail("CASES_LIST_FAILED", message);
       }
     }
@@ -1669,6 +1826,7 @@ function registerWorkspaceHandlers() {
       try {
         saveWorkspacePath(path2);
         createFolderStructure(path2);
+        syncWorkspaceToDB(path2);
         watchWorkspace(path2);
         return ok(void 0);
       } catch (e) {
@@ -1695,7 +1853,14 @@ function registerWorkspaceHandlers() {
   electron.ipcMain.handle(
     "workspace:openInFinder",
     (_event, path2) => {
-      electron.shell.openPath(path2);
+      electron.shell.showItemInFolder(path2);
+      return ok(void 0);
+    }
+  );
+  electron.ipcMain.handle(
+    "workspace:openNative",
+    (_event, path2) => {
+      void electron.shell.openPath(path2);
       return ok(void 0);
     }
   );
@@ -1813,6 +1978,22 @@ function registerPiiHandlers() {
     }
   );
 }
+function registerSeedHandlers() {
+  electron.ipcMain.handle(
+    "seed:demoCases",
+    () => {
+      try {
+        const { seedDemoCases, createSeedTrigger } = require("../seed-demo-cases");
+        createSeedTrigger();
+        seedDemoCases();
+        return ok({ inserted: 30 });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Seed failed";
+        return fail("SEED_FAILED", message);
+      }
+    }
+  );
+}
 function registerAllHandlers() {
   registerCasesHandlers();
   registerIntakeHandlers();
@@ -1823,7 +2004,9 @@ function registerAllHandlers() {
   registerDocumentHandlers();
   registerPiiHandlers();
   registerWorkspaceHandlers();
+  registerSeedHandlers();
 }
+electron.app.disableHardwareAcceleration();
 electron.protocol.registerSchemesAsPrivileged([
   {
     scheme: "psygil",
@@ -1837,6 +2020,7 @@ electron.protocol.registerSchemesAsPrivileged([
   }
 ]);
 function createWindow() {
+  const isDev = process.env.NODE_ENV === "development";
   const win = new electron.BrowserWindow({
     width: 1440,
     height: 900,
@@ -1844,12 +2028,10 @@ function createWindow() {
       preload: path.join(__dirname, "../preload/index.js"),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true
+      sandbox: !isDev
+      // sandbox=true in production only; dev needs GPU access
     }
   });
-  if (process.env.NODE_ENV === "development") {
-    win.webContents.openDevTools();
-  }
   if (process.env["ELECTRON_RENDERER_URL"]) {
     win.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
@@ -1859,11 +2041,20 @@ function createWindow() {
 }
 electron.app.whenReady().then(async () => {
   electron.app.setAsDefaultProtocolClient("psygil");
-  await initDb();
-  registerAllHandlers();
-  const wsPath = loadWorkspacePath();
-  if (wsPath !== null) {
-    watchWorkspace(wsPath);
+  try {
+    await initDb();
+    registerAllHandlers();
+  } catch (err) {
+    console.error("[main] DB init failed:", err);
+  }
+  try {
+    const wsPath = loadWorkspacePath();
+    if (wsPath !== null) {
+      syncWorkspaceToDB(wsPath);
+      watchWorkspace(wsPath);
+    }
+  } catch (err) {
+    console.error("[main] Workspace sync failed:", err);
   }
   createWindow();
   electron.app.on("activate", () => {
@@ -1881,3 +2072,5 @@ electron.app.on("window-all-closed", () => {
 electron.app.on("before-quit", () => {
   stopWatcher();
 });
+exports.getDefaultDbPath = getDefaultDbPath;
+exports.initDatabase = initDatabase;

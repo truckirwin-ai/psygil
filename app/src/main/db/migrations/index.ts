@@ -14,6 +14,40 @@ interface Migration {
   readonly sql: string
 }
 
+// Stage + metadata for the 30 prototype cases
+const PROTOTYPE_CASE_UPDATES = [
+  { num:'2026-0147', stage:'gate_3', status:'in_progress', eval_type:'CST',        referral:'Court',     deadline:'2026-04-15', charges:'Assault 1st (F3), Criminal Mischief (M1)',       jurisdiction:'Denver District Court' },
+  { num:'2026-0152', stage:'gate_1', status:'in_progress', eval_type:'Custody',    referral:'Attorney',  deadline:'2026-04-20', charges:null,                                              jurisdiction:'Arapahoe County' },
+  { num:'2026-0158', stage:'gate_3', status:'in_progress', eval_type:'Risk',       referral:'Court',     deadline:'2026-04-01', charges:'Stalking (F5), Menacing (M1)',                    jurisdiction:'Jefferson County' },
+  { num:'2026-0161', stage:'finalized', status:'completed', eval_type:'PTSD Dx',   referral:'Attorney',  deadline:'2026-04-10', charges:null,                                              jurisdiction:null },
+  { num:'2026-0165', stage:'gate_1', status:'in_progress', eval_type:'ADHD Dx',    referral:'Physician', deadline:'2026-04-25', charges:null,                                              jurisdiction:null },
+  { num:'2025-0989', stage:'finalized', status:'completed', eval_type:'Malingering',referral:'Court',    deadline:'2026-03-20', charges:'Fraud (F4)',                                      jurisdiction:'Adams County' },
+  { num:'2025-0988', stage:'finalized', status:'completed', eval_type:'Fitness',   referral:'Court',     deadline:'2026-03-15', charges:'Theft (M1)',                                      jurisdiction:'Boulder County' },
+  { num:'2025-0987', stage:'finalized', status:'completed', eval_type:'Capacity',  referral:'Attorney',  deadline:'2026-02-28', charges:null,                                              jurisdiction:'El Paso County' },
+  { num:'2026-0170', stage:'gate_1', status:'intake',      eval_type:'CST',        referral:'Court',     deadline:'2026-05-01', charges:'Murder 2nd (F2)',                                 jurisdiction:'Denver District Court' },
+  { num:'2026-0171', stage:'gate_2', status:'in_progress', eval_type:'CST',        referral:'Court',     deadline:'2026-04-28', charges:'Arson 1st (F3)',                                  jurisdiction:'Arapahoe County' },
+  { num:'2026-0172', stage:'finalized', status:'completed', eval_type:'Risk',      referral:'Court',     deadline:'2026-03-15', charges:'Sexual Assault (F3)',                             jurisdiction:'Denver District Court' },
+  { num:'2026-0173', stage:'gate_3', status:'in_progress', eval_type:'CST',        referral:'Court',     deadline:'2026-04-12', charges:'Robbery (F4), Assault 3rd (M1)',                  jurisdiction:'Adams County' },
+  { num:'2026-0174', stage:'gate_2', status:'in_progress', eval_type:'Custody',    referral:'Court',     deadline:'2026-05-10', charges:null,                                              jurisdiction:'Jefferson County Family Court' },
+  { num:'2026-0175', stage:'gate_3', status:'in_progress', eval_type:'PTSD Dx',    referral:'Attorney',  deadline:'2026-04-05', charges:null,                                              jurisdiction:null },
+  { num:'2026-0176', stage:'finalized', status:'completed', eval_type:'Malingering',referral:'Insurance',deadline:'2026-03-28', charges:null,                                              jurisdiction:null },
+  { num:'2026-0177', stage:'finalized', status:'completed', eval_type:'CST',       referral:'Court',     deadline:'2026-03-10', charges:'Assault 2nd (F4)',                                jurisdiction:'Denver District Court' },
+  { num:'2026-0178', stage:'gate_3', status:'in_progress', eval_type:'Capacity',   referral:'Attorney',  deadline:'2026-04-18', charges:null,                                              jurisdiction:'Douglas County Probate' },
+  { num:'2026-0179', stage:'gate_1', status:'in_progress', eval_type:'Risk',       referral:'Court',     deadline:'2026-05-05', charges:'Menacing (F5), Harassment (M3)',                  jurisdiction:'Denver District Court' },
+  { num:'2026-0180', stage:'finalized', status:'completed', eval_type:'CST',       referral:'Court',     deadline:'2026-03-25', charges:'DUI (M1), Eluding (F5)',                          jurisdiction:'Adams County' },
+  { num:'2026-0181', stage:'gate_3', status:'in_progress', eval_type:'Fitness',    referral:'Court',     deadline:'2026-04-08', charges:'Forgery (F5)',                                    jurisdiction:'Boulder County' },
+  { num:'2026-0182', stage:'finalized', status:'completed', eval_type:'PTSD Dx',   referral:'Attorney',  deadline:'2026-03-22', charges:null,                                              jurisdiction:null },
+  { num:'2026-0183', stage:'gate_1', status:'intake',      eval_type:'CST',        referral:'Court',     deadline:'2026-05-12', charges:'Assault 1st (F3), Kidnapping (F2)',               jurisdiction:'Denver District Court' },
+  { num:'2026-0184', stage:'gate_3', status:'in_progress', eval_type:'Custody',    referral:'Court',     deadline:'2026-04-15', charges:null,                                              jurisdiction:'El Paso County Family Court' },
+  { num:'2026-0185', stage:'finalized', status:'completed', eval_type:'Risk',      referral:'Court',     deadline:'2026-03-05', charges:'Domestic Violence (F4)',                          jurisdiction:'Arapahoe County' },
+  { num:'2026-0186', stage:'finalized', status:'completed', eval_type:'ADHD Dx',   referral:'Physician', deadline:'2026-03-30', charges:null,                                              jurisdiction:null },
+  { num:'2026-0187', stage:'gate_2', status:'in_progress', eval_type:'CST',        referral:'Court',     deadline:'2026-05-08', charges:'Criminal Mischief (F4), Trespass (M3)',           jurisdiction:'Jefferson County' },
+  { num:'2026-0188', stage:'gate_3', status:'in_progress', eval_type:'Malingering',referral:'Court',     deadline:'2026-04-02', charges:'Theft (F4)',                                      jurisdiction:'Denver District Court' },
+  { num:'2026-0189', stage:'gate_1', status:'intake',      eval_type:'Risk',       referral:'Court',     deadline:'2026-05-15', charges:'Harassment (M1), Stalking (M1)',                  jurisdiction:'Adams County' },
+  { num:'2026-0190', stage:'finalized', status:'completed', eval_type:'Fitness',   referral:'Court',     deadline:'2026-03-18', charges:'DUI (M1)',                                        jurisdiction:'Weld County' },
+  { num:'2026-0191', stage:'gate_3', status:'in_progress', eval_type:'CST',        referral:'Court',     deadline:'2026-04-08', charges:'Assault 2nd (F4), Resisting Arrest (M2)',         jurisdiction:'Denver District Court' },
+] as const
+
 const MIGRATIONS: readonly Migration[] = [
   {
     id: '003_case_folder_path',
@@ -86,6 +120,11 @@ const MIGRATIONS: readonly Migration[] = [
       END;
     `,
   },
+  {
+    id: '006_update_prototype_case_stages',
+    description: 'Update synced prototype cases with correct stages, eval types, and metadata',
+    sql: 'SELECT 1', // placeholder — real logic runs in runMigrations below
+  },
 ]
 
 /**
@@ -112,7 +151,28 @@ export function runMigrations(sqlite: InstanceType<typeof Database>): void {
 
     console.log(`[migrations] Applying: ${migration.id} — ${migration.description}`)
     const tx = sqlite.transaction(() => {
-      sqlite.exec(migration.sql)
+      if (migration.id === '006_update_prototype_case_stages') {
+        // Update each prototype case with correct stage, eval_type, referral_source, and charges
+        const cols = (sqlite.pragma('table_info(cases)') as Array<{ name: string }>).map((c) => c.name)
+        const hasCharges = cols.includes('charges')
+        const hasJurisdiction = cols.includes('jurisdiction')
+        const hasEvalType = cols.includes('evaluation_type')
+
+        for (const c of PROTOTYPE_CASE_UPDATES) {
+          let sql = `UPDATE cases SET workflow_current_stage = ?, case_status = ?, referral_source = ?`
+          const params: (string | null)[] = [c.stage, c.status, c.referral]
+
+          if (hasEvalType) { sql += `, evaluation_type = ?`; params.push(c.eval_type) }
+          if (hasCharges)  { sql += `, charges = ?`;          params.push(c.charges ?? null) }
+          if (hasJurisdiction) { sql += `, jurisdiction = ?`; params.push(c.jurisdiction ?? null) }
+
+          sql += ` WHERE case_number = ?`
+          params.push(c.num)
+          sqlite.prepare(sql).run(...params)
+        }
+      } else {
+        sqlite.exec(migration.sql)
+      }
       sqlite.prepare('INSERT INTO _migrations (id, description) VALUES (?, ?)').run(
         migration.id,
         migration.description,

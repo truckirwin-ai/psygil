@@ -1,7 +1,10 @@
 import { app, BrowserWindow, protocol } from 'electron'
+
+// Disable GPU acceleration to avoid CVDisplayLink / GPU process crashes in dev
+app.disableHardwareAcceleration()
 import { join } from 'path'
 import { registerAllHandlers } from './ipc'
-import { loadWorkspacePath, watchWorkspace, stopWatcher } from './workspace'
+import { loadWorkspacePath, watchWorkspace, stopWatcher, syncWorkspaceToDB } from './workspace'
 import { initDb } from './db/connection'
 
 // 4-process architecture:
@@ -26,6 +29,8 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 function createWindow(): BrowserWindow {
+  const isDev = process.env.NODE_ENV === 'development'
+
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -33,14 +38,11 @@ function createWindow(): BrowserWindow {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true
+      sandbox: !isDev  // sandbox=true in production only; dev needs GPU access
     }
   })
 
-  // DevTools: open in development, disabled in production
-  if (process.env.NODE_ENV === 'development') {
-    win.webContents.openDevTools()
-  }
+  // DevTools: disabled — open manually with Cmd+Option+I if needed
 
   // electron-vite handles loading the renderer in dev vs production
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -58,16 +60,26 @@ app.whenReady().then(async () => {
   app.setAsDefaultProtocolClient('psygil')
 
   // Initialize encrypted database + run pending migrations before registering handlers
-  await initDb()
-
-  registerAllHandlers()
-
-  // If workspace was previously configured, start the file watcher
-  const wsPath = loadWorkspacePath()
-  if (wsPath !== null) {
-    watchWorkspace(wsPath)
+  // Wrapped in try/catch so a DB error never prevents the window from opening
+  try {
+    await initDb()
+    registerAllHandlers()
+  } catch (err) {
+    console.error('[main] DB init failed:', err)
   }
 
+  // Sync workspace folders → DB BEFORE opening window so the tree is populated on first load
+  try {
+    const wsPath = loadWorkspacePath()
+    if (wsPath !== null) {
+      syncWorkspaceToDB(wsPath)
+      watchWorkspace(wsPath)
+    }
+  } catch (err) {
+    console.error('[main] Workspace sync failed:', err)
+  }
+
+  // Open window after sync so renderer gets populated case list immediately
   createWindow()
 
   app.on('activate', () => {

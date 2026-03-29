@@ -7,6 +7,108 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSy
 import type { FSWatcher } from 'chokidar'
 import chokidar from 'chokidar'
 import type { FolderNode } from '../../shared/types'
+import { getSqlite } from '../db/connection'
+
+// ---------------------------------------------------------------------------
+// Workspace → DB sync
+// Scans the workspace root for case folders matching the pattern:
+//   {case_number} {last}, {first}[optional mi]
+// Creates DB records for any folder not already indexed.
+// Called on startup and when watcher detects new top-level directories.
+// ---------------------------------------------------------------------------
+
+// Regex: "2026-0147 Johnson, Marcus D." or "2026-0147 Johnson, Marcus"
+const CASE_FOLDER_PATTERN = /^(\d{4}-\d{4})\s+([^,]+),\s+(.+)$/
+
+export function syncWorkspaceToDB(wsPath: string): void {
+  let db: ReturnType<typeof getSqlite>
+  try {
+    db = getSqlite()
+  } catch (e) {
+    console.error('[workspace-sync] DB not ready:', (e as Error).message)
+    return
+  }
+
+  console.log('[workspace-sync] Scanning:', wsPath)
+
+  // Ensure a default clinician user exists (user_id = 1)
+  const existingUser = db.prepare('SELECT user_id FROM users WHERE user_id = 1').get()
+  if (!existingUser) {
+    db.prepare(`
+      INSERT OR IGNORE INTO users (user_id, email, full_name, role, is_active, created_at)
+      VALUES (1, 'clinician@psygil.com', 'Dr. Robert Irwin', 'psychologist', 1, CURRENT_DATE)
+    `).run()
+  }
+
+  let entries: string[]
+  try {
+    entries = readdirSync(wsPath)
+  } catch {
+    return
+  }
+
+  let synced = 0
+
+  for (const entry of entries) {
+    // Skip system folders
+    if (entry.startsWith('_') || entry.startsWith('.')) continue
+
+    const fullPath = join(wsPath, entry)
+    try {
+      if (!statSync(fullPath).isDirectory()) continue
+    } catch {
+      continue
+    }
+
+    const match = CASE_FOLDER_PATTERN.exec(entry)
+    if (!match) continue
+
+    const [, caseNumber, lastName, firstAndMi] = match
+    if (!caseNumber || !lastName || !firstAndMi) continue
+
+    // Split "Marcus D." or "Marcus" into first + mi
+    const parts = firstAndMi.trim().split(/\s+/)
+    const firstName = parts[0] ?? firstAndMi.trim()
+
+    // Check if already in DB
+    const existing = db.prepare('SELECT case_id FROM cases WHERE case_number = ?').get(caseNumber)
+    if (existing) continue
+
+    // Insert minimal record — user can fill details via Intake later
+    // Check if folder_path column exists (added in later migration)
+    const cols = (db.pragma('table_info(cases)') as Array<{ name: string }>).map(c => c.name)
+    const hasFolderPath = cols.includes('folder_path')
+
+    try {
+      if (hasFolderPath) {
+        db.prepare(`
+          INSERT INTO cases (
+            case_number, primary_clinician_user_id,
+            examinee_first_name, examinee_last_name,
+            case_status, workflow_current_stage,
+            folder_path, created_at
+          ) VALUES (?, 1, ?, ?, 'intake', 'gate_1', ?, CURRENT_DATE)
+        `).run(caseNumber, firstName, lastName.trim(), fullPath)
+      } else {
+        db.prepare(`
+          INSERT INTO cases (
+            case_number, primary_clinician_user_id,
+            examinee_first_name, examinee_last_name,
+            case_status, workflow_current_stage, created_at
+          ) VALUES (?, 1, ?, ?, 'intake', 'gate_1', CURRENT_DATE)
+        `).run(caseNumber, firstName, lastName.trim())
+      }
+      console.log('[workspace-sync] Indexed:', entry)
+      synced++
+    } catch (e) {
+      console.error('[workspace-sync] Failed to index', entry, (e as Error).message)
+    }
+  }
+
+  if (synced > 0) {
+    console.log(`[workspace-sync] Indexed ${synced} new case folders`)
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Config persistence — workspace path stored in userData/config.json
@@ -108,7 +210,14 @@ export function watchWorkspace(root: string): void {
   watcher.on('add', (filePath) => broadcast('add', filePath))
   watcher.on('change', (filePath) => broadcast('change', filePath))
   watcher.on('unlink', (filePath) => broadcast('unlink', filePath))
-  watcher.on('addDir', (dirPath) => broadcast('addDir', dirPath))
+  watcher.on('addDir', (dirPath) => {
+    broadcast('addDir', dirPath)
+    // If a new top-level case folder was added, sync it to the DB
+    const parentDir = dirPath.split('/').slice(0, -1).join('/')
+    if (parentDir === root) {
+      syncWorkspaceToDB(root)
+    }
+  })
   watcher.on('unlinkDir', (dirPath) => broadcast('unlinkDir', dirPath))
 
   activeWatcher = watcher

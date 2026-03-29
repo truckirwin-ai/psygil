@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Titlebar from './components/layout/Titlebar'
 import Statusbar from './components/layout/Statusbar'
 import LeftColumn from './components/layout/LeftColumn'
@@ -7,7 +7,9 @@ import RightColumn from './components/layout/RightColumn'
 import VSplitter from './components/layout/VSplitter'
 import IntakeModal from './components/modals/IntakeModal'
 import OnboardingModal from './components/modals/OnboardingModal'
+import SetupModal from './components/modals/SetupModal'
 import type { Tab, TabState } from './types/tabs'
+import type { CaseRow } from '../../shared/types/ipc'
 
 const THEMES = ['light', 'medium', 'dark'] as const
 type Theme = (typeof THEMES)[number]
@@ -41,9 +43,16 @@ export default function App(): React.JSX.Element {
   const [rightWidth, setRightWidth] = useState(() => loadWidth(STORAGE_KEY_RIGHT_W, DEFAULT_RIGHT))
   const [showIntake, setShowIntake] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showSetup, setShowSetup] = useState(false)
+
+  // When showIntake is open in "new case" mode, no caseId. When editing, pass one.
+  const [intakeEditCaseId, setIntakeEditCaseId] = useState<number | undefined>(undefined)
 
   // Tab state — managed here, passed down to LeftColumn + CenterColumn
   const [tabState, setTabState] = useState<TabState>({ tabs: [], activeId: null })
+
+  // Ref to allow LeftColumn to refresh its case list imperatively
+  const refreshCasesRef = useRef<(() => void) | null>(null)
 
   const openTab = useCallback((tab: Tab) => {
     setTabState((prev) => {
@@ -108,6 +117,33 @@ export default function App(): React.JSX.Element {
     })
   }, [])
 
+  // Open new case modal (create mode)
+  const handleNewCase = useCallback(() => {
+    setIntakeEditCaseId(undefined)
+    setShowIntake(true)
+  }, [])
+
+  // Open intake modal for editing existing case
+  const handleEditIntake = useCallback((caseId: number) => {
+    setIntakeEditCaseId(caseId)
+    setShowIntake(true)
+  }, [])
+
+  // Called after a new case is created successfully
+  const handleCaseSaved = useCallback((caseRow: CaseRow) => {
+    // Refresh the case list in LeftColumn
+    refreshCasesRef.current?.()
+
+    // Open the new case's Clinical Overview tab
+    const title = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`
+    openTab({
+      id: `overview:${caseRow.case_id}`,
+      title,
+      type: 'clinical-overview',
+      caseId: caseRow.case_id,
+    })
+  }, [openTab])
+
   return (
     <div
       className="app"
@@ -120,8 +156,9 @@ export default function App(): React.JSX.Element {
     >
       <Titlebar
         onCycleTheme={cycleTheme}
-        onOpenIntake={() => setShowIntake(true)}
+        onOpenIntake={handleNewCase}
         onOpenOnboarding={() => setShowOnboarding(true)}
+        onSetup={() => setShowSetup(true)}
       />
 
       <div
@@ -142,7 +179,12 @@ export default function App(): React.JSX.Element {
             overflow: 'hidden',
           }}
         >
-          <LeftColumn onOpenTab={openTab} />
+          <LeftColumn
+            onOpenTab={openTab}
+            onNewCase={handleNewCase}
+            onEditIntake={handleEditIntake}
+            refreshRef={refreshCasesRef}
+          />
         </div>
 
         <VSplitter onResize={handleLeftResize} onResizeEnd={handleLeftResizeEnd} />
@@ -161,6 +203,7 @@ export default function App(): React.JSX.Element {
             activeTabId={tabState.activeId}
             onCloseTab={closeTab}
             onSetActiveTab={setActiveTab}
+            onEditIntake={handleEditIntake}
           />
         </div>
 
@@ -182,8 +225,18 @@ export default function App(): React.JSX.Element {
 
       <Statusbar />
 
-      <IntakeModal isOpen={showIntake} onClose={() => setShowIntake(false)} />
+      <IntakeModal
+        isOpen={showIntake}
+        onClose={() => setShowIntake(false)}
+        caseId={intakeEditCaseId}
+        onSaved={handleCaseSaved}
+      />
       <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
+      <SetupModal
+        isOpen={showSetup}
+        onClose={() => setShowSetup(false)}
+        onWorkspaceSet={() => { refreshCasesRef.current?.() }}
+      />
     </div>
   )
 }

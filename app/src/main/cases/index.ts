@@ -99,9 +99,13 @@ export function createCase(params: CreateCaseParams): CaseRow {
  */
 export function listCases(): readonly CaseRow[] {
   const sqlite = getSqlite()
-  const rows = sqlite
-    .prepare('SELECT * FROM cases WHERE deleted_at IS NULL AND case_status != ? ORDER BY created_at DESC')
-    .all('archived') as CaseRow[]
+  // Check if deleted_at column exists (added in a later migration)
+  const cols = (sqlite.pragma('table_info(cases)') as Array<{ name: string }>).map(c => c.name)
+  const hasDeletedAt = cols.includes('deleted_at')
+  const query = hasDeletedAt
+    ? 'SELECT * FROM cases WHERE deleted_at IS NULL AND case_status != ? ORDER BY created_at DESC'
+    : 'SELECT * FROM cases WHERE case_status != ? ORDER BY created_at DESC'
+  const rows = sqlite.prepare(query).all('archived') as CaseRow[]
   return rows
 }
 
@@ -127,9 +131,12 @@ export function archiveCase(caseId: number): CaseRow {
   }
 
   const now = new Date().toISOString()
-  sqlite
-    .prepare("UPDATE cases SET case_status = 'archived', deleted_at = ?, last_modified = ? WHERE case_id = ?")
-    .run(now, now, caseId)
+  const archCols = (sqlite.pragma('table_info(cases)') as Array<{ name: string }>).map(c => c.name)
+  if (archCols.includes('deleted_at') && archCols.includes('last_modified')) {
+    sqlite.prepare("UPDATE cases SET case_status = 'archived', deleted_at = ?, last_modified = ? WHERE case_id = ?").run(now, now, caseId)
+  } else {
+    sqlite.prepare("UPDATE cases SET case_status = 'archived' WHERE case_id = ?").run(caseId)
+  }
 
   // Move folder to workspace Archive/ if it exists
   if (existing.folder_path && existsSync(existing.folder_path)) {

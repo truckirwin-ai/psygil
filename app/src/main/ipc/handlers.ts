@@ -27,12 +27,27 @@ import type {
   PiiDetectResult,
   PiiBatchDetectParams,
   PiiBatchDetectResult,
+  PiiRedactParams,
+  PiiRedactResult,
+  PiiRehydrateParams,
+  PiiRehydrateResult,
+  PiiDestroyParams,
+  PiiDestroyResult,
   FolderNode,
   IngestFileParams,
   DocumentsGetParams,
   DocumentsListParams,
   DocumentsDeleteParams,
   DocumentRow,
+  ApiKeyStoreParams,
+  ApiKeyStoreResult,
+  ApiKeyRetrieveResult,
+  ApiKeyDeleteResult,
+  ApiKeyHasResult,
+  AiCompleteParams,
+  AiCompleteResult,
+  AiTestConnectionParams,
+  AiTestConnectionResult,
 } from '../../shared/types'
 import { getAuthStatus } from '../auth'
 import { performLogin } from '../auth/login'
@@ -43,10 +58,11 @@ import {
   saveWorkspacePath,
   createFolderStructure,
   watchWorkspace,
+  syncWorkspaceToDB,
   getWorkspaceTree,
   getDefaultWorkspacePath
 } from '../workspace'
-import { detect, batchDetect } from '../pii'
+import { detect, batchDetect, redact, rehydrate, destroyMap } from '../pii'
 import {
   createCase,
   listCases,
@@ -63,6 +79,13 @@ import {
   listDocuments,
   deleteDocument,
 } from '../documents'
+import {
+  storeApiKey,
+  retrieveApiKey,
+  deleteApiKey,
+  hasApiKey,
+} from '../ai/key-storage'
+import { registerAiHandlers } from '../ai/ai-handlers'
 
 // ---------------------------------------------------------------------------
 // Stub helper — returns a typed success envelope
@@ -86,9 +109,11 @@ function registerCasesHandlers(): void {
     (_event, _params?: CasesListParams): IpcResponse<CasesListResult> => {
       try {
         const cases = listCases()
+        console.log('[cases:list] returning', cases.length, 'cases')
         return ok({ cases, total: cases.length })
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to list cases'
+        console.error('[cases:list] error:', message)
         return fail('CASES_LIST_FAILED', message)
       }
     }
@@ -299,6 +324,7 @@ function registerWorkspaceHandlers(): void {
       try {
         saveWorkspacePath(path)
         createFolderStructure(path)
+        syncWorkspaceToDB(path)
         watchWorkspace(path)
         return ok(undefined)
       } catch (e) {
@@ -327,7 +353,15 @@ function registerWorkspaceHandlers(): void {
   ipcMain.handle(
     'workspace:openInFinder',
     (_event, path: string): IpcResponse<void> => {
-      shell.openPath(path)
+      shell.showItemInFolder(path)
+      return ok(undefined)
+    }
+  )
+
+  ipcMain.handle(
+    'workspace:openNative',
+    (_event, path: string): IpcResponse<void> => {
+      void shell.openPath(path)
       return ok(undefined)
     }
   )
@@ -461,6 +495,124 @@ function registerPiiHandlers(): void {
       }
     }
   )
+
+  ipcMain.handle(
+    'pii:redact',
+    async (_event, params: PiiRedactParams): Promise<IpcResponse<PiiRedactResult>> => {
+      try {
+        const result = await redact(params.text, params.operationId, params.context)
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'PII redaction failed'
+        return fail('PII_REDACT_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'pii:rehydrate',
+    async (_event, params: PiiRehydrateParams): Promise<IpcResponse<PiiRehydrateResult>> => {
+      try {
+        const result = await rehydrate(params.text, params.operationId)
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'PII rehydration failed'
+        return fail('PII_REHYDRATE_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'pii:destroy',
+    async (_event, params: PiiDestroyParams): Promise<IpcResponse<PiiDestroyResult>> => {
+      try {
+        const result = await destroyMap(params.operationId)
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'PII map destruction failed'
+        return fail('PII_DESTROY_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Seed handler — inserts demo cases when DB is empty
+// ---------------------------------------------------------------------------
+
+function registerSeedHandlers(): void {
+  ipcMain.handle(
+    'seed:demoCases',
+    (): IpcResponse<{ inserted: number }> => {
+      try {
+        const { seedDemoCases, createSeedTrigger } = require('../seed-demo-cases') as typeof import('../seed-demo-cases')
+        createSeedTrigger()
+        seedDemoCases()
+        return ok({ inserted: 30 })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Seed failed'
+        return fail('SEED_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// API Key handlers — secure storage using OS keychain
+// ---------------------------------------------------------------------------
+
+function registerApiKeyHandlers(): void {
+  ipcMain.handle(
+    'apiKey:store',
+    (_event, params: ApiKeyStoreParams): IpcResponse<ApiKeyStoreResult> => {
+      try {
+        storeApiKey(params.key)
+        return ok({ stored: true })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to store API key'
+        return fail('API_KEY_STORE_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'apiKey:retrieve',
+    (): IpcResponse<ApiKeyRetrieveResult> => {
+      try {
+        const key = retrieveApiKey()
+        return ok({ key })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to retrieve API key'
+        return fail('API_KEY_RETRIEVE_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'apiKey:delete',
+    (): IpcResponse<ApiKeyDeleteResult> => {
+      try {
+        const deleted = deleteApiKey()
+        return ok({ deleted })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to delete API key'
+        return fail('API_KEY_DELETE_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'apiKey:has',
+    (): IpcResponse<ApiKeyHasResult> => {
+      try {
+        const hasKey = hasApiKey()
+        return ok({ hasKey })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to check API key'
+        return fail('API_KEY_HAS_FAILED', message)
+      }
+    }
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -477,4 +629,7 @@ export function registerAllHandlers(): void {
   registerDocumentHandlers()
   registerPiiHandlers()
   registerWorkspaceHandlers()
+  registerSeedHandlers()
+  registerApiKeyHandlers()
+  registerAiHandlers()
 }

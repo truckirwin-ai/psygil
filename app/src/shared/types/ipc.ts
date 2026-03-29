@@ -289,6 +289,39 @@ export interface PiiBatchDetectResult {
   readonly results: readonly (readonly PiiEntity[])[]
 }
 
+// pii.redact
+export interface PiiRedactParams {
+  readonly text: string
+  readonly operationId: string
+  readonly context: 'intake' | 'report' | 'review' | 'diagnostics'
+}
+
+export interface PiiRedactResult {
+  readonly redactedText: string
+  readonly entityCount: number
+  readonly typeBreakdown: Record<string, number>
+}
+
+// pii.rehydrate
+export interface PiiRehydrateParams {
+  readonly text: string
+  readonly operationId: string
+}
+
+export interface PiiRehydrateResult {
+  readonly fullText: string
+  readonly unidsReplaced: number
+}
+
+// pii.destroy
+export interface PiiDestroyParams {
+  readonly operationId: string
+}
+
+export interface PiiDestroyResult {
+  readonly destroyed: boolean
+}
+
 // ---------------------------------------------------------------------------
 // Documents
 // ---------------------------------------------------------------------------
@@ -356,6 +389,58 @@ export interface WorkspaceFileChangedEvent {
 }
 
 // ---------------------------------------------------------------------------
+// API Key Storage
+// ---------------------------------------------------------------------------
+
+export interface ApiKeyStoreParams {
+  readonly key: string
+}
+
+export interface ApiKeyStoreResult {
+  readonly stored: boolean
+}
+
+export interface ApiKeyRetrieveResult {
+  readonly key: string | null
+}
+
+export interface ApiKeyDeleteResult {
+  readonly deleted: boolean
+}
+
+export interface ApiKeyHasResult {
+  readonly hasKey: boolean
+}
+
+// ---------------------------------------------------------------------------
+// AI / Claude API
+// ---------------------------------------------------------------------------
+
+export interface AiCompleteParams {
+  readonly systemPrompt: string
+  readonly userMessage: string
+  readonly context?: string
+  readonly model?: string
+  readonly maxTokens?: number
+}
+
+export interface AiCompleteResult {
+  readonly content: string
+  readonly model: string
+  readonly inputTokens: number
+  readonly outputTokens: number
+  readonly stopReason: string
+}
+
+export interface AiTestConnectionParams {}
+
+export interface AiTestConnectionResult {
+  readonly connected: boolean
+  readonly model?: string
+  readonly error?: string
+}
+
+// ---------------------------------------------------------------------------
 // Preload API shape — exposed as window.psygil
 // ---------------------------------------------------------------------------
 
@@ -397,16 +482,33 @@ export interface PsygilApi {
   readonly pii: {
     readonly detect: (params: PiiDetectParams) => Promise<IpcResponse<PiiDetectResult>>
     readonly batchDetect: (params: PiiBatchDetectParams) => Promise<IpcResponse<PiiBatchDetectResult>>
+    readonly redact: (params: PiiRedactParams) => Promise<IpcResponse<PiiRedactResult>>
+    readonly rehydrate: (params: PiiRehydrateParams) => Promise<IpcResponse<PiiRehydrateResult>>
+    readonly destroy: (params: PiiDestroyParams) => Promise<IpcResponse<PiiDestroyResult>>
+  }
+  readonly seed: {
+    readonly demoCases: () => Promise<IpcResponse<{ inserted: number }>>
   }
   readonly workspace: {
     readonly getPath: () => Promise<IpcResponse<string | null>>
     readonly setPath: (path: string) => Promise<IpcResponse<void>>
     readonly getTree: () => Promise<IpcResponse<readonly FolderNode[]>>
     readonly openInFinder: (path: string) => Promise<IpcResponse<void>>
+    readonly openNative: (path: string) => Promise<IpcResponse<void>>
     readonly pickFolder: () => Promise<IpcResponse<string | null>>
     readonly getDefaultPath: () => Promise<IpcResponse<string>>
     readonly onFileChanged: (callback: (event: WorkspaceFileChangedEvent) => void) => void
     readonly offFileChanged: () => void
+  }
+  readonly apiKey: {
+    readonly store: (params: ApiKeyStoreParams) => Promise<IpcResponse<ApiKeyStoreResult>>
+    readonly retrieve: () => Promise<IpcResponse<ApiKeyRetrieveResult>>
+    readonly delete: () => Promise<IpcResponse<ApiKeyDeleteResult>>
+    readonly has: () => Promise<IpcResponse<ApiKeyHasResult>>
+  }
+  readonly ai: {
+    readonly complete: (params: AiCompleteParams) => Promise<IpcResponse<AiCompleteResult>>
+    readonly testConnection: (params: AiTestConnectionParams) => Promise<IpcResponse<AiTestConnectionResult>>
   }
 }
 

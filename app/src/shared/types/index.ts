@@ -46,5 +46,9 @@ export type {
   DocumentsDeleteParams,
   FolderNode,
   WorkspaceFileChangedEvent,
+  AiCompleteParams,
+  AiCompleteResult,
+  AiTestConnectionParams,
+  AiTestConnectionResult,
   PsygilApi
 } from './ipc'

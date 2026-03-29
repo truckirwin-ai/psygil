@@ -1,21 +1,6 @@
-/**
- * Database migration script for Psygil.
- *
- * Strategy: Use Drizzle to create the 24 base tables from schema.ts,
- * then apply raw SQL for FTS5 virtual tables, views, triggers, and
- * CHECK constraints that Drizzle cannot express.
- *
- * Usage: npx tsx src/main/db/migrate.ts
- */
-
-import { initDatabase, getDefaultDbPath } from './index'
-
-/**
- * Raw SQL that Drizzle cannot generate:
- * - FTS5 virtual tables (documents, writer_drafts, audit_log, case_notes)
- * - Views (v_active_cases, v_case_progress, v_diagnostic_queue, v_finalization_queue, addendum views)
- * - Triggers (auto-update timestamps, audit trail logging)
- */
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const index = require("./index.js");
 const POST_MIGRATION_SQL = `
 -- ============================================================================
 -- FTS5 VIRTUAL TABLES
@@ -289,59 +274,34 @@ BEGIN
     AND expires_at < CURRENT_DATE;
 END;
 `;
-
-async function main(): Promise<void> {
-  const dbPath = getDefaultDbPath()
-  console.log(`[migrate] Opening database at: ${dbPath}`)
-
-  const { sqlite } = await initDatabase(undefined, dbPath)
-
-  // Step 1: Create tables directly from schema if they don't exist
-  const tableCount = sqlite
-    .prepare("SELECT COUNT(*) as cnt FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts%'")
-    .get() as { cnt: number }
-
+async function main() {
+  const dbPath = index.getDefaultDbPath();
+  console.log(`[migrate] Opening database at: ${dbPath}`);
+  const { sqlite } = await index.initDatabase(void 0, dbPath);
+  const tableCount = sqlite.prepare("SELECT COUNT(*) as cnt FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts%'").get();
   if (tableCount.cnt === 0) {
-    console.log('[migrate] No tables found — creating schema from raw SQL...')
-    createTablesFromSchema(sqlite)
-    console.log('[migrate] Base tables created')
+    console.log("[migrate] No tables found — creating schema from raw SQL...");
+    createTablesFromSchema(sqlite);
+    console.log("[migrate] Base tables created");
   } else {
-    console.log(`[migrate] Found ${tableCount.cnt} existing tables`)
+    console.log(`[migrate] Found ${tableCount.cnt} existing tables`);
   }
-
-  // Step 3: Apply FTS5, views, triggers via raw SQL
-  console.log('[migrate] Applying FTS5 virtual tables, views, and triggers...')
-  sqlite.exec(POST_MIGRATION_SQL)
-  console.log('[migrate] Post-migration SQL applied')
-
-  // Verify
-  const allTables = sqlite
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-    .all() as Array<{ name: string }>
-  console.log(`[migrate] Total tables: ${allTables.length}`)
-  allTables.forEach((t) => console.log(`  - ${t.name}`))
-
-  const allViews = sqlite
-    .prepare("SELECT name FROM sqlite_master WHERE type='view' ORDER BY name")
-    .all() as Array<{ name: string }>
-  console.log(`[migrate] Total views: ${allViews.length}`)
-  allViews.forEach((v) => console.log(`  - ${v.name}`))
-
-  const allTriggers = sqlite
-    .prepare("SELECT name FROM sqlite_master WHERE type='trigger' ORDER BY name")
-    .all() as Array<{ name: string }>
-  console.log(`[migrate] Total triggers: ${allTriggers.length}`)
-  allTriggers.forEach((t) => console.log(`  - ${t.name}`))
-
-  sqlite.close()
-  console.log('[migrate] Done.')
+  console.log("[migrate] Applying FTS5 virtual tables, views, and triggers...");
+  sqlite.exec(POST_MIGRATION_SQL);
+  console.log("[migrate] Post-migration SQL applied");
+  const allTables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
+  console.log(`[migrate] Total tables: ${allTables.length}`);
+  allTables.forEach((t) => console.log(`  - ${t.name}`));
+  const allViews = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='view' ORDER BY name").all();
+  console.log(`[migrate] Total views: ${allViews.length}`);
+  allViews.forEach((v) => console.log(`  - ${v.name}`));
+  const allTriggers = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='trigger' ORDER BY name").all();
+  console.log(`[migrate] Total triggers: ${allTriggers.length}`);
+  allTriggers.forEach((t) => console.log(`  - ${t.name}`));
+  sqlite.close();
+  console.log("[migrate] Done.");
 }
-
-/**
- * Create all 24 tables from raw SQL when no Drizzle migration files exist.
- * This is the bootstrap path for fresh databases.
- */
-function createTablesFromSchema(sqlite: ReturnType<typeof import('better-sqlite3')>): void {
+function createTablesFromSchema(sqlite) {
   sqlite.exec(`
     -- 1. Practice Config (must come before users due to FK)
     CREATE TABLE IF NOT EXISTS practice_config (
@@ -902,19 +862,14 @@ function createTablesFromSchema(sqlite: ReturnType<typeof import('better-sqlite3
     CREATE INDEX IF NOT EXISTS idx_case_assignments_case_id ON case_assignments(case_id);
     CREATE INDEX IF NOT EXISTS idx_case_assignments_user_id ON case_assignments(user_id);
     CREATE INDEX IF NOT EXISTS idx_case_assignments_role_in_case ON case_assignments(role_in_case);
-  `)
+  `);
 }
-
-/**
- * Exported for use by connection.ts on app startup.
- * Creates base schema + FTS/views/triggers on a fresh database.
- */
-export function runBaseMigration(sqlite: ReturnType<typeof import('better-sqlite3')>): void {
-  createTablesFromSchema(sqlite)
-  sqlite.exec(POST_MIGRATION_SQL)
+function runBaseMigration(sqlite) {
+  createTablesFromSchema(sqlite);
+  sqlite.exec(POST_MIGRATION_SQL);
 }
-
 main().catch((err) => {
-  console.error('[migrate] FATAL:', err)
-  process.exit(1)
-})
+  console.error("[migrate] FATAL:", err);
+  process.exit(1);
+});
+exports.runBaseMigration = runBaseMigration;

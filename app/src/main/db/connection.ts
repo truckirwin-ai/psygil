@@ -22,6 +22,19 @@ export async function initDb(): Promise<void> {
   if (handle !== null) return
   const result = await initDatabase()
   handle = result
+
+  // Create base schema if tables don't exist yet (fresh DB)
+  const tableCount = (result.sqlite
+    .prepare("SELECT count(*) as n FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+    .get() as { n: number }).n
+
+  if (tableCount === 0) {
+    // Fresh database — run the full base migration script
+    const { runBaseMigration } = await import('./migrate')
+    runBaseMigration(result.sqlite)
+  }
+
+  // Run incremental migrations (003+)
   runMigrations(result.sqlite)
 }
 

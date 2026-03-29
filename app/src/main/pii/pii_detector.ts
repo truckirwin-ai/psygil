@@ -115,3 +115,61 @@ export async function batchDetect(texts: readonly string[]): Promise<readonly (r
     }))
   )
 }
+
+/**
+ * Redact PHI in text by replacing with UNIDs.
+ *
+ * Takes full-PHI text, detects entities via Presidio, generates a UNID map,
+ * replaces PHI with UNIDs, stores the map in-memory keyed by operationId.
+ * Returns redacted text ready for transmission to AI.
+ */
+export async function redact(
+  text: string,
+  operationId: string,
+  context: 'intake' | 'report' | 'review' | 'diagnostics'
+): Promise<{
+  readonly redactedText: string
+  readonly entityCount: number
+  readonly typeBreakdown: Record<string, number>
+}> {
+  const result = await rpcCall('pii/redact', { text, operationId, context })
+  return {
+    redactedText: result.redactedText as string,
+    entityCount: result.entityCount as number,
+    typeBreakdown: result.typeBreakdown as Record<string, number>,
+  }
+}
+
+/**
+ * Rehydrate UNIDs back to original PHI.
+ *
+ * Takes AI response text containing UNIDs, looks up the UNID map by operationId,
+ * replaces all UNIDs with original PHI, and destroys the map.
+ * Returns the full-PHI text ready for storage and display.
+ */
+export async function rehydrate(
+  text: string,
+  operationId: string
+): Promise<{
+  readonly fullText: string
+  readonly unidsReplaced: number
+}> {
+  const result = await rpcCall('pii/rehydrate', { text, operationId })
+  return {
+    fullText: result.fullText as string,
+    unidsReplaced: result.unidsReplaced as number,
+  }
+}
+
+/**
+ * Explicitly destroy a UNID map.
+ *
+ * Called if redaction was initiated but never rehydrated (e.g., error during API call).
+ * Overwrites and deletes the in-memory UNID map keyed by operationId.
+ */
+export async function destroyMap(operationId: string): Promise<{ readonly destroyed: boolean }> {
+  const result = await rpcCall('pii/destroy', { operationId })
+  return {
+    destroyed: result.destroyed as boolean,
+  }
+}

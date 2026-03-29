@@ -1,1 +1,1 @@
-export { detect, batchDetect } from './pii_detector'
+export { detect, batchDetect, redact, rehydrate, destroyMap } from './pii_detector'

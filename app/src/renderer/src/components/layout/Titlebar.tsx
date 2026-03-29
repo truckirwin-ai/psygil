@@ -4,6 +4,7 @@ interface TitlebarProps {
   readonly onCycleTheme: () => void
   readonly onOpenIntake: () => void
   readonly onOpenOnboarding: () => void
+  readonly onSetup: () => void
 }
 
 const LOGO_SVG = (
@@ -19,8 +20,9 @@ const LOGO_SVG = (
   </svg>
 )
 
-export default function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding }: TitlebarProps): React.JSX.Element {
+export default function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding, onSetup }: TitlebarProps): React.JSX.Element {
   const navActions: Record<string, (() => void) | undefined> = {
+    Setup: onSetup,
     Intake: onOpenIntake,
     Onboarding: onOpenOnboarding,
   }

@@ -106,6 +106,45 @@ def rpc_method(name: str):
     return decorator
 
 
+# ---------------------------------------------------------------------------
+# In-memory UNID map storage
+# ---------------------------------------------------------------------------
+
+_unid_maps: dict[str, dict[str, str]] = {}  # operationId -> { phiValue -> unid }
+
+
+def _generate_unid(entity_type: str) -> str:
+    """Generate a UNID: TYPE_6hexchars"""
+    import secrets
+    hex_str = secrets.token_hex(3)  # 6 hex characters
+    return f"{entity_type}_{hex_str}"
+
+
+def _map_presidio_type_to_unid_type(presidio_type: str) -> str:
+    """Map Presidio entity types to UNID type prefixes."""
+    mapping = {
+        "PERSON": "PERSON",
+        "DATE_TIME": "DATE",  # Will be refined to DOB if context suggests it
+        "PHONE_NUMBER": "PHONE",
+        "EMAIL_ADDRESS": "EMAIL",
+        "US_SSN": "SSN",
+        "MEDICAL_LICENSE": "LICENSE",
+        "US_BANK_NUMBER": "RECNUM",
+        "US_DRIVER_LICENSE": "LICENSE",
+        "IP_ADDRESS": "IP",
+        "URL": "URL",
+        "LOCATION": "ADDRESS",
+        "IBAN_CODE": "RECNUM",
+        "CREDIT_CARD": "RECNUM",
+        "US_PASSPORT": "LICENSE",
+        "NRP": "OTHER",
+        "US_ITIN": "RECNUM",
+        "CRYPTO": "BIOMETRIC",
+        "SG_NRIC_FIN": "OTHER",
+    }
+    return mapping.get(presidio_type, "OTHER")
+
+
 @rpc_method("health/ping")
 async def health_ping(_params: Any) -> dict:
     return {"status": "ok"}
@@ -170,6 +209,100 @@ async def pii_batch(params: Any) -> dict:
         results_list.append(entities)
 
     return {"results": results_list}
+
+
+@rpc_method("pii/redact")
+async def pii_redact(params: Any) -> dict:
+    """Redact PHI with UNIDs: takes full-PHI text, returns redacted text + map."""
+    text = params.get("text", "") if isinstance(params, dict) else ""
+    operation_id = params.get("operationId", "") if isinstance(params, dict) else ""
+    context = params.get("context", "intake") if isinstance(params, dict) else "intake"
+
+    if not text or not operation_id:
+        return {"redactedText": text, "entityCount": 0, "typeBreakdown": {}}
+
+    analyzer = _get_analyzer()
+    entities = analyzer.analyze(
+        text=text,
+        entities=HIPAA_ENTITIES,
+        language="en",
+    )
+
+    # Create UNID map for this operation
+    unid_map: dict[str, str] = {}
+    type_breakdown: dict[str, int] = {}
+
+    # Sort by position descending so we can replace without shifting indices
+    sorted_entities = sorted(entities, key=lambda e: e.start, reverse=True)
+
+    redacted_text = text
+    for entity in sorted_entities:
+        phi_value = text[entity.start : entity.end]
+
+        # Check if we've already mapped this exact PHI value in this operation
+        if phi_value not in unid_map:
+            unid_type = _map_presidio_type_to_unid_type(entity.entity_type)
+            # Special case: DATE_TIME might be DOB or just DATE (heuristic: in context, if mentioned early, might be DOB)
+            if entity.entity_type == "DATE_TIME" and "birth" in text[max(0, entity.start - 50) : entity.start].lower():
+                unid_type = "DOB"
+            unid_map[phi_value] = _generate_unid(unid_type)
+            type_breakdown[unid_type] = type_breakdown.get(unid_type, 0) + 1
+
+        unid = unid_map[phi_value]
+        redacted_text = redacted_text[:entity.start] + unid + redacted_text[entity.end :]
+
+    # Store map in memory
+    _unid_maps[operation_id] = unid_map
+
+    return {
+        "redactedText": redacted_text,
+        "entityCount": len(unid_map),
+        "typeBreakdown": type_breakdown,
+    }
+
+
+@rpc_method("pii/rehydrate")
+async def pii_rehydrate(params: Any) -> dict:
+    """Rehydrate UNIDs back to original PHI."""
+    text = params.get("text", "") if isinstance(params, dict) else ""
+    operation_id = params.get("operationId", "") if isinstance(params, dict) else ""
+
+    if not operation_id or operation_id not in _unid_maps:
+        return {"fullText": text, "unidsReplaced": 0}
+
+    unid_map = _unid_maps[operation_id]
+    full_text = text
+    replaced_count = 0
+
+    # Reverse the map: unid -> phi_value
+    reverse_map = {v: k for k, v in unid_map.items()}
+
+    # Replace all UNIDs with original PHI
+    for unid, phi_value in reverse_map.items():
+        if unid in full_text:
+            full_text = full_text.replace(unid, phi_value)
+            replaced_count += 1
+
+    # Destroy the map
+    del _unid_maps[operation_id]
+
+    return {"fullText": full_text, "unidsReplaced": replaced_count}
+
+
+@rpc_method("pii/destroy")
+async def pii_destroy(params: Any) -> dict:
+    """Explicitly destroy a UNID map."""
+    operation_id = params.get("operationId", "") if isinstance(params, dict) else ""
+
+    if operation_id in _unid_maps:
+        # Overwrite the map before deletion
+        map_to_destroy = _unid_maps[operation_id]
+        for key in list(map_to_destroy.keys()):
+            map_to_destroy[key] = ""
+        del _unid_maps[operation_id]
+        return {"destroyed": True}
+
+    return {"destroyed": False}
 
 
 # ---------------------------------------------------------------------------

@@ -4,6 +4,9 @@ import type {
   WorkspaceFileChangedEvent,
   PiiDetectParams,
   PiiBatchDetectParams,
+  PiiRedactParams,
+  PiiRehydrateParams,
+  PiiDestroyParams,
   IntakeSaveParams,
   IntakeGetParams,
   OnboardingSaveParams,
@@ -12,6 +15,9 @@ import type {
   DocumentsGetParams,
   DocumentsListParams,
   DocumentsDeleteParams,
+  ApiKeyStoreParams,
+  AiCompleteParams,
+  AiTestConnectionParams,
 } from '../shared/types'
 
 // IPC channel constants — must match main/ipc/handlers.ts
@@ -35,13 +41,22 @@ const CH = {
   DOCS_GET: 'documents:get',
   DOCS_DELETE: 'documents:delete',
   DOCS_PICK_FILE: 'documents:pickFile',
+  PII_REDACT: 'pii:redact',
+  PII_REHYDRATE: 'pii:rehydrate',
+  PII_DESTROY: 'pii:destroy',
   WS_GET_PATH: 'workspace:getPath',
   WS_SET_PATH: 'workspace:setPath',
   WS_GET_TREE: 'workspace:getTree',
+  SEED_DEMO: 'seed:demoCases',
   WS_OPEN_FINDER: 'workspace:openInFinder',
+  WS_OPEN_NATIVE: 'workspace:openNative',
   WS_PICK_FOLDER: 'workspace:pickFolder',
   WS_DEFAULT_PATH: 'workspace:getDefaultPath',
   WS_FILE_CHANGED: 'workspace:file-changed',
+  API_KEY_STORE: 'apiKey:store',
+  API_KEY_RETRIEVE: 'apiKey:retrieve',
+  API_KEY_DELETE: 'apiKey:delete',
+  API_KEY_HAS: 'apiKey:has',
 } as const
 
 // Typed API exposed to the renderer as window.psygil.
@@ -93,13 +108,20 @@ const api: PsygilApi = {
   pii: {
     detect: (params: PiiDetectParams) => ipcRenderer.invoke('pii:detect', params),
     batchDetect: (params: PiiBatchDetectParams) => ipcRenderer.invoke('pii:batchDetect', params),
+    redact: (params: PiiRedactParams) => ipcRenderer.invoke(CH.PII_REDACT, params),
+    rehydrate: (params: PiiRehydrateParams) => ipcRenderer.invoke(CH.PII_REHYDRATE, params),
+    destroy: (params: PiiDestroyParams) => ipcRenderer.invoke(CH.PII_DESTROY, params),
   },
 
+  seed: {
+    demoCases: () => ipcRenderer.invoke(CH.SEED_DEMO),
+  },
   workspace: {
     getPath: () => ipcRenderer.invoke(CH.WS_GET_PATH),
     setPath: (path) => ipcRenderer.invoke(CH.WS_SET_PATH, path),
     getTree: () => ipcRenderer.invoke(CH.WS_GET_TREE),
     openInFinder: (path) => ipcRenderer.invoke(CH.WS_OPEN_FINDER, path),
+    openNative: (path) => ipcRenderer.invoke(CH.WS_OPEN_NATIVE, path),
     pickFolder: () => ipcRenderer.invoke(CH.WS_PICK_FOLDER),
     getDefaultPath: () => ipcRenderer.invoke(CH.WS_DEFAULT_PATH),
     onFileChanged: (callback: (event: WorkspaceFileChangedEvent) => void) => {
@@ -108,7 +130,19 @@ const api: PsygilApi = {
     offFileChanged: () => {
       ipcRenderer.removeAllListeners(CH.WS_FILE_CHANGED)
     },
-  }
+  },
+
+  apiKey: {
+    store: (params: ApiKeyStoreParams) => ipcRenderer.invoke(CH.API_KEY_STORE, params),
+    retrieve: () => ipcRenderer.invoke(CH.API_KEY_RETRIEVE),
+    delete: () => ipcRenderer.invoke(CH.API_KEY_DELETE),
+    has: () => ipcRenderer.invoke(CH.API_KEY_HAS),
+  },
+
+  ai: {
+    complete: (params: AiCompleteParams) => ipcRenderer.invoke('ai:complete', params),
+    testConnection: (params?: AiTestConnectionParams) => ipcRenderer.invoke('ai:testConnection', params ?? {}),
+  },
 }
 
 contextBridge.exposeInMainWorld('psygil', api)
