@@ -1,5 +1,26 @@
-// Workspace folder management — config persistence, folder creation, file watcher, tree builder
+// =============================================================================
+// Workspace folder management — config persistence, folder creation, file
+// watcher, tree builder
 // Source of truth: docs/engineering/26_Workspace_Folder_Architecture.md
+// =============================================================================
+//
+// ██████████████████████████████████████████████████████████████████████████████
+// ██  CRITICAL RULE: THE FILESYSTEM IS THE SOURCE OF TRUTH FOR THE TREE     ██
+// ██████████████████████████████████████████████████████████████████████████████
+//
+// getWorkspaceTree() reads actual files/folders from disk via readdirSync.
+// The renderer's LeftColumn.tsx calls this via IPC to build the tree UI.
+//
+// The DB (cases table) provides METADATA OVERLAY ONLY — stage colors, eval
+// types, workflow status.  It NEVER determines which nodes appear in the tree.
+//
+// If you need to change what appears in the tree: change the filesystem.
+// If you need to change how tree nodes look: change the DB metadata or the
+// LeftColumn rendering logic.
+//
+// DO NOT add logic that fabricates tree nodes from DB records.
+// DO NOT filter out filesystem entries based on pipeline stage.
+// =============================================================================
 
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'

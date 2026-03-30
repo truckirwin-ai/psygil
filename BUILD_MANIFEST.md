@@ -52,7 +52,7 @@ If the spec seems wrong, STOP and flag it for Truck. Do not "fix" the spec by wr
 - **THE DOCTOR ALWAYS DIAGNOSES** — AI never selects, recommends, or auto-accepts diagnoses
 - **6-STAGE PIPELINE** — Onboarding → Testing → Interview → Diagnostics → Review → Complete (replaces old Gate 1/2/3 system)
 - **NO ACCEPT ALL** — Diagnostics stage requires individual diagnostic decisions
-- **STAGE-APPROPRIATE DOCUMENTS** — Case tree contents match pipeline stage; documents only appear at the stage they're created
+- **TREE = FILESYSTEM** — Column 1 tree mirrors the actual workspace folder on disk. DB provides metadata overlay (colors, labels) ONLY. Never build tree from hardcoded stage logic. See LeftColumn.tsx header comment.
 - **UNID REDACTION** — Every text sent to Claude API must pass through the UNID pipeline first; single-use UNIDs replace all PHI, maps destroyed after each operation (see doc 15)
 - **LOCAL-FIRST PHI** — All patient data encrypted locally in SQLCipher; only UNID-redacted text leaves the app; reports are NEVER redacted
 - **AUDIT EVERYTHING** — Every case action logged with timestamp and user
@@ -65,8 +65,8 @@ If the spec seems wrong, STOP and flag it for Truck. Do not "fix" the spec by wr
 
 ## CURRENT SPRINT
 
-**Sprint:** 4
-**Goal:** PII Pipeline + Claude API Integration + GO/NO-GO Gate
+**Sprint:** 6
+**Goal:** AI Agent Pipeline — Ingestor, Diagnostician, Writer, Editor wired to live case data
 **Dates:** Started 2026-03-29
 
 ---
@@ -122,8 +122,38 @@ If the spec seems wrong, STOP and flag it for Truck. Do not "fix" the spec by wr
 | 4.5 | Rate limiting + error handling | ✅ DONE | 2026-03-29 | rate-limiter.ts: exponential backoff + sliding window. error-handler.ts: 9 error codes with user-facing messages. request-logger.ts: in-memory ring buffer. 32 unit tests. |
 | 4.6 | GO/NO-GO gate harness | ✅ DONE | 2026-03-29 | gate_verification.py: standalone runner. gold_standard_corpus.py: 100 samples, 604 PHI entities across 7 forensic domains. Measures recall + FP rate. JSON + terminal output. |
 
-### Sprint 5–12 Tasks
-[Populated when Sprint 4 GO/NO-GO passes]
+### Sprint 5 Tasks ✅ COMPLETE (UI MVP)
+| # | Task | Status | Completed | Notes |
+|---|------|--------|-----------|-------|
+| 5.1 | Dashboard tab component | ✅ DONE | 2026-03-29 | KPI cards, pipeline breakdown, case table with row-click navigation. Pinned as permanent first tab. |
+| 5.2 | Clinical Overview tab rewrite | ✅ DONE | 2026-03-29 | Case header, pipeline progress indicator, 8 sub-tabs (Intake/Referral/Collateral/Testing/Validity/Interviews/Diagnostics/Report) |
+| 5.3 | Test Results tab | ✅ DONE | 2026-03-29 | Sub-tabs per instrument (MMPI-3, PAI, WAIS-V, TOMM, SIRS-2), score tables, interpretations |
+| 5.4 | Diagnostics tab | ✅ DONE | 2026-03-29 | Red "DOCTOR ALWAYS DIAGNOSES" banner, individual accept/reject, clinical formulation, feigning assessment |
+| 5.5 | Eval Report tab | ✅ DONE | 2026-03-29 | Word processor layout with toolbar, page ruler, AI draft sections (orange dashed border) |
+| 5.6 | Attestation tab | ✅ DONE | 2026-03-29 | Completion checklist, digital signature, submit gated on all items |
+| 5.7 | Audit Trail tab | ✅ DONE | 2026-03-29 | Chronological event table, actor ID (clinician/AI/system), status dots |
+| 5.8 | Settings tab | ✅ DONE | 2026-03-29 | Practice info, theme control, API key mgmt with test connection |
+| 5.9 | Document Viewer + Evidence Map tabs | ✅ DONE | 2026-03-29 | Collateral/interview viewer, evidence convergence display |
+| 5.10 | Pipeline Panel component | ✅ DONE | 2026-03-29 | Bottom bar shows current stage with ✓/●/○ indicators |
+| 5.11 | LeftColumn rewrite as clinical tree | ✅ DONE | 2026-03-29 | Stage-appropriate children, stage color circles, filter dropdown (stage + eval type) |
+| 5.12 | RightColumn with AI writing assistant | ✅ DONE | 2026-03-29 | Context panel (notes, agent status, deadlines, quick actions) + chat that calls ai.complete() |
+| 5.13 | Full CenterColumn integration | ✅ DONE | 2026-03-29 | All 11 tab components routed, tab type definitions updated, App.tsx props wired |
+| 5.14 | Dashboard pinned + filter UX | ✅ DONE | 2026-03-29 | Dashboard always open, no close button, stage circles in tree, CASES filter dropdown |
+| 5.15 | Tree-filesystem sync fix | ✅ DONE | 2026-03-29 | LeftColumn rewritten: tree now reads from workspace.getTree() (real filesystem) with DB as metadata overlay. Chokidar auto-refresh wired. Enforcement comments added. |
+
+### Sprint 6 Tasks 🔄 IN PROGRESS (AI Agent Pipeline)
+| # | Task | Status | Assigned To | Notes |
+|---|------|--------|-------------|-------|
+| 6.1 | Agent runner framework | ✅ DONE | 2026-03-29 | runner.ts: AgentConfig → PII redact → Claude API → rehydrate → destroy map → AgentResult. agent-handlers.ts: IPC agent:run + agent:status. TS errors fixed (AgentType alignment). |
+| 6.2 | Ingestor Agent | ✅ DONE | 2026-03-29 | ingestor.ts: gathers docs + case metadata → builds spec-compliant input payload → runAgent('ingestor') → saves IngestorOutput to agent_results table. IPC: ingestor:run + ingestor:getResult. Preload wired. |
+| 6.3 | Diagnostician Agent | ✅ DONE | 2026-03-29 | diagnostician.ts: loads ingestor result → evidence-to-criteria mapping → DOCTOR DECIDES (AI presents, never selects). Saves to agent_results. |
+| 6.4 | Writer Agent | ✅ DONE | 2026-03-29 | writer.ts: loads ingestor + diagnostician results → only CLINICIAN-CONFIRMED diagnoses → draft report sections. Saves to agent_results. |
+| 6.5 | Editor/Legal Agent | ✅ DONE | 2026-03-29 | editor.ts: loads writer draft → 9-point review (speculative language, unsupported conclusions, Daubert/Frye risks, etc.) → annotation set with severity levels. Saves to agent_results. |
+| 6.6 | Agent status panel in RightColumn | ✅ DONE | 2026-03-29 | Live agent status: 2s polling, color-coded dots (green/orange/gray/red), elapsed time, token usage. "Run Ingestor" button disabled while agents running. |
+| 6.7 | Pipeline stage advancement | ✅ DONE | 2026-03-29 | pipeline/index.ts: checkStageAdvancement + advanceStage + getStageConditions. 6-stage conditions enforced (intake→docs→tests→ingestor→diagnostician→writer+editor+attestation). IPC: pipeline:check/advance/conditions. Preload wired. Legacy stage names handled. |
+
+### Sprint 7–12 Tasks
+[Populated when Sprint 6 agents are functional]
 
 ---
 

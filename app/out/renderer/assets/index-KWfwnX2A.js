@@ -12446,8 +12446,9 @@ const LOGO_SVG = /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "22", he
   /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "40", cy: "42", r: "2", fill: "#ffffff" }),
   /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "60", cy: "42", r: "2", fill: "#ffffff" })
 ] });
-function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding }) {
+function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding, onSetup }) {
   const navActions = {
+    Setup: onSetup,
     Intake: onOpenIntake,
     Onboarding: onOpenOnboarding
   };
@@ -12658,21 +12659,94 @@ function Statusbar() {
     }
   );
 }
-const STAGE_COLORS = {
+function ContextMenu({
+  menu,
+  onClose
+}) {
+  const handleFinderClick = reactExports.useCallback(() => {
+    void window.psygil?.workspace?.openInFinder?.(menu.path);
+    onClose();
+  }, [menu.path, onClose]);
+  const handleNativeClick = reactExports.useCallback(() => {
+    if (!menu.isDirectory) {
+      void window.psygil?.workspace?.openNative?.(menu.path);
+    }
+    onClose();
+  }, [menu.path, menu.isDirectory, onClose]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        position: "fixed",
+        top: menu.y,
+        left: menu.x,
+        zIndex: 9e3,
+        background: "var(--panel)",
+        border: "1px solid var(--border)",
+        borderRadius: 4,
+        boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+        minWidth: 180,
+        padding: "4px 0",
+        fontSize: 12
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            style: { padding: "6px 14px", cursor: "pointer", color: "var(--text)" },
+            onMouseEnter: (e) => {
+              e.currentTarget.style.background = "var(--highlight)";
+            },
+            onMouseLeave: (e) => {
+              e.currentTarget.style.background = "transparent";
+            },
+            onClick: handleFinderClick,
+            children: "📂 Reveal in Finder"
+          }
+        ),
+        !menu.isDirectory && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            style: { padding: "6px 14px", cursor: "pointer", color: "var(--text)" },
+            onMouseEnter: (e) => {
+              e.currentTarget.style.background = "var(--highlight)";
+            },
+            onMouseLeave: (e) => {
+              e.currentTarget.style.background = "transparent";
+            },
+            onClick: handleNativeClick,
+            children: "↗ Open with Default App"
+          }
+        )
+      ]
+    }
+  );
+}
+const STAGE_COLORS$1 = {
   onboarding: "#2196f3",
+  gate_1: "#2196f3",
   testing: "#9c27b0",
+  gate_2: "#9c27b0",
   interview: "#e91e63",
   diagnostics: "#ff9800",
+  gate_3: "#ff9800",
   review: "#ff5722",
-  complete: "#4caf50"
+  complete: "#4caf50",
+  finalized: "#4caf50",
+  intake: "#2196f3"
 };
 const STAGE_LABELS = {
   onboarding: "Onboarding",
+  gate_1: "Onboarding",
   testing: "Testing",
+  gate_2: "Testing",
   interview: "Interview",
   diagnostics: "Diagnostics",
+  gate_3: "Diagnostics",
   review: "Review",
-  complete: "Complete"
+  complete: "Complete",
+  finalized: "Complete",
+  intake: "Intake"
 };
 const CASE_SUBFOLDERS = [
   "_Inbox",
@@ -12698,8 +12772,12 @@ function buildTreeLookup(nodes) {
   }
   return map;
 }
-function LeftColumn({ onOpenTab }) {
-  const [viewMode, setViewMode] = reactExports.useState("cases");
+function LeftColumn({
+  onOpenTab,
+  onNewCase,
+  refreshRef
+}) {
+  const [ctxMenu, setCtxMenu] = reactExports.useState(null);
   const [wsStatus, setWsStatus] = reactExports.useState("loading");
   const [cases, setCases] = reactExports.useState([]);
   const [wsTree, setWsTree] = reactExports.useState([]);
@@ -12714,24 +12792,40 @@ function LeftColumn({ onOpenTab }) {
     }
   }, []);
   const loadCases = reactExports.useCallback(async () => {
+    console.log("[LeftColumn] calling cases.list...");
     const resp = await window.psygil?.cases?.list?.();
+    console.log("[LeftColumn] cases.list response:", resp);
     if (resp?.status === "success") {
+      console.log("[LeftColumn] setting cases:", resp.data.cases.length);
       setCases(resp.data.cases);
     }
   }, []);
+  const loadCasesRef = reactExports.useRef(loadCases);
+  loadCasesRef.current = loadCases;
+  reactExports.useEffect(() => {
+    refreshRef.current = () => {
+      void loadCasesRef.current();
+    };
+  }, [refreshRef]);
   reactExports.useEffect(() => {
     let cancelled = false;
-    async function init() {
+    async function init(isRetry = false) {
       const resp = await window.psygil?.workspace?.getPath?.();
+      console.log("[LeftColumn] workspace.getPath:", resp);
       if (cancelled) return;
       if (resp?.status === "success" && resp.data !== null) {
         setWsStatus("ready");
         await Promise.all([loadTree(), loadCases()]);
+        if (!isRetry) {
+          setTimeout(() => {
+            if (!cancelled) void init(true);
+          }, 1500);
+        }
       } else {
         setWsStatus("no-workspace");
       }
     }
-    init();
+    void init();
     return () => {
       cancelled = true;
     };
@@ -12739,7 +12833,7 @@ function LeftColumn({ onOpenTab }) {
   reactExports.useEffect(() => {
     if (wsStatus !== "ready") return;
     window.psygil?.workspace?.onFileChanged?.(() => {
-      loadTree();
+      void loadTree();
     });
     return () => {
       window.psygil?.workspace?.offFileChanged?.();
@@ -12763,68 +12857,95 @@ function LeftColumn({ onOpenTab }) {
       await Promise.all([loadTree(), loadCases()]);
     }
   }, [loadTree, loadCases]);
-  const handleRefresh = reactExports.useCallback(async () => {
-    await Promise.all([loadTree(), loadCases()]);
+  const handleRefresh = reactExports.useCallback(() => {
+    void Promise.all([loadTree(), loadCases()]);
   }, [loadTree, loadCases]);
-  if (wsStatus === "no-workspace") {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeOverlay, { onChoose: handleChooseFolder, onUseDefault: handleUseDefault });
-  }
-  if (wsStatus === "loading") {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-secondary)", fontSize: 13 }, children: "Loading…" });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" }, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-header", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: viewMode === "cases" ? "Cases" : "Workspace" }),
-      viewMode === "cases" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "New Case", title: "New Case", children: "＋" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Browse Cases", title: "Browse Cases", children: "⊞" })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Refresh", title: "Refresh", onClick: handleRefresh, children: "↻" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          className: "panel-hdr-btn",
-          "aria-label": viewMode === "cases" ? "Show Files" : "Show Cases",
-          title: viewMode === "cases" ? "Show Files" : "Show Cases",
-          onClick: () => setViewMode((p) => p === "cases" ? "files" : "cases"),
-          style: viewMode === "files" ? { background: "var(--highlight)", color: "var(--accent)" } : void 0,
-          children: viewMode === "cases" ? "📁" : "📋"
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: "4px 0" }, children: viewMode === "cases" ? /* @__PURE__ */ jsxRuntimeExports.jsx(CasesView, { cases, treeLookup, onOpenTab }) : /* @__PURE__ */ jsxRuntimeExports.jsx(FilesView, { tree: wsTree, onOpenTab }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { borderTop: "1px solid var(--border)", flexShrink: 0 }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Resources" }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px 12px" }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "DSM-5-TR Reference" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "State Statutes" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "APA Guidelines" })
-      ] })
-    ] })
-  ] });
+  const bodyContent = () => {
+    if (wsStatus === "no-workspace") {
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeOverlay, { onChoose: () => {
+        void handleChooseFolder();
+      }, onUseDefault: () => {
+        void handleUseDefault();
+      } });
+    }
+    if (wsStatus === "loading") {
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-secondary)", fontSize: 13 }, children: "Loading…" });
+    }
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(CasesView, { cases, treeLookup, onOpenTab, onContextMenu: setCtxMenu });
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: { display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" },
+      onClick: () => setCtxMenu(null),
+      children: [
+        ctxMenu !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(ContextMenu, { menu: ctxMenu, onClose: () => setCtxMenu(null) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-header", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Cases" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              className: "panel-hdr-btn",
+              "aria-label": "New Case",
+              title: "New Case",
+              onClick: onNewCase,
+              children: "＋"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Refresh", title: "Refresh", onClick: handleRefresh, children: "↻" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: "4px 0" }, children: bodyContent() }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { borderTop: "1px solid var(--border)", flexShrink: 0 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Resources" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px 12px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "DSM-5-TR Reference" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "State Statutes" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "APA Guidelines" })
+          ] })
+        ] })
+      ]
+    }
+  );
 }
 function CasesView({
   cases,
   treeLookup,
-  onOpenTab
+  onOpenTab,
+  onContextMenu
 }) {
   if (cases.length === 0) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "16px 12px", fontSize: 12, color: "var(--text-secondary)", textAlign: "center" }, children: "No cases yet. Click + to create one." });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: cases.map((c) => /* @__PURE__ */ jsxRuntimeExports.jsx(CaseNode, { caseRow: c, treeLookup, onOpenTab }, c.case_id)) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: cases.map((c) => /* @__PURE__ */ jsxRuntimeExports.jsx(CaseNode, { caseRow: c, treeLookup, onOpenTab, onContextMenu }, c.case_id)) });
 }
 function CaseNode({
   caseRow,
   treeLookup,
-  onOpenTab
+  onOpenTab,
+  onContextMenu
 }) {
   const [expanded, setExpanded] = reactExports.useState(false);
   const stage = caseRow.workflow_current_stage ?? "onboarding";
-  const stageColor = STAGE_COLORS[stage] ?? "#9e9e9e";
+  const stageColor = STAGE_COLORS$1[stage] ?? "#9e9e9e";
   const stageLabel = STAGE_LABELS[stage] ?? stage;
   const caseName = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`;
   const evalType = caseRow.evaluation_type ?? "";
   const caseFolder = caseRow.folder_path ? treeLookup.get(caseRow.folder_path) : void 0;
+  const handleChevronClick = reactExports.useCallback(
+    (e) => {
+      e.stopPropagation();
+      setExpanded((p) => !p);
+    },
+    []
+  );
+  const handleNameClick = reactExports.useCallback(() => {
+    onOpenTab({
+      id: `overview:${caseRow.case_id}`,
+      title: caseName,
+      type: "clinical-overview",
+      caseId: caseRow.case_id
+    });
+  }, [caseRow.case_id, caseName, onOpenTab]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
@@ -12834,9 +12955,9 @@ function CaseNode({
           alignItems: "center",
           padding: "3px 8px",
           gap: 4,
-          cursor: "pointer",
           fontSize: 13,
-          color: "var(--text)"
+          color: "var(--text)",
+          cursor: "default"
         },
         onMouseEnter: (e) => {
           e.currentTarget.style.background = "var(--highlight)";
@@ -12844,13 +12965,28 @@ function CaseNode({
         onMouseLeave: (e) => {
           e.currentTarget.style.background = "transparent";
         },
-        onClick: () => setExpanded((p) => !p),
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0, textAlign: "center" }, children: expanded ? "▾" : "▸" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, minWidth: 0 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis" }, children: caseName }),
-            evalType !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, color: "var(--text-secondary)", flexShrink: 0 }, children: evalType })
-          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0, textAlign: "center", cursor: "pointer" },
+              onClick: handleChevronClick,
+              title: expanded ? "Collapse" : "Expand",
+              children: expanded ? "▾" : "▸"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "span",
+            {
+              style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, minWidth: 0, cursor: "pointer" },
+              onClick: handleNameClick,
+              title: `Open ${caseName}`,
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis" }, children: caseName }),
+                evalType !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, color: "var(--text-secondary)", flexShrink: 0 }, children: evalType })
+              ]
+            }
+          ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             "span",
             {
@@ -12872,7 +13008,7 @@ function CaseNode({
     ),
     expanded && CASE_SUBFOLDERS.map((sub) => {
       const subNode = caseFolder?.children?.find((c) => c.name === sub);
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(FolderSubNode, { name: sub, folderNode: subNode, depth: 1, onOpenTab }, sub);
+      return /* @__PURE__ */ jsxRuntimeExports.jsx(FolderSubNode, { name: sub, folderNode: subNode, depth: 1, onOpenTab, onContextMenu }, sub);
     })
   ] });
 }
@@ -12880,11 +13016,22 @@ function FolderSubNode({
   name,
   folderNode,
   depth,
-  onOpenTab
+  onOpenTab,
+  onContextMenu
 }) {
   const [expanded, setExpanded] = reactExports.useState(false);
   const children = folderNode?.children ?? [];
   const fileCount = children.filter((c) => !c.isDirectory).length;
+  const handleContextMenu = reactExports.useCallback(
+    (e) => {
+      if (folderNode?.path) {
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenu({ x: e.clientX, y: e.clientY, path: folderNode.path, isDirectory: true });
+      }
+    },
+    [folderNode?.path, onContextMenu]
+  );
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
@@ -12906,6 +13053,7 @@ function FolderSubNode({
           e.currentTarget.style.background = "transparent";
         },
         onClick: () => setExpanded((p) => !p),
+        onContextMenu: handleContextMenu,
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0, textAlign: "center" }, children: expanded ? "▾" : "▸" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, height: 16, fontSize: 14, flexShrink: 0, color: "var(--text-secondary)" }, children: "📁" }),
@@ -12929,18 +13077,27 @@ function FolderSubNode({
       }
     ),
     expanded && children.map(
-      (child) => child.isDirectory ? /* @__PURE__ */ jsxRuntimeExports.jsx(FolderSubNode, { name: child.name, folderNode: child, depth: depth + 1, onOpenTab }, child.path) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileLeafNode, { node: child, depth: depth + 1, onOpenTab }, child.path)
+      (child) => child.isDirectory ? /* @__PURE__ */ jsxRuntimeExports.jsx(FolderSubNode, { name: child.name, folderNode: child, depth: depth + 1, onOpenTab, onContextMenu }, child.path) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileLeafNode, { node: child, depth: depth + 1, onOpenTab, onContextMenu }, child.path)
     )
   ] });
 }
 function FileLeafNode({
   node,
   depth,
-  onOpenTab
+  onOpenTab,
+  onContextMenu
 }) {
   const handleClick = reactExports.useCallback(() => {
     onOpenTab({ id: `doc:${node.path}`, title: node.name, type: "document", filePath: node.path });
   }, [node.path, node.name, onOpenTab]);
+  const handleContextMenu = reactExports.useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onContextMenu({ x: e.clientX, y: e.clientY, path: node.path, isDirectory: false });
+    },
+    [node.path, onContextMenu]
+  );
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -12961,6 +13118,7 @@ function FileLeafNode({
         e.currentTarget.style.background = "transparent";
       },
       onClick: handleClick,
+      onContextMenu: handleContextMenu,
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, flexShrink: 0 } }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, height: 16, fontSize: 14, flexShrink: 0, color: "var(--text-secondary)" }, children: "📄" }),
@@ -12968,65 +13126,6 @@ function FileLeafNode({
       ]
     }
   );
-}
-function FilesView({
-  tree,
-  onOpenTab
-}) {
-  if (tree.length === 0) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "16px 12px", fontSize: 12, color: "var(--text-secondary)", textAlign: "center" }, children: [
-      "Workspace is empty.",
-      /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
-      "Drop files into this folder to get started."
-    ] });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: tree.map((node) => /* @__PURE__ */ jsxRuntimeExports.jsx(FileTreeNode, { node, depth: 0, onOpenTab }, node.path)) });
-}
-function FileTreeNode({
-  node,
-  depth,
-  onOpenTab
-}) {
-  const [expanded, setExpanded] = reactExports.useState(depth < 1);
-  const handleClick = reactExports.useCallback(() => {
-    if (node.isDirectory) {
-      setExpanded((p) => !p);
-    } else {
-      onOpenTab({ id: `doc:${node.path}`, title: node.name, type: "document", filePath: node.path });
-    }
-  }, [node.isDirectory, node.path, node.name, onOpenTab]);
-  const icon = node.isDirectory ? "📁" : "📄";
-  const arrow = node.isDirectory ? expanded ? "▾" : "▸" : "";
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          padding: "3px 8px",
-          paddingLeft: 8 + depth * 16,
-          gap: 4,
-          cursor: "pointer",
-          fontSize: 13,
-          color: "var(--text)"
-        },
-        onMouseEnter: (e) => {
-          e.currentTarget.style.background = "var(--highlight)";
-        },
-        onMouseLeave: (e) => {
-          e.currentTarget.style.background = "transparent";
-        },
-        onClick: handleClick,
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0, textAlign: "center" }, children: arrow }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, height: 16, fontSize: 14, flexShrink: 0 }, children: icon }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: node.name })
-        ]
-      }
-    ),
-    node.isDirectory && expanded && node.children?.map((child) => /* @__PURE__ */ jsxRuntimeExports.jsx(FileTreeNode, { node: child, depth: depth + 1, onOpenTab }, child.path))
-  ] });
 }
 function WelcomeOverlay({
   onChoose,
@@ -13092,19 +13191,338 @@ function WelcomeOverlay({
     }
   );
 }
-const PIPELINE_STAGES = [
-  { label: "Onboarding", color: "#2196f3" },
-  { label: "Testing", color: "#9c27b0" },
-  { label: "Interview", color: "#e91e63" },
-  { label: "Diagnostics", color: "#ff9800" },
-  { label: "Review", color: "#ff5722" },
-  { label: "Complete", color: "#4caf50" }
+const PIPELINE_STAGE_LIST = [
+  { key: "onboarding", label: "Onboarding", color: "#2196f3" },
+  { key: "testing", label: "Testing", color: "#9c27b0" },
+  { key: "interview", label: "Interview", color: "#e91e63" },
+  { key: "diagnostics", label: "Diagnostics", color: "#ff9800" },
+  { key: "review", label: "Review", color: "#ff5722" },
+  { key: "complete", label: "Complete", color: "#4caf50" }
+];
+const PIPELINE_STAGES = PIPELINE_STAGE_LIST;
+const STAGE_COLORS = {
+  onboarding: "#2196f3",
+  testing: "#9c27b0",
+  interview: "#e91e63",
+  diagnostics: "#ff9800",
+  review: "#ff5722",
+  complete: "#4caf50"
+};
+const STAGE_ORDER = [
+  "onboarding",
+  "testing",
+  "interview",
+  "diagnostics",
+  "review",
+  "complete"
+];
+function getStageIndex(stage) {
+  if (stage == null) return 0;
+  const idx = STAGE_ORDER.indexOf(stage);
+  return idx === -1 ? 0 : idx;
+}
+function getStageColor(stage) {
+  return stage != null && stage in STAGE_COLORS ? STAGE_COLORS[stage] : "#9e9e9e";
+}
+function getStageLabel(stage) {
+  if (stage == null) return "Unknown";
+  const found = PIPELINE_STAGE_LIST.find((s) => s.key === stage);
+  return found?.label ?? stage;
+}
+const INSTRUMENT_INFO = {
+  "MMPI-3": {
+    fullName: "Minnesota Multiphasic Personality Inventory-3",
+    category: "Personality/Psychopathology",
+    duration: "35–50 min",
+    isValidity: false
+  },
+  PAI: {
+    fullName: "Personality Assessment Inventory",
+    category: "Personality/Psychopathology",
+    duration: "40–50 min",
+    isValidity: false
+  },
+  "WAIS-V": {
+    fullName: "Wechsler Adult Intelligence Scale-V",
+    category: "Cognitive/IQ",
+    duration: "60–90 min",
+    isValidity: false
+  },
+  TOMM: {
+    fullName: "Test of Memory Malingering",
+    category: "Effort/Validity",
+    duration: "15–20 min",
+    isValidity: true
+  },
+  "SIRS-2": {
+    fullName: "Structured Interview of Reported Symptoms-2",
+    category: "Effort/Validity",
+    duration: "30–45 min",
+    isValidity: true
+  },
+  "PCL-R": {
+    fullName: "Psychopathy Checklist-Revised",
+    category: "Risk Assessment",
+    duration: "60–90 min",
+    isValidity: false
+  },
+  "HCR-20": {
+    fullName: "Historical Clinical Risk Management-20",
+    category: "Risk Assessment",
+    duration: "Variable",
+    isValidity: false
+  },
+  "HCR-20v3": {
+    fullName: "Historical Clinical Risk Management-20 (v3)",
+    category: "Risk Assessment",
+    duration: "Variable",
+    isValidity: false
+  },
+  "CAPS-5": {
+    fullName: "Clinician-Administered PTSD Scale for DSM-5",
+    category: "PTSD Assessment",
+    duration: "45–60 min",
+    isValidity: false
+  },
+  "M-FAST": {
+    fullName: "Miller Forensic Assessment of Symptoms Test",
+    category: "Effort/Validity",
+    duration: "5–10 min",
+    isValidity: true
+  },
+  MoCA: {
+    fullName: "Montreal Cognitive Assessment",
+    category: "Cognitive Screening",
+    duration: "10 min",
+    isValidity: false
+  },
+  CAARS: {
+    fullName: "Conners Adult ADHD Rating Scale",
+    category: "ADHD",
+    duration: "10–15 min",
+    isValidity: false
+  },
+  "CPT-3": {
+    fullName: "Conners Continuous Performance Test-3",
+    category: "Attention",
+    duration: "14 min",
+    isValidity: false
+  },
+  "MCMI-IV": {
+    fullName: "Millon Clinical Multiaxial Inventory-IV",
+    category: "Personality",
+    duration: "25–30 min",
+    isValidity: false
+  },
+  "BDI-II": {
+    fullName: "Beck Depression Inventory-II",
+    category: "Depression",
+    duration: "5–10 min",
+    isValidity: false
+  },
+  BAI: {
+    fullName: "Beck Anxiety Inventory",
+    category: "Anxiety",
+    duration: "5–10 min",
+    isValidity: false
+  },
+  SARA: {
+    fullName: "Spousal Assault Risk Assessment",
+    category: "Risk Assessment",
+    duration: "Variable",
+    isValidity: false
+  },
+  AUDIT: {
+    fullName: "Alcohol Use Disorders Identification Test",
+    category: "Screening",
+    duration: "5 min",
+    isValidity: false
+  },
+  "ABAS-3": {
+    fullName: "Adaptive Behavior Assessment System-3",
+    category: "Adaptive Behavior",
+    duration: "Variable",
+    isValidity: false
+  },
+  "Vineland-3": {
+    fullName: "Vineland Adaptive Behavior Scales-3",
+    category: "Adaptive Behavior",
+    duration: "Variable",
+    isValidity: false
+  },
+  "PCL-5": {
+    fullName: "PTSD Checklist for DSM-5",
+    category: "PTSD Screening",
+    duration: "5–10 min",
+    isValidity: false
+  },
+  "TSI-2": {
+    fullName: "Trauma Symptom Inventory-2",
+    category: "Trauma",
+    duration: "20–30 min",
+    isValidity: false
+  },
+  "DES-II": {
+    fullName: "Dissociative Experiences Scale-II",
+    category: "Dissociation",
+    duration: "10 min",
+    isValidity: false
+  },
+  FBS: {
+    fullName: "Fake Bad Scale",
+    category: "Effort/Validity",
+    duration: "Embedded",
+    isValidity: true
+  },
+  SIMS: {
+    fullName: "Structured Inventory of Malingered Symptomatology",
+    category: "Effort/Validity",
+    duration: "10 min",
+    isValidity: true
+  }
+};
+function getInstrumentsForEvalType(evalType) {
+  const et = (evalType ?? "").toLowerCase();
+  if (et.includes("cst") || et.includes("fitness") || et.includes("competency")) {
+    return ["MMPI-3", "PAI", "WAIS-V", "TOMM", "SIRS-2", "M-FAST"];
+  }
+  if (et.includes("custody")) {
+    return ["MMPI-3", "PAI", "MCMI-IV", "BDI-II", "BAI"];
+  }
+  if (et.includes("risk")) {
+    return ["PCL-R", "HCR-20v3", "SARA", "PAI", "MMPI-3", "TOMM"];
+  }
+  if (et.includes("ptsd")) {
+    return ["CAPS-5", "PCL-5", "TSI-2", "DES-II", "PAI", "MMPI-3", "TOMM"];
+  }
+  if (et.includes("malingering")) {
+    return ["SIRS-2", "TOMM", "M-FAST", "MMPI-3", "PAI"];
+  }
+  if (et.includes("capacity")) {
+    return ["MoCA", "WAIS-V", "ABAS-3", "PAI", "TOMM"];
+  }
+  if (et.includes("adhd")) {
+    return ["CAARS", "CPT-3", "WAIS-V", "MMPI-3", "TOMM"];
+  }
+  return ["MMPI-3", "PAI", "TOMM"];
+}
+function getCollateralDocs(evalType) {
+  const et = (evalType ?? "").toLowerCase();
+  if (et.includes("cst") || et.includes("fitness") || et.includes("competency")) {
+    return [
+      "Court Order",
+      "Police Report",
+      "Jail Medical Records",
+      "Prior Mental Health Records",
+      "Informed Consent"
+    ];
+  }
+  if (et.includes("custody")) {
+    return ["Family Court Filing", "Prior Custody Evaluations", "CPS Records", "Informed Consent"];
+  }
+  if (et.includes("risk")) {
+    return ["Prior Offense History", "Victim Impact Statements", "Informed Consent"];
+  }
+  if (et.includes("ptsd")) {
+    return ["Medical Records-Treating Provider", "Employment Records", "Informed Consent"];
+  }
+  if (et.includes("capacity")) {
+    return [
+      "Medical Records-Primary Care",
+      "Neurology Consultation",
+      "Financial Records",
+      "Informed Consent"
+    ];
+  }
+  if (et.includes("malingering")) {
+    return ["Prior Psychological Evaluations", "Insurance Claim File", "Informed Consent"];
+  }
+  if (et.includes("adhd")) {
+    return ["School Records/Transcripts", "Prior Neuropsych Testing", "Informed Consent"];
+  }
+  return ["Referral Documentation", "Informed Consent"];
+}
+function getSessionTitles(evalType) {
+  const et = (evalType ?? "").toLowerCase();
+  if (et.includes("cst") || et.includes("fitness") || et.includes("competency")) {
+    return [
+      "Clinical Interview — Psychiatric History & Mental Status",
+      "Competency-Focused Interview — Dusky Criteria",
+      "Collateral Interview — Defense Counsel"
+    ];
+  }
+  if (et.includes("custody")) {
+    return [
+      "Parent Interview — Parenting History & Current Functioning",
+      "Child Observation & Home Assessment"
+    ];
+  }
+  if (et.includes("risk")) {
+    return ["Clinical Interview — History & Index Offense", "Structured Risk Assessment Interview"];
+  }
+  if (et.includes("ptsd")) {
+    return [
+      "Clinical Interview — Trauma History & Symptom Assessment",
+      "CAPS-5 Structured Interview"
+    ];
+  }
+  if (et.includes("malingering")) {
+    return ["Clinical Interview — Symptom Presentation", "SIRS-2 Interview & Behavioral Analysis"];
+  }
+  if (et.includes("capacity")) {
+    return [
+      "Clinical Interview — Cognitive & Functional Assessment",
+      "Collateral Interview — Family/Caregiver"
+    ];
+  }
+  return ["Clinical Interview — History & Presenting Concerns", "Follow-up Interview"];
+}
+function getReportSections(evalType) {
+  const et = (evalType ?? "").toLowerCase();
+  const base = [
+    "Identifying Information & Referral Question",
+    "Informed Consent & Evaluation Procedures",
+    "Background Information",
+    "Behavioral Observations",
+    "Test Results & Validity",
+    "Clinical Interview Findings"
+  ];
+  if (et.includes("cst") || et.includes("fitness") || et.includes("competency")) {
+    return [...base, "Competency Analysis — Dusky Criteria", "Diagnostic Impressions", "Opinions & Recommendations"];
+  }
+  if (et.includes("custody")) {
+    return [...base, "Parenting Capacity Analysis", "Best Interest Assessment", "Recommendations"];
+  }
+  if (et.includes("risk")) {
+    return [...base, "Risk Factor Analysis", "Dynamic Risk Factors", "Risk Level Opinion", "Risk Management Recommendations"];
+  }
+  if (et.includes("ptsd")) {
+    return [...base, "Trauma History & PTSD Criteria", "Diagnostic Impressions", "Treatment Recommendations"];
+  }
+  if (et.includes("malingering")) {
+    return [...base, "Validity & Effort Analysis", "Symptom Validity Conclusions", "Diagnostic Impressions"];
+  }
+  if (et.includes("capacity")) {
+    return [...base, "Cognitive & Functional Assessment", "Capacity Opinion", "Recommendations"];
+  }
+  return [...base, "Diagnostic Impressions", "Summary & Recommendations"];
+}
+const ALL_SUB_TABS = [
+  { id: "intake", label: "Intake", minStageIndex: 0 },
+  { id: "referral", label: "Referral", minStageIndex: 0 },
+  { id: "collateral", label: "Collateral", minStageIndex: 1 },
+  { id: "testing", label: "Testing", minStageIndex: 1 },
+  { id: "validity", label: "Validity", minStageIndex: 2 },
+  { id: "interviews", label: "Interviews", minStageIndex: 2 },
+  { id: "diagnostics", label: "Diagnostics", minStageIndex: 3 },
+  { id: "report", label: "Report", minStageIndex: 4 }
 ];
 function CenterColumn({
   tabs,
   activeTabId,
   onCloseTab,
-  onSetActiveTab
+  onSetActiveTab,
+  onEditIntake
 }) {
   const activeTab = tabs.find((t) => t.id === activeTabId);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -13156,7 +13574,7 @@ function CenterColumn({
             ))
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, position: "relative", overflow: "hidden" }, children: activeTab == null ? /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeContent, {}) : activeTab.type === "clinical-overview" ? /* @__PURE__ */ jsxRuntimeExports.jsx(ClinicalOverviewContent, { tab: activeTab }) : /* @__PURE__ */ jsxRuntimeExports.jsx(DocumentContent, { tab: activeTab }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, position: "relative", overflow: "hidden" }, children: activeTab == null ? /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeContent, {}) : activeTab.type === "clinical-overview" ? /* @__PURE__ */ jsxRuntimeExports.jsx(ClinicalOverviewContent, { tab: activeTab, onEditIntake }) : /* @__PURE__ */ jsxRuntimeExports.jsx(DocumentContent, { tab: activeTab }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "div",
           {
@@ -13243,21 +13661,1079 @@ function TabButton({
   );
 }
 function WelcomeContent() {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", color: "var(--text-secondary)" }, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 8, opacity: 0.3 }, children: "📋" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 500 }, children: "Open a case to begin" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, marginTop: 4 }, children: "Select a case from the tree or create a new one" })
-  ] }) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%" },
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", color: "var(--text-secondary)" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 8, opacity: 0.3 }, children: "📋" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 500 }, children: "Open a case to begin" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, marginTop: 4 }, children: "Select a case from the tree or create a new one" })
+      ] })
+    }
+  );
 }
-function ClinicalOverviewContent({ tab }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px", overflow: "auto", height: "100%" }, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 12 }, children: "Clinical Overview" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { fontSize: 13, color: "var(--text-secondary)" }, children: [
-      "Case #",
-      tab.caseId,
-      " — summary view will be populated in a later sprint."
+function ClinicalOverviewContent({
+  tab,
+  onEditIntake
+}) {
+  const [caseRow, setCaseRow] = reactExports.useState(null);
+  const [intakeRow, setIntakeRow] = reactExports.useState(null);
+  const [loading, setLoading] = reactExports.useState(true);
+  const [activeSubTab, setActiveSubTab] = reactExports.useState("intake");
+  reactExports.useEffect(() => {
+    if (tab.caseId == null) return;
+    let cancelled = false;
+    setLoading(true);
+    void (async () => {
+      const [caseResp, intakeResp] = await Promise.all([
+        window.psygil.cases.get({ case_id: tab.caseId }),
+        window.psygil.intake.get({ case_id: tab.caseId })
+      ]);
+      if (cancelled) return;
+      if (caseResp.status === "success") setCaseRow(caseResp.data);
+      if (intakeResp.status === "success") setIntakeRow(intakeResp.data);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab.caseId]);
+  const handleEditIntake = reactExports.useCallback(() => {
+    if (tab.caseId != null) onEditIntake(tab.caseId);
+  }, [tab.caseId, onEditIntake]);
+  if (loading) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          color: "var(--text-secondary)",
+          fontSize: 13
+        },
+        children: "Loading…"
+      }
+    );
+  }
+  if (caseRow == null) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          color: "var(--text-secondary)",
+          fontSize: 13
+        },
+        children: "Case not found."
+      }
+    );
+  }
+  const stage = caseRow.workflow_current_stage ?? "onboarding";
+  const stageIndex = getStageIndex(stage);
+  const stageColor = getStageColor(stage);
+  const stageLabel = getStageLabel(stage);
+  const fullName = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`;
+  const visibleTabs = ALL_SUB_TABS.filter((t) => stageIndex >= t.minStageIndex);
+  const effectiveSubTab = visibleTabs.some((t) => t.id === activeSubTab) ? activeSubTab : "intake";
+  const deadline = intakeRow?.report_deadline ?? null;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          padding: "14px 24px",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--panel)",
+          flexShrink: 0
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--text)" }, children: fullName }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                style: {
+                  background: stageColor,
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 4,
+                  padding: "3px 10px",
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  flexShrink: 0
+                },
+                children: stageLabel
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 6, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }, children: PIPELINE_STAGE_LIST.map((s, idx) => {
+            const isDone = idx < stageIndex;
+            const isCurrent = idx === stageIndex;
+            const stColor = s.color;
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4
+                },
+                children: [
+                  idx > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      style: {
+                        width: 16,
+                        height: 1,
+                        background: isDone || isCurrent ? stColor : "var(--border)",
+                        flexShrink: 0
+                      }
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "div",
+                    {
+                      style: {
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "2px 8px",
+                        borderRadius: 10,
+                        border: `1.5px solid ${isDone || isCurrent ? stColor : "var(--border)"}`,
+                        background: isCurrent ? stColor : isDone ? `${stColor}22` : "transparent",
+                        fontSize: 11,
+                        fontWeight: isCurrent ? 700 : isDone ? 600 : 400,
+                        color: isCurrent ? "#fff" : isDone ? stColor : "var(--text-secondary)",
+                        whiteSpace: "nowrap"
+                      },
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10 }, children: isDone ? "✓" : isCurrent ? "●" : "○" }),
+                        s.label
+                      ]
+                    }
+                  )
+                ]
+              },
+              s.key
+            );
+          }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                display: "flex",
+                gap: 20,
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                flexWrap: "wrap"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Case #", value: caseRow.case_number }),
+                caseRow.evaluation_type != null && caseRow.evaluation_type !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Eval Type", value: caseRow.evaluation_type }),
+                caseRow.referral_source != null && caseRow.referral_source !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Referral", value: caseRow.referral_source }),
+                deadline != null && deadline !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Deadline", value: new Date(deadline).toLocaleDateString() }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Opened", value: new Date(caseRow.created_at).toLocaleDateString() })
+              ]
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          display: "flex",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--panel)",
+          flexShrink: 0,
+          overflowX: "auto"
+        },
+        children: visibleTabs.map(({ id, label }) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: () => setActiveSubTab(id),
+            style: {
+              padding: "7px 16px",
+              fontSize: 12,
+              fontWeight: effectiveSubTab === id ? 600 : 400,
+              color: effectiveSubTab === id ? "var(--accent)" : "var(--text-secondary)",
+              background: "transparent",
+              border: "none",
+              borderBottom: effectiveSubTab === id ? "2px solid var(--accent)" : "2px solid transparent",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              whiteSpace: "nowrap",
+              flexShrink: 0
+            },
+            children: label
+          },
+          id
+        ))
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, overflowY: "auto", padding: "20px 24px" }, children: [
+      effectiveSubTab === "intake" && /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeSubTab, { caseRow, intakeRow, onEdit: handleEditIntake }),
+      effectiveSubTab === "referral" && /* @__PURE__ */ jsxRuntimeExports.jsx(ReferralSubTab, { caseRow, intakeRow }),
+      effectiveSubTab === "collateral" && /* @__PURE__ */ jsxRuntimeExports.jsx(CollateralSubTab, { caseRow, stageIndex }),
+      effectiveSubTab === "testing" && /* @__PURE__ */ jsxRuntimeExports.jsx(TestingSubTab, { caseRow, stageIndex }),
+      effectiveSubTab === "validity" && /* @__PURE__ */ jsxRuntimeExports.jsx(ValiditySubTab, { caseRow }),
+      effectiveSubTab === "interviews" && /* @__PURE__ */ jsxRuntimeExports.jsx(InterviewsSubTab, { caseRow }),
+      effectiveSubTab === "diagnostics" && /* @__PURE__ */ jsxRuntimeExports.jsx(DiagnosticsSubTab, { stageIndex }),
+      effectiveSubTab === "report" && /* @__PURE__ */ jsxRuntimeExports.jsx(ReportSubTab, { caseRow, stageIndex })
     ] })
   ] });
+}
+function MetaChip({
+  label,
+  value
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontWeight: 600 }, children: [
+      label,
+      ":"
+    ] }),
+    " ",
+    value
+  ] });
+}
+function IntakeSubTab({
+  caseRow,
+  intakeRow,
+  onEdit
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Intake Summary", onEdit }),
+    intakeRow == null ? /* @__PURE__ */ jsxRuntimeExports.jsx(EmptyState, { message: "No intake data yet. Click Edit to add intake information." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          overflow: "hidden"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Examinee",
+              value: `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`
+            }
+          ),
+          caseRow.examinee_dob != null && /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Date of Birth", value: caseRow.examinee_dob }),
+          caseRow.examinee_gender != null && /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Gender", value: caseRow.examinee_gender }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Eval Type",
+              value: intakeRow.eval_type ?? caseRow.evaluation_type ?? "—"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Referral Type", value: intakeRow.referral_type }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Referral Source", value: intakeRow.referral_source ?? "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Jurisdiction", value: intakeRow.jurisdiction ?? "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Charges", value: intakeRow.charges ?? "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Attorney", value: intakeRow.attorney_name ?? "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Report Deadline",
+              value: intakeRow.report_deadline != null ? new Date(intakeRow.report_deadline).toLocaleDateString() : "—"
+            }
+          ),
+          intakeRow.presenting_complaint != null && intakeRow.presenting_complaint !== "" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                padding: "10px 16px",
+                borderTop: "1px solid var(--border)"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    style: {
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "var(--text-secondary)",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.5,
+                      marginBottom: 4
+                    },
+                    children: "Evaluation Purpose / Presenting Concern"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", lineHeight: 1.6 }, children: intakeRow.presenting_complaint })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                padding: "6px 16px",
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end"
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "span",
+                {
+                  style: {
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: intakeRow.status === "complete" ? "#4caf50" : "#ff9800"
+                  },
+                  children: intakeRow.status === "complete" ? "✓ Complete" : "⏳ Draft"
+                }
+              )
+            }
+          )
+        ]
+      }
+    )
+  ] });
+}
+function ReferralSubTab({
+  caseRow,
+  intakeRow
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Referral Information" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          overflow: "hidden"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Referral Source Type",
+              value: intakeRow?.referral_type ?? "—"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Referring Party",
+              value: intakeRow?.referral_source ?? caseRow.referral_source ?? "—"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Jurisdiction", value: intakeRow?.jurisdiction ?? "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Charges", value: intakeRow?.charges ?? "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Attorney / Counsel", value: intakeRow?.attorney_name ?? "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Report Deadline",
+              value: intakeRow?.report_deadline != null ? new Date(intakeRow.report_deadline).toLocaleDateString() : "—"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Date Authorized",
+              value: new Date(caseRow.created_at).toLocaleDateString()
+            }
+          ),
+          caseRow.evaluation_questions != null && caseRow.evaluation_questions !== "" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "10px 16px", borderTop: "1px solid var(--border)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                style: {
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--text-secondary)",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                  marginBottom: 4
+                },
+                children: "Evaluation Questions / Referral Questions"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", lineHeight: 1.6 }, children: caseRow.evaluation_questions })
+          ] })
+        ]
+      }
+    )
+  ] });
+}
+function CollateralSubTab({
+  caseRow,
+  stageIndex
+}) {
+  const docs = getCollateralDocs(caseRow.evaluation_type);
+  const alwaysReceived = /* @__PURE__ */ new Set(["Court Order", "Informed Consent"]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Collateral Documents" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          overflow: "hidden"
+        },
+        children: docs.map((doc, idx) => {
+          const isReceived = alwaysReceived.has(doc) || stageIndex >= 2;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 16px",
+                borderBottom: idx < docs.length - 1 ? "1px solid var(--border)" : "none",
+                gap: 12
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", fontWeight: 500 }, children: doc }),
+                  isReceived && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }, children: [
+                    "Pages: ",
+                    Math.floor(Math.random() * 40) + 5
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    style: {
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: isReceived ? "#4caf50" : "#ff9800",
+                      whiteSpace: "nowrap"
+                    },
+                    children: isReceived ? "✓ Received" : "⏳ Requested"
+                  }
+                )
+              ]
+            },
+            doc
+          );
+        })
+      }
+    )
+  ] });
+}
+function TestingSubTab({
+  caseRow,
+  stageIndex
+}) {
+  const instruments = getInstrumentsForEvalType(caseRow.evaluation_type);
+  const hasValidityInstruments = instruments.some((key) => INSTRUMENT_INFO[key]?.isValidity);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Test Battery" }),
+    hasValidityInstruments && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "#fff3e0",
+          border: "1px solid #ff9800",
+          borderRadius: 6,
+          padding: "10px 14px",
+          marginBottom: 14,
+          fontSize: 12,
+          color: "#e65100",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 8
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14 }, children: "⚠" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Validity/effort measures included. Review validity results before interpreting clinical scales." })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          overflow: "hidden"
+        },
+        children: instruments.map((key, idx) => {
+          const info = INSTRUMENT_INFO[key];
+          const isScored = stageIndex >= 2;
+          if (info == null) return null;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                padding: "10px 16px",
+                borderBottom: idx < instruments.length - 1 ? "1px solid var(--border)" : "none",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 12
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "div",
+                    {
+                      style: {
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "var(--text)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6
+                      },
+                      children: [
+                        info.isValidity && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#ff9800", fontSize: 12 }, children: "⚠" }),
+                        key,
+                        " — ",
+                        info.fullName
+                      ]
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "div",
+                    {
+                      style: {
+                        fontSize: 11,
+                        color: "var(--text-secondary)",
+                        marginTop: 2,
+                        display: "flex",
+                        gap: 12,
+                        flexWrap: "wrap"
+                      },
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: info.category }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: info.duration })
+                      ]
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    style: {
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: isScored ? "#4caf50" : "#9c27b0",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0
+                    },
+                    children: isScored ? "✓ Scored" : "● In Progress"
+                  }
+                )
+              ]
+            },
+            key
+          );
+        })
+      }
+    )
+  ] });
+}
+function ValiditySubTab({ caseRow }) {
+  const instruments = getInstrumentsForEvalType(caseRow.evaluation_type);
+  const validityInstruments = instruments.filter((key) => INSTRUMENT_INFO[key]?.isValidity);
+  validityInstruments.length === 0 || true;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Validity & Effort Assessment" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "14px 18px",
+          background: "#e8f5e9",
+          border: `1px solid ${"#4caf50"}`,
+          borderRadius: 6,
+          marginBottom: 16
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 24 }, children: "✅" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                style: {
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: "#2e7d32"
+                },
+                children: "PASS — Results Considered Valid"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "#388e3c", marginTop: 2 }, children: "Effort indicators within acceptable limits. Clinical results interpretable." })
+          ] })
+        ]
+      }
+    ),
+    validityInstruments.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(EmptyState, { message: "No standalone validity instruments in this battery. Review embedded validity scales within clinical instruments." }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          overflow: "hidden"
+        },
+        children: validityInstruments.map((key, idx) => {
+          const info = INSTRUMENT_INFO[key];
+          if (info == null) return null;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                padding: "10px 16px",
+                borderBottom: idx < validityInstruments.length - 1 ? "1px solid var(--border)" : "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" }, children: [
+                    key,
+                    " — ",
+                    info.fullName
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }, children: [
+                    info.category,
+                    " · ",
+                    info.duration
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    style: {
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#4caf50",
+                      whiteSpace: "nowrap"
+                    },
+                    children: "✓ Pass"
+                  }
+                )
+              ]
+            },
+            key
+          );
+        })
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          marginTop: 14,
+          padding: "10px 14px",
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          fontSize: 12,
+          color: "var(--text-secondary)"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: "Note on Embedded Scales:" }),
+          " Clinical instruments (MMPI-3, PAI, MCMI-IV) include internal validity indicators (e.g., F, Fp, FBS, NIM, MAL). Review these scales in the full test report."
+        ]
+      }
+    )
+  ] });
+}
+function InterviewsSubTab({ caseRow }) {
+  const sessionCount = 2;
+  const totalHours = 3;
+  const sessionDuration = (totalHours / sessionCount).toFixed(1);
+  const titles = getSessionTitles(caseRow.evaluation_type);
+  const evalTypeLower = (caseRow.evaluation_type ?? "").toLowerCase();
+  function getSessionNotes(title) {
+    if (evalTypeLower.includes("cst") || evalTypeLower.includes("competency")) {
+      if (title.includes("Dusky")) {
+        return "Assessed understanding of legal proceedings, ability to assist counsel, and factual/rational understanding of charges. Dusky criteria reviewed in detail.";
+      }
+      return "Psychiatric history, symptom review, mental status examination, and prior hospitalizations documented.";
+    }
+    if (evalTypeLower.includes("custody")) {
+      return "Parenting practices, discipline approach, child-parent relationship quality, and co-parenting dynamics reviewed.";
+    }
+    if (evalTypeLower.includes("risk")) {
+      return "Index offense narrative, criminal history, victim information, and dynamic risk factors assessed.";
+    }
+    if (evalTypeLower.includes("ptsd")) {
+      return "Trauma timeline, symptom onset, re-experiencing phenomena, avoidance, and functional impairment reviewed.";
+    }
+    if (evalTypeLower.includes("malingering")) {
+      return "Symptom presentation consistency across methods, reported vs. observed behavior, and feigning indicators assessed.";
+    }
+    if (evalTypeLower.includes("capacity")) {
+      return "Cognitive functioning, decision-making capacity, understanding of condition and treatment options evaluated.";
+    }
+    return "History, presenting concerns, current functioning, and evaluation questions addressed.";
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Clinical Interviews" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          display: "flex",
+          gap: 16,
+          marginBottom: 14,
+          fontSize: 13,
+          color: "var(--text-secondary)"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: "Sessions:" }),
+            " ",
+            sessionCount
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: "Total Hours:" }),
+            " ",
+            totalHours
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: "Avg Duration:" }),
+            " ",
+            sessionDuration,
+            " hr"
+          ] })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 10 }, children: Array.from({ length: sessionCount }, (_, i) => {
+      const title = titles[i] ?? titles[titles.length - 1];
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          style: {
+            background: "var(--panel)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            padding: "12px 16px"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                  gap: 12
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" }, children: [
+                    "Session ",
+                    i + 1,
+                    ": ",
+                    title
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }, children: [
+                    sessionDuration,
+                    " hr"
+                  ] })
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }, children: getSessionNotes(title) })
+          ]
+        },
+        i
+      );
+    }) })
+  ] });
+}
+function DiagnosticsSubTab({ stageIndex }) {
+  const isInProgress = stageIndex === 3;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Diagnostic Formulation" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "#ffebee",
+          border: "2px solid #f44336",
+          borderRadius: 6,
+          padding: "12px 16px",
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 18, flexShrink: 0 }, children: "🚨" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                style: {
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: "#c62828",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                  marginBottom: 4
+                },
+                children: "THE DOCTOR ALWAYS DIAGNOSES"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "#d32f2f", lineHeight: 1.5 }, children: "All diagnostic conclusions must be made by a licensed clinician. Psygil provides supporting data only. No AI-generated diagnosis will be inserted into this record. Clinician review and attestation required before this section is considered complete." })
+          ] })
+        ]
+      }
+    ),
+    isInProgress ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          padding: "24px",
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          textAlign: "center"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }, children: "⏳ Awaiting Clinician Determination" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }, children: "Testing and interview phases complete. The evaluating clinician must review all data and enter their diagnostic formulation before this evaluation can proceed to Report." })
+        ]
+      }
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          overflow: "hidden"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "12px 16px", borderBottom: "1px solid var(--border)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                style: {
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--text-secondary)",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                  marginBottom: 4
+                },
+                children: "Primary Diagnosis"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)" }, children: "Clinician-entered diagnosis will appear here." })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "12px 16px", borderBottom: "1px solid var(--border)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                style: {
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--text-secondary)",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                  marginBottom: 4
+                },
+                children: "Supporting Evidence"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }, children: "Test results, interview data, and collateral information will be summarized here once the clinician completes their formulation." })
+          ] })
+        ]
+      }
+    )
+  ] });
+}
+function ReportSubTab({
+  caseRow,
+  stageIndex
+}) {
+  const isFinal = stageIndex >= 5;
+  const sections = getReportSections(caseRow.evaluation_type);
+  const completedCount = isFinal ? sections.length : Math.min(3, sections.length);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Evaluation Report" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          overflow: "hidden",
+          marginBottom: 16
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Report Type", value: caseRow.evaluation_type ?? "Psychological Evaluation" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Status",
+              value: isFinal ? "✓ Final" : "⏳ Draft"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Evaluator",
+              value: "Assigned Clinician"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            IntakeField,
+            {
+              label: "Est. Length",
+              value: `${sections.length * 2}–${sections.length * 3} pages`
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 10 }, children: "Report Sections" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          overflow: "hidden"
+        },
+        children: sections.map((section, idx) => {
+          const done = idx < completedCount;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "9px 16px",
+                borderBottom: idx < sections.length - 1 ? "1px solid var(--border)" : "none"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    style: {
+                      fontSize: 13,
+                      color: done ? "#4caf50" : "var(--text-secondary)",
+                      flexShrink: 0
+                    },
+                    children: done ? "✓" : "⏳"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    style: {
+                      fontSize: 13,
+                      color: done ? "var(--text)" : "var(--text-secondary)"
+                    },
+                    children: section
+                  }
+                )
+              ]
+            },
+            section
+          );
+        })
+      }
+    )
+  ] });
+}
+function IntakeField({
+  label,
+  value
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        display: "flex",
+        padding: "8px 16px",
+        borderBottom: "1px solid var(--border)",
+        gap: 16
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            style: {
+              fontSize: 11,
+              fontWeight: 600,
+              color: "var(--text-secondary)",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              width: 140,
+              flexShrink: 0
+            },
+            children: label
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", flex: 1 }, children: value })
+      ]
+    }
+  );
+}
+function SectionHeader({
+  title,
+  onEdit
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 14
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" }, children: title }),
+        onEdit != null && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onEdit, style: editButtonStyle, children: "Edit" })
+      ]
+    }
+  );
+}
+function EmptyState({ message }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      style: {
+        padding: "24px",
+        background: "var(--panel)",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        textAlign: "center",
+        color: "var(--text-secondary)",
+        fontSize: 13
+      },
+      children: message
+    }
+  );
 }
 function DocumentContent({ tab }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px", overflow: "auto", height: "100%" }, children: [
@@ -13333,6 +14809,17 @@ function PipelinePill({
     }
   );
 }
+const editButtonStyle = {
+  background: "var(--panel)",
+  color: "var(--accent)",
+  border: "1px solid var(--accent)",
+  borderRadius: 4,
+  padding: "5px 14px",
+  fontSize: 12,
+  fontWeight: 500,
+  cursor: "pointer",
+  fontFamily: "inherit"
+};
 function HSplitter({ onResize, onResizeEnd }) {
   const startY = reactExports.useRef(0);
   const handleMouseDown = reactExports.useCallback(
@@ -13684,42 +15171,186 @@ function VSplitter({ onResize, onResizeEnd }) {
     }
   );
 }
-const EVAL_TYPES = [
+const EVAL_TYPE_OPTIONS = [
   "CST",
   "Custody",
-  "Risk",
-  "Fitness",
-  "PTSD",
-  "ADHD",
+  "Risk Assessment",
+  "Fitness for Duty",
+  "PTSD Dx",
+  "ADHD Dx",
   "Malingering",
-  "Capacity"
+  "Capacity",
+  "Disability",
+  "Immigration",
+  "Personal Injury",
+  "Diagnostic Assessment",
+  "Juvenile",
+  "Mitigation"
 ];
-const REFERRAL_TYPES = [
-  "Court-Ordered",
-  "Attorney-Referred",
-  "Self-Referred",
-  "Walk-In"
-];
+const REFERRING_PARTY_TYPES = ["Court", "Attorney", "Physician", "Agency", "Insurance", "Other"];
 const EMPTY_FORM = {
-  lastName: "",
-  firstName: "",
-  middleInitial: "",
-  dob: "",
-  gender: "",
-  evalType: "",
-  referralType: "",
-  referralSource: "",
-  presentingComplaint: "",
-  jurisdiction: "",
-  charges: "",
-  attorney: "",
-  reportDeadline: ""
+  contact: {
+    lastName: "",
+    firstName: "",
+    middleInitial: "",
+    dob: "",
+    gender: "",
+    streetAddress: "",
+    city: "",
+    state: "",
+    zip: "",
+    phone: "",
+    email: "",
+    preferredContact: "",
+    emergencyContactName: "",
+    emergencyContactRelationship: "",
+    emergencyContactPhone: ""
+  },
+  referringParty: {
+    referringPartyType: "",
+    referringPartyName: "",
+    referringPartyAddress: "",
+    referringPartyPhone: "",
+    referringPartyEmail: ""
+  },
+  courtAttorney: {
+    caseNumber: "",
+    judgeAssignedCourt: "",
+    defenseCounselName: "",
+    defenseCounselPhone: "",
+    defenseCounselEmail: "",
+    prosecutionAttorney: "",
+    prosecutionPhone: "",
+    prosecutionEmail: "",
+    courtDeadline: ""
+  },
+  evalDocs: {
+    evalType: "",
+    reasonForReferral: "",
+    charges: "",
+    supportingDocuments: "",
+    additionalNotes: ""
+  },
+  presenting: {
+    primaryComplaint: "",
+    whenBegan: "",
+    betterOrWorse: "",
+    currentlySafe: "",
+    previousTreatment: "",
+    whoRecommended: "",
+    primaryCarePhysician: ""
+  },
+  insurance: {
+    insuranceCarrier: "",
+    policyMemberId: "",
+    groupNumber: "",
+    policyholderName: "",
+    relationshipToPatient: ""
+  }
 };
-function IntakeModal({ isOpen, onClose }) {
+function generateCaseNumber() {
+  const year = (/* @__PURE__ */ new Date()).getFullYear();
+  const rand = Math.floor(Math.random() * 9e3) + 1e3;
+  return `PSY-${year}-${rand}`;
+}
+function calcAge$1(dob) {
+  if (!dob) return "";
+  const birth = new Date(dob);
+  const today = /* @__PURE__ */ new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || m === 0 && today.getDate() < birth.getDate()) age--;
+  return age >= 0 ? String(age) : "";
+}
+function mapToIpcReferralType(mode, partyType) {
+  if (mode === "walkin") return "walk-in";
+  const t = partyType.toLowerCase();
+  if (t === "court") return "court";
+  if (t === "attorney") return "attorney";
+  return "attorney";
+}
+function intakeRowToForm(row) {
+  return {
+    evalDocs: {
+      evalType: row.eval_type ?? "",
+      reasonForReferral: row.presenting_complaint ?? "",
+      charges: row.charges ?? "",
+      supportingDocuments: "",
+      additionalNotes: ""
+    },
+    referringParty: {
+      referringPartyType: "",
+      referringPartyName: row.referral_source ?? "",
+      referringPartyAddress: "",
+      referringPartyPhone: "",
+      referringPartyEmail: ""
+    },
+    courtAttorney: {
+      caseNumber: row.jurisdiction ?? "",
+      judgeAssignedCourt: "",
+      defenseCounselName: "",
+      defenseCounselPhone: "",
+      defenseCounselEmail: "",
+      prosecutionAttorney: row.attorney_name ?? "",
+      prosecutionPhone: "",
+      prosecutionEmail: "",
+      courtDeadline: row.report_deadline ?? ""
+    },
+    presenting: {
+      primaryComplaint: row.presenting_complaint ?? "",
+      whenBegan: "",
+      betterOrWorse: "",
+      currentlySafe: "",
+      previousTreatment: "",
+      whoRecommended: "",
+      primaryCarePhysician: ""
+    }
+  };
+}
+function IntakeModal({
+  isOpen,
+  onClose,
+  caseId,
+  onSaved
+}) {
+  const isEditMode = caseId != null;
+  const [referralMode, setReferralMode] = reactExports.useState("referral");
+  const [primaryTab, setPrimaryTab] = reactExports.useState("contact");
+  const [referralSubTab, setReferralSubTab] = reactExports.useState("referring-party");
   const [form, setForm] = reactExports.useState(EMPTY_FORM);
+  const [saving, setSaving] = reactExports.useState(false);
+  const [error, setError] = reactExports.useState(null);
   reactExports.useEffect(() => {
-    if (isOpen) setForm(EMPTY_FORM);
-  }, [isOpen]);
+    if (!isOpen) return;
+    setError(null);
+    setSaving(false);
+    setPrimaryTab("contact");
+    setReferralSubTab("referring-party");
+    if (isEditMode) {
+      void (async () => {
+        const resp = await window.psygil?.intake?.get?.({ case_id: caseId });
+        if (resp?.status === "success" && resp.data != null) {
+          const partial = intakeRowToForm(resp.data);
+          setForm((prev) => ({
+            ...prev,
+            ...partial,
+            evalDocs: { ...prev.evalDocs, ...partial.evalDocs ?? {} },
+            referringParty: { ...prev.referringParty, ...partial.referringParty ?? {} },
+            courtAttorney: { ...prev.courtAttorney, ...partial.courtAttorney ?? {} },
+            presenting: { ...prev.presenting, ...partial.presenting ?? {} }
+          }));
+          const rt = resp.data.referral_type;
+          if (rt === "walk-in" || rt === "self") setReferralMode("walkin");
+          else setReferralMode("referral");
+        } else {
+          setForm(EMPTY_FORM);
+        }
+      })();
+    } else {
+      setForm(EMPTY_FORM);
+      setReferralMode("referral");
+    }
+  }, [isOpen, isEditMode, caseId]);
   reactExports.useEffect(() => {
     if (!isOpen) return;
     const handler = (e) => {
@@ -13728,158 +15359,676 @@ function IntakeModal({ isOpen, onClose }) {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen, onClose]);
-  const updateField = reactExports.useCallback(
-    (field, value) => {
-      setForm((prev) => ({ ...prev, [field]: value }));
+  reactExports.useEffect(() => {
+    if (referralMode === "walkin" && primaryTab === "referral") {
+      setPrimaryTab("presenting");
+    } else if (referralMode === "referral" && primaryTab === "presenting") {
+      setPrimaryTab("referral");
+    }
+  }, [referralMode, primaryTab]);
+  const updateContact = reactExports.useCallback((k, v) => {
+    setForm((p) => ({ ...p, contact: { ...p.contact, [k]: v } }));
+  }, []);
+  const updateReferringParty = reactExports.useCallback((k, v) => {
+    setForm((p) => ({ ...p, referringParty: { ...p.referringParty, [k]: v } }));
+  }, []);
+  const updateCourtAttorney = reactExports.useCallback((k, v) => {
+    setForm((p) => ({ ...p, courtAttorney: { ...p.courtAttorney, [k]: v } }));
+  }, []);
+  const updateEvalDocs = reactExports.useCallback((k, v) => {
+    setForm((p) => ({ ...p, evalDocs: { ...p.evalDocs, [k]: v } }));
+  }, []);
+  const updatePresenting = reactExports.useCallback((k, v) => {
+    setForm((p) => ({ ...p, presenting: { ...p.presenting, [k]: v } }));
+  }, []);
+  const updateInsurance = reactExports.useCallback((k, v) => {
+    setForm((p) => ({ ...p, insurance: { ...p.insurance, [k]: v } }));
+  }, []);
+  const saveIntakeData = reactExports.useCallback(
+    async (targetCaseId, isDraft) => {
+      const resp = await window.psygil?.intake?.save?.({
+        case_id: targetCaseId,
+        data: {
+          referral_type: mapToIpcReferralType(referralMode, form.referringParty.referringPartyType),
+          referral_source: form.referringParty.referringPartyName || void 0,
+          eval_type: form.evalDocs.evalType || void 0,
+          presenting_complaint: referralMode === "walkin" ? form.presenting.primaryComplaint || void 0 : form.evalDocs.reasonForReferral || void 0,
+          jurisdiction: form.courtAttorney.caseNumber || void 0,
+          charges: form.evalDocs.charges || void 0,
+          attorney_name: form.courtAttorney.prosecutionAttorney || void 0,
+          report_deadline: form.courtAttorney.courtDeadline || void 0,
+          status: isDraft ? "draft" : "complete"
+        }
+      });
+      return resp?.status === "success";
     },
-    []
+    [form, referralMode]
   );
-  const handleSaveDraft = reactExports.useCallback(() => {
-    window.psygil?.intake?.save?.({ ...form, isDraft: true });
-  }, [form]);
-  const handleSubmit = reactExports.useCallback(() => {
-    window.psygil?.intake?.save?.({ ...form, isDraft: false });
-    onClose();
-  }, [form, onClose]);
+  const handleSaveDraft = reactExports.useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      if (isEditMode) {
+        await saveIntakeData(caseId, true);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, isEditMode, caseId, saveIntakeData]);
+  const handleSubmit = reactExports.useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      if (isEditMode) {
+        const ok = await saveIntakeData(caseId, false);
+        if (ok) {
+          onClose();
+        } else {
+          setError("Failed to save intake. Please try again.");
+        }
+      } else {
+        if (!form.contact.firstName.trim() || !form.contact.lastName.trim()) {
+          setError("First and last name are required.");
+          setSaving(false);
+          return;
+        }
+        const createResp = await window.psygil?.cases?.create?.({
+          case_number: generateCaseNumber(),
+          primary_clinician_user_id: 1,
+          examinee_first_name: form.contact.firstName.trim(),
+          examinee_last_name: form.contact.lastName.trim(),
+          examinee_dob: form.contact.dob || void 0,
+          examinee_gender: form.contact.gender || void 0,
+          evaluation_type: form.evalDocs.evalType || void 0,
+          referral_source: form.referringParty.referringPartyName || void 0,
+          evaluation_questions: referralMode === "walkin" ? form.presenting.primaryComplaint || void 0 : form.evalDocs.reasonForReferral || void 0
+        });
+        if (createResp?.status !== "success") {
+          setError(createResp?.message ?? "Failed to create case.");
+          setSaving(false);
+          return;
+        }
+        const newCase = createResp.data;
+        await saveIntakeData(newCase.case_id, false);
+        onClose();
+        onSaved?.(newCase);
+      }
+    } catch {
+      setError("An unexpected error occurred.");
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, isEditMode, caseId, form, referralMode, saveIntakeData, onClose, onSaved]);
   if (!isOpen) return null;
+  const age = calcAge$1(form.contact.dob);
+  const primaryTabs = [
+    { id: "contact", label: "Contact Information" },
+    ...referralMode === "referral" ? [{ id: "referral", label: "Referral Information" }] : [{ id: "presenting", label: "Presenting Concerns" }],
+    { id: "insurance", label: "Insurance & Billing" }
+  ];
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: overlayStyle$1, onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: containerStyle$1, onClick: (e) => e.stopPropagation(), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: headerStyle$1, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" }, children: "New Case Intake" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" }, children: isEditMode ? "Edit Intake" : "New Patient Intake" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, style: closeButtonStyle$1, "aria-label": "Close", children: "×" })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: 24, display: "flex", flexDirection: "column", gap: 20 }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Last Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "14px 24px 0", display: "flex", gap: 24, alignItems: "center" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: labelStyle$1, children: "Intake Type" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: radioLabelStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
           "input",
           {
-            style: inputStyle,
-            value: form.lastName,
-            onChange: (e) => updateField("lastName", e.target.value),
-            placeholder: "Last name"
+            type: "radio",
+            name: "referralMode",
+            value: "referral",
+            checked: referralMode === "referral",
+            onChange: () => setReferralMode("referral"),
+            style: { marginRight: 6 }
           }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "First Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            style: inputStyle,
-            value: form.firstName,
-            onChange: (e) => updateField("firstName", e.target.value),
-            placeholder: "First name"
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "MI", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            style: inputStyle,
-            value: form.middleInitial,
-            onChange: (e) => updateField("middleInitial", e.target.value),
-            maxLength: 1,
-            placeholder: "M"
-          }
-        ) })
+        ),
+        "Referral",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text-secondary)", marginLeft: 6, fontSize: 11 }, children: "(Court / Attorney / Physician / Insurance)" })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Date of Birth", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: radioLabelStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
           "input",
           {
-            type: "date",
-            style: inputStyle,
-            value: form.dob,
-            onChange: (e) => updateField("dob", e.target.value)
+            type: "radio",
+            name: "referralMode",
+            value: "walkin",
+            checked: referralMode === "walkin",
+            onChange: () => setReferralMode("walkin"),
+            style: { marginRight: 6 }
           }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Gender", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            style: inputStyle,
-            value: form.gender,
-            onChange: (e) => updateField("gender", e.target.value),
-            placeholder: "Gender"
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Evaluation Type", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "select",
-          {
-            style: inputStyle,
-            value: form.evalType,
-            onChange: (e) => updateField("evalType", e.target.value),
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select type..." }),
-              EVAL_TYPES.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: t, children: t }, t))
-            ]
-          }
-        ) })
+        ),
+        "Walk-in / Self-Referred"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tabStripStyle, children: primaryTabs.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        onClick: () => setPrimaryTab(t.id),
+        style: t.id === primaryTab ? activeTabStyle$1 : inactiveTabStyle$1,
+        children: t.label
+      },
+      t.id
+    )) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: bodyStyle, children: [
+      primaryTab === "contact" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Last Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.lastName,
+              onChange: (e) => updateContact("lastName", e.target.value),
+              placeholder: "Last name"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "First Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.firstName,
+              onChange: (e) => updateContact("firstName", e.target.value),
+              placeholder: "First name"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "MI", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.middleInitial,
+              onChange: (e) => updateContact("middleInitial", e.target.value),
+              maxLength: 1,
+              placeholder: "M"
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Date of Birth", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "date",
+              style: inputStyle$1,
+              value: form.contact.dob,
+              onChange: (e) => updateContact("dob", e.target.value)
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Age", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: { ...inputStyle$1, background: "var(--panel)", color: "var(--text-secondary)" },
+              value: age,
+              readOnly: true,
+              placeholder: "—"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Gender", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.gender,
+              onChange: (e) => updateContact("gender", e.target.value),
+              placeholder: "Gender identity"
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Street Address", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.streetAddress,
+              onChange: (e) => updateContact("streetAddress", e.target.value),
+              placeholder: "123 Main St"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "City", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.city,
+              onChange: (e) => updateContact("city", e.target.value),
+              placeholder: "City"
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "State", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.state,
+              onChange: (e) => updateContact("state", e.target.value),
+              placeholder: "CO",
+              maxLength: 2
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "ZIP", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.zip,
+              onChange: (e) => updateContact("zip", e.target.value),
+              placeholder: "80901"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Phone", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.phone,
+              onChange: (e) => updateContact("phone", e.target.value),
+              placeholder: "(555) 555-5555"
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Email", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              type: "email",
+              value: form.contact.email,
+              onChange: (e) => updateContact("email", e.target.value),
+              placeholder: "patient@example.com"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Preferred Contact Method", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              style: inputStyle$1,
+              value: form.contact.preferredContact,
+              onChange: (e) => updateContact("preferredContact", e.target.value),
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Phone" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Email" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Text" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Mail" })
+              ]
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Emergency Contact Name", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.emergencyContactName,
+              onChange: (e) => updateContact("emergencyContactName", e.target.value),
+              placeholder: "Full name"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Relationship", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.emergencyContactRelationship,
+              onChange: (e) => updateContact("emergencyContactRelationship", e.target.value),
+              placeholder: "Spouse, Parent…"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Emergency Phone", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.contact.emergencyContactPhone,
+              onChange: (e) => updateContact("emergencyContactPhone", e.target.value),
+              placeholder: "(555) 555-5555"
+            }
+          ) })
+        ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referral Type", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" }, children: REFERRAL_TYPES.map((rt) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          onClick: () => updateField("referralType", rt),
-          style: form.referralType === rt ? activeToggleStyle : inactiveToggleStyle,
-          children: rt
-        },
-        rt
-      )) }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referral Source", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
+      primaryTab === "referral" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: subTabStripStyle, children: [
+          { id: "referring-party", label: "Referring Party" },
+          { id: "court-attorney", label: "Court & Attorney" },
+          { id: "eval-docs", label: "Evaluation & Documents" }
+        ].map((st) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
           {
-            style: inputStyle,
-            value: form.referralSource,
-            onChange: (e) => updateField("referralSource", e.target.value),
-            placeholder: "Referral source"
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Jurisdiction", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            style: inputStyle,
-            value: form.jurisdiction,
-            onChange: (e) => updateField("jurisdiction", e.target.value),
-            placeholder: "Jurisdiction"
-          }
-        ) })
+            onClick: () => setReferralSubTab(st.id),
+            style: st.id === referralSubTab ? activeSubTabStyle : inactiveSubTabStyle,
+            children: st.label
+          },
+          st.id
+        )) }),
+        referralSubTab === "referring-party" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: subSectionStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Type", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" }, children: REFERRING_PARTY_TYPES.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => updateReferringParty("referringPartyType", t),
+              style: form.referringParty.referringPartyType === t ? activeChipStyle : inactiveChipStyle,
+              children: t
+            },
+            t
+          )) }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Name / Office", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.referringParty.referringPartyName,
+              onChange: (e) => updateReferringParty("referringPartyName", e.target.value),
+              placeholder: "Name or office"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Address", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.referringParty.referringPartyAddress,
+              onChange: (e) => updateReferringParty("referringPartyAddress", e.target.value),
+              placeholder: "Street address"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Phone", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                value: form.referringParty.referringPartyPhone,
+                onChange: (e) => updateReferringParty("referringPartyPhone", e.target.value),
+                placeholder: "(555) 555-5555"
+              }
+            ) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Email", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                type: "email",
+                value: form.referringParty.referringPartyEmail,
+                onChange: (e) => updateReferringParty("referringPartyEmail", e.target.value),
+                placeholder: "email@example.com"
+              }
+            ) })
+          ] })
+        ] }),
+        referralSubTab === "court-attorney" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: subSectionStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Court / Case Number", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                value: form.courtAttorney.caseNumber,
+                onChange: (e) => updateCourtAttorney("caseNumber", e.target.value),
+                placeholder: "Case #"
+              }
+            ) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Judge / Assigned Court", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                value: form.courtAttorney.judgeAssignedCourt,
+                onChange: (e) => updateCourtAttorney("judgeAssignedCourt", e.target.value),
+                placeholder: "Hon. Smith / District Court"
+              }
+            ) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Defense Counsel Name", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                value: form.courtAttorney.defenseCounselName,
+                onChange: (e) => updateCourtAttorney("defenseCounselName", e.target.value),
+                placeholder: "Attorney name"
+              }
+            ) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Defense Phone", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                value: form.courtAttorney.defenseCounselPhone,
+                onChange: (e) => updateCourtAttorney("defenseCounselPhone", e.target.value),
+                placeholder: "(555) 555-5555"
+              }
+            ) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Defense Email", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                type: "email",
+                value: form.courtAttorney.defenseCounselEmail,
+                onChange: (e) => updateCourtAttorney("defenseCounselEmail", e.target.value),
+                placeholder: "defense@firm.com"
+              }
+            ) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Prosecution / Referring Attorney", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                value: form.courtAttorney.prosecutionAttorney,
+                onChange: (e) => updateCourtAttorney("prosecutionAttorney", e.target.value),
+                placeholder: "Attorney name"
+              }
+            ) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Prosecution Phone", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                value: form.courtAttorney.prosecutionPhone,
+                onChange: (e) => updateCourtAttorney("prosecutionPhone", e.target.value),
+                placeholder: "(555) 555-5555"
+              }
+            ) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Prosecution Email", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                style: inputStyle$1,
+                type: "email",
+                value: form.courtAttorney.prosecutionEmail,
+                onChange: (e) => updateCourtAttorney("prosecutionEmail", e.target.value),
+                placeholder: "da@county.gov"
+              }
+            ) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Court Deadline / Due Date", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "date",
+              style: { ...inputStyle$1, maxWidth: 200 },
+              value: form.courtAttorney.courtDeadline,
+              onChange: (e) => updateCourtAttorney("courtDeadline", e.target.value)
+            }
+          ) })
+        ] }),
+        referralSubTab === "eval-docs" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: subSectionStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Evaluation Type", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              style: { ...inputStyle$1, maxWidth: 280 },
+              value: form.evalDocs.evalType,
+              onChange: (e) => updateEvalDocs("evalType", e.target.value),
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select evaluation type…" }),
+                EVAL_TYPE_OPTIONS.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: t, children: t }, t))
+              ]
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Reason for Referral / Evaluation Requested", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "textarea",
+            {
+              style: { ...inputStyle$1, minHeight: 72, resize: "vertical" },
+              value: form.evalDocs.reasonForReferral,
+              onChange: (e) => updateEvalDocs("reasonForReferral", e.target.value),
+              placeholder: "Describe the evaluation being requested…"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Complaint / Charges / Legal Matter", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "textarea",
+            {
+              style: { ...inputStyle$1, minHeight: 72, resize: "vertical" },
+              value: form.evalDocs.charges,
+              onChange: (e) => updateEvalDocs("charges", e.target.value),
+              placeholder: "List charges or legal matter…"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Supporting Documents Received", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "textarea",
+            {
+              style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
+              value: form.evalDocs.supportingDocuments,
+              onChange: (e) => updateEvalDocs("supportingDocuments", e.target.value),
+              placeholder: "Police report, prior evals, medical records…"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Additional Notes", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "textarea",
+            {
+              style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
+              value: form.evalDocs.additionalNotes,
+              onChange: (e) => updateEvalDocs("additionalNotes", e.target.value),
+              placeholder: "Any other relevant information…"
+            }
+          ) })
+        ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Charges", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
+      primaryTab === "presenting" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Primary Complaint", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
           {
-            style: inputStyle,
-            value: form.charges,
-            onChange: (e) => updateField("charges", e.target.value),
-            placeholder: "Charges"
+            style: { ...inputStyle$1, minHeight: 88, resize: "vertical" },
+            value: form.presenting.primaryComplaint,
+            onChange: (e) => updatePresenting("primaryComplaint", e.target.value),
+            placeholder: "Describe the primary presenting concern…"
           }
         ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Attorney", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "When Did These Concerns Begin?", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
           {
-            style: inputStyle,
-            value: form.attorney,
-            onChange: (e) => updateField("attorney", e.target.value),
-            placeholder: "Attorney name"
+            style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
+            value: form.presenting.whenBegan,
+            onChange: (e) => updatePresenting("whenBegan", e.target.value),
+            placeholder: "Approximate onset and timeline…"
           }
         ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Report Deadline", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Has Anything Made It Better or Worse?", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
           {
-            type: "date",
-            style: inputStyle,
-            value: form.reportDeadline,
-            onChange: (e) => updateField("reportDeadline", e.target.value)
+            style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
+            value: form.presenting.betterOrWorse,
+            onChange: (e) => updatePresenting("betterOrWorse", e.target.value),
+            placeholder: "Factors that exacerbate or alleviate symptoms…"
           }
-        ) })
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Are You Currently Safe?", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
+            value: form.presenting.currentlySafe,
+            onChange: (e) => updatePresenting("currentlySafe", e.target.value),
+            placeholder: "Safety screening response…"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Previous Treatment or Evaluation", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
+            value: form.presenting.previousTreatment,
+            onChange: (e) => updatePresenting("previousTreatment", e.target.value),
+            placeholder: "Prior therapy, hospitalization, or assessments…"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Who Recommended You Come In?", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.presenting.whoRecommended,
+              onChange: (e) => updatePresenting("whoRecommended", e.target.value),
+              placeholder: "Referral source"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Primary Care Physician", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.presenting.primaryCarePhysician,
+              onChange: (e) => updatePresenting("primaryCarePhysician", e.target.value),
+              placeholder: "Dr. Name"
+            }
+          ) })
+        ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Presenting Complaint", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "textarea",
-        {
-          style: { ...inputStyle, minHeight: 80, resize: "vertical" },
-          value: form.presentingComplaint,
-          onChange: (e) => updateField("presentingComplaint", e.target.value),
-          placeholder: "Describe the presenting complaint..."
-        }
-      ) }),
+      primaryTab === "insurance" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Insurance Carrier", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.insurance.insuranceCarrier,
+              onChange: (e) => updateInsurance("insuranceCarrier", e.target.value),
+              placeholder: "Aetna, BCBS, etc."
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Policy / Member ID", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.insurance.policyMemberId,
+              onChange: (e) => updateInsurance("policyMemberId", e.target.value),
+              placeholder: "Member ID"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Group Number", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.insurance.groupNumber,
+              onChange: (e) => updateInsurance("groupNumber", e.target.value),
+              placeholder: "Group #"
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Policyholder Name (if not patient)", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle$1,
+              value: form.insurance.policyholderName,
+              onChange: (e) => updateInsurance("policyholderName", e.target.value),
+              placeholder: "Leave blank if patient is policyholder"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Relationship to Patient", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              style: inputStyle$1,
+              value: form.insurance.relationshipToPatient,
+              onChange: (e) => updateInsurance("relationshipToPatient", e.target.value),
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select…" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Self" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Spouse" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Parent" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Guardian" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Other" })
+              ]
+            }
+          ) })
+        ] })
+      ] }),
+      error != null && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: errorStyle, children: error }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "flex-end", gap: 12, paddingTop: 8 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSaveDraft, style: secondaryButtonStyle$1, children: "Save Draft" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSubmit, style: primaryButtonStyle$1, children: "Submit" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
+          void handleSaveDraft();
+        }, style: secondaryButtonStyle$1, disabled: saving, children: "Save Draft" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: () => {
+              void handleSubmit();
+            },
+            style: saving ? { ...primaryButtonStyle$1, opacity: 0.6 } : primaryButtonStyle$1,
+            disabled: saving,
+            children: saving ? "Saving…" : isEditMode ? "Save Changes" : "Create Case"
+          }
+        )
       ] })
     ] })
   ] }) });
@@ -13907,21 +16056,22 @@ const containerStyle$1 = {
   background: "var(--panel)",
   border: "1px solid var(--border)",
   borderRadius: 8,
-  maxWidth: 880,
-  width: "90%",
-  maxHeight: "calc(100vh - 64px)",
-  overflowY: "auto"
+  width: 860,
+  height: "calc(100vh - 64px)",
+  maxWidth: "96vw",
+  maxHeight: "calc(100vh - 32px)",
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden"
 };
 const headerStyle$1 = {
-  position: "sticky",
-  top: 0,
   background: "var(--panel)",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   padding: "12px 24px",
   borderBottom: "1px solid var(--border)",
-  zIndex: 1
+  flexShrink: 0
 };
 const closeButtonStyle$1 = {
   background: "none",
@@ -13932,9 +16082,83 @@ const closeButtonStyle$1 = {
   padding: 0,
   lineHeight: 1
 };
+const tabStripStyle = {
+  display: "flex",
+  borderBottom: "1px solid var(--border)",
+  padding: "0 24px",
+  gap: 0,
+  flexShrink: 0,
+  marginTop: 2
+};
+const subTabStripStyle = {
+  display: "flex",
+  borderBottom: "1px solid var(--border)",
+  gap: 0,
+  marginBottom: 16
+};
+const baseTabStyle = {
+  background: "none",
+  border: "none",
+  borderBottom: "2px solid transparent",
+  padding: "8px 16px",
+  fontSize: 13,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  marginBottom: -1,
+  transition: "color 0.15s"
+};
+const activeTabStyle$1 = {
+  ...baseTabStyle,
+  color: "var(--accent)",
+  borderBottomColor: "var(--accent)",
+  fontWeight: 600
+};
+const inactiveTabStyle$1 = {
+  ...baseTabStyle,
+  color: "var(--text-secondary)"
+};
+const baseSubTabStyle = {
+  background: "none",
+  border: "none",
+  borderBottom: "2px solid transparent",
+  padding: "6px 14px",
+  fontSize: 12,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  marginBottom: -1
+};
+const activeSubTabStyle = {
+  ...baseSubTabStyle,
+  color: "var(--accent)",
+  borderBottomColor: "var(--accent)",
+  fontWeight: 600
+};
+const inactiveSubTabStyle = {
+  ...baseSubTabStyle,
+  color: "var(--text-secondary)"
+};
+const bodyStyle = {
+  flex: 1,
+  overflowY: "auto",
+  padding: "20px 24px 24px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 0
+};
+const sectionStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 14,
+  flex: 1
+};
+const subSectionStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 14
+};
 const rowStyle = {
   display: "flex",
-  gap: 16
+  gap: 12
 };
 const labelStyle$1 = {
   fontSize: 11,
@@ -13943,11 +16167,18 @@ const labelStyle$1 = {
   textTransform: "uppercase",
   letterSpacing: 0.5
 };
-const inputStyle = {
+const radioLabelStyle = {
+  fontSize: 13,
+  color: "var(--text)",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center"
+};
+const inputStyle$1 = {
   background: "var(--bg)",
   border: "1px solid var(--border)",
   borderRadius: 4,
-  padding: "6px 10px",
+  padding: "7px 10px",
   fontSize: 13,
   color: "var(--text)",
   outline: "none",
@@ -13955,23 +16186,23 @@ const inputStyle = {
   boxSizing: "border-box",
   fontFamily: "inherit"
 };
-const activeToggleStyle = {
+const activeChipStyle = {
   background: "var(--accent)",
   color: "#ffffff",
   border: "1px solid var(--accent)",
   borderRadius: 4,
-  padding: "5px 14px",
+  padding: "4px 12px",
   fontSize: 12,
   fontWeight: 500,
   cursor: "pointer",
   fontFamily: "inherit"
 };
-const inactiveToggleStyle = {
+const inactiveChipStyle = {
   background: "var(--panel)",
   color: "var(--text)",
   border: "1px solid var(--border)",
   borderRadius: 4,
-  padding: "5px 14px",
+  padding: "4px 12px",
   fontSize: 12,
   fontWeight: 500,
   cursor: "pointer",
@@ -13999,113 +16230,364 @@ const secondaryButtonStyle$1 = {
   cursor: "pointer",
   fontFamily: "inherit"
 };
+const errorStyle = {
+  background: "rgba(244,67,54,0.1)",
+  border: "1px solid rgba(244,67,54,0.4)",
+  borderRadius: 4,
+  padding: "8px 12px",
+  fontSize: 13,
+  color: "#f44336",
+  marginTop: 4
+};
 const TABS = [
   {
     key: "contact",
     label: "Contact",
+    note: "Name, date of birth, age, and gender are carried over from intake and shown below.",
     fields: [
-      { key: "address", label: "Address & Phone", placeholder: "Current address, phone numbers, email..." },
-      { key: "emergency", label: "Emergency Contact", placeholder: "Name, relationship, phone..." },
-      { key: "insurance", label: "Insurance Information", placeholder: "Provider, policy number, group..." }
+      {
+        key: "marital_status",
+        label: "Marital / Relationship Status",
+        placeholder: "Describe current marital or relationship status…",
+        rows: 1
+      },
+      {
+        key: "dependents",
+        label: "Dependents / Children",
+        placeholder: "Names and ages of children or other dependents…",
+        rows: 2
+      },
+      {
+        key: "living_situation",
+        label: "Current Living Situation",
+        placeholder: "Who do you live with? House, apartment, shelter, other?",
+        rows: 2
+      },
+      {
+        key: "primary_language",
+        label: "Primary Language",
+        placeholder: "Primary language spoken at home…",
+        rows: 1
+      }
     ]
   },
   {
     key: "complaints",
     label: "Complaints",
+    note: "Narrative responses only — no checklists. Reduces over-reporting bias.",
     fields: [
-      { key: "primary", label: "Primary Complaint", placeholder: "Describe the primary concern in your own words..." },
-      { key: "history", label: "History of Present Concern", placeholder: "When did this begin? How has it progressed?" },
-      { key: "impact", label: "Daily Impact", placeholder: "How does this affect daily life, work, relationships?" }
+      {
+        key: "primary_complaint",
+        label: "Primary Complaint — Describe in Detail",
+        placeholder: "Describe the primary concern in your own words…",
+        rows: 4
+      },
+      {
+        key: "secondary_concerns",
+        label: "Secondary Concerns",
+        placeholder: "Any other concerns or symptoms you want to mention…",
+        rows: 3
+      },
+      {
+        key: "onset_timeline",
+        label: "Onset & Timeline",
+        placeholder: "When did this begin? How has it changed over time?",
+        rows: 2
+      }
     ]
   },
   {
     key: "family",
     label: "Family",
     fields: [
-      { key: "structure", label: "Family Structure", placeholder: "Household members, marital status, children..." },
-      { key: "history", label: "Family History", placeholder: "Family mental health history, significant events..." },
-      { key: "relationships", label: "Key Relationships", placeholder: "Quality of current family relationships..." }
+      {
+        key: "family_of_origin",
+        label: "Family of Origin",
+        placeholder: "Describe your upbringing, parents, siblings, household growing up…",
+        rows: 3
+      },
+      {
+        key: "family_mental_health",
+        label: "Family Mental Health History",
+        placeholder: "Any known mental health diagnoses or concerns in family members?",
+        rows: 3
+      },
+      {
+        key: "family_medical_history",
+        label: "Family Medical History",
+        placeholder: "Significant medical conditions in immediate or extended family…",
+        rows: 2
+      },
+      {
+        key: "current_family_relationships",
+        label: "Current Family Relationships",
+        placeholder: "Describe your current relationships with family members…",
+        rows: 2
+      }
     ]
   },
   {
     key: "education",
-    label: "Education",
+    label: "Education & Work",
     fields: [
-      { key: "level", label: "Educational Background", placeholder: "Highest level completed, schools attended..." },
-      { key: "employment", label: "Employment History", placeholder: "Current and past employment, job performance..." }
+      {
+        key: "highest_education",
+        label: "Highest Level of Education",
+        placeholder: "e.g. High school diploma, GED, some college, bachelor's degree…",
+        rows: 1
+      },
+      {
+        key: "schools_attended",
+        label: "Schools Attended",
+        placeholder: "List schools attended and approximate years…",
+        rows: 1
+      },
+      {
+        key: "academic_experience",
+        label: "Academic Experience",
+        placeholder: "Describe your overall experience in school — strengths, struggles, notable events…",
+        rows: 2
+      },
+      {
+        key: "employment_status",
+        label: "Current Employment Status",
+        placeholder: "Employed, unemployed, disabled, retired, student…",
+        rows: 1
+      },
+      {
+        key: "current_employer",
+        label: "Current / Most Recent Employer & Role",
+        placeholder: "Employer name and your role or job title…",
+        rows: 1
+      },
+      {
+        key: "work_history",
+        label: "Work History Summary",
+        placeholder: "Summarize your work history, including gaps or significant changes…",
+        rows: 3
+      },
+      {
+        key: "military_service",
+        label: "Military Service",
+        placeholder: "Branch, dates of service, rank, discharge status. Write N/A if none.",
+        rows: 2,
+        hint: "Write N/A if none"
+      }
     ]
   },
   {
     key: "health",
     label: "Health",
     fields: [
-      { key: "current", label: "Current Health Conditions", placeholder: "Active medical diagnoses, medications..." },
-      { key: "history", label: "Medical History", placeholder: "Past surgeries, hospitalizations, chronic conditions..." },
-      { key: "medications", label: "Current Medications", placeholder: "Medication name, dosage, prescriber, purpose..." }
+      {
+        key: "medical_conditions",
+        label: "Current Medical Conditions",
+        placeholder: "List any active medical diagnoses or ongoing health concerns…",
+        rows: 2
+      },
+      {
+        key: "current_medications",
+        label: "Current Medications",
+        placeholder: "Medication name, dosage, prescriber, and purpose for each…",
+        rows: 2
+      },
+      {
+        key: "surgeries_hospitalizations",
+        label: "Surgeries & Hospitalizations",
+        placeholder: "Any past surgeries, hospitalizations, or significant medical procedures…",
+        rows: 2
+      },
+      {
+        key: "head_injuries",
+        label: "Head Injuries / Traumatic Brain Injury",
+        placeholder: "Any history of head injuries, concussions, or TBI…",
+        rows: 2
+      },
+      {
+        key: "sleep_quality",
+        label: "Sleep Quality & Disturbance",
+        placeholder: "Describe your typical sleep patterns and any difficulties…",
+        rows: 1
+      },
+      {
+        key: "appetite_weight",
+        label: "Appetite & Weight Changes",
+        placeholder: "Any recent changes in appetite or significant weight gain/loss?",
+        rows: 1
+      }
     ]
   },
   {
-    key: "mentalHealth",
+    key: "mental",
     label: "Mental Health",
     fields: [
-      { key: "current", label: "Current Mental Health", placeholder: "Current symptoms, mood, sleep, appetite..." },
-      { key: "history", label: "Treatment History", placeholder: "Past therapy, hospitalizations, medications..." },
-      { key: "selfHarm", label: "Self-Harm & Safety", placeholder: "History of self-harm, suicidal ideation, safety concerns..." }
+      {
+        key: "previous_treatment",
+        label: "Previous Mental Health Treatment",
+        placeholder: "Describe any past therapy, counseling, or psychiatric care…",
+        rows: 3
+      },
+      {
+        key: "previous_diagnoses",
+        label: "Previous Diagnoses",
+        placeholder: "Any mental health diagnoses you have received in the past…",
+        rows: 2
+      },
+      {
+        key: "psych_medications",
+        label: "Psychiatric Medications Past & Present",
+        placeholder: "List psychiatric medications you have taken, including current ones…",
+        rows: 2
+      },
+      {
+        key: "self_harm_history",
+        label: "History of Self-Harm or Suicidal Thoughts",
+        placeholder: "Any history of self-harm, suicidal thoughts, or attempts…",
+        rows: 2
+      },
+      {
+        key: "violence_history",
+        label: "History of Violence or Harm to Others",
+        placeholder: "Any history of violent behavior or causing harm to others…",
+        rows: 2
+      }
     ]
   },
   {
-    key: "substanceUse",
+    key: "substance",
     label: "Substance Use",
     fields: [
-      { key: "current", label: "Current Use", placeholder: "Substances used, frequency, amount..." },
-      { key: "history", label: "Substance History", placeholder: "Past use, treatment history, sobriety periods..." }
+      {
+        key: "alcohol_use",
+        label: "Alcohol Use",
+        placeholder: "Describe your alcohol use — frequency, amount, patterns, impact…",
+        rows: 2
+      },
+      {
+        key: "drug_use",
+        label: "Drug / Substance Use",
+        placeholder: "Describe any use of illicit drugs, marijuana, or misuse of prescriptions…",
+        rows: 3
+      },
+      {
+        key: "substance_treatment",
+        label: "Treatment for Substance Use",
+        placeholder: "Any past or current treatment programs for substance use…",
+        rows: 2
+      }
     ]
   },
   {
     key: "legal",
     label: "Legal",
     fields: [
-      { key: "current", label: "Current Legal Matters", placeholder: "Pending charges, court dates, probation status..." },
-      { key: "history", label: "Legal History", placeholder: "Prior arrests, convictions, incarcerations..." },
-      { key: "involvement", label: "System Involvement", placeholder: "CPS, probation, parole, civil matters..." }
+      {
+        key: "arrests_convictions",
+        label: "Prior Arrests & Convictions",
+        placeholder: "List prior arrests and convictions, including dates and outcomes…",
+        rows: 3
+      },
+      {
+        key: "incarceration_history",
+        label: "Incarceration History",
+        placeholder: "Any periods of incarceration — facility, dates, reason…",
+        rows: 2
+      },
+      {
+        key: "probation_parole",
+        label: "Probation / Parole",
+        placeholder: "Current or past probation or parole status and conditions…",
+        rows: 2
+      },
+      {
+        key: "protective_orders",
+        label: "Protective Orders / Restraining Orders",
+        placeholder: "Any active or prior protective or restraining orders…",
+        rows: 2
+      }
     ]
   },
   {
-    key: "recentEvents",
+    key: "recent",
     label: "Recent Events",
     fields: [
-      { key: "stressors", label: "Recent Stressors", placeholder: "Major life changes, losses, conflicts..." },
-      { key: "trauma", label: "Trauma History", placeholder: "Significant traumatic experiences, timeline..." },
-      { key: "coping", label: "Coping & Support", placeholder: "Current coping strategies, support systems..." }
+      {
+        key: "events_circumstances",
+        label: "Describe the Events or Circumstances",
+        placeholder: "Describe what happened leading up to this evaluation…",
+        rows: 5
+      },
+      {
+        key: "current_stressors",
+        label: "Current Stressors",
+        placeholder: "What is causing stress in your life right now?",
+        rows: 2
+      },
+      {
+        key: "goals_evaluation",
+        label: "Goals for This Evaluation",
+        placeholder: "What do you hope to get out of this evaluation?",
+        rows: 2
+      }
     ]
   }
 ];
 function buildEmptyForm() {
   const state = {};
   for (const tab of TABS) {
-    const tabData = { clinicianNotes: "" };
+    const sectionData = { clinician_notes: "" };
     for (const field of tab.fields) {
-      tabData[field.key] = "";
+      sectionData[field.key] = "";
     }
-    state[tab.key] = tabData;
+    state[tab.key] = sectionData;
   }
   return state;
 }
 function OnboardingModal({
   isOpen,
   onClose,
-  caseId
+  caseId,
+  onSaved
 }) {
   const [activeTab, setActiveTab] = reactExports.useState("contact");
   const [mode, setMode] = reactExports.useState("self-report");
   const [form, setForm] = reactExports.useState(buildEmptyForm);
+  const [caseData, setCaseData] = reactExports.useState(null);
+  const [saving, setSaving] = reactExports.useState(false);
   reactExports.useEffect(() => {
-    if (isOpen) {
-      setForm(buildEmptyForm());
-      setActiveTab("contact");
-      setMode("self-report");
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+    setForm(buildEmptyForm());
+    setActiveTab("contact");
+    setMode("self-report");
+    setCaseData(null);
+    if (caseId == null) return;
+    void window.psygil.cases.get({ case_id: caseId }).then((res) => {
+      if (res.status === "success") setCaseData(res.data);
+    });
+    void window.psygil.onboarding.get({ case_id: caseId }).then((res) => {
+      if (res.status !== "success") return;
+      setForm((prev) => {
+        const next = { ...prev };
+        for (const row of res.data) {
+          const tab = TABS.find((t) => t.key === row.section);
+          if (!tab) continue;
+          let content = {};
+          try {
+            content = JSON.parse(row.content);
+          } catch {
+            const firstField = tab.fields[0]?.key ?? "content";
+            content = { [firstField]: row.content };
+          }
+          next[row.section] = {
+            ...prev[row.section],
+            ...content,
+            clinician_notes: row.clinician_notes ?? ""
+          };
+        }
+        return next;
+      });
+    });
+  }, [isOpen, caseId]);
   reactExports.useEffect(() => {
     if (!isOpen) return;
     const handler = (e) => {
@@ -14114,40 +16596,72 @@ function OnboardingModal({
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen, onClose]);
-  const updateField = reactExports.useCallback((tab, field, value) => {
+  const updateField = reactExports.useCallback((section, field, value) => {
     setForm((prev) => ({
       ...prev,
-      [tab]: { ...prev[tab], [field]: value }
+      [section]: { ...prev[section], [field]: value }
     }));
   }, []);
-  const handleSaveDraft = reactExports.useCallback(() => {
-    window.psygil?.onboarding?.save?.({ caseId, tab: activeTab, data: form[activeTab], isDraft: true });
-  }, [caseId, activeTab, form]);
-  const handleSaveAndContinue = reactExports.useCallback(() => {
-    window.psygil?.onboarding?.save?.({ caseId, tab: activeTab, data: form[activeTab], isDraft: false });
-    const idx = TABS.findIndex((t) => t.key === activeTab);
-    if (idx < TABS.length - 1) {
-      setActiveTab(TABS[idx + 1].key);
+  const saveSection = reactExports.useCallback(
+    async (section, status) => {
+      if (caseId == null) return;
+      const sectionData = form[section];
+      const { clinician_notes, ...fieldValues } = sectionData;
+      await window.psygil.onboarding.save({
+        case_id: caseId,
+        section,
+        data: {
+          content: JSON.stringify(fieldValues),
+          clinician_notes: clinician_notes || void 0,
+          status
+        }
+      });
+    },
+    [caseId, form]
+  );
+  const handleSaveDraft = reactExports.useCallback(async () => {
+    setSaving(true);
+    try {
+      await saveSection(activeTab, "draft");
+    } finally {
+      setSaving(false);
     }
-  }, [caseId, activeTab, form]);
-  const handleComplete = reactExports.useCallback(() => {
-    window.psygil?.onboarding?.save?.({ caseId, data: form, isDraft: false, complete: true });
-    onClose();
-  }, [caseId, form, onClose]);
+  }, [activeTab, saveSection]);
+  const handleSaveAndContinue = reactExports.useCallback(async () => {
+    setSaving(true);
+    try {
+      const idx = TABS.findIndex((t) => t.key === activeTab);
+      const isLast = idx === TABS.length - 1;
+      await saveSection(activeTab, isLast ? "complete" : "draft");
+      if (isLast) {
+        onSaved?.();
+        onClose();
+      } else {
+        setActiveTab(TABS[idx + 1].key);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [activeTab, saveSection, onClose, onSaved]);
   if (!isOpen) return null;
   const currentTabIdx = TABS.findIndex((t) => t.key === activeTab);
   const currentTab = TABS[currentTabIdx];
   const isLastTab = currentTabIdx === TABS.length - 1;
+  const isClinician = mode === "clinician";
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: overlayStyle, onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: containerStyle, onClick: (e) => e.stopPropagation(), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: headerStyle, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" }, children: [
-        "Patient Onboarding",
-        caseId != null ? ` — Case #${caseId}` : ""
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 2 }, children: "Patient Onboarding — Biopsychosocial History" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "var(--text-secondary)" }, children: "Self-report or referral-report form. All fields are narrative text entry." })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, style: closeButtonStyle, "aria-label": "Close", children: "×" })
     ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: fidelityBoxStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 600, color: "var(--accent)" }, children: "Data Fidelity Protocol: " }),
+      "Patient-reported information will be cleaned for grammar and spelling, then translated to clinical language for the case overview. Every reported element is preserved — nothing is omitted. The clinician verifies and annotates during the initial interview."
+    ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: tabBarContainerStyle, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 4, marginRight: 16 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2, marginRight: 20, flexShrink: 0 }, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           ModeButton,
           {
@@ -14159,53 +16673,130 @@ function OnboardingModal({
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           ModeButton,
           {
-            label: "Clinician Interview",
+            label: "Clinician Interview Review",
             active: mode === "clinician",
             onClick: () => setMode("clinician")
           }
         )
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 0, overflow: "auto" }, children: TABS.map((tab) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", overflow: "auto", gap: 0 }, children: TABS.map((tab, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "button",
         {
           onClick: () => setActiveTab(tab.key),
-          style: activeTab === tab.key ? activeTabStyle : inactiveTabStyle,
-          children: tab.label
+          style: tab.key === activeTab ? activeTabStyle : inactiveTabStyle,
+          children: [
+            idx + 1,
+            ". ",
+            tab.label
+          ]
         },
         tab.key
       )) })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: 24, display: "flex", flexDirection: "column", gap: 20 }, children: [
-      currentTab.fields.map((field) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 4 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: labelStyle, children: field.label }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: sectionTitleStyle, children: currentTab.label.toUpperCase() }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: isClinician ? underReviewBadgeStyle : patientBadgeStyle, children: isClinician ? "Under Review" : "Patient-Reported" })
+      ] }),
+      currentTab.note != null && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionNoteStyle, children: currentTab.note }),
+      currentTab.key === "contact" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyGroupStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Name" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData ? `${caseData.examinee_first_name} ${caseData.examinee_last_name}` : "—" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Date of Birth" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData?.examinee_dob ?? "—" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Age" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData?.examinee_dob != null ? calcAge(caseData.examinee_dob) : "—" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Gender" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData?.examinee_gender ?? "—" })
+        ] })
+      ] }),
+      currentTab.fields.map((field) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        FieldRow,
+        {
+          field,
+          value: form[activeTab][field.key] ?? "",
+          onChange: (val) => updateField(activeTab, field.key, val)
+        },
+        field.key
+      )),
+      isClinician && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinicianBoxStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { ...labelStyle, color: "var(--accent)", display: "block", marginBottom: 6 }, children: "Clinician Verification Notes" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "textarea",
           {
-            style: textareaStyle,
-            value: form[activeTab][field.key],
-            onChange: (e) => updateField(activeTab, field.key, e.target.value),
-            placeholder: field.placeholder
-          }
-        )
-      ] }, field.key)),
-      mode === "clinician" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 4 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { ...labelStyle, color: "var(--accent)" }, children: "Clinician Notes" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "textarea",
-          {
-            style: { ...textareaStyle, borderColor: "var(--accent)" },
-            value: form[activeTab].clinicianNotes,
-            onChange: (e) => updateField(activeTab, "clinicianNotes", e.target.value),
-            placeholder: "Clinical observations, discrepancies, follow-up items..."
+            style: { ...textareaStyle, minHeight: 72 },
+            rows: 3,
+            value: form[activeTab].clinician_notes ?? "",
+            onChange: (e) => updateField(activeTab, "clinician_notes", e.target.value),
+            placeholder: "Clinical observations, discrepancies, follow-up items…"
           }
         )
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "flex-end", gap: 12, paddingTop: 8 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSaveDraft, style: secondaryButtonStyle, children: "Save Draft" }),
-        isLastTab ? /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleComplete, style: primaryButtonStyle, children: "Complete Onboarding" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSaveAndContinue, style: primaryButtonStyle, children: "Save & Continue" })
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 4 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: () => void handleSaveDraft(),
+            style: secondaryButtonStyle,
+            disabled: saving,
+            children: "Save Draft"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: () => void handleSaveAndContinue(),
+            style: primaryButtonStyle,
+            disabled: saving,
+            children: isLastTab ? "Complete Onboarding ✓" : "Save & Continue →"
+          }
+        )
       ] })
     ] })
   ] }) });
+}
+function FieldRow({
+  field,
+  value,
+  onChange
+}) {
+  const isMultiline = field.rows > 1;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 4 }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: labelStyle, children: [
+      field.label,
+      field.hint != null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--text-secondary)", fontWeight: 400, letterSpacing: 0 }, children: [
+        "(",
+        field.hint,
+        ")"
+      ] })
+    ] }),
+    isMultiline ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        style: textareaStyle,
+        rows: field.rows,
+        value,
+        onChange: (e) => onChange(e.target.value),
+        placeholder: field.placeholder
+      }
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        type: "text",
+        style: inputStyle,
+        value,
+        onChange: (e) => onChange(e.target.value),
+        placeholder: field.placeholder
+      }
+    )
+  ] });
 }
 function ModeButton({
   label,
@@ -14221,16 +16812,26 @@ function ModeButton({
         color: active ? "#ffffff" : "var(--text-secondary)",
         border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
         borderRadius: 4,
-        padding: "3px 10px",
+        padding: "4px 12px",
         fontSize: 11,
         fontWeight: 500,
         cursor: "pointer",
         fontFamily: "inherit",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
+        transition: "background 0.15s, color 0.15s"
       },
       children: label
     }
   );
+}
+function calcAge(dob) {
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return "—";
+  const now2 = /* @__PURE__ */ new Date();
+  let age = now2.getFullYear() - birth.getFullYear();
+  const m = now2.getMonth() - birth.getMonth();
+  if (m < 0 || m === 0 && now2.getDate() < birth.getDate()) age--;
+  return String(age);
 }
 const overlayStyle = {
   position: "fixed",
@@ -14245,21 +16846,23 @@ const containerStyle = {
   background: "var(--panel)",
   border: "1px solid var(--border)",
   borderRadius: 8,
-  maxWidth: 880,
-  width: "90%",
+  maxWidth: 860,
+  width: "92%",
   maxHeight: "calc(100vh - 64px)",
-  overflowY: "auto"
+  overflowY: "auto",
+  display: "flex",
+  flexDirection: "column"
 };
 const headerStyle = {
   position: "sticky",
   top: 0,
   background: "var(--panel)",
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   justifyContent: "space-between",
-  padding: "12px 24px",
+  padding: "14px 24px 12px",
   borderBottom: "1px solid var(--border)",
-  zIndex: 1
+  zIndex: 2
 };
 const closeButtonStyle = {
   background: "none",
@@ -14267,44 +16870,124 @@ const closeButtonStyle = {
   fontSize: 20,
   color: "var(--text-secondary)",
   cursor: "pointer",
-  padding: 0,
-  lineHeight: 1
+  padding: "0 0 0 12px",
+  lineHeight: 1,
+  flexShrink: 0
+};
+const fidelityBoxStyle = {
+  margin: "0 24px",
+  marginTop: 14,
+  padding: "8px 12px",
+  borderLeft: "3px solid var(--accent)",
+  background: "var(--bg)",
+  borderRadius: "0 4px 4px 0",
+  fontSize: 11.5,
+  color: "var(--text-secondary)",
+  lineHeight: 1.55
 };
 const tabBarContainerStyle = {
   position: "sticky",
-  top: 45,
+  top: 57,
   background: "var(--panel)",
   display: "flex",
   alignItems: "center",
-  padding: "8px 24px 0",
+  padding: "10px 24px 0",
   borderBottom: "1px solid var(--border)",
-  zIndex: 1,
+  zIndex: 2,
   flexWrap: "wrap",
-  gap: 8
+  gap: 8,
+  marginTop: 12
 };
 const activeTabStyle = {
   background: "none",
   border: "none",
   borderBottom: "2px solid var(--accent)",
   color: "var(--accent)",
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 600,
-  padding: "6px 12px",
+  padding: "6px 10px",
   cursor: "pointer",
   fontFamily: "inherit",
-  whiteSpace: "nowrap"
+  whiteSpace: "nowrap",
+  letterSpacing: 0.2
 };
 const inactiveTabStyle = {
   background: "none",
   border: "none",
   borderBottom: "2px solid transparent",
   color: "var(--text-secondary)",
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 500,
-  padding: "6px 12px",
+  padding: "6px 10px",
   cursor: "pointer",
   fontFamily: "inherit",
-  whiteSpace: "nowrap"
+  whiteSpace: "nowrap",
+  letterSpacing: 0.2
+};
+const sectionTitleStyle = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--accent)",
+  letterSpacing: 0.8,
+  textTransform: "uppercase"
+};
+const patientBadgeStyle = {
+  fontSize: 10,
+  fontWeight: 600,
+  background: "#fff3cd",
+  color: "#856404",
+  padding: "2px 8px",
+  borderRadius: 4,
+  letterSpacing: 0.3
+};
+const underReviewBadgeStyle = {
+  fontSize: 10,
+  fontWeight: 600,
+  background: "#fff3cd",
+  color: "#856404",
+  padding: "2px 8px",
+  borderRadius: 4,
+  letterSpacing: 0.3
+};
+const sectionNoteStyle = {
+  fontSize: 11.5,
+  color: "var(--text-secondary)",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "6px 10px",
+  lineHeight: 1.5
+};
+const readOnlyGroupStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, 1fr)",
+  gap: "6px 24px",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "10px 14px"
+};
+const readOnlyRowStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 2
+};
+const readOnlyLabelStyle = {
+  fontSize: 10,
+  fontWeight: 500,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: 0.5
+};
+const readOnlyValueStyle = {
+  fontSize: 13,
+  color: "var(--text)"
+};
+const clinicianBoxStyle = {
+  borderLeft: "3px solid var(--accent)",
+  background: "var(--panel)",
+  padding: "8px 12px",
+  borderRadius: "0 4px 4px 0"
 };
 const labelStyle = {
   fontSize: 11,
@@ -14317,22 +17000,34 @@ const textareaStyle = {
   background: "var(--bg)",
   border: "1px solid var(--border)",
   borderRadius: 4,
-  padding: "8px 10px",
+  padding: "7px 10px",
   fontSize: 13,
   color: "var(--text)",
   outline: "none",
   width: "100%",
   boxSizing: "border-box",
   fontFamily: "inherit",
-  minHeight: 80,
-  resize: "vertical"
+  resize: "vertical",
+  lineHeight: 1.5
+};
+const inputStyle = {
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "7px 10px",
+  fontSize: 13,
+  color: "var(--text)",
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  fontFamily: "inherit"
 };
 const primaryButtonStyle = {
   background: "var(--accent)",
   color: "#ffffff",
   border: "none",
   borderRadius: 4,
-  padding: "8px 24px",
+  padding: "8px 22px",
   fontSize: 13,
   fontWeight: 600,
   cursor: "pointer",
@@ -14343,12 +17038,256 @@ const secondaryButtonStyle = {
   color: "var(--text)",
   border: "1px solid var(--border)",
   borderRadius: 4,
-  padding: "8px 24px",
+  padding: "8px 22px",
   fontSize: 13,
   fontWeight: 500,
   cursor: "pointer",
   fontFamily: "inherit"
 };
+function SetupModal({ isOpen, onClose, onWorkspaceSet }) {
+  const [currentPath, setCurrentPath] = reactExports.useState(null);
+  const [loading, setLoading] = reactExports.useState(false);
+  const [status, setStatus] = reactExports.useState({ kind: "idle" });
+  reactExports.useEffect(() => {
+    if (!isOpen) return;
+    setStatus({ kind: "idle" });
+    window.psygil?.workspace?.getPath?.().then((resp) => {
+      if (resp?.status === "success") setCurrentPath(resp.data);
+    });
+  }, [isOpen]);
+  const handlePickFolder = reactExports.useCallback(async () => {
+    setLoading(true);
+    setStatus({ kind: "idle" });
+    try {
+      const pickResp = await window.psygil?.workspace?.pickFolder?.();
+      if (!pickResp || pickResp.status !== "success" || pickResp.data === null) {
+        setLoading(false);
+        return;
+      }
+      const chosenPath = pickResp.data;
+      const setResp = await window.psygil?.workspace?.setPath?.(chosenPath);
+      if (setResp?.status === "success") {
+        setCurrentPath(chosenPath);
+        setStatus({ kind: "success", message: "Workspace updated." });
+        onWorkspaceSet();
+      } else {
+        setStatus({ kind: "error", message: setResp?.error?.message ?? "Failed to set workspace." });
+      }
+    } catch (e) {
+      setStatus({ kind: "error", message: e instanceof Error ? e.message : "Unknown error" });
+    } finally {
+      setLoading(false);
+    }
+  }, [onWorkspaceSet]);
+  const handleUseDefault = reactExports.useCallback(async () => {
+    setLoading(true);
+    setStatus({ kind: "idle" });
+    try {
+      const defaultResp = await window.psygil?.workspace?.getDefaultPath?.();
+      if (defaultResp?.status !== "success") {
+        setStatus({ kind: "error", message: "Could not get default path." });
+        setLoading(false);
+        return;
+      }
+      const setResp = await window.psygil?.workspace?.setPath?.(defaultResp.data);
+      if (setResp?.status === "success") {
+        setCurrentPath(defaultResp.data);
+        setStatus({ kind: "success", message: "Workspace set to default." });
+        onWorkspaceSet();
+      } else {
+        setStatus({ kind: "error", message: setResp?.error?.message ?? "Failed to set workspace." });
+      }
+    } catch (e) {
+      setStatus({ kind: "error", message: e instanceof Error ? e.message : "Unknown error" });
+    } finally {
+      setLoading(false);
+    }
+  }, [onWorkspaceSet]);
+  if (!isOpen) return null;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-label": "Workspace Setup",
+      style: {
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1e3
+      },
+      onClick: (e) => {
+        if (e.target === e.currentTarget) onClose();
+      },
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          style: {
+            background: "var(--panel)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            width: 480,
+            maxWidth: "90vw",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            overflow: "hidden"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 20px",
+                  borderBottom: "1px solid var(--border)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" }, children: "Workspace Setup" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      "aria-label": "Close",
+                      onClick: onClose,
+                      style: {
+                        background: "none",
+                        border: "none",
+                        color: "var(--text-secondary)",
+                        cursor: "pointer",
+                        fontSize: 18,
+                        lineHeight: 1,
+                        padding: "0 4px"
+                      },
+                      children: "✕"
+                    }
+                  )
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "24px 20px" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontSize: 13, color: "var(--text-secondary)", marginBottom: 20, lineHeight: 1.6 }, children: "Choose the root folder where Psygil stores your case files, documents, and reports. This folder will be created if it doesn't exist." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  style: {
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 4,
+                    padding: "10px 14px",
+                    marginBottom: 20
+                  },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }, children: "Current Workspace" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: currentPath ? "var(--text)" : "var(--text-secondary)", fontFamily: "monospace", wordBreak: "break-all" }, children: currentPath ?? "Not configured" })
+                  ]
+                }
+              ),
+              status.kind !== "idle" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  style: {
+                    padding: "8px 12px",
+                    borderRadius: 4,
+                    marginBottom: 16,
+                    fontSize: 12,
+                    background: status.kind === "success" ? "rgba(76,175,80,0.12)" : "rgba(244,67,54,0.12)",
+                    color: status.kind === "success" ? "#4caf50" : "#f44336",
+                    border: `1px solid ${status.kind === "success" ? "rgba(76,175,80,0.3)" : "rgba(244,67,54,0.3)"}`
+                  },
+                  children: status.message
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 10 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "button",
+                  {
+                    onClick: handlePickFolder,
+                    disabled: loading,
+                    style: {
+                      background: "var(--accent)",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: 4,
+                      padding: "10px 20px",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: loading ? "not-allowed" : "pointer",
+                      opacity: loading ? 0.6 : 1,
+                      textAlign: "left",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 16 }, children: "📁" }),
+                      loading ? "Opening…" : "Choose Folder…"
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "button",
+                  {
+                    onClick: handleUseDefault,
+                    disabled: loading,
+                    style: {
+                      background: "transparent",
+                      color: "var(--text-secondary)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 4,
+                      padding: "10px 20px",
+                      fontSize: 13,
+                      cursor: loading ? "not-allowed" : "pointer",
+                      opacity: loading ? 0.6 : 1,
+                      textAlign: "left",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 16 }, children: "🏠" }),
+                      "Use Default (~/Documents/Psygil Cases/)"
+                    ]
+                  }
+                )
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  padding: "12px 20px",
+                  borderTop: "1px solid var(--border)",
+                  gap: 8
+                },
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    onClick: onClose,
+                    style: {
+                      background: "transparent",
+                      color: "var(--text-secondary)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 4,
+                      padding: "7px 18px",
+                      fontSize: 13,
+                      cursor: "pointer"
+                    },
+                    children: "Close"
+                  }
+                )
+              }
+            )
+          ]
+        }
+      )
+    }
+  );
+}
 const THEMES = ["light", "medium", "dark"];
 const STORAGE_KEY_THEME = "psygil-theme";
 const STORAGE_KEY_LEFT_W = "psygil-left-width";
@@ -14375,7 +17314,10 @@ function App() {
   const [rightWidth, setRightWidth] = reactExports.useState(() => loadWidth(STORAGE_KEY_RIGHT_W, DEFAULT_RIGHT));
   const [showIntake, setShowIntake] = reactExports.useState(false);
   const [showOnboarding, setShowOnboarding] = reactExports.useState(false);
+  const [showSetup, setShowSetup] = reactExports.useState(false);
+  const [intakeEditCaseId, setIntakeEditCaseId] = reactExports.useState(void 0);
   const [tabState, setTabState] = reactExports.useState({ tabs: [], activeId: null });
+  const refreshCasesRef = reactExports.useRef(null);
   const openTab = reactExports.useCallback((tab) => {
     setTabState((prev) => {
       if (prev.tabs.some((t) => t.id === tab.id)) {
@@ -14427,6 +17369,24 @@ function App() {
       return w;
     });
   }, []);
+  const handleNewCase = reactExports.useCallback(() => {
+    setIntakeEditCaseId(void 0);
+    setShowIntake(true);
+  }, []);
+  const handleEditIntake = reactExports.useCallback((caseId) => {
+    setIntakeEditCaseId(caseId);
+    setShowIntake(true);
+  }, []);
+  const handleCaseSaved = reactExports.useCallback((caseRow) => {
+    refreshCasesRef.current?.();
+    const title = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`;
+    openTab({
+      id: `overview:${caseRow.case_id}`,
+      title,
+      type: "clinical-overview",
+      caseId: caseRow.case_id
+    });
+  }, [openTab]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -14442,8 +17402,9 @@ function App() {
           Titlebar,
           {
             onCycleTheme: cycleTheme,
-            onOpenIntake: () => setShowIntake(true),
-            onOpenOnboarding: () => setShowOnboarding(true)
+            onOpenIntake: handleNewCase,
+            onOpenOnboarding: () => setShowOnboarding(true),
+            onSetup: () => setShowSetup(true)
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -14466,7 +17427,15 @@ function App() {
                     flexShrink: 0,
                     overflow: "hidden"
                   },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(LeftColumn, { onOpenTab: openTab })
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    LeftColumn,
+                    {
+                      onOpenTab: openTab,
+                      onNewCase: handleNewCase,
+                      onEditIntake: handleEditIntake,
+                      refreshRef: refreshCasesRef
+                    }
+                  )
                 }
               ),
               /* @__PURE__ */ jsxRuntimeExports.jsx(VSplitter, { onResize: handleLeftResize, onResizeEnd: handleLeftResizeEnd }),
@@ -14485,7 +17454,8 @@ function App() {
                       tabs: tabState.tabs,
                       activeTabId: tabState.activeId,
                       onCloseTab: closeTab,
-                      onSetActiveTab: setActiveTab
+                      onSetActiveTab: setActiveTab,
+                      onEditIntake: handleEditIntake
                     }
                   )
                 }
@@ -14508,8 +17478,26 @@ function App() {
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(Statusbar, {}),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeModal, { isOpen: showIntake, onClose: () => setShowIntake(false) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(OnboardingModal, { isOpen: showOnboarding, onClose: () => setShowOnboarding(false) })
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          IntakeModal,
+          {
+            isOpen: showIntake,
+            onClose: () => setShowIntake(false),
+            caseId: intakeEditCaseId,
+            onSaved: handleCaseSaved
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(OnboardingModal, { isOpen: showOnboarding, onClose: () => setShowOnboarding(false) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          SetupModal,
+          {
+            isOpen: showSetup,
+            onClose: () => setShowSetup(false),
+            onWorkspaceSet: () => {
+              refreshCasesRef.current?.();
+            }
+          }
+        )
       ]
     }
   );

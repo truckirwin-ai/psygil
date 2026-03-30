@@ -441,6 +441,107 @@ export interface AiTestConnectionResult {
 }
 
 // ---------------------------------------------------------------------------
+// Agent System
+// ---------------------------------------------------------------------------
+
+export type AgentType = 'ingestor' | 'diagnostician' | 'writer' | 'editor'
+
+export interface AgentRunParams {
+  readonly agentType: AgentType
+  readonly systemPrompt: string
+  readonly caseId: number
+  readonly inputTexts: readonly string[]
+  readonly context?: string
+  readonly maxTokens?: number
+  readonly temperature?: number
+}
+
+export interface AgentRunResult {
+  readonly operationId: string
+  readonly agentType: AgentType
+  readonly caseId: number
+  readonly status: 'success' | 'error'
+  readonly result?: unknown
+  readonly error?: string
+  readonly tokenUsage?: {
+    readonly input: number
+    readonly output: number
+  }
+  readonly durationMs: number
+}
+
+export interface AgentStatusResult {
+  readonly operationId: string | null
+  readonly agentType: AgentType | null
+  readonly caseId: number | null
+  readonly status: 'queued' | 'running' | 'done' | 'error' | 'idle'
+  readonly elapsedMs: number
+  readonly tokenUsage?: {
+    readonly input: number
+    readonly output: number
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ingestor Agent
+// ---------------------------------------------------------------------------
+
+export interface IngestorRunParams {
+  readonly caseId: number
+}
+
+export interface IngestorRunResult {
+  readonly operationId: string
+  readonly caseId: number
+  readonly status: 'success' | 'error'
+  readonly result?: unknown
+  readonly error?: string
+  readonly tokenUsage?: {
+    readonly input: number
+    readonly output: number
+  }
+  readonly durationMs: number
+}
+
+export interface IngestorGetResultParams {
+  readonly caseId: number
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline Stage Advancement
+// ---------------------------------------------------------------------------
+
+export interface PipelineCheckParams {
+  readonly caseId: number
+}
+
+export interface PipelineCheckResult {
+  readonly canAdvance: boolean
+  readonly currentStage: PipelineStage
+  readonly nextStage: PipelineStage | null
+  readonly reason: string
+}
+
+export interface PipelineAdvanceParams {
+  readonly caseId: number
+}
+
+export interface PipelineAdvanceResult {
+  readonly success: boolean
+  readonly newStage: PipelineStage
+  readonly previousStage: PipelineStage
+}
+
+export interface PipelineConditionsParams {
+  readonly stage: PipelineStage
+}
+
+export interface PipelineConditionsResult {
+  readonly stage: PipelineStage
+  readonly conditions: readonly string[]
+}
+
+// ---------------------------------------------------------------------------
 // Preload API shape — exposed as window.psygil
 // ---------------------------------------------------------------------------
 
@@ -509,6 +610,19 @@ export interface PsygilApi {
   readonly ai: {
     readonly complete: (params: AiCompleteParams) => Promise<IpcResponse<AiCompleteResult>>
     readonly testConnection: (params: AiTestConnectionParams) => Promise<IpcResponse<AiTestConnectionResult>>
+  }
+  readonly agent: {
+    readonly run: (params: AgentRunParams) => Promise<IpcResponse<AgentRunResult>>
+    readonly status: (operationId?: string) => Promise<IpcResponse<AgentStatusResult>>
+  }
+  readonly ingestor: {
+    readonly run: (params: IngestorRunParams) => Promise<IpcResponse<IngestorRunResult>>
+    readonly getResult: (params: IngestorGetResultParams) => Promise<IpcResponse<unknown>>
+  }
+  readonly pipeline: {
+    readonly check: (params: PipelineCheckParams) => Promise<IpcResponse<PipelineCheckResult>>
+    readonly advance: (params: PipelineAdvanceParams) => Promise<IpcResponse<PipelineAdvanceResult>>
+    readonly conditions: (params: PipelineConditionsParams) => Promise<IpcResponse<PipelineConditionsResult>>
   }
 }
 

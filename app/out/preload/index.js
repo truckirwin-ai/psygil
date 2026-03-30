@@ -20,6 +20,9 @@ const CH = {
   DOCS_GET: "documents:get",
   DOCS_DELETE: "documents:delete",
   DOCS_PICK_FILE: "documents:pickFile",
+  PII_REDACT: "pii:redact",
+  PII_REHYDRATE: "pii:rehydrate",
+  PII_DESTROY: "pii:destroy",
   WS_GET_PATH: "workspace:getPath",
   WS_SET_PATH: "workspace:setPath",
   WS_GET_TREE: "workspace:getTree",
@@ -28,7 +31,11 @@ const CH = {
   WS_OPEN_NATIVE: "workspace:openNative",
   WS_PICK_FOLDER: "workspace:pickFolder",
   WS_DEFAULT_PATH: "workspace:getDefaultPath",
-  WS_FILE_CHANGED: "workspace:file-changed"
+  WS_FILE_CHANGED: "workspace:file-changed",
+  API_KEY_STORE: "apiKey:store",
+  API_KEY_RETRIEVE: "apiKey:retrieve",
+  API_KEY_DELETE: "apiKey:delete",
+  API_KEY_HAS: "apiKey:has"
 };
 const api = {
   platform: process.platform,
@@ -67,7 +74,10 @@ const api = {
   },
   pii: {
     detect: (params) => electron.ipcRenderer.invoke("pii:detect", params),
-    batchDetect: (params) => electron.ipcRenderer.invoke("pii:batchDetect", params)
+    batchDetect: (params) => electron.ipcRenderer.invoke("pii:batchDetect", params),
+    redact: (params) => electron.ipcRenderer.invoke(CH.PII_REDACT, params),
+    rehydrate: (params) => electron.ipcRenderer.invoke(CH.PII_REHYDRATE, params),
+    destroy: (params) => electron.ipcRenderer.invoke(CH.PII_DESTROY, params)
   },
   seed: {
     demoCases: () => electron.ipcRenderer.invoke(CH.SEED_DEMO)
@@ -86,6 +96,16 @@ const api = {
     offFileChanged: () => {
       electron.ipcRenderer.removeAllListeners(CH.WS_FILE_CHANGED);
     }
+  },
+  apiKey: {
+    store: (params) => electron.ipcRenderer.invoke(CH.API_KEY_STORE, params),
+    retrieve: () => electron.ipcRenderer.invoke(CH.API_KEY_RETRIEVE),
+    delete: () => electron.ipcRenderer.invoke(CH.API_KEY_DELETE),
+    has: () => electron.ipcRenderer.invoke(CH.API_KEY_HAS)
+  },
+  ai: {
+    complete: (params) => electron.ipcRenderer.invoke("ai:complete", params),
+    testConnection: (params) => electron.ipcRenderer.invoke("ai:testConnection", params ?? {})
   }
 };
 electron.contextBridge.exposeInMainWorld("psygil", api);

@@ -1,73 +1,66 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+// =============================================================================
+// LeftColumn.tsx — File Tree Panel (Column 1)
+// =============================================================================
+//
+// ██████████████████████████████████████████████████████████████████████████████
+// ██  CRITICAL RULE: TREE MUST MIRROR FILESYSTEM — NEVER HARDCODE CONTENTS  ██
+// ██████████████████████████████████████████████████████████████████████████████
+//
+// The directory tree in Column 1 maps 1:1 to real folders on the user's hard
+// drive.  If a file or folder exists in Finder/Explorer, it MUST appear in this
+// tree.  If it does NOT exist on disk, it MUST NOT appear.
+//
+// HOW THIS WORKS:
+//   1. On mount (and on every refresh), we call window.psygil.workspace.getTree()
+//      which invokes the main-process getWorkspaceTree() in workspace/index.ts.
+//      That function does a recursive readdirSync of the workspace folder and
+//      returns the raw FolderNode[] tree.
+//   2. We ALSO load the DB case list (window.psygil.cases.list()) to get metadata
+//      like stage colors, evaluation types, and workflow status.  This metadata is
+//      used ONLY for visual badges/colors — it does NOT affect which nodes appear.
+//   3. The chokidar file watcher in the main process broadcasts
+//      'workspace:file-changed' events whenever files are added, changed, or
+//      deleted.  We listen for those events and re-fetch the tree automatically.
+//
+// DO NOT:
+//   - Build tree nodes from DB records
+//   - Use hardcoded stage logic to decide which folders to show
+//   - Add "virtual" nodes that don't correspond to filesystem entries
+//   - Filter out filesystem entries based on pipeline stage
+//
+// The DB is a METADATA OVERLAY, not the source of truth for tree structure.
+// The FILESYSTEM is the source of truth.  Always.
+//
+// See: docs/engineering/26_Workspace_Folder_Architecture.md
+// =============================================================================
+
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { CaseRow, FolderNode } from '../../../../shared/types'
 import type { Tab } from '../../types/tabs'
 
 // ---------------------------------------------------------------------------
-// Context menu — shown on right-click of file/folder nodes
+// Types
 // ---------------------------------------------------------------------------
 
-interface CtxMenu {
-  readonly x: number
-  readonly y: number
-  readonly path: string
-  readonly isDirectory: boolean
+interface TreeNode {
+  readonly id: string
+  readonly label: string
+  readonly icon: string
+  readonly badge?: string
+  readonly stageColor?: string
+  readonly expanded?: boolean
+  readonly children?: readonly TreeNode[]
+  readonly caseId?: number
+  /** If set, clicking this node opens a tab of this type */
+  readonly tabType?: Tab['type']
+  /** Absolute path on disk (for document nodes) */
+  readonly filePath?: string
 }
 
-function ContextMenu({
-  menu,
-  onClose,
-}: {
-  readonly menu: CtxMenu
-  readonly onClose: () => void
-}): React.JSX.Element {
-  const handleFinderClick = useCallback(() => {
-    void window.psygil?.workspace?.openInFinder?.(menu.path)
-    onClose()
-  }, [menu.path, onClose])
-
-  const handleNativeClick = useCallback(() => {
-    if (!menu.isDirectory) {
-      void window.psygil?.workspace?.openNative?.(menu.path)
-    }
-    onClose()
-  }, [menu.path, menu.isDirectory, onClose])
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        top: menu.y,
-        left: menu.x,
-        zIndex: 9000,
-        background: 'var(--panel)',
-        border: '1px solid var(--border)',
-        borderRadius: 4,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
-        minWidth: 180,
-        padding: '4px 0',
-        fontSize: 12,
-      }}
-    >
-      <div
-        style={{ padding: '6px 14px', cursor: 'pointer', color: 'var(--text)' }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--highlight)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-        onClick={handleFinderClick}
-      >
-        📂 Reveal in Finder
-      </div>
-      {!menu.isDirectory && (
-        <div
-          style={{ padding: '6px 14px', cursor: 'pointer', color: 'var(--text)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--highlight)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-          onClick={handleNativeClick}
-        >
-          ↗ Open with Default App
-        </div>
-      )}
-    </div>
-  )
+interface LeftColumnProps {
+  readonly onOpenTab: (tab: Tab) => void
+  readonly onNewCase: () => void
+  readonly refreshRef: React.MutableRefObject<(() => void) | null>
 }
 
 // ---------------------------------------------------------------------------
@@ -76,296 +69,214 @@ function ContextMenu({
 
 const STAGE_COLORS: Record<string, string> = {
   onboarding: '#2196f3',
-  gate_1: '#2196f3',
   testing: '#9c27b0',
-  gate_2: '#9c27b0',
   interview: '#e91e63',
   diagnostics: '#ff9800',
-  gate_3: '#ff9800',
   review: '#ff5722',
   complete: '#4caf50',
-  finalized: '#4caf50',
-  intake: '#2196f3',
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  onboarding: 'Onboarding',
-  gate_1: 'Onboarding',
-  testing: 'Testing',
-  gate_2: 'Testing',
-  interview: 'Interview',
-  diagnostics: 'Diagnostics',
-  gate_3: 'Diagnostics',
-  review: 'Review',
-  complete: 'Complete',
-  finalized: 'Complete',
-  intake: 'Intake',
+// Map subfolder names → icons for known case subfolders
+const SUBFOLDER_ICONS: Record<string, string> = {
+  intake: '📋',
+  referral: '📄',
+  collateral: '📁',
+  testing: '📊',
+  interviews: '🎙',
+  diagnostics: '⚖',
+  reports: '📝',
+  archive: '📦',
 }
 
-const CASE_SUBFOLDERS = [
-  '_Inbox',
-  'Collateral',
-  'Testing',
-  'Interviews',
-  'Diagnostics',
-  'Reports',
-  'Archive',
-] as const
+// Map file extensions → icons
+function fileIcon(name: string): string {
+  const ext = name.split('.').pop()?.toLowerCase() ?? ''
+  switch (ext) {
+    case 'pdf': return '📕'
+    case 'doc': case 'docx': return '📄'
+    case 'xls': case 'xlsx': return '📊'
+    case 'txt': return '📝'
+    case 'png': case 'jpg': case 'jpeg': case 'gif': case 'webp': return '🖼'
+    case 'mp3': case 'wav': case 'ogg': case 'm4a': return '🎵'
+    case 'mp4': case 'mov': case 'avi': return '🎬'
+    case 'json': return '{ }'
+    case 'csv': return '📊'
+    default: return '📄'
+  }
+}
 
-type WorkspaceStatus = 'loading' | 'no-workspace' | 'ready'
+// Case folder naming pattern: "2026-0147 Johnson, Marcus D."
+const CASE_FOLDER_PATTERN = /^(\d{4}-\d{4})\s+([^,]+),\s+(.+)$/
 
-interface LeftColumnProps {
+// ---------------------------------------------------------------------------
+// Tree Building — from FILESYSTEM with DB metadata overlay
+// ---------------------------------------------------------------------------
+// ██  This function converts FolderNode[] (from disk) into TreeNode[]       ██
+// ██  for rendering.  The DB cases list is used ONLY for color/badge data.  ██
+// ██  If a folder exists on disk but has no DB record, it still appears.    ██
+// ---------------------------------------------------------------------------
+
+function buildTreeFromFilesystem(
+  fsTree: readonly FolderNode[],
+  casesByNumber: ReadonlyMap<string, CaseRow>,
+): TreeNode[] {
+  const tree: TreeNode[] = []
+
+  // Dashboard at top (virtual — not a filesystem entry)
+  tree.push({
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: '📊',
+    tabType: 'dashboard',
+  })
+
+  // System folders (start with _) go into a separate section
+  const systemFolders: FolderNode[] = []
+  const caseFolders: FolderNode[] = []
+  const otherEntries: FolderNode[] = []
+
+  for (const node of fsTree) {
+    if (node.name.startsWith('_')) {
+      systemFolders.push(node)
+    } else if (node.isDirectory && CASE_FOLDER_PATTERN.test(node.name)) {
+      caseFolders.push(node)
+    } else {
+      otherEntries.push(node)
+    }
+  }
+
+  // Case folders — with DB metadata overlay for colors
+  for (const folder of caseFolders) {
+    const match = CASE_FOLDER_PATTERN.exec(folder.name)
+    const caseNumber = match?.[1] ?? ''
+    const dbCase = casesByNumber.get(caseNumber)
+
+    const stageKey = dbCase?.workflow_current_stage ?? 'onboarding'
+    const stageColor = STAGE_COLORS[stageKey] ?? '#999'
+    const evalType = dbCase?.evaluation_type ?? ''
+    const caseId = dbCase?.case_id
+
+    // Build label: "Johnson, Marcus — CST" or folder name if no DB match
+    const label = dbCase
+      ? `${dbCase.examinee_last_name}, ${dbCase.examinee_first_name}${evalType ? ` — ${evalType}` : ''}`
+      : folder.name
+
+    const children = convertFolderChildren(folder.children ?? [], caseId)
+
+    // Add Clinical Overview as first child (virtual node — opens the overview tab)
+    if (caseId != null) {
+      children.unshift({
+        id: `${caseId}-overview`,
+        label: 'Clinical Overview',
+        icon: '📋',
+        tabType: 'clinical-overview',
+        caseId,
+      })
+    }
+
+    tree.push({
+      id: `case-folder:${folder.path}`,
+      label,
+      icon: '📁',
+      stageColor,
+      children,
+      caseId,
+    })
+  }
+
+  // Other top-level files/folders (not cases, not system)
+  for (const entry of otherEntries) {
+    tree.push(convertFolderNode(entry, undefined))
+  }
+
+  // System folders (_Inbox, _Templates, etc.)
+  if (systemFolders.length > 0) {
+    const sysChildren = systemFolders.map((f) => convertFolderNode(f, undefined))
+    tree.push({
+      id: 'system-folders',
+      label: 'Workspace',
+      icon: '📂',
+      children: sysChildren,
+    })
+  }
+
+  // Settings at bottom (virtual — not a filesystem entry)
+  tree.push({
+    id: 'settings',
+    label: 'Settings',
+    icon: '⚙',
+    tabType: 'settings',
+  })
+
+  return tree
+}
+
+/**
+ * Convert the children of a case folder into TreeNodes.
+ * Known subdirectories (intake, referral, etc.) get appropriate icons.
+ */
+function convertFolderChildren(
+  children: readonly FolderNode[],
+  caseId: number | undefined,
+): TreeNode[] {
+  return children.map((child) => convertFolderNode(child, caseId))
+}
+
+/**
+ * Recursively convert a FolderNode (filesystem) into a TreeNode (UI).
+ * This is a pure transform — it does NOT filter or add nodes.
+ * What's on disk is what you see.
+ */
+function convertFolderNode(node: FolderNode, caseId: number | undefined): TreeNode {
+  const lowerName = node.name.toLowerCase()
+
+  if (node.isDirectory) {
+    const icon = SUBFOLDER_ICONS[lowerName] ?? '📁'
+    const children = (node.children ?? []).map((c) => convertFolderNode(c, caseId))
+    return {
+      id: `fs:${node.path}`,
+      label: node.name,
+      icon,
+      children,
+      caseId,
+      filePath: node.path,
+    }
+  }
+
+  // File node
+  return {
+    id: `fs:${node.path}`,
+    label: node.name,
+    icon: fileIcon(node.name),
+    caseId,
+    filePath: node.path,
+    tabType: 'document-viewer',
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tree Node Component
+// ---------------------------------------------------------------------------
+
+interface TreeNodeProps {
+  readonly node: TreeNode
+  readonly depth: number
   readonly onOpenTab: (tab: Tab) => void
-  readonly onNewCase: () => void
-  readonly onEditIntake: (caseId: number) => void
-  /** Parent passes a ref so it can trigger case list refresh from outside. */
-  readonly refreshRef: React.MutableRefObject<(() => void) | null>
+  readonly activeNodeId: string | null
+  readonly onSetActive: (id: string) => void
+  readonly onNodeClick: (node: TreeNode) => void
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Build a flat lookup map keyed by path from a recursive FolderNode tree. */
-function buildTreeLookup(nodes: readonly FolderNode[]): Map<string, FolderNode> {
-  const map = new Map<string, FolderNode>()
-  function walk(node: FolderNode): void {
-    map.set(node.path, node)
-    if (node.children) {
-      for (const child of node.children) {
-        walk(child)
-      }
-    }
-  }
-  for (const n of nodes) {
-    walk(n)
-  }
-  return map
-}
-
-// ---------------------------------------------------------------------------
-// LeftColumn
-// ---------------------------------------------------------------------------
-
-export default function LeftColumn({
+function TreeNodeComponent({
+  node,
+  depth,
   onOpenTab,
-  onNewCase,
-  refreshRef,
-}: LeftColumnProps): React.JSX.Element {
-  const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null)
-  const [wsStatus, setWsStatus] = useState<WorkspaceStatus>('loading')
-  const [cases, setCases] = useState<readonly CaseRow[]>([])
-  const [wsTree, setWsTree] = useState<readonly FolderNode[]>([])
-  const [treeLookup, setTreeLookup] = useState<Map<string, FolderNode>>(new Map())
-
-  // Rebuild lookup whenever tree changes (used to locate case folders in the disk tree)
-  useEffect(() => {
-    setTreeLookup(buildTreeLookup(wsTree))
-  }, [wsTree])
-
-  const loadTree = useCallback(async () => {
-    const resp = await window.psygil?.workspace?.getTree?.()
-    if (resp?.status === 'success') {
-      setWsTree(resp.data)
-    }
-  }, [])
-
-  const loadCases = useCallback(async () => {
-    console.log('[LeftColumn] calling cases.list...')
-    const resp = await window.psygil?.cases?.list?.()
-    console.log('[LeftColumn] cases.list response:', resp)
-    if (resp?.status === 'success') {
-      console.log('[LeftColumn] setting cases:', resp.data.cases.length)
-      setCases(resp.data.cases)
-    }
-  }, [])
-
-  // Expose loadCases via refreshRef so parent can trigger it after case creation
-  const loadCasesRef = useRef(loadCases)
-  loadCasesRef.current = loadCases
-  useEffect(() => {
-    refreshRef.current = () => { void loadCasesRef.current() }
-  }, [refreshRef])
-
-  // On mount: check workspace → load tree + cases
-  // Retry once after 1.5s to handle the sync race condition on first launch
-  useEffect(() => {
-    let cancelled = false
-    async function init(isRetry = false): Promise<void> {
-      const resp = await window.psygil?.workspace?.getPath?.()
-      console.log('[LeftColumn] workspace.getPath:', resp)
-      if (cancelled) return
-      if (resp?.status === 'success' && resp.data !== null) {
-        setWsStatus('ready')
-        await Promise.all([loadTree(), loadCases()])
-        // If no cases on first load, retry once after sync may have completed
-        if (!isRetry) {
-          setTimeout(() => { if (!cancelled) void init(true) }, 1500)
-        }
-      } else {
-        setWsStatus('no-workspace')
-      }
-    }
-    void init()
-    return () => { cancelled = true }
-  }, [loadTree, loadCases])
-
-  // File-change watcher
-  useEffect(() => {
-    if (wsStatus !== 'ready') return
-    window.psygil?.workspace?.onFileChanged?.(() => { void loadTree() })
-    return () => { window.psygil?.workspace?.offFileChanged?.() }
-  }, [wsStatus, loadTree])
-
-  // Workspace folder pickers (first-launch)
-  const handleChooseFolder = useCallback(async () => {
-    const pickResp = await window.psygil?.workspace?.pickFolder?.()
-    if (pickResp?.status !== 'success' || pickResp.data === null) return
-    const setResp = await window.psygil?.workspace?.setPath?.(pickResp.data)
-    if (setResp?.status === 'success') {
-      setWsStatus('ready')
-      await Promise.all([loadTree(), loadCases()])
-    }
-  }, [loadTree, loadCases])
-
-  const handleUseDefault = useCallback(async () => {
-    const defaultResp = await window.psygil?.workspace?.getDefaultPath?.()
-    if (defaultResp?.status !== 'success') return
-    const setResp = await window.psygil?.workspace?.setPath?.(defaultResp.data)
-    if (setResp?.status === 'success') {
-      setWsStatus('ready')
-      await Promise.all([loadTree(), loadCases()])
-    }
-  }, [loadTree, loadCases])
-
-  const handleRefresh = useCallback(() => {
-    void Promise.all([loadTree(), loadCases()])
-  }, [loadTree, loadCases])
-
-  // Always render the shell with header — only the body content changes by status
-  const bodyContent = (): React.JSX.Element => {
-    if (wsStatus === 'no-workspace') {
-      return <WelcomeOverlay onChoose={() => { void handleChooseFolder() }} onUseDefault={() => { void handleUseDefault() }} />
-    }
-    if (wsStatus === 'loading') {
-      return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)', fontSize: 13 }}>
-          Loading…
-        </div>
-      )
-    }
-    return <CasesView cases={cases} treeLookup={treeLookup} onOpenTab={onOpenTab} onContextMenu={setCtxMenu} />
-  }
-
-  return (
-    <div
-      style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)', overflow: 'hidden' }}
-      onClick={() => setCtxMenu(null)}
-    >
-      {/* Context menu */}
-      {ctxMenu !== null && (
-        <ContextMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} />
-      )}
-
-      {/* Panel header — always visible */}
-      <div className="panel-header">
-        <span className="panel-header-title">Cases</span>
-        <button
-          className="panel-hdr-btn"
-          aria-label="New Case"
-          title="New Case"
-          onClick={onNewCase}
-        >
-          &#65291;
-        </button>
-        <button className="panel-hdr-btn" aria-label="Refresh" title="Refresh" onClick={handleRefresh}>
-          &#8635;
-        </button>
-      </div>
-
-      {/* Tree area */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
-        {bodyContent()}
-      </div>
-
-      {/* Resources panel */}
-      <div style={{ borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-        <div className="panel-header">
-          <span className="panel-header-title">Resources</span>
-        </div>
-        <div style={{ padding: '8px 12px' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 0' }}>
-            DSM-5-TR Reference
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 0' }}>
-            State Statutes
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 0' }}>
-            APA Guidelines
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Cases View
-// ---------------------------------------------------------------------------
-
-function CasesView({
-  cases,
-  treeLookup,
-  onOpenTab,
-  onContextMenu,
-}: {
-  readonly cases: readonly CaseRow[]
-  readonly treeLookup: Map<string, FolderNode>
-  readonly onOpenTab: (tab: Tab) => void
-  readonly onContextMenu: (menu: CtxMenu) => void
-}): React.JSX.Element {
-  if (cases.length === 0) {
-    return (
-      <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center' }}>
-        No cases yet. Click + to create one.
-      </div>
-    )
-  }
-
-  return (
-    <>
-      {cases.map((c) => (
-        <CaseNode key={c.case_id} caseRow={c} treeLookup={treeLookup} onOpenTab={onOpenTab} onContextMenu={onContextMenu} />
-      ))}
-    </>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// CaseNode — expandable case with subfolders
-// ---------------------------------------------------------------------------
-
-function CaseNode({
-  caseRow,
-  treeLookup,
-  onOpenTab,
-  onContextMenu,
-}: {
-  readonly caseRow: CaseRow
-  readonly treeLookup: Map<string, FolderNode>
-  readonly onOpenTab: (tab: Tab) => void
-  readonly onContextMenu: (menu: CtxMenu) => void
-}): React.JSX.Element {
-  const [expanded, setExpanded] = useState(false)
-
-  const stage = caseRow.workflow_current_stage ?? 'onboarding'
-  const stageColor = STAGE_COLORS[stage] ?? '#9e9e9e'
-  const stageLabel = STAGE_LABELS[stage] ?? stage
-
-  const caseName = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`
-  const evalType = caseRow.evaluation_type ?? ''
-
-  const caseFolder = caseRow.folder_path ? treeLookup.get(caseRow.folder_path) : undefined
+  activeNodeId,
+  onSetActive,
+  onNodeClick,
+}: TreeNodeProps): React.JSX.Element {
+  const [expanded, setExpanded] = useState(node.expanded ?? false)
+  const hasChildren = (node.children?.length ?? 0) > 0
 
   const handleChevronClick = useCallback(
     (e: React.MouseEvent) => {
@@ -375,14 +286,18 @@ function CaseNode({
     [],
   )
 
-  const handleNameClick = useCallback(() => {
-    onOpenTab({
-      id: `overview:${caseRow.case_id}`,
-      title: caseName,
-      type: 'clinical-overview',
-      caseId: caseRow.case_id,
-    })
-  }, [caseRow.case_id, caseName, onOpenTab])
+  const handleNodeClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.detail === 1 && !e.currentTarget.className.includes('tree-chevron')) {
+        onSetActive(node.id)
+        onNodeClick(node)
+      }
+    },
+    [node, onSetActive, onNodeClick],
+  )
+
+  const indent = 8 + depth * 16
+  const isActive = activeNodeId === node.id
 
   return (
     <>
@@ -390,276 +305,650 @@ function CaseNode({
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '3px 8px',
+          padding: '3px 0',
+          paddingLeft: `${indent}px`,
           gap: 4,
           fontSize: 13,
-          color: 'var(--text)',
-          cursor: 'default',
+          color: isActive ? 'white' : 'var(--text)',
+          cursor: 'pointer',
+          userSelect: 'none',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          transition: 'background 0.1s',
+          background: isActive ? 'var(--accent)' : 'transparent',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--highlight)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+        onMouseEnter={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.background = 'var(--highlight)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.background = 'transparent'
+          }
+        }}
+        onClick={handleNodeClick}
       >
-        {/* Chevron — expand/collapse only */}
-        <span
-          style={{ width: 16, fontSize: 10, color: 'var(--text-secondary)', flexShrink: 0, textAlign: 'center', cursor: 'pointer' }}
-          onClick={handleChevronClick}
-          title={expanded ? 'Collapse' : 'Expand'}
-        >
-          {expanded ? '\u25BE' : '\u25B8'}
-        </span>
+        {/* Chevron */}
+        {hasChildren ? (
+          <span
+            className="tree-chevron"
+            style={{
+              width: 16,
+              fontSize: 10,
+              color: isActive ? 'white' : 'var(--text-secondary)',
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+            onClick={handleChevronClick}
+            title={expanded ? 'Collapse' : 'Expand'}
+          >
+            {expanded ? '▾' : '▸'}
+          </span>
+        ) : (
+          <span
+            style={{
+              width: 16,
+              flexShrink: 0,
+              visibility: 'hidden',
+            }}
+          />
+        )}
 
-        {/* Name + eval type — opens tab */}
-        <span
-          style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, cursor: 'pointer' }}
-          onClick={handleNameClick}
-          title={`Open ${caseName}`}
-        >
-          <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>{caseName}</span>
-          {evalType !== '' && (
-            <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>{evalType}</span>
-          )}
-        </span>
-
-        {/* Pipeline stage pill */}
+        {/* Icon */}
         <span
           style={{
-            background: stageColor,
-            color: '#ffffff',
-            fontSize: 10,
-            fontWeight: 600,
-            borderRadius: 3,
-            padding: '2px 6px',
+            width: 16,
+            height: 16,
             flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 14,
+            color: isActive ? 'white' : 'var(--text-secondary)',
+          }}
+        >
+          {node.icon}
+        </span>
+
+        {/* Label */}
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}
         >
-          {stageLabel}
+          {node.label}
         </span>
-      </div>
 
-      {expanded &&
-        CASE_SUBFOLDERS.map((sub) => {
-          const subNode = caseFolder?.children?.find((c) => c.name === sub)
-          return (
-            <FolderSubNode key={sub} name={sub} folderNode={subNode} depth={1} onOpenTab={onOpenTab} onContextMenu={onContextMenu} />
-          )
-        })}
-    </>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// FolderSubNode — subfolder within a case (Collateral, Testing, etc.)
-// ---------------------------------------------------------------------------
-
-function FolderSubNode({
-  name,
-  folderNode,
-  depth,
-  onOpenTab,
-  onContextMenu,
-}: {
-  readonly name: string
-  readonly folderNode: FolderNode | undefined
-  readonly depth: number
-  readonly onOpenTab: (tab: Tab) => void
-  readonly onContextMenu: (menu: CtxMenu) => void
-}): React.JSX.Element {
-  const [expanded, setExpanded] = useState(false)
-
-  const children = folderNode?.children ?? []
-  const fileCount = children.filter((c) => !c.isDirectory).length
-
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      if (folderNode?.path) {
-        e.preventDefault()
-        e.stopPropagation()
-        onContextMenu({ x: e.clientX, y: e.clientY, path: folderNode.path, isDirectory: true })
-      }
-    },
-    [folderNode?.path, onContextMenu],
-  )
-
-  return (
-    <>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '3px 8px',
-          paddingLeft: 8 + depth * 16,
-          gap: 4,
-          cursor: 'pointer',
-          fontSize: 13,
-          color: 'var(--text)',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--highlight)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-        onClick={() => setExpanded((p) => !p)}
-        onContextMenu={handleContextMenu}
-      >
-        <span style={{ width: 16, fontSize: 10, color: 'var(--text-secondary)', flexShrink: 0, textAlign: 'center' }}>
-          {expanded ? '\u25BE' : '\u25B8'}
-        </span>
-        <span style={{ width: 16, height: 16, fontSize: 14, flexShrink: 0, color: 'var(--text-secondary)' }}>
-          {'\u{1F4C1}'}
-        </span>
-        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {name}
-        </span>
-        {fileCount > 0 && (
+        {/* Stage color circle — only on case folder nodes */}
+        {node.stageColor && (
           <span
             style={{
-              background: 'var(--accent)',
-              color: '#ffffff',
-              fontSize: 10,
-              fontWeight: 600,
-              borderRadius: 3,
-              padding: '1px 5px',
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: node.stageColor,
               flexShrink: 0,
+              marginLeft: 'auto',
+              marginRight: 4,
+              boxShadow: isActive ? '0 0 0 1px rgba(255,255,255,0.5)' : 'none',
             }}
-          >
-            {fileCount}
-          </span>
+            title={`Stage: ${Object.entries(STAGE_COLORS).find(([, c]) => c === node.stageColor)?.[0] ?? ''}`}
+          />
         )}
       </div>
 
-      {expanded &&
-        children.map((child) =>
-          child.isDirectory ? (
-            <FolderSubNode key={child.path} name={child.name} folderNode={child} depth={depth + 1} onOpenTab={onOpenTab} onContextMenu={onContextMenu} />
-          ) : (
-            <FileLeafNode key={child.path} node={child} depth={depth + 1} onOpenTab={onOpenTab} onContextMenu={onContextMenu} />
-          ),
-        )}
+      {/* Children */}
+      {hasChildren && expanded && (
+        <div>
+          {node.children!.map((child) => (
+            <TreeNodeComponent
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              onOpenTab={onOpenTab}
+              activeNodeId={activeNodeId}
+              onSetActive={onSetActive}
+              onNodeClick={onNodeClick}
+            />
+          ))}
+        </div>
+      )}
     </>
   )
 }
 
 // ---------------------------------------------------------------------------
-// FileLeafNode — clickable file that opens a tab
+// Main LeftColumn Component
 // ---------------------------------------------------------------------------
 
-function FileLeafNode({
-  node,
-  depth,
+export default function LeftColumn({
   onOpenTab,
-  onContextMenu,
-}: {
-  readonly node: FolderNode
-  readonly depth: number
-  readonly onOpenTab: (tab: Tab) => void
-  readonly onContextMenu: (menu: CtxMenu) => void
-}): React.JSX.Element {
-  const handleClick = useCallback(() => {
-    onOpenTab({ id: `doc:${node.path}`, title: node.name, type: 'document', filePath: node.path })
-  }, [node.path, node.name, onOpenTab])
+  onNewCase,
+  refreshRef,
+}: LeftColumnProps): React.JSX.Element {
+  // =========================================================================
+  // STATE
+  // =========================================================================
 
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      onContextMenu({ x: e.clientX, y: e.clientY, path: node.path, isDirectory: false })
+  // DB case metadata — used for color/badge overlay ONLY
+  const [cases, setCases] = useState<readonly CaseRow[]>([])
+  // Filesystem tree — the ACTUAL source of truth for what appears in the tree
+  const [fsTree, setFsTree] = useState<readonly FolderNode[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeNodeId, setActiveNodeId] = useState<string | null>(null)
+
+  // Filters
+  const [stageFilter, setStageFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const filterRef = useRef<HTMLDivElement>(null)
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    if (!showFilterMenu) return
+    const handler = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setShowFilterMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showFilterMenu])
+
+  // =========================================================================
+  // DATA LOADING
+  // =========================================================================
+
+  /**
+   * Load BOTH the filesystem tree AND the DB case list.
+   * The filesystem tree is the source of truth for structure.
+   * The DB case list provides metadata overlay (stage, eval type, colors).
+   */
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    try {
+      // Fetch filesystem tree and DB cases in parallel
+      const [treeResp, casesResp] = await Promise.all([
+        window.psygil?.workspace?.getTree?.(),
+        window.psygil?.cases?.list?.(),
+      ])
+
+      if (treeResp?.status === 'success') {
+        setFsTree(treeResp.data)
+      }
+      if (casesResp?.status === 'success') {
+        setCases(casesResp.data.cases)
+      }
+    } catch (err) {
+      console.error('[LeftColumn] Error loading data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Expose loadData via refreshRef so parent can trigger refresh
+  const loadDataRef = useRef(loadData)
+  loadDataRef.current = loadData
+  useEffect(() => {
+    refreshRef.current = () => {
+      void loadDataRef.current()
+    }
+  }, [refreshRef])
+
+  // Load on mount
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  // =========================================================================
+  // FILESYSTEM WATCHER — auto-refresh tree when files change on disk
+  // =========================================================================
+  // When chokidar detects a change, we re-fetch the full tree.
+  // This keeps the UI in perfect sync with the filesystem at all times.
+
+  useEffect(() => {
+    const handler = (): void => {
+      // Re-fetch tree on any filesystem change
+      void loadDataRef.current()
+    }
+
+    window.psygil?.workspace?.onFileChanged?.(handler)
+
+    return () => {
+      window.psygil?.workspace?.offFileChanged?.()
+    }
+  }, [])
+
+  // =========================================================================
+  // DB METADATA INDEX — map case_number → CaseRow for O(1) lookups
+  // =========================================================================
+
+  const casesByNumber = useMemo(() => {
+    const map = new Map<string, CaseRow>()
+    for (const c of cases) {
+      if (c.case_number) {
+        map.set(c.case_number, c)
+      }
+    }
+    return map
+  }, [cases])
+
+  // =========================================================================
+  // TREE CONSTRUCTION — filesystem + metadata overlay
+  // =========================================================================
+  // buildTreeFromFilesystem() takes the raw filesystem tree and the DB case
+  // index, and returns TreeNode[] for rendering.  The DB data adds colors and
+  // labels but NEVER determines which nodes appear.  If it's on disk, it shows.
+
+  const treeData = useMemo(() => {
+    let tree = buildTreeFromFilesystem(fsTree, casesByNumber)
+
+    // Apply filters — these filter CASE FOLDERS by DB metadata, but
+    // non-case entries (system folders, loose files) always show
+    if (stageFilter !== 'all' || typeFilter !== 'all') {
+      tree = tree.filter((node) => {
+        // Always show non-case nodes (dashboard, settings, system, loose files)
+        if (!node.id.startsWith('case-folder:')) return true
+
+        const caseId = node.caseId
+        if (caseId == null) return true // No DB match — show it anyway
+
+        const dbCase = cases.find((c) => c.case_id === caseId)
+        if (!dbCase) return true
+
+        if (stageFilter !== 'all') {
+          const stage = dbCase.workflow_current_stage ?? 'onboarding'
+          if (stage !== stageFilter) return false
+        }
+        if (typeFilter !== 'all') {
+          const evalType = dbCase.evaluation_type ?? ''
+          if (evalType !== typeFilter) return false
+        }
+        return true
+      })
+    }
+
+    return tree
+  }, [fsTree, casesByNumber, cases, stageFilter, typeFilter])
+
+  // Unique eval types for filter dropdown
+  const evalTypes = useMemo(() => {
+    const types = new Set<string>()
+    for (const c of cases) {
+      if (c.evaluation_type) types.add(c.evaluation_type)
+    }
+    return Array.from(types).sort()
+  }, [cases])
+
+  const activeFilterCount = (stageFilter !== 'all' ? 1 : 0) + (typeFilter !== 'all' ? 1 : 0)
+
+  // =========================================================================
+  // NODE CLICK HANDLER — opens appropriate tab based on node type
+  // =========================================================================
+
+  const handleNodeClick = useCallback(
+    (node: TreeNode) => {
+      // If node has an explicit tabType, use it
+      if (node.tabType === 'dashboard') {
+        onOpenTab({ id: 'dashboard', title: 'Dashboard', type: 'dashboard' })
+        return
+      }
+      if (node.tabType === 'settings') {
+        onOpenTab({ id: 'settings', title: 'Settings', type: 'settings' })
+        return
+      }
+      if (node.tabType === 'clinical-overview' && node.caseId != null) {
+        const dbCase = cases.find((c) => c.case_id === node.caseId)
+        const title = dbCase
+          ? `${dbCase.examinee_last_name}, ${dbCase.examinee_first_name}`
+          : 'Clinical Overview'
+        onOpenTab({
+          id: `overview:${node.caseId}`,
+          title,
+          type: 'clinical-overview',
+          caseId: node.caseId,
+        })
+        return
+      }
+      if (node.tabType === 'document-viewer' && node.filePath) {
+        onOpenTab({
+          id: `doc:${node.filePath}`,
+          title: node.label,
+          type: 'document-viewer',
+          filePath: node.filePath,
+          caseId: node.caseId,
+        })
+        return
+      }
+
+      // For folder nodes with children, just toggle expand (handled by chevron)
+      // No-op for folders clicked on the label — they just expand/activate
     },
-    [node.path, onContextMenu],
+    [cases, onOpenTab],
   )
 
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '3px 8px',
-        paddingLeft: 8 + depth * 16,
-        gap: 4,
-        cursor: 'pointer',
-        fontSize: 13,
-        color: 'var(--text)',
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--highlight)' }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
-    >
-      <span style={{ width: 16, flexShrink: 0 }} />
-      <span style={{ width: 16, height: 16, fontSize: 14, flexShrink: 0, color: 'var(--text-secondary)' }}>
-        {'\u{1F4C4}'}
-      </span>
-      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {node.name}
-      </span>
-    </div>
-  )
-}
+  // =========================================================================
+  // RENDER
+  // =========================================================================
 
-// ---------------------------------------------------------------------------
-// WelcomeOverlay — first-launch workspace picker
-// ---------------------------------------------------------------------------
-
-function WelcomeOverlay({
-  onChoose,
-  onUseDefault,
-}: {
-  readonly onChoose: () => void
-  readonly onUseDefault: () => void
-}): React.JSX.Element {
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
         height: '100%',
         background: 'var(--bg)',
-        padding: '24px 16px',
-        textAlign: 'center',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ fontSize: 32, marginBottom: 12 }}>{'\u{1F4C2}'}</div>
-      <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>
-        Welcome to Psygil
-      </div>
-      <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5, maxWidth: 220 }}>
-        Choose a folder to store your case files. This folder will contain all your cases, documents, and reports.
-      </div>
-      <button
-        onClick={onChoose}
+      {/* Panel header */}
+      <div
+        className="panel-header"
         style={{
-          background: 'var(--accent)',
-          color: '#ffffff',
-          border: 'none',
-          borderRadius: 4,
-          padding: '8px 20px',
-          fontSize: 13,
+          display: 'flex',
+          alignItems: 'center',
+          height: 32,
+          padding: '0 12px',
+          background: 'var(--panel)',
+          borderBottom: '1px solid var(--border)',
+          fontSize: 11,
           fontWeight: 600,
-          cursor: 'pointer',
-          marginBottom: 8,
-          width: '100%',
-          maxWidth: 200,
-        }}
-      >
-        Choose Folder
-      </button>
-      <button
-        onClick={onUseDefault}
-        style={{
-          background: 'transparent',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
           color: 'var(--text-secondary)',
-          border: '1px solid var(--border)',
-          borderRadius: 4,
-          padding: '8px 20px',
-          fontSize: 13,
-          cursor: 'pointer',
-          width: '100%',
-          maxWidth: 200,
+          userSelect: 'none',
+          flexShrink: 0,
+          gap: 6,
         }}
       >
-        Use Default
-      </button>
-      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 12, opacity: 0.7 }}>
-        Default: ~/Documents/Psygil Cases/
+        <span>CASES</span>
+        {/* Filter button */}
+        <div ref={filterRef} style={{ position: 'relative', marginLeft: 'auto' }}>
+          <button
+            onClick={() => setShowFilterMenu((p) => !p)}
+            style={{
+              background: activeFilterCount > 0 ? 'var(--accent)' : 'none',
+              border: 'none',
+              color: activeFilterCount > 0 ? '#fff' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontSize: 10,
+              padding: activeFilterCount > 0 ? '1px 5px' : 0,
+              borderRadius: 3,
+              width: activeFilterCount > 0 ? 'auto' : 20,
+              height: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 3,
+            }}
+            title="Filter cases"
+          >
+            <span style={{ fontSize: 12 }}>&#9776;</span>
+            {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
+          </button>
+          {showFilterMenu && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 24,
+                right: 0,
+                width: 200,
+                background: 'var(--panel)',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                zIndex: 100,
+                padding: '8px 0',
+              }}
+            >
+              {/* Stage filter */}
+              <div style={{ padding: '4px 12px' }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                  Stage
+                </div>
+                <select
+                  value={stageFilter}
+                  onChange={(e) => setStageFilter(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '4px 6px',
+                    fontSize: 12,
+                    background: 'var(--bg)',
+                    color: 'var(--text)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <option value="all">All Stages</option>
+                  <option value="onboarding">Onboarding</option>
+                  <option value="testing">Testing</option>
+                  <option value="interview">Interview</option>
+                  <option value="diagnostics">Diagnostics</option>
+                  <option value="review">Review</option>
+                  <option value="complete">Complete</option>
+                </select>
+              </div>
+              {/* Type filter */}
+              <div style={{ padding: '4px 12px' }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                  Eval Type
+                </div>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '4px 6px',
+                    fontSize: 12,
+                    background: 'var(--bg)',
+                    color: 'var(--text)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <option value="all">All Types</option>
+                  {evalTypes.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Clear button */}
+              {activeFilterCount > 0 && (
+                <div style={{ padding: '6px 12px 2px', borderTop: '1px solid var(--border)', marginTop: 4 }}>
+                  <button
+                    onClick={() => {
+                      setStageFilter('all')
+                      setTypeFilter('all')
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '4px 0',
+                      fontSize: 11,
+                      fontWeight: 500,
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--accent)',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={onNewCase}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontSize: 14,
+            padding: 0,
+            width: 20,
+            height: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="New Case"
+        >
+          +
+        </button>
+        <button
+          onClick={() => {
+            void loadData()
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontSize: 14,
+            padding: 0,
+            width: 20,
+            height: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title="Refresh"
+        >
+          ↻
+        </button>
+      </div>
+
+      {/* Tree container */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '4px 0',
+        }}
+      >
+        {loading ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: 'var(--text-secondary)',
+              fontSize: 13,
+            }}
+          >
+            Loading…
+          </div>
+        ) : (
+          <div>
+            {treeData.map((node) => (
+              <TreeNodeComponent
+                key={node.id}
+                node={node}
+                depth={0}
+                onOpenTab={onOpenTab}
+                activeNodeId={activeNodeId}
+                onSetActive={setActiveNodeId}
+                onNodeClick={handleNodeClick}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Resources panel */}
+      <div
+        style={{
+          borderTop: '1px solid var(--border)',
+          flexShrink: 0,
+        }}
+      >
+        <div
+          className="panel-header"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            height: 32,
+            padding: '0 12px',
+            background: 'var(--panel)',
+            borderBottom: '1px solid var(--border)',
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            color: 'var(--text-secondary)',
+            userSelect: 'none',
+          }}
+        >
+          RESOURCES
+        </div>
+        <div
+          style={{
+            padding: '8px 12px',
+            fontSize: 12,
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <div
+            style={{
+              cursor: 'pointer',
+              padding: '4px 0',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--accent)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-secondary)'
+            }}
+          >
+            DSM-5-TR Reference
+          </div>
+          <div
+            style={{
+              cursor: 'pointer',
+              padding: '4px 0',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--accent)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-secondary)'
+            }}
+          >
+            Colorado CST Statute
+          </div>
+          <div
+            style={{
+              cursor: 'pointer',
+              padding: '4px 0',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--accent)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-secondary)'
+            }}
+          >
+            Dusky Standard
+          </div>
+        </div>
       </div>
     </div>
   )

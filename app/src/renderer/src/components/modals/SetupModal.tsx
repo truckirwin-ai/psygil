@@ -46,7 +46,7 @@ export default function SetupModal({ isOpen, onClose, onWorkspaceSet }: SetupMod
         setStatus({ kind: 'success', message: 'Workspace updated.' })
         onWorkspaceSet()
       } else {
-        setStatus({ kind: 'error', message: setResp?.error?.message ?? 'Failed to set workspace.' })
+        setStatus({ kind: 'error', message: (setResp?.status === 'error' ? setResp.message : null) ?? 'Failed to set workspace.' })
       }
     } catch (e) {
       setStatus({ kind: 'error', message: e instanceof Error ? e.message : 'Unknown error' })
@@ -71,7 +71,7 @@ export default function SetupModal({ isOpen, onClose, onWorkspaceSet }: SetupMod
         setStatus({ kind: 'success', message: 'Workspace set to default.' })
         onWorkspaceSet()
       } else {
-        setStatus({ kind: 'error', message: setResp?.error?.message ?? 'Failed to set workspace.' })
+        setStatus({ kind: 'error', message: (setResp?.status === 'error' ? setResp.message : null) ?? 'Failed to set workspace.' })
       }
     } catch (e) {
       setStatus({ kind: 'error', message: e instanceof Error ? e.message : 'Unknown error' })

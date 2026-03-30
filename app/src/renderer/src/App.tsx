@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import Titlebar from './components/layout/Titlebar'
 import Statusbar from './components/layout/Statusbar'
 import LeftColumn from './components/layout/LeftColumn'
@@ -49,10 +49,40 @@ export default function App(): React.JSX.Element {
   const [intakeEditCaseId, setIntakeEditCaseId] = useState<number | undefined>(undefined)
 
   // Tab state — managed here, passed down to LeftColumn + CenterColumn
-  const [tabState, setTabState] = useState<TabState>({ tabs: [], activeId: null })
+  // Dashboard is always present and pinned as the first tab
+  const DASHBOARD_TAB: Tab = { id: 'dashboard', title: 'Dashboard', type: 'dashboard' }
+  const [tabState, setTabState] = useState<TabState>({
+    tabs: [DASHBOARD_TAB],
+    activeId: 'dashboard',
+  })
 
   // Ref to allow LeftColumn to refresh its case list imperatively
   const refreshCasesRef = useRef<(() => void) | null>(null)
+
+  // Cases list — shared between LeftColumn and CenterColumn (Dashboard)
+  const [cases, setCases] = useState<CaseRow[]>([])
+
+  // Load cases on mount + when refreshed
+  const loadCases = useCallback(async () => {
+    try {
+      const resp = await window.psygil.cases.list()
+      if (resp.status === 'success') {
+        setCases(resp.data.cases as CaseRow[])
+      }
+    } catch {
+      // silent
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadCases()
+  }, [loadCases])
+
+  // Derive active case ID from active tab
+  const activeCaseId = useMemo(() => {
+    const activeTab = tabState.tabs.find((t) => t.id === tabState.activeId)
+    return activeTab?.caseId ?? null
+  }, [tabState])
 
   const openTab = useCallback((tab: Tab) => {
     setTabState((prev) => {
@@ -64,12 +94,15 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const closeTab = useCallback((id: string) => {
+    // Dashboard is pinned — cannot be closed
+    if (id === 'dashboard') return
     setTabState((prev) => {
       const idx = prev.tabs.findIndex((t) => t.id === id)
       if (idx === -1) return prev
       const next = [...prev.tabs.slice(0, idx), ...prev.tabs.slice(idx + 1)]
       let activeId = prev.activeId
       if (activeId === id) {
+        // Fall back to dashboard when closing the active tab
         activeId = next.length === 0 ? null : next[Math.min(idx, next.length - 1)].id
       }
       return { tabs: next, activeId }
@@ -131,8 +164,9 @@ export default function App(): React.JSX.Element {
 
   // Called after a new case is created successfully
   const handleCaseSaved = useCallback((caseRow: CaseRow) => {
-    // Refresh the case list in LeftColumn
+    // Refresh the case list in LeftColumn + global cases state
     refreshCasesRef.current?.()
+    void loadCases()
 
     // Open the new case's Clinical Overview tab
     const title = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`
@@ -182,7 +216,6 @@ export default function App(): React.JSX.Element {
           <LeftColumn
             onOpenTab={openTab}
             onNewCase={handleNewCase}
-            onEditIntake={handleEditIntake}
             refreshRef={refreshCasesRef}
           />
         </div>
@@ -204,6 +237,8 @@ export default function App(): React.JSX.Element {
             onCloseTab={closeTab}
             onSetActiveTab={setActiveTab}
             onEditIntake={handleEditIntake}
+            onOpenTab={openTab}
+            cases={cases}
           />
         </div>
 
@@ -219,7 +254,7 @@ export default function App(): React.JSX.Element {
             overflow: 'hidden',
           }}
         >
-          <RightColumn />
+          <RightColumn activeCaseId={activeCaseId} onOpenTab={openTab} />
         </div>
       </div>
 

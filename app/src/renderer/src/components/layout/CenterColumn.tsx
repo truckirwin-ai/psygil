@@ -2,6 +2,18 @@ import { useState, useCallback, useEffect } from 'react'
 import type { Tab } from '../../types/tabs'
 import type { CaseRow, PatientIntakeRow } from '../../../../shared/types/ipc'
 
+// New standalone tab components
+import DashboardTab from '../tabs/DashboardTab'
+import TestResultsTab from '../tabs/TestResultsTab'
+import { DiagnosticsTab } from '../tabs/DiagnosticsTab'
+import EvalReportTab from '../tabs/EvalReportTab'
+import { AttestationTab } from '../tabs/AttestationTab'
+import { AuditTrailTab } from '../tabs/AuditTrailTab'
+import SettingsTab from '../tabs/SettingsTab'
+import DocumentViewerTab from '../tabs/DocumentViewerTab'
+import EvidenceMapTab from '../tabs/EvidenceMapTab'
+import PipelinePanel from '../tabs/PipelinePanel'
+
 // ---------------------------------------------------------------------------
 // Pipeline stage constants
 // ---------------------------------------------------------------------------
@@ -389,6 +401,8 @@ interface CenterColumnProps {
   readonly onCloseTab: (id: string) => void
   readonly onSetActiveTab: (id: string) => void
   readonly onEditIntake: (caseId: number) => void
+  readonly onOpenTab: (tab: Tab) => void
+  readonly cases: readonly CaseRow[]
 }
 
 // ---------------------------------------------------------------------------
@@ -401,8 +415,17 @@ export default function CenterColumn({
   onCloseTab,
   onSetActiveTab,
   onEditIntake,
+  onOpenTab,
+  cases,
 }: CenterColumnProps): React.JSX.Element {
   const activeTab = tabs.find((t) => t.id === activeTabId)
+
+  // Derive current stage from active tab's case for the pipeline panel
+  const activeCaseId = activeTab?.caseId ?? null
+  const activeCase = activeCaseId != null
+    ? (cases as CaseRow[]).find((c) => c.case_id === activeCaseId) ?? null
+    : null
+  const activeCaseStage = activeCase?.workflow_current_stage ?? null
 
   return (
     <div
@@ -459,29 +482,48 @@ export default function CenterColumn({
           <WelcomeContent />
         ) : activeTab.type === 'clinical-overview' ? (
           <ClinicalOverviewContent tab={activeTab} onEditIntake={onEditIntake} />
+        ) : activeTab.type === 'dashboard' ? (
+          <DashboardTab
+            cases={cases as CaseRow[]}
+            onCaseClick={(caseId) => {
+              const c = (cases as CaseRow[]).find((r) => r.case_id === caseId)
+              if (c) {
+                onOpenTab({
+                  id: `overview:${c.case_id}`,
+                  title: `${c.examinee_last_name}, ${c.examinee_first_name}`,
+                  type: 'clinical-overview',
+                  caseId: c.case_id,
+                })
+              }
+            }}
+          />
+        ) : activeTab.type === 'tests' ? (
+          <TestResultsTab caseId={activeTab.caseId!} />
+        ) : activeTab.type === 'diagnostics' ? (
+          <DiagnosticsTab caseId={activeTab.caseId!} />
+        ) : activeTab.type === 'report' ? (
+          <EvalReportTab caseId={activeTab.caseId!} />
+        ) : activeTab.type === 'attestation' ? (
+          <AttestationTab caseId={activeTab.caseId!} />
+        ) : activeTab.type === 'audit' ? (
+          <AuditTrailTab caseId={activeTab.caseId!} />
+        ) : activeTab.type === 'settings' ? (
+          <SettingsTab />
+        ) : activeTab.type === 'document-viewer' ? (
+          <DocumentViewerTab
+            caseId={activeTab.caseId!}
+            documentType={activeTab.documentType ?? 'collateral'}
+            documentId={activeTab.documentId}
+          />
+        ) : activeTab.type === 'evidence-map' ? (
+          <EvidenceMapTab caseId={activeTab.caseId!} />
         ) : (
           <DocumentContent tab={activeTab} />
         )}
       </div>
 
       {/* Pipeline bar — 80px */}
-      <div
-        style={{
-          height: 80,
-          flexShrink: 0,
-          borderTop: '1px solid var(--border)',
-          background: 'var(--panel)',
-        }}
-      >
-        <div className="panel-header" style={{ borderBottom: 'none' }}>
-          <span className="panel-header-title">Evaluation Pipeline</span>
-        </div>
-        <div style={{ display: 'flex', gap: 4, padding: '8px 12px', flexWrap: 'wrap' }}>
-          {PIPELINE_STAGES.map((stage) => (
-            <PipelinePill key={stage.label} label={stage.label} color={stage.color} />
-          ))}
-        </div>
-      </div>
+      <PipelinePanel currentStage={activeCaseStage} />
     </div>
   )
 }
@@ -504,7 +546,8 @@ function TabButton({
   const [hovered, setHovered] = useState(false)
   const [closeHovered, setCloseHovered] = useState(false)
 
-  const showClose = isActive || hovered
+  const isPinned = tab.type === 'dashboard'
+  const showClose = !isPinned && (isActive || hovered)
 
   const handleClose = useCallback(
     (e: React.MouseEvent) => {

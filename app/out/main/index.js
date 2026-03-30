@@ -49,6 +49,8 @@ function _interopNamespaceDefault(e) {
   n.default = e;
   return Object.freeze(n);
 }
+const path__namespace = /* @__PURE__ */ _interopNamespaceDefault(path);
+const fs__namespace = /* @__PURE__ */ _interopNamespaceDefault(fs);
 const net__namespace = /* @__PURE__ */ _interopNamespaceDefault(net);
 const TOKEN_KEYS = {
   ID_TOKEN: "psygil_id_token",
@@ -1347,6 +1349,27 @@ async function batchDetect(texts) {
     }))
   );
 }
+async function redact(text, operationId, context) {
+  const result = await rpcCall("pii/redact", { text, operationId, context });
+  return {
+    redactedText: result.redactedText,
+    entityCount: result.entityCount,
+    typeBreakdown: result.typeBreakdown
+  };
+}
+async function rehydrate(text, operationId) {
+  const result = await rpcCall("pii/rehydrate", { text, operationId });
+  return {
+    fullText: result.fullText,
+    unidsReplaced: result.unidsReplaced
+  };
+}
+async function destroyMap(operationId) {
+  const result = await rpcCall("pii/destroy", { operationId });
+  return {
+    destroyed: result.destroyed
+  };
+}
 const CASE_SUBFOLDERS = [
   "_Inbox",
   "Collateral",
@@ -1643,6 +1666,240 @@ function deleteDocument(docId) {
     throw new Error(`Document ${docId} not found`);
   }
   sqlite.prepare("DELETE FROM documents WHERE document_id = ?").run(docId);
+}
+const getKeyPath = () => {
+  return path__namespace.join(electron.app.getPath("userData"), "psygil-api-key.enc");
+};
+function checkEncryptionAvailable() {
+  if (!electron.safeStorage.isEncryptionAvailable()) {
+    throw new Error(
+      "Encryption not available: OS credential storage unavailable. API keys cannot be stored securely on this system."
+    );
+  }
+}
+function storeApiKey(key) {
+  checkEncryptionAvailable();
+  if (!key || key.trim().length === 0) {
+    throw new Error("API key cannot be empty");
+  }
+  const encrypted = electron.safeStorage.encryptString(key);
+  const keyPath = getKeyPath();
+  try {
+    fs__namespace.writeFileSync(keyPath, encrypted, { mode: 384 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to write key file";
+    throw new Error(`Failed to store API key: ${message}`);
+  }
+}
+function retrieveApiKey() {
+  checkEncryptionAvailable();
+  const keyPath = getKeyPath();
+  if (!fs__namespace.existsSync(keyPath)) {
+    return null;
+  }
+  try {
+    const encrypted = fs__namespace.readFileSync(keyPath);
+    const decrypted = electron.safeStorage.decryptString(encrypted);
+    return decrypted;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to decrypt key";
+    throw new Error(`Failed to retrieve API key: ${message}`);
+  }
+}
+function hasApiKey() {
+  const keyPath = getKeyPath();
+  return fs__namespace.existsSync(keyPath);
+}
+function deleteApiKey() {
+  const keyPath = getKeyPath();
+  if (!fs__namespace.existsSync(keyPath)) {
+    return false;
+  }
+  try {
+    fs__namespace.unlinkSync(keyPath);
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to delete key file";
+    throw new Error(`Failed to delete API key: ${message}`);
+  }
+}
+class AnthropicApiError extends Error {
+  constructor(statusCode, errorType, message) {
+    super(message);
+    this.statusCode = statusCode;
+    this.errorType = errorType;
+    this.name = "AnthropicApiError";
+  }
+}
+async function callClaude(apiKey, options) {
+  const {
+    systemPrompt,
+    userMessage,
+    model = "claude-sonnet-4-20250514",
+    maxTokens = 4096,
+    temperature = 0
+  } = options;
+  if (!apiKey || apiKey.trim().length === 0) {
+    throw new Error("API key is required");
+  }
+  if (!systemPrompt || systemPrompt.trim().length === 0) {
+    throw new Error("System prompt is required");
+  }
+  if (!userMessage || userMessage.trim().length === 0) {
+    throw new Error("User message is required");
+  }
+  const requestBody = {
+    model,
+    max_tokens: maxTokens,
+    system: systemPrompt,
+    messages: [
+      {
+        role: "user",
+        content: userMessage
+      }
+    ],
+    temperature
+  };
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify(requestBody)
+    });
+    if (response.status === 401) {
+      throw new AnthropicApiError(401, "AUTHENTICATION_FAILED", "Invalid API key");
+    }
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("retry-after") || "60";
+      const message = `Rate limited. Retry after ${retryAfter} seconds`;
+      throw new AnthropicApiError(429, "RATE_LIMIT", message);
+    }
+    if (response.status === 500 || response.status === 502 || response.status === 503) {
+      throw new AnthropicApiError(
+        response.status,
+        "SERVICE_UNAVAILABLE",
+        "API temporarily unavailable"
+      );
+    }
+    if (!response.ok) {
+      let errorMessage = "Unexpected API response";
+      try {
+        const errorData = await response.json();
+        if (errorData.error?.message) {
+          errorMessage = errorData.error.message;
+        }
+      } catch {
+        try {
+          errorMessage = await response.text();
+        } catch {
+          errorMessage = `HTTP ${response.status}`;
+        }
+      }
+      throw new AnthropicApiError(response.status, "API_ERROR", errorMessage);
+    }
+    const data = await response.json();
+    const textContent = data.content.find((c) => c.type === "text");
+    if (!textContent || textContent.type !== "text") {
+      throw new Error("No text content in API response");
+    }
+    return {
+      content: textContent.text,
+      model: data.model,
+      inputTokens: data.usage.input_tokens,
+      outputTokens: data.usage.output_tokens,
+      stopReason: data.stop_reason
+    };
+  } catch (e) {
+    if (e instanceof AnthropicApiError) {
+      throw e;
+    }
+    if (e instanceof Error) {
+      if (e.message.includes("fetch")) {
+        throw new AnthropicApiError(0, "NETWORK_ERROR", `Cannot reach Anthropic API: ${e.message}`);
+      }
+      throw e;
+    }
+    throw new Error("Claude API call failed");
+  }
+}
+function ok$1(data) {
+  return { status: "success", data };
+}
+function fail$1(error_code, message) {
+  return { status: "error", error_code, message };
+}
+function registerAiHandlers() {
+  electron.ipcMain.handle(
+    "ai:complete",
+    async (_event, params) => {
+      try {
+        if (!params.systemPrompt || !params.userMessage) {
+          return fail$1("INVALID_REQUEST", "systemPrompt and userMessage are required");
+        }
+        const apiKey = retrieveApiKey();
+        if (!apiKey) {
+          return fail$1("NO_API_KEY", "Claude API key not configured");
+        }
+        const response = await callClaude(apiKey, {
+          systemPrompt: params.systemPrompt,
+          userMessage: params.userMessage,
+          model: params.model,
+          maxTokens: params.maxTokens
+        });
+        return ok$1(response);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "AI completion failed";
+        console.error("[ai:complete] error:", message);
+        if (message.includes("Invalid API key")) {
+          return fail$1("AUTHENTICATION_FAILED", "Invalid Claude API key");
+        }
+        if (message.includes("Rate limited")) {
+          return fail$1("RATE_LIMITED", message);
+        }
+        if (message.includes("temporarily unavailable")) {
+          return fail$1("SERVICE_UNAVAILABLE", "Claude API temporarily unavailable");
+        }
+        if (message.includes("Cannot reach")) {
+          return fail$1("NETWORK_ERROR", "Cannot reach Claude API");
+        }
+        return fail$1("AI_ERROR", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "ai:testConnection",
+    async (_event, _params) => {
+      try {
+        const apiKey = retrieveApiKey();
+        if (!apiKey) {
+          return ok$1({
+            connected: false,
+            error: "Claude API key not configured"
+          });
+        }
+        const response = await callClaude(apiKey, {
+          systemPrompt: "You are a helpful assistant.",
+          userMessage: 'Say "ok".',
+          maxTokens: 10
+        });
+        return ok$1({
+          connected: true,
+          model: response.model
+        });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Connection test failed";
+        console.error("[ai:testConnection] error:", message);
+        return ok$1({
+          connected: false,
+          error: message
+        });
+      }
+    }
+  );
 }
 function ok(data) {
   return { status: "success", data };
@@ -1977,6 +2234,42 @@ function registerPiiHandlers() {
       }
     }
   );
+  electron.ipcMain.handle(
+    "pii:redact",
+    async (_event, params) => {
+      try {
+        const result = await redact(params.text, params.operationId, params.context);
+        return ok(result);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "PII redaction failed";
+        return fail("PII_REDACT_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "pii:rehydrate",
+    async (_event, params) => {
+      try {
+        const result = await rehydrate(params.text, params.operationId);
+        return ok(result);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "PII rehydration failed";
+        return fail("PII_REHYDRATE_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "pii:destroy",
+    async (_event, params) => {
+      try {
+        const result = await destroyMap(params.operationId);
+        return ok(result);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "PII map destruction failed";
+        return fail("PII_DESTROY_FAILED", message);
+      }
+    }
+  );
 }
 function registerSeedHandlers() {
   electron.ipcMain.handle(
@@ -1994,6 +2287,56 @@ function registerSeedHandlers() {
     }
   );
 }
+function registerApiKeyHandlers() {
+  electron.ipcMain.handle(
+    "apiKey:store",
+    (_event, params) => {
+      try {
+        storeApiKey(params.key);
+        return ok({ stored: true });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to store API key";
+        return fail("API_KEY_STORE_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "apiKey:retrieve",
+    () => {
+      try {
+        const key = retrieveApiKey();
+        return ok({ key });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to retrieve API key";
+        return fail("API_KEY_RETRIEVE_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "apiKey:delete",
+    () => {
+      try {
+        const deleted = deleteApiKey();
+        return ok({ deleted });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to delete API key";
+        return fail("API_KEY_DELETE_FAILED", message);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "apiKey:has",
+    () => {
+      try {
+        const hasKey = hasApiKey();
+        return ok({ hasKey });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to check API key";
+        return fail("API_KEY_HAS_FAILED", message);
+      }
+    }
+  );
+}
 function registerAllHandlers() {
   registerCasesHandlers();
   registerIntakeHandlers();
@@ -2005,6 +2348,8 @@ function registerAllHandlers() {
   registerPiiHandlers();
   registerWorkspaceHandlers();
   registerSeedHandlers();
+  registerApiKeyHandlers();
+  registerAiHandlers();
 }
 electron.app.disableHardwareAcceleration();
 electron.protocol.registerSchemesAsPrivileged([

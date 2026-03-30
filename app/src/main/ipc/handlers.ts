@@ -86,6 +86,8 @@ import {
   hasApiKey,
 } from '../ai/key-storage'
 import { registerAiHandlers } from '../ai/ai-handlers'
+import { registerAgentHandlers } from '../agents'
+import { registerPipelineHandlers } from '../pipeline/pipeline-handlers'
 
 // ---------------------------------------------------------------------------
 // Stub helper — returns a typed success envelope
@@ -171,7 +173,18 @@ function registerIntakeHandlers(): void {
     'intake:save',
     (_event, params: IntakeSaveParams): IpcResponse<PatientIntakeRow> => {
       try {
-        const row = saveIntake(params.case_id, params.data)
+        const row = saveIntake(params.case_id, {
+          ...params.data,
+          referral_type: params.data.referral_type ?? 'self',
+          referral_source: params.data.referral_source ?? null,
+          eval_type: params.data.eval_type ?? null,
+          presenting_complaint: params.data.presenting_complaint ?? null,
+          jurisdiction: params.data.jurisdiction ?? null,
+          charges: params.data.charges ?? null,
+          attorney_name: params.data.attorney_name ?? null,
+          report_deadline: params.data.report_deadline ?? null,
+          status: params.data.status ?? 'draft',
+        })
         return ok(row)
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to save intake'
@@ -250,17 +263,17 @@ function registerAuthHandlers(): void {
         const parentWindow = BrowserWindow.fromWebContents(event.sender)
         const result = await performLogin(parentWindow)
 
-        if (!result.success) {
-          return fail('LOGIN_FAILED', result.error ?? 'Login failed')
+        if (!result.is_authenticated) {
+          return fail('LOGIN_FAILED', 'Login failed')
         }
 
         const license = checkLicense()
 
         return ok({
           is_authenticated: true,
-          user_id: result.userId ?? '',
-          user_name: result.userName ?? '',
-          user_email: result.email ?? '',
+          user_id: result.user_id ?? '',
+          user_name: result.user_name ?? '',
+          user_email: result.user_email ?? '',
           is_active: license.is_active
         })
       } catch (e) {
@@ -632,4 +645,6 @@ export function registerAllHandlers(): void {
   registerSeedHandlers()
   registerApiKeyHandlers()
   registerAiHandlers()
+  registerAgentHandlers()
+  registerPipelineHandlers()
 }

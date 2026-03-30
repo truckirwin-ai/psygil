@@ -38,7 +38,8 @@ async function extractText(filePath: string, mimeType: string): Promise<string |
   try {
     if (mimeType === 'application/pdf') {
       // pdf-parse expects a Buffer
-      const pdfParse = (await import('pdf-parse')).default
+      const pdfModule = await import('pdf-parse')
+      const pdfParse = (pdfModule as any).default ?? pdfModule
       const buffer = readFileSync(filePath)
       const result = await pdfParse(buffer)
       return result.text || null

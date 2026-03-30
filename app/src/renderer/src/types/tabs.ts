@@ -1,7 +1,18 @@
 // Tab types for center column tab management.
 // Renderer-only — not shared with main process.
 
-export type TabType = 'clinical-overview' | 'document'
+export type TabType =
+  | 'clinical-overview'
+  | 'document'
+  | 'dashboard'
+  | 'tests'
+  | 'diagnostics'
+  | 'report'
+  | 'attestation'
+  | 'audit'
+  | 'settings'
+  | 'document-viewer'
+  | 'evidence-map'
 
 export interface Tab {
   readonly id: string
@@ -9,6 +20,9 @@ export interface Tab {
   readonly type: TabType
   readonly filePath?: string
   readonly caseId?: number
+  /** For document-viewer: which document sub-type to show */
+  readonly documentType?: string
+  readonly documentId?: string
 }
 
 export interface TabState {

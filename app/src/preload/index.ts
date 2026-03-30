@@ -18,6 +18,12 @@ import type {
   ApiKeyStoreParams,
   AiCompleteParams,
   AiTestConnectionParams,
+  AgentRunParams,
+  IngestorRunParams,
+  IngestorGetResultParams,
+  PipelineCheckParams,
+  PipelineAdvanceParams,
+  PipelineConditionsParams,
 } from '../shared/types'
 
 // IPC channel constants — must match main/ipc/handlers.ts
@@ -142,6 +148,22 @@ const api: PsygilApi = {
   ai: {
     complete: (params: AiCompleteParams) => ipcRenderer.invoke('ai:complete', params),
     testConnection: (params?: AiTestConnectionParams) => ipcRenderer.invoke('ai:testConnection', params ?? {}),
+  },
+
+  agent: {
+    run: (params: AgentRunParams) => ipcRenderer.invoke('agent:run', params),
+    status: (operationId?: string) => ipcRenderer.invoke('agent:status', operationId),
+  },
+
+  ingestor: {
+    run: (params: IngestorRunParams) => ipcRenderer.invoke('ingestor:run', params),
+    getResult: (params: IngestorGetResultParams) => ipcRenderer.invoke('ingestor:getResult', params),
+  },
+
+  pipeline: {
+    check: (params: PipelineCheckParams) => ipcRenderer.invoke('pipeline:check', params),
+    advance: (params: PipelineAdvanceParams) => ipcRenderer.invoke('pipeline:advance', params),
+    conditions: (params: PipelineConditionsParams) => ipcRenderer.invoke('pipeline:conditions', params),
   },
 }
 
