@@ -38,20 +38,26 @@ export default function VSplitter({ onResize, onResizeEnd }: VSplitterProps): Re
       className="v-splitter"
       onMouseDown={handleMouseDown}
       style={{
-        width: 2,
-        minWidth: 2,
-        maxWidth: 2,
+        width: 6,
+        minWidth: 6,
+        maxWidth: 6,
         cursor: 'col-resize',
-        background: 'var(--border)',
-        transition: 'background 0.15s',
         flexShrink: 0,
+        /* Visual line is 2px centered inside the 6px hit area */
+        background: 'transparent',
+        borderLeft: '2px solid transparent',
+        borderRight: '2px solid transparent',
+        boxSizing: 'border-box',
+        backgroundClip: 'content-box',
+        backgroundColor: 'var(--border)',
+        transition: 'background-color 0.15s',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--accent)'
+        e.currentTarget.style.backgroundColor = 'var(--accent)'
       }}
       onMouseLeave={(e) => {
         if (!document.body.classList.contains('col-resizing')) {
-          e.currentTarget.style.background = 'var(--border)'
+          e.currentTarget.style.backgroundColor = 'var(--border)'
         }
       }}
     />

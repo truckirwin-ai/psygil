@@ -10,7 +10,7 @@
 import { join } from 'path'
 import { existsSync, mkdirSync, renameSync } from 'fs'
 import { getSqlite } from '../db/connection'
-import { loadWorkspacePath } from '../workspace'
+import { loadWorkspacePath, scaffoldCaseSubfolders } from '../workspace'
 import type {
   CaseRow,
   CreateCaseParams,
@@ -18,20 +18,6 @@ import type {
   PatientOnboardingRow,
   OnboardingSection,
 } from '../../shared/types'
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const CASE_SUBFOLDERS = [
-  '_Inbox',
-  'Collateral',
-  'Testing',
-  'Interviews',
-  'Diagnostics',
-  'Reports',
-  'Archive',
-] as const
 
 // ---------------------------------------------------------------------------
 // Case CRUD
@@ -50,16 +36,8 @@ export function createCase(params: CreateCaseParams): CaseRow {
   const folderName = `${params.case_number} ${params.examinee_last_name}, ${params.examinee_first_name}`
   const folderPath = join(wsPath, folderName)
 
-  // Create folder structure on disk
-  if (!existsSync(folderPath)) {
-    mkdirSync(folderPath, { recursive: true })
-  }
-  for (const sub of CASE_SUBFOLDERS) {
-    const subPath = join(folderPath, sub)
-    if (!existsSync(subPath)) {
-      mkdirSync(subPath, { recursive: true })
-    }
-  }
+  // Create folder structure on disk using canonical subfolders
+  scaffoldCaseSubfolders(folderPath)
 
   // Insert DB record
   const stmt = sqlite.prepare(`
@@ -72,7 +50,7 @@ export function createCase(params: CreateCaseParams): CaseRow {
       @case_number, @primary_clinician_user_id,
       @examinee_first_name, @examinee_last_name, @examinee_dob, @examinee_gender,
       @evaluation_type, @referral_source, @evaluation_questions,
-      'intake', 'gate_1', @folder_path, @notes
+      'intake', 'onboarding', @folder_path, @notes
     )
   `)
 

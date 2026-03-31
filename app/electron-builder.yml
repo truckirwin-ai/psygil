@@ -1,0 +1,65 @@
+appId: com.foundrysmb.psygil
+productName: Psygil
+copyright: Copyright © 2026 Foundry SMB
+
+directories:
+  output: dist
+  buildResources: resources
+
+files:
+  - "out/**/*"
+  - "package.json"
+
+extraResources:
+  - from: "../sidecar"
+    to: "sidecar"
+    filter:
+      - "**/*"
+      - "!__pycache__"
+      - "!*.pyc"
+
+mac:
+  category: public.app-category.medical
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist
+  notarize:
+    teamId: ${env.APPLE_TEAM_ID}
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  sign: scripts/sign-win.js
+  certificateSubjectName: ${env.WIN_CERT_SUBJECT}
+  publisherName: Foundry SMB
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Science
+
+nsis:
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+
+publish:
+  provider: generic
+  url: ${env.UPDATE_SERVER_URL}
+  channel: stable
+
+afterSign: scripts/notarize.js

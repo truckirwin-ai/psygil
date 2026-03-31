@@ -372,6 +372,10 @@ export interface DocumentsDeleteParams {
   readonly document_id: number
 }
 
+export interface PickFilesResult {
+  readonly filePaths: readonly string[]
+}
+
 // ---------------------------------------------------------------------------
 // Workspace
 // ---------------------------------------------------------------------------
@@ -508,6 +512,81 @@ export interface IngestorGetResultParams {
 }
 
 // ---------------------------------------------------------------------------
+// Diagnostician Agent
+// ---------------------------------------------------------------------------
+
+export interface DiagnosticianRunParams {
+  readonly caseId: number
+}
+
+export interface DiagnosticianRunResult {
+  readonly operationId: string
+  readonly caseId: number
+  readonly status: 'success' | 'error'
+  readonly result?: unknown
+  readonly error?: string
+  readonly tokenUsage?: {
+    readonly input: number
+    readonly output: number
+  }
+  readonly durationMs: number
+}
+
+export interface DiagnosticianGetResultParams {
+  readonly caseId: number
+}
+
+// ---------------------------------------------------------------------------
+// Writer Agent
+// ---------------------------------------------------------------------------
+
+export interface WriterRunParams {
+  readonly caseId: number
+}
+
+export interface WriterRunResult {
+  readonly operationId: string
+  readonly caseId: number
+  readonly status: 'success' | 'error'
+  readonly result?: unknown
+  readonly error?: string
+  readonly tokenUsage?: {
+    readonly input: number
+    readonly output: number
+  }
+  readonly durationMs: number
+}
+
+export interface WriterGetResultParams {
+  readonly caseId: number
+}
+
+// ---------------------------------------------------------------------------
+// Editor Agent
+// ---------------------------------------------------------------------------
+
+export interface EditorRunParams {
+  readonly caseId: number
+}
+
+export interface EditorRunResult {
+  readonly operationId: string
+  readonly caseId: number
+  readonly status: 'success' | 'error'
+  readonly result?: unknown
+  readonly error?: string
+  readonly tokenUsage?: {
+    readonly input: number
+    readonly output: number
+  }
+  readonly durationMs: number
+}
+
+export interface EditorGetResultParams {
+  readonly caseId: number
+}
+
+// ---------------------------------------------------------------------------
 // Pipeline Stage Advancement
 // ---------------------------------------------------------------------------
 
@@ -532,6 +611,17 @@ export interface PipelineAdvanceResult {
   readonly previousStage: PipelineStage
 }
 
+export interface PipelineSetStageParams {
+  readonly caseId: number
+  readonly stage: string
+}
+
+export interface PipelineSetStageResult {
+  readonly success: boolean
+  readonly newStage: string
+  readonly previousStage: string
+}
+
 export interface PipelineConditionsParams {
   readonly stage: PipelineStage
 }
@@ -539,6 +629,207 @@ export interface PipelineConditionsParams {
 export interface PipelineConditionsResult {
   readonly stage: PipelineStage
   readonly conditions: readonly string[]
+}
+
+// ---------------------------------------------------------------------------
+// Data Confirmation — Gate for Onboarding stage
+// ---------------------------------------------------------------------------
+
+export interface DataConfirmationSaveParams {
+  readonly caseId: number
+  readonly categoryId: string
+  readonly status: string
+  readonly notes: string
+}
+
+export interface DataConfirmationGetParams {
+  readonly caseId: number
+}
+
+export interface DataConfirmationGetResult {
+  readonly data: Array<{
+    readonly category_id: string
+    readonly status: string
+    readonly notes: string
+  }>
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic Decisions — ██ DOCTOR ALWAYS DIAGNOSES ██
+// ---------------------------------------------------------------------------
+
+export interface DiagnosticDecisionSaveParams {
+  readonly case_id: number
+  readonly diagnosis_key: string
+  readonly icd_code: string
+  readonly diagnosis_name: string
+  readonly decision: 'render' | 'rule_out' | 'defer'
+  readonly clinician_notes?: string
+}
+
+export interface DiagnosticDecisionRow {
+  readonly decision_id: number
+  readonly case_id: number
+  readonly diagnosis_key: string
+  readonly icd_code: string
+  readonly diagnosis_name: string
+  readonly decision: 'render' | 'rule_out' | 'defer'
+  readonly clinician_notes: string
+  readonly decided_at: string
+  readonly updated_at: string
+}
+
+export interface DiagnosticDecisionListParams {
+  readonly case_id: number
+}
+
+export interface DiagnosticDecisionDeleteParams {
+  readonly case_id: number
+  readonly diagnosis_key: string
+}
+
+// ---------------------------------------------------------------------------
+// OnlyOffice Document Server
+// ---------------------------------------------------------------------------
+
+export interface OnlyOfficeStartResult {
+  readonly port: number
+  readonly jwtSecret: string
+}
+
+export interface OnlyOfficeStatusResult {
+  readonly running: boolean
+  readonly port: number | null
+  readonly healthy: boolean
+}
+
+export interface OnlyOfficeTokenParams {
+  readonly payload: Record<string, unknown>
+}
+
+export interface OnlyOfficeGenerateDocxParams {
+  readonly caseId: number
+}
+
+export interface OnlyOfficeGenerateDocxResult {
+  readonly filePath: string
+  readonly version: number
+}
+
+export interface OnlyOfficeOpenDocumentParams {
+  readonly caseId: number
+  readonly filePath?: string
+  readonly readOnly?: boolean
+}
+
+export interface OnlyOfficeOpenDocumentResult {
+  readonly documentUrl: string
+  readonly jwtToken: string
+  readonly callbackUrl?: string
+}
+
+// ---------------------------------------------------------------------------
+// Report Attestation & Finalization
+// ---------------------------------------------------------------------------
+
+export interface ReportStatusParams {
+  readonly caseId: number
+}
+
+export interface ReportStatusResult {
+  readonly finalized: boolean
+  readonly finalizedAt?: string
+  readonly integrityHash?: string
+  readonly signedBy?: string
+}
+
+export interface SubmitAttestationParams {
+  readonly caseId: number
+  readonly signedBy: string
+  readonly attestationStatement: string
+  readonly signatureDate: string
+}
+
+export interface SubmitAttestationResult {
+  readonly success: boolean
+  readonly integrityHash: string
+  readonly finalizedAt: string
+}
+
+export interface VerifyIntegrityParams {
+  readonly caseId: number
+}
+
+export interface VerifyIntegrityResult {
+  readonly valid: boolean
+  readonly integrityHash: string
+  readonly expectedHash: string
+}
+
+// ---------------------------------------------------------------------------
+// Audit Trail
+// ---------------------------------------------------------------------------
+
+export interface AuditEntry {
+  readonly id: string
+  readonly caseId: number
+  readonly timestamp: string
+  readonly actionType: string
+  readonly actorType: 'clinician' | 'system' | 'agent'
+  readonly actorId?: string
+  readonly actorName?: string
+  readonly details: string
+  readonly relatedEntityType?: string
+  readonly relatedEntityId?: string
+  readonly status: 'complete' | 'in_progress' | 'error'
+}
+
+export interface AuditLogParams {
+  readonly caseId: number
+  readonly actionType: string
+  readonly actorType: 'clinician' | 'system' | 'agent'
+  readonly actorId?: string
+  readonly details: string
+  readonly relatedEntityType?: string
+  readonly relatedEntityId?: string
+}
+
+export interface AuditLogResult {
+  readonly entryId: string
+  readonly timestamp: string
+}
+
+export interface AuditGetTrailParams {
+  readonly caseId: number
+}
+
+export interface AuditGetTrailResult {
+  readonly entries: readonly AuditEntry[]
+  readonly total: number
+}
+
+export interface AuditExportParams {
+  readonly caseId: number
+  readonly format: 'csv' | 'json'
+}
+
+export interface AuditExportResult {
+  readonly data: string
+  readonly mimeType: string
+}
+
+// ---------------------------------------------------------------------------
+// Testimony Preparation
+// ---------------------------------------------------------------------------
+
+export interface TestimonyPrepareParams {
+  readonly caseId: number
+}
+
+export interface TestimonyPrepareResult {
+  readonly success: boolean
+  readonly exportedFiles: readonly string[]
+  readonly timestamp: string
 }
 
 // ---------------------------------------------------------------------------
@@ -579,6 +870,8 @@ export interface PsygilApi {
     readonly get: (params: DocumentsGetParams) => Promise<IpcResponse<DocumentRow | null>>
     readonly delete: (params: DocumentsDeleteParams) => Promise<IpcResponse<void>>
     readonly pickFile: () => Promise<IpcResponse<string | null>>
+    readonly pickFiles: () => Promise<IpcResponse<PickFilesResult>>
+    readonly getDroppedFilePath: (file: File) => string
   }
   readonly pii: {
     readonly detect: (params: PiiDetectParams) => Promise<IpcResponse<PiiDetectResult>>
@@ -598,8 +891,10 @@ export interface PsygilApi {
     readonly openNative: (path: string) => Promise<IpcResponse<void>>
     readonly pickFolder: () => Promise<IpcResponse<string | null>>
     readonly getDefaultPath: () => Promise<IpcResponse<string>>
-    readonly onFileChanged: (callback: (event: WorkspaceFileChangedEvent) => void) => void
-    readonly offFileChanged: () => void
+    readonly getMalformed: () => Promise<IpcResponse<readonly { name: string; path: string; reason: string }[]>>
+    readonly scaffold: (folderPath: string) => Promise<IpcResponse<string[]>>
+    readonly onFileChanged: (callback: (event: WorkspaceFileChangedEvent) => void) => unknown
+    readonly offFileChanged: (wrapped?: unknown) => void
   }
   readonly apiKey: {
     readonly store: (params: ApiKeyStoreParams) => Promise<IpcResponse<ApiKeyStoreResult>>
@@ -619,10 +914,55 @@ export interface PsygilApi {
     readonly run: (params: IngestorRunParams) => Promise<IpcResponse<IngestorRunResult>>
     readonly getResult: (params: IngestorGetResultParams) => Promise<IpcResponse<unknown>>
   }
+  readonly diagnostician: {
+    readonly run: (params: DiagnosticianRunParams) => Promise<IpcResponse<DiagnosticianRunResult>>
+    readonly getResult: (params: DiagnosticianGetResultParams) => Promise<IpcResponse<unknown>>
+  }
+  readonly writer: {
+    readonly run: (params: WriterRunParams) => Promise<IpcResponse<WriterRunResult>>
+    readonly getResult: (params: WriterGetResultParams) => Promise<IpcResponse<unknown>>
+  }
+  readonly editor: {
+    readonly run: (params: EditorRunParams) => Promise<IpcResponse<EditorRunResult>>
+    readonly getResult: (params: EditorGetResultParams) => Promise<IpcResponse<unknown>>
+  }
   readonly pipeline: {
     readonly check: (params: PipelineCheckParams) => Promise<IpcResponse<PipelineCheckResult>>
     readonly advance: (params: PipelineAdvanceParams) => Promise<IpcResponse<PipelineAdvanceResult>>
+    readonly setStage: (params: PipelineSetStageParams) => Promise<IpcResponse<PipelineSetStageResult>>
     readonly conditions: (params: PipelineConditionsParams) => Promise<IpcResponse<PipelineConditionsResult>>
+  }
+  readonly diagnosticDecisions: {
+    readonly save: (params: DiagnosticDecisionSaveParams) => Promise<IpcResponse<DiagnosticDecisionRow>>
+    readonly list: (params: DiagnosticDecisionListParams) => Promise<IpcResponse<readonly DiagnosticDecisionRow[]>>
+    readonly delete: (params: DiagnosticDecisionDeleteParams) => Promise<IpcResponse<void>>
+  }
+  readonly dataConfirmation: {
+    readonly save: (args: { caseId: number; categoryId: string; status: string; notes: string }) => Promise<IpcResponse<{ status: string }>>
+    readonly get: (args: { caseId: number }) => Promise<IpcResponse<DataConfirmationGetResult>>
+  }
+
+  readonly onlyoffice: {
+    readonly start: () => Promise<IpcResponse<OnlyOfficeStartResult>>
+    readonly stop: () => Promise<IpcResponse<void>>
+    readonly status: () => Promise<IpcResponse<OnlyOfficeStatusResult>>
+    readonly getUrl: () => Promise<IpcResponse<string | null>>
+    readonly generateToken: (args: OnlyOfficeTokenParams) => Promise<IpcResponse<string>>
+    readonly generateDocx: (args: OnlyOfficeGenerateDocxParams) => Promise<IpcResponse<OnlyOfficeGenerateDocxResult>>
+    readonly openDocument: (args: OnlyOfficeOpenDocumentParams) => Promise<IpcResponse<OnlyOfficeOpenDocumentResult>>
+  }
+  readonly report: {
+    readonly getStatus: (args: ReportStatusParams) => Promise<IpcResponse<ReportStatusResult>>
+    readonly submitAttestation: (args: SubmitAttestationParams) => Promise<IpcResponse<SubmitAttestationResult>>
+    readonly verifyIntegrity: (args: VerifyIntegrityParams) => Promise<IpcResponse<VerifyIntegrityResult>>
+  }
+  readonly audit: {
+    readonly log: (args: AuditLogParams) => Promise<IpcResponse<AuditLogResult>>
+    readonly getTrail: (args: AuditGetTrailParams) => Promise<IpcResponse<AuditGetTrailResult>>
+    readonly export: (args: AuditExportParams) => Promise<IpcResponse<AuditExportResult>>
+  }
+  readonly testimony: {
+    readonly prepare: (args: TestimonyPrepareParams) => Promise<IpcResponse<TestimonyPrepareResult>>
   }
 }
 

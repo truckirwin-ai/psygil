@@ -15,6 +15,16 @@ interface AgentStatus {
   readonly editor: AgentStatusResult
 }
 
+type AgentName = 'ingestor' | 'diagnostician' | 'writer' | 'editor'
+
+/** Which prior agents must have results before this agent can run */
+const AGENT_PREREQUISITES: Record<AgentName, AgentName[]> = {
+  ingestor: [],
+  diagnostician: ['ingestor'],
+  writer: ['ingestor', 'diagnostician'],
+  editor: ['ingestor', 'diagnostician', 'writer'],
+}
+
 export default function RightColumn({
   activeCaseId,
   onOpenTab,
@@ -30,7 +40,47 @@ export default function RightColumn({
     writer: { operationId: null, agentType: null, caseId: null, status: 'idle', elapsedMs: 0 },
     editor: { operationId: null, agentType: null, caseId: null, status: 'idle', elapsedMs: 0 },
   })
-  const [isRunningIngestor, setIsRunningIngestor] = useState(false)
+  /** Tracks which agents have persisted results for the active case */
+  const [agentResults, setAgentResults] = useState<Record<AgentName, boolean>>({
+    ingestor: false,
+    diagnostician: false,
+    writer: false,
+    editor: false,
+  })
+  /** Tracks which agent is currently being invoked (prevents double-click) */
+  const [runningAgent, setRunningAgent] = useState<AgentName | null>(null)
+
+  // -------------------------------------------------------------------------
+  // Check which agents have persisted results for the active case
+  // -------------------------------------------------------------------------
+
+  const refreshAgentResults = useCallback(async () => {
+    if (activeCaseId === null) {
+      setAgentResults({ ingestor: false, diagnostician: false, writer: false, editor: false })
+      return
+    }
+    try {
+      const [ing, diag, wrt, edt] = await Promise.all([
+        window.psygil.ingestor.getResult({ caseId: activeCaseId }),
+        window.psygil.diagnostician.getResult({ caseId: activeCaseId }),
+        window.psygil.writer.getResult({ caseId: activeCaseId }),
+        window.psygil.editor.getResult({ caseId: activeCaseId }),
+      ])
+      setAgentResults({
+        ingestor: ing.status === 'success',
+        diagnostician: diag.status === 'success',
+        writer: wrt.status === 'success',
+        editor: edt.status === 'success',
+      })
+    } catch {
+      // Swallow — results just stay false
+    }
+  }, [activeCaseId])
+
+  // Re-check results whenever the active case changes
+  useEffect(() => {
+    refreshAgentResults()
+  }, [refreshAgentResults])
 
   const handleResize = useCallback((delta: number) => {
     setContextHeight((prev) => {
@@ -69,7 +119,7 @@ export default function RightColumn({
           { type: 'assistant', text: `Error: ${response.message}` },
         ])
       }
-    } catch (error) {
+    } catch {
       setChatMessages((prev) => [
         ...prev,
         {
@@ -84,36 +134,73 @@ export default function RightColumn({
   useEffect(() => {
     const pollInterval = setInterval(async () => {
       try {
-        const ingestorResp = await window.psygil.agent.status()
-        if (ingestorResp.status === 'success') {
-          const ingestorStatus = ingestorResp.data
-          setAgentStatuses((prev) => ({
-            ...prev,
-            ingestor: ingestorStatus,
-          }))
-          setIsRunningIngestor(ingestorStatus.status === 'running' || ingestorStatus.status === 'queued')
+        const resp = await window.psygil.agent.status()
+        if (resp.status === 'success') {
+          const s = resp.data
+          // Map the global status to the correct agent slot
+          if (s.agentType) {
+            setAgentStatuses((prev) => ({ ...prev, [s.agentType as AgentName]: s }))
+          }
+          // If it just finished, refresh persisted results
+          if (s.status === 'done' || s.status === 'error') {
+            setRunningAgent(null)
+            refreshAgentResults()
+          } else if (s.status === 'running' || s.status === 'queued') {
+            setRunningAgent((s.agentType as AgentName) ?? null)
+          } else {
+            setRunningAgent(null)
+          }
         }
-      } catch (error) {
-        console.error('Failed to poll agent status:', error)
+      } catch {
+        // Swallow polling errors
       }
     }, 2000)
 
     return () => clearInterval(pollInterval)
-  }, [])
+  }, [refreshAgentResults])
 
-  const handleRunIngestor = useCallback(async () => {
+  // -------------------------------------------------------------------------
+  // Generic agent runner — cascade-aware
+  // -------------------------------------------------------------------------
+
+  const handleRunAgent = useCallback(async (agent: AgentName) => {
     if (activeCaseId === null) return
 
-    try {
-      setIsRunningIngestor(true)
-      const response = await window.psygil.ingestor.run({ caseId: activeCaseId })
-      if (response.status === 'error') {
-        console.error('Ingestor run failed:', response.message)
+    // Check prerequisites
+    const prereqs = AGENT_PREREQUISITES[agent]
+    for (const prereq of prereqs) {
+      if (!agentResults[prereq]) {
+        console.warn(`Cannot run ${agent}: prerequisite ${prereq} has no results`)
+        return
       }
-    } catch (error) {
-      console.error('Failed to run ingestor:', error)
     }
-  }, [activeCaseId])
+
+    setRunningAgent(agent)
+    try {
+      let response: { status: string; message?: string }
+      switch (agent) {
+        case 'ingestor':
+          response = await window.psygil.ingestor.run({ caseId: activeCaseId })
+          break
+        case 'diagnostician':
+          response = await window.psygil.diagnostician.run({ caseId: activeCaseId })
+          break
+        case 'writer':
+          response = await window.psygil.writer.run({ caseId: activeCaseId })
+          break
+        case 'editor':
+          response = await window.psygil.editor.run({ caseId: activeCaseId })
+          break
+      }
+      if (response.status === 'error') {
+        console.error(`${agent} run failed:`, (response as { message?: string }).message)
+      }
+      // Result polling will pick up completion and refresh
+    } catch (error) {
+      console.error(`Failed to run ${agent}:`, error)
+      setRunningAgent(null)
+    }
+  }, [activeCaseId, agentResults])
 
   return (
     <div
@@ -165,7 +252,13 @@ export default function RightColumn({
 
           {/* AI Agent Status */}
           <ContextSection title="AI Agent Status">
-            <AgentStatusPanel agentStatuses={agentStatuses} onRunIngestor={handleRunIngestor} isRunningIngestor={isRunningIngestor} activeCaseId={activeCaseId} />
+            <AgentStatusPanel
+              agentStatuses={agentStatuses}
+              agentResults={agentResults}
+              runningAgent={runningAgent}
+              activeCaseId={activeCaseId}
+              onRunAgent={handleRunAgent}
+            />
           </ContextSection>
 
           {/* Deadlines */}
@@ -445,63 +538,83 @@ function formatElapsedTime(elapsedMs: number): string {
   return `${seconds}s`
 }
 
+const AGENT_LABELS: Record<AgentName, string> = {
+  ingestor: 'Ingestor',
+  diagnostician: 'Diagnostician',
+  writer: 'Writer',
+  editor: 'Editor',
+}
+
+const AGENT_ORDER: AgentName[] = ['ingestor', 'diagnostician', 'writer', 'editor']
+
 function AgentStatusPanel({
   agentStatuses,
-  onRunIngestor,
-  isRunningIngestor,
+  agentResults,
+  runningAgent,
   activeCaseId,
+  onRunAgent,
 }: {
   readonly agentStatuses: AgentStatus
-  readonly onRunIngestor: () => void
-  readonly isRunningIngestor: boolean
+  readonly agentResults: Record<AgentName, boolean>
+  readonly runningAgent: AgentName | null
   readonly activeCaseId: number | null
+  readonly onRunAgent: (agent: AgentName) => void
 }): React.JSX.Element {
-  const anyRunning =
-    agentStatuses.ingestor.status === 'running' ||
-    agentStatuses.ingestor.status === 'queued' ||
-    agentStatuses.diagnostician.status === 'running' ||
-    agentStatuses.diagnostician.status === 'queued' ||
-    agentStatuses.writer.status === 'running' ||
-    agentStatuses.writer.status === 'queued' ||
-    agentStatuses.editor.status === 'running' ||
-    agentStatuses.editor.status === 'queued'
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <AgentStatusRow
-        name="Ingestor"
-        agentStatus={agentStatuses.ingestor}
-      />
-      <AgentStatusRow
-        name="Diagnostician"
-        agentStatus={agentStatuses.diagnostician}
-      />
-      <AgentStatusRow
-        name="Writer"
-        agentStatus={agentStatuses.writer}
-      />
-      <AgentStatusRow
-        name="Editor"
-        agentStatus={agentStatuses.editor}
-      />
-      <button
-        onClick={onRunIngestor}
-        disabled={activeCaseId === null || anyRunning}
-        style={{
-          padding: '6px 12px',
-          fontSize: 12,
-          fontWeight: 500,
-          border: '1px solid var(--border)',
-          borderRadius: 4,
-          background: activeCaseId === null || anyRunning ? 'var(--panel)' : 'var(--accent)',
-          color: activeCaseId === null || anyRunning ? 'var(--text-secondary)' : '#ffffff',
-          cursor: activeCaseId === null || anyRunning ? 'not-allowed' : 'pointer',
-          opacity: activeCaseId === null || anyRunning ? 0.5 : 1,
-          transition: 'all 0.2s',
-        }}
-      >
-        {isRunningIngestor ? 'Running...' : 'Run Ingestor'}
-      </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {AGENT_ORDER.map((agent) => {
+        const prereqs = AGENT_PREREQUISITES[agent]
+        const prereqsMet = prereqs.every((p) => agentResults[p])
+        const hasResult = agentResults[agent]
+        const isThisRunning = runningAgent === agent
+        const anyRunning = runningAgent !== null
+        const canRun = activeCaseId !== null && prereqsMet && !anyRunning
+        const status = agentStatuses[agent]
+
+        return (
+          <div key={agent} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <AgentStatusRow
+              name={AGENT_LABELS[agent]}
+              agentStatus={status}
+              hasResult={hasResult}
+            />
+            <button
+              onClick={() => onRunAgent(agent)}
+              disabled={!canRun}
+              title={
+                activeCaseId === null
+                  ? 'Select a case first'
+                  : anyRunning
+                    ? `Waiting for ${AGENT_LABELS[runningAgent!]} to finish`
+                    : !prereqsMet
+                      ? `Requires: ${prereqs.map((p) => AGENT_LABELS[p]).join(', ')}`
+                      : hasResult
+                        ? `Re-run ${AGENT_LABELS[agent]}`
+                        : `Run ${AGENT_LABELS[agent]}`
+              }
+              style={{
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 500,
+                border: '1px solid var(--border)',
+                borderRadius: 4,
+                background: canRun ? 'var(--accent)' : 'var(--panel)',
+                color: canRun ? '#ffffff' : 'var(--text-secondary)',
+                cursor: canRun ? 'pointer' : 'not-allowed',
+                opacity: canRun ? 1 : 0.5,
+                transition: 'all 0.2s',
+                marginLeft: 14,
+              }}
+            >
+              {isThisRunning
+                ? 'Running\u2026'
+                : hasResult
+                  ? `Re-run ${AGENT_LABELS[agent]}`
+                  : `Run ${AGENT_LABELS[agent]}`}
+            </button>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -509,16 +622,20 @@ function AgentStatusPanel({
 function AgentStatusRow({
   name,
   agentStatus,
+  hasResult,
 }: {
   readonly name: string
   readonly agentStatus: AgentStatusResult
+  readonly hasResult: boolean
 }): React.JSX.Element {
-  const color = getStatusColor(agentStatus.status)
-  const statusText = agentStatus.status.charAt(0).toUpperCase() + agentStatus.status.slice(1)
+  // If the agent has a persisted result but status is idle, show as "complete"
+  const effectiveStatus = hasResult && agentStatus.status === 'idle' ? 'done' : agentStatus.status
+  const color = getStatusColor(effectiveStatus)
+  const statusText = effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1)
   const elapsedTime = formatElapsedTime(agentStatus.elapsedMs)
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 4 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 2 }}>
       {/* Status dot */}
       <span
         style={{

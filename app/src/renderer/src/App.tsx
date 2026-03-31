@@ -8,6 +8,8 @@ import VSplitter from './components/layout/VSplitter'
 import IntakeModal from './components/modals/IntakeModal'
 import OnboardingModal from './components/modals/OnboardingModal'
 import SetupModal from './components/modals/SetupModal'
+import DocumentUploadModal from './components/modals/DocumentUploadModal'
+import ScoreImportModal from './components/modals/ScoreImportModal'
 import type { Tab, TabState } from './types/tabs'
 import type { CaseRow } from '../../shared/types/ipc'
 
@@ -44,6 +46,10 @@ export default function App(): React.JSX.Element {
   const [showIntake, setShowIntake] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showSetup, setShowSetup] = useState(false)
+  const [showDocUpload, setShowDocUpload] = useState(false)
+  const [docUploadCaseId, setDocUploadCaseId] = useState<number | null>(null)
+  const [showScoreImport, setShowScoreImport] = useState(false)
+  const [scoreImportCaseId, setScoreImportCaseId] = useState<number | null>(null)
 
   // When showIntake is open in "new case" mode, no caseId. When editing, pass one.
   const [intakeEditCaseId, setIntakeEditCaseId] = useState<number | undefined>(undefined)
@@ -76,6 +82,17 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     void loadCases()
+  }, [loadCases])
+
+  // Re-fetch cases when filesystem changes so Dashboard stays in sync
+  useEffect(() => {
+    const handler = (): void => {
+      void loadCases()
+    }
+    const wrapped = window.psygil?.workspace?.onFileChanged?.(handler)
+    return () => {
+      window.psygil?.workspace?.offFileChanged?.(wrapped)
+    }
   }, [loadCases])
 
   // Derive active case ID from active tab
@@ -154,6 +171,18 @@ export default function App(): React.JSX.Element {
   const handleNewCase = useCallback(() => {
     setIntakeEditCaseId(undefined)
     setShowIntake(true)
+  }, [])
+
+  // Open document upload modal for a case
+  const handleUploadDocuments = useCallback((caseId: number) => {
+    setDocUploadCaseId(caseId)
+    setShowDocUpload(true)
+  }, [])
+
+  // Open score import modal for a case
+  const handleImportScores = useCallback((caseId: number) => {
+    setScoreImportCaseId(caseId)
+    setShowScoreImport(true)
   }, [])
 
   // Open intake modal for editing existing case
@@ -239,6 +268,9 @@ export default function App(): React.JSX.Element {
             onEditIntake={handleEditIntake}
             onOpenTab={openTab}
             cases={cases}
+            onRefreshCases={loadCases}
+            onUploadDocuments={handleUploadDocuments}
+            onImportScores={handleImportScores}
           />
         </div>
 
@@ -272,6 +304,26 @@ export default function App(): React.JSX.Element {
         onClose={() => setShowSetup(false)}
         onWorkspaceSet={() => { refreshCasesRef.current?.() }}
       />
+
+      {showDocUpload && docUploadCaseId != null && (
+        <DocumentUploadModal
+          caseId={docUploadCaseId}
+          onClose={() => setShowDocUpload(false)}
+          onUploadComplete={() => {
+            refreshCasesRef.current?.()
+          }}
+        />
+      )}
+
+      {showScoreImport && scoreImportCaseId != null && (
+        <ScoreImportModal
+          caseId={scoreImportCaseId}
+          onClose={() => setShowScoreImport(false)}
+          onImportComplete={() => {
+            refreshCasesRef.current?.()
+          }}
+        />
+      )}
     </div>
   )
 }

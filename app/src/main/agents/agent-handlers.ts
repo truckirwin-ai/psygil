@@ -8,10 +8,19 @@
 
 import { randomUUID } from 'crypto'
 import { ipcMain } from 'electron'
-import type { IpcResponse, AgentRunParams, AgentRunResult, AgentStatusResult, AgentType, IngestorRunParams, IngestorRunResult, IngestorGetResultParams } from '../../shared/types'
+import type {
+  IpcResponse, AgentRunParams, AgentRunResult, AgentStatusResult, AgentType,
+  IngestorRunParams, IngestorRunResult, IngestorGetResultParams,
+  DiagnosticianRunParams, DiagnosticianRunResult, DiagnosticianGetResultParams,
+  WriterRunParams, WriterRunResult, WriterGetResultParams,
+  EditorRunParams, EditorRunResult, EditorGetResultParams,
+} from '../../shared/types'
 import { runAgent, isValidAgentType, type AgentConfig } from './runner'
 import { retrieveApiKey } from '../ai/key-storage'
 import { runIngestorAgent, getLatestIngestorResult } from './ingestor'
+import { runDiagnosticianAgent, getLatestDiagnosticianResult } from './diagnostician'
+import { runWriterAgent, getLatestWriterResult } from './writer'
+import { runEditorAgent, getLatestEditorResult } from './editor'
 
 // ---------------------------------------------------------------------------
 // In-memory agent status tracking
@@ -272,6 +281,138 @@ export function registerAgentHandlers(): void {
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to get ingestor result'
         return fail('INGESTOR_GET_FAILED', message)
+      }
+    }
+  )
+
+  // -----------------------------------------------------------------------
+  // Diagnostician handlers
+  // -----------------------------------------------------------------------
+
+  ipcMain.handle(
+    'diagnostician:run',
+    async (
+      _event: Electron.IpcMainInvokeEvent,
+      params: DiagnosticianRunParams
+    ): Promise<IpcResponse<DiagnosticianRunResult>> => {
+      try {
+        const result = await runDiagnosticianAgent(params.caseId)
+        return ok({
+          operationId: result.operationId,
+          caseId: result.caseId,
+          status: result.status,
+          result: result.result,
+          error: result.error,
+          tokenUsage: result.tokenUsage,
+          durationMs: result.durationMs,
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Diagnostician failed'
+        return fail('DIAGNOSTICIAN_RUN_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'diagnostician:getResult',
+    (_event: Electron.IpcMainInvokeEvent, params: DiagnosticianGetResultParams): IpcResponse<unknown> => {
+      try {
+        const result = getLatestDiagnosticianResult(params.caseId)
+        if (!result) {
+          return fail('NO_RESULT', 'No diagnostician result found for this case')
+        }
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get diagnostician result'
+        return fail('DIAGNOSTICIAN_GET_FAILED', message)
+      }
+    }
+  )
+
+  // -----------------------------------------------------------------------
+  // Writer handlers
+  // -----------------------------------------------------------------------
+
+  ipcMain.handle(
+    'writer:run',
+    async (
+      _event: Electron.IpcMainInvokeEvent,
+      params: WriterRunParams
+    ): Promise<IpcResponse<WriterRunResult>> => {
+      try {
+        const result = await runWriterAgent(params.caseId)
+        return ok({
+          operationId: result.operationId,
+          caseId: result.caseId,
+          status: result.status,
+          result: result.result,
+          error: result.error,
+          tokenUsage: result.tokenUsage,
+          durationMs: result.durationMs,
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Writer failed'
+        return fail('WRITER_RUN_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'writer:getResult',
+    (_event: Electron.IpcMainInvokeEvent, params: WriterGetResultParams): IpcResponse<unknown> => {
+      try {
+        const result = getLatestWriterResult(params.caseId)
+        if (!result) {
+          return fail('NO_RESULT', 'No writer result found for this case')
+        }
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get writer result'
+        return fail('WRITER_GET_FAILED', message)
+      }
+    }
+  )
+
+  // -----------------------------------------------------------------------
+  // Editor handlers
+  // -----------------------------------------------------------------------
+
+  ipcMain.handle(
+    'editor:run',
+    async (
+      _event: Electron.IpcMainInvokeEvent,
+      params: EditorRunParams
+    ): Promise<IpcResponse<EditorRunResult>> => {
+      try {
+        const result = await runEditorAgent(params.caseId)
+        return ok({
+          operationId: result.operationId,
+          caseId: result.caseId,
+          status: result.status,
+          result: result.result,
+          error: result.error,
+          tokenUsage: result.tokenUsage,
+          durationMs: result.durationMs,
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Editor failed'
+        return fail('EDITOR_RUN_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'editor:getResult',
+    (_event: Electron.IpcMainInvokeEvent, params: EditorGetResultParams): IpcResponse<unknown> => {
+      try {
+        const result = getLatestEditorResult(params.caseId)
+        if (!result) {
+          return fail('NO_RESULT', 'No editor result found for this case')
+        }
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get editor result'
+        return fail('EDITOR_GET_FAILED', message)
       }
     }
   )

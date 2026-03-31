@@ -60,7 +60,9 @@ import {
   watchWorkspace,
   syncWorkspaceToDB,
   getWorkspaceTree,
-  getDefaultWorkspacePath
+  getDefaultWorkspacePath,
+  getMalformedFolders,
+  scaffoldCaseSubfolders,
 } from '../workspace'
 import { detect, batchDetect, redact, rehydrate, destroyMap } from '../pii'
 import {
@@ -88,6 +90,26 @@ import {
 import { registerAiHandlers } from '../ai/ai-handlers'
 import { registerAgentHandlers } from '../agents'
 import { registerPipelineHandlers } from '../pipeline/pipeline-handlers'
+import { registerDecisionHandlers } from '../decisions/decision-handlers'
+import { saveDataConfirmation, getDataConfirmation } from '../data-confirmation'
+import {
+  startDocumentServer,
+  stopDocumentServer,
+  getDocumentServerStatus,
+  getDocumentServerUrl,
+  generateJwtToken,
+  getSecureEditorConfig,
+} from '../onlyoffice'
+import { generateReportDocx } from '../onlyoffice/docx-generator'
+import { getLatestWriterResult } from '../agents/writer'
+import { getLatestEditorResult } from '../agents/editor'
+import {
+  submitAttestation,
+  verifyIntegrity,
+  getReportStatus,
+} from '../reports'
+import { logAuditEntry, getAuditTrail, exportAuditTrail } from '../audit'
+import { prepareTestimonyPackage } from '../testimony'
 
 // ---------------------------------------------------------------------------
 // Stub helper — returns a typed success envelope
@@ -399,6 +421,28 @@ function registerWorkspaceHandlers(): void {
     'workspace:getDefaultPath',
     (): IpcResponse<string> => ok(getDefaultWorkspacePath())
   )
+
+  // Return folders that don't match case naming pattern or lack subfolders
+  ipcMain.handle(
+    'workspace:getMalformed',
+    (): IpcResponse<readonly { name: string; path: string; reason: string }[]> => {
+      return ok(getMalformedFolders())
+    }
+  )
+
+  // Scaffold standard subfolders in a case folder
+  ipcMain.handle(
+    'workspace:scaffold',
+    (_event, folderPath: string): IpcResponse<string[]> => {
+      try {
+        const created = scaffoldCaseSubfolders(folderPath)
+        return ok(created)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to scaffold subfolders'
+        return fail('SCAFFOLD_FAILED', message)
+      }
+    }
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -474,6 +518,25 @@ function registerDocumentHandlers(): void {
         return ok(null)
       }
       return ok(result.filePaths[0])
+    }
+  )
+
+  ipcMain.handle(
+    'documents:pickFiles',
+    async (event): Promise<IpcResponse<any>> => {
+      const parentWindow = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(parentWindow!, {
+        title: 'Select Documents to Upload',
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          { name: 'Documents', extensions: ['pdf', 'docx', 'doc', 'txt', 'csv', 'rtf'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        return ok({ filePaths: [] })
+      }
+      return ok({ filePaths: result.filePaths })
     }
   )
 }
@@ -629,6 +692,482 @@ function registerApiKeyHandlers(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Data Confirmation handlers
+// ---------------------------------------------------------------------------
+
+function registerDataConfirmationHandlers(): void {
+  ipcMain.handle(
+    'data-confirmation:save',
+    (
+      _event,
+      params: { caseId: number; categoryId: string; status: string; notes: string }
+    ): IpcResponse<{ status: string }> => {
+      try {
+        saveDataConfirmation(params.caseId, params.categoryId, params.status, params.notes)
+        return ok({ status: 'success' })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to save data confirmation'
+        return fail('DATA_CONFIRMATION_SAVE_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'data-confirmation:get',
+    (
+      _event,
+      params: { caseId: number }
+    ): IpcResponse<{ data: Array<{ category_id: string; status: string; notes: string }> }> => {
+      try {
+        const rows = getDataConfirmation(params.caseId)
+        const data = rows.map((row) => ({
+          category_id: row.category_id,
+          status: row.status,
+          notes: row.notes,
+        }))
+        return ok({ data })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get data confirmation'
+        return fail('DATA_CONFIRMATION_GET_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Updater handlers
+// ---------------------------------------------------------------------------
+
+function registerUpdaterHandlers(): void {
+  ipcMain.handle(
+    'updater:check',
+    async (): Promise<IpcResponse<{
+      available: boolean
+      version?: string
+      releaseNotes?: string
+    }>> => {
+      try {
+        const { checkForUpdates } = await import('../updater')
+        const result = await checkForUpdates()
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to check for updates'
+        console.error('[updater:check] error:', message)
+        return fail('UPDATER_CHECK_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'updater:download',
+    async (_event, params: { version: string }): Promise<IpcResponse<{ filePath: string | null }>> => {
+      try {
+        const { downloadUpdate } = await import('../updater')
+        const filePath = await downloadUpdate(params.version)
+        return ok({ filePath })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to download update'
+        console.error('[updater:download] error:', message)
+        return fail('UPDATER_DOWNLOAD_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'updater:getVersion',
+    (): IpcResponse<string> => {
+      try {
+        const { getAppVersion } = require('../updater')
+        return ok(getAppVersion())
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get app version'
+        return fail('UPDATER_GET_VERSION_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// OnlyOffice handlers
+// ---------------------------------------------------------------------------
+
+function registerOnlyOfficeHandlers(): void {
+  ipcMain.handle(
+    'onlyoffice:start',
+    async (): Promise<IpcResponse<{ port: number; jwtSecret: string }>> => {
+      try {
+        const result = await startDocumentServer()
+        console.log('[onlyoffice:start] Document Server started on port', result.port)
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to start Document Server'
+        console.error('[onlyoffice:start] error:', message)
+        return fail('ONLYOFFICE_START_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'onlyoffice:stop',
+    async (): Promise<IpcResponse<void>> => {
+      try {
+        await stopDocumentServer()
+        console.log('[onlyoffice:stop] Document Server stopped')
+        return ok(undefined)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to stop Document Server'
+        console.error('[onlyoffice:stop] error:', message)
+        return fail('ONLYOFFICE_STOP_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'onlyoffice:status',
+    async (): Promise<IpcResponse<{ running: boolean; port: number | null; healthy: boolean }>> => {
+      try {
+        const status = await getDocumentServerStatus()
+        return ok(status)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get Document Server status'
+        return fail('ONLYOFFICE_STATUS_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'onlyoffice:getUrl',
+    async (): Promise<IpcResponse<string | null>> => {
+      try {
+        const url = await getDocumentServerUrl()
+        return ok(url)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get Document Server URL'
+        return fail('ONLYOFFICE_URL_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'onlyoffice:generateToken',
+    async (_event, params: { payload: Record<string, unknown> }): Promise<IpcResponse<string>> => {
+      try {
+        const token = generateJwtToken(params.payload)
+        return ok(token)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to generate JWT token'
+        return fail('ONLYOFFICE_TOKEN_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'onlyoffice:generateDocx',
+    async (_event, params: { caseId: number }): Promise<IpcResponse<{ filePath: string; version: number }>> => {
+      try {
+        // Load writer output
+        const writerOutput = getLatestWriterResult(params.caseId)
+        if (!writerOutput) {
+          return fail('NO_WRITER_OUTPUT', 'No writer output found. Run Writer Agent first.')
+        }
+
+        // Load editor output (optional)
+        const editorOutput = getLatestEditorResult(params.caseId)
+
+        // Generate docx
+        const result = await generateReportDocx(params.caseId, writerOutput, editorOutput)
+        console.log('[onlyoffice:generateDocx] Generated:', result.filePath)
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to generate DOCX'
+        console.error('[onlyoffice:generateDocx] error:', message)
+        return fail('ONLYOFFICE_DOCX_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'onlyoffice:openDocument',
+    async (
+      _event,
+      params: { caseId: number; filePath?: string; readOnly?: boolean }
+    ): Promise<
+      IpcResponse<{
+        documentUrl: string
+        jwtToken: string
+        callbackUrl?: string
+      }>
+    > => {
+      try {
+        const serverUrl = await getDocumentServerUrl()
+        if (!serverUrl) {
+          return fail('ONLYOFFICE_NOT_RUNNING', 'Document Server is not running. Start it first.')
+        }
+
+        // Get secure editor configuration (disables macros, plugins, etc.)
+        const secureConfig = getSecureEditorConfig()
+
+        // Build document config for OnlyOffice
+        const documentPayload = {
+          document: {
+            fileType: 'docx',
+            key: `case_${params.caseId}_${Date.now()}`,
+            title: `case_${params.caseId}_report`,
+            url: params.filePath ?? '', // This would be served by the app
+          },
+          documentType: 'text',
+          editorConfig: {
+            mode: params.readOnly ? 'view' : 'edit',
+            callbackUrl: params.readOnly ? undefined : `http://localhost:3000/api/onlyoffice/callback`,
+            ...secureConfig,
+          },
+        }
+
+        const jwtToken = generateJwtToken(documentPayload)
+
+        return ok({
+          documentUrl: serverUrl,
+          jwtToken,
+          callbackUrl: `http://localhost:3000/api/onlyoffice/callback`,
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to open document'
+        console.error('[onlyoffice:openDocument] error:', message)
+        return fail('ONLYOFFICE_OPEN_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Report finalization handlers
+// ---------------------------------------------------------------------------
+
+function registerReportHandlers(): void {
+  ipcMain.handle(
+    'report:submitAttestation',
+    (
+      _event,
+      params: {
+        caseId: number
+        signedBy: string
+        attestationStatement: string
+        signatureDate: string
+      }
+    ): IpcResponse<{ success: boolean; integrityHash: string; finalizedAt: string }> => {
+      try {
+        const result = submitAttestation({
+          caseId: params.caseId,
+          signedBy: params.signedBy,
+          attestationStatement: params.attestationStatement,
+          signatureDate: params.signatureDate,
+        })
+        return ok({
+          success: true,
+          integrityHash: result.integrityHash,
+          finalizedAt: new Date().toISOString(),
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to submit attestation'
+        console.error('[report:submitAttestation]', message)
+        return fail('REPORT_SUBMIT_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'report:getStatus',
+    (
+      _event,
+      params: { caseId: number }
+    ): IpcResponse<{
+      finalized: boolean
+      finalizedAt?: string
+      integrityHash?: string
+      signedBy?: string
+    }> => {
+      try {
+        const status = getReportStatus(params.caseId)
+        return ok({
+          finalized: status.isLocked,
+          finalizedAt: status.integrityHash ? new Date().toISOString() : undefined,
+          integrityHash: status.integrityHash ?? undefined,
+          signedBy: undefined, // Could be stored in audit log details
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get report status'
+        return fail('REPORT_STATUS_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'report:verifyIntegrity',
+    (
+      _event,
+      params: { caseId: number }
+    ): IpcResponse<{
+      valid: boolean
+      integrityHash: string
+      expectedHash: string
+    }> => {
+      try {
+        const result = verifyIntegrity(params.caseId)
+        return ok({
+          valid: result.valid,
+          integrityHash: result.storedHash ?? '',
+          expectedHash: result.computedHash,
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to verify integrity'
+        return fail('REPORT_VERIFY_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Audit trail handlers
+// ---------------------------------------------------------------------------
+
+function registerAuditHandlers(): void {
+  ipcMain.handle(
+    'audit:log',
+    (
+      _event,
+      params: {
+        caseId: number
+        actionType: string
+        actorType: 'clinician' | 'ai_agent' | 'system' | 'agent'
+        actorId?: string
+        details: string | Record<string, unknown>
+        relatedEntityType?: string
+        relatedEntityId?: string
+      }
+    ): IpcResponse<{ entryId: string; timestamp: string }> => {
+      try {
+        // Convert details to object if it's a string
+        const detailsObj = typeof params.details === 'string' ? JSON.parse(params.details) : params.details
+
+        // Map agent to ai_agent for consistency
+        const actorType = params.actorType === 'agent' ? 'ai_agent' : params.actorType
+
+        const auditLogId = logAuditEntry({
+          caseId: params.caseId,
+          actionType: params.actionType,
+          actorType: actorType as 'clinician' | 'ai_agent' | 'system',
+          actorId: params.actorId,
+          details: detailsObj,
+          relatedEntityType: params.relatedEntityType,
+          relatedEntityId: params.relatedEntityId ? parseInt(params.relatedEntityId, 10) : undefined,
+        })
+
+        return ok({
+          entryId: String(auditLogId),
+          timestamp: new Date().toISOString(),
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to log audit entry'
+        return fail('AUDIT_LOG_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'audit:getTrail',
+    (
+      _event,
+      params: { caseId: number }
+    ): IpcResponse<{
+      entries: Array<{
+        id: string
+        caseId: number
+        timestamp: string
+        actionType: string
+        actorType: 'clinician' | 'system' | 'agent'
+        actorId?: string
+        details: string
+        relatedEntityType?: string
+        relatedEntityId?: string
+        status: 'complete' | 'in_progress' | 'error'
+      }>
+      total: number
+    }> => {
+      try {
+        const auditRows = getAuditTrail(params.caseId)
+        const entries = auditRows.map((row) => ({
+          id: String(row.audit_log_id),
+          caseId: row.case_id,
+          timestamp: row.action_date,
+          actionType: row.action_type,
+          actorType: (row.actor_user_id === -1 ? 'agent' : 'system') as 'clinician' | 'system' | 'agent',
+          actorId: row.actor_user_id === -1 ? 'ai_agent' : String(row.actor_user_id),
+          details: row.details ?? '',
+          relatedEntityType: row.related_entity_type ?? undefined,
+          relatedEntityId: row.related_entity_id ? String(row.related_entity_id) : undefined,
+          status: 'complete' as const,
+        }))
+        return ok({ entries, total: entries.length })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get audit trail'
+        return fail('AUDIT_GET_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'audit:export',
+    (
+      _event,
+      params: { caseId: number; format?: 'csv' | 'json' }
+    ): IpcResponse<{ data: string; mimeType: string }> => {
+      try {
+        const format = params.format ?? 'csv'
+        const data = exportAuditTrail(params.caseId, format)
+        const mimeType = format === 'json' ? 'application/json' : 'text/csv'
+        return ok({ data, mimeType })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to export audit trail'
+        return fail('AUDIT_EXPORT_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Testimony preparation handlers
+// ---------------------------------------------------------------------------
+
+function registerTestimonyHandlers(): void {
+  ipcMain.handle(
+    'testimony:prepare',
+    async (
+      _event,
+      params: { caseId: number }
+    ): Promise<
+      IpcResponse<{
+        success: boolean
+        exportedFiles: readonly string[]
+        timestamp: string
+      }>
+    > => {
+      try {
+        const result = await prepareTestimonyPackage(params.caseId)
+        return ok({
+          success: true,
+          exportedFiles: result.files,
+          timestamp: new Date().toISOString(),
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to prepare testimony package'
+        console.error('[testimony:prepare]', message)
+        return fail('TESTIMONY_PREPARE_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Public: register all IPC handlers
 // ---------------------------------------------------------------------------
 
@@ -644,7 +1183,14 @@ export function registerAllHandlers(): void {
   registerWorkspaceHandlers()
   registerSeedHandlers()
   registerApiKeyHandlers()
+  registerDataConfirmationHandlers()
   registerAiHandlers()
   registerAgentHandlers()
   registerPipelineHandlers()
+  registerDecisionHandlers()
+  registerUpdaterHandlers()
+  registerOnlyOfficeHandlers()
+  registerReportHandlers()
+  registerAuditHandlers()
+  registerTestimonyHandlers()
 }

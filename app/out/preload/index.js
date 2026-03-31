@@ -20,6 +20,7 @@ const CH = {
   DOCS_GET: "documents:get",
   DOCS_DELETE: "documents:delete",
   DOCS_PICK_FILE: "documents:pickFile",
+  DOCS_PICK_FILES: "documents:pickFiles",
   PII_REDACT: "pii:redact",
   PII_REHYDRATE: "pii:rehydrate",
   PII_DESTROY: "pii:destroy",
@@ -31,11 +32,15 @@ const CH = {
   WS_OPEN_NATIVE: "workspace:openNative",
   WS_PICK_FOLDER: "workspace:pickFolder",
   WS_DEFAULT_PATH: "workspace:getDefaultPath",
+  WS_GET_MALFORMED: "workspace:getMalformed",
+  WS_SCAFFOLD: "workspace:scaffold",
   WS_FILE_CHANGED: "workspace:file-changed",
   API_KEY_STORE: "apiKey:store",
   API_KEY_RETRIEVE: "apiKey:retrieve",
   API_KEY_DELETE: "apiKey:delete",
-  API_KEY_HAS: "apiKey:has"
+  API_KEY_HAS: "apiKey:has",
+  DATA_CONFIRMATION_SAVE: "data-confirmation:save",
+  DATA_CONFIRMATION_GET: "data-confirmation:get"
 };
 const api = {
   platform: process.platform,
@@ -70,7 +75,9 @@ const api = {
     list: (params) => electron.ipcRenderer.invoke(CH.DOCS_LIST, params),
     get: (params) => electron.ipcRenderer.invoke(CH.DOCS_GET, params),
     delete: (params) => electron.ipcRenderer.invoke(CH.DOCS_DELETE, params),
-    pickFile: () => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILE)
+    pickFile: () => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILE),
+    pickFiles: () => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILES),
+    getDroppedFilePath: (file) => electron.webUtils.getPathForFile(file)
   },
   pii: {
     detect: (params) => electron.ipcRenderer.invoke("pii:detect", params),
@@ -90,11 +97,21 @@ const api = {
     openNative: (path) => electron.ipcRenderer.invoke(CH.WS_OPEN_NATIVE, path),
     pickFolder: () => electron.ipcRenderer.invoke(CH.WS_PICK_FOLDER),
     getDefaultPath: () => electron.ipcRenderer.invoke(CH.WS_DEFAULT_PATH),
+    getMalformed: () => electron.ipcRenderer.invoke(CH.WS_GET_MALFORMED),
+    scaffold: (folderPath) => electron.ipcRenderer.invoke(CH.WS_SCAFFOLD, folderPath),
     onFileChanged: (callback) => {
-      electron.ipcRenderer.on(CH.WS_FILE_CHANGED, (_event, data) => callback(data));
+      const wrapped = (_event, data) => {
+        callback(data);
+      };
+      electron.ipcRenderer.on(CH.WS_FILE_CHANGED, wrapped);
+      return wrapped;
     },
-    offFileChanged: () => {
-      electron.ipcRenderer.removeAllListeners(CH.WS_FILE_CHANGED);
+    offFileChanged: (wrapped) => {
+      if (wrapped) {
+        electron.ipcRenderer.removeListener(CH.WS_FILE_CHANGED, wrapped);
+      } else {
+        electron.ipcRenderer.removeAllListeners(CH.WS_FILE_CHANGED);
+      }
     }
   },
   apiKey: {
@@ -106,6 +123,68 @@ const api = {
   ai: {
     complete: (params) => electron.ipcRenderer.invoke("ai:complete", params),
     testConnection: (params) => electron.ipcRenderer.invoke("ai:testConnection", params ?? {})
+  },
+  agent: {
+    run: (params) => electron.ipcRenderer.invoke("agent:run", params),
+    status: (operationId) => electron.ipcRenderer.invoke("agent:status", operationId)
+  },
+  ingestor: {
+    run: (params) => electron.ipcRenderer.invoke("ingestor:run", params),
+    getResult: (params) => electron.ipcRenderer.invoke("ingestor:getResult", params)
+  },
+  diagnostician: {
+    run: (params) => electron.ipcRenderer.invoke("diagnostician:run", params),
+    getResult: (params) => electron.ipcRenderer.invoke("diagnostician:getResult", params)
+  },
+  writer: {
+    run: (params) => electron.ipcRenderer.invoke("writer:run", params),
+    getResult: (params) => electron.ipcRenderer.invoke("writer:getResult", params)
+  },
+  editor: {
+    run: (params) => electron.ipcRenderer.invoke("editor:run", params),
+    getResult: (params) => electron.ipcRenderer.invoke("editor:getResult", params)
+  },
+  pipeline: {
+    check: (params) => electron.ipcRenderer.invoke("pipeline:check", params),
+    advance: (params) => electron.ipcRenderer.invoke("pipeline:advance", params),
+    setStage: (params) => electron.ipcRenderer.invoke("pipeline:set-stage", params),
+    conditions: (params) => electron.ipcRenderer.invoke("pipeline:conditions", params)
+  },
+  diagnosticDecisions: {
+    save: (params) => electron.ipcRenderer.invoke("diagnosticDecision:save", params),
+    list: (params) => electron.ipcRenderer.invoke("diagnosticDecision:list", params),
+    delete: (params) => electron.ipcRenderer.invoke("diagnosticDecision:delete", params)
+  },
+  dataConfirmation: {
+    save: (args) => electron.ipcRenderer.invoke(CH.DATA_CONFIRMATION_SAVE, args),
+    get: (args) => electron.ipcRenderer.invoke(CH.DATA_CONFIRMATION_GET, args)
+  },
+  onlyoffice: {
+    start: () => electron.ipcRenderer.invoke("onlyoffice:start"),
+    stop: () => electron.ipcRenderer.invoke("onlyoffice:stop"),
+    status: () => electron.ipcRenderer.invoke("onlyoffice:status"),
+    getUrl: () => electron.ipcRenderer.invoke("onlyoffice:getUrl"),
+    generateToken: (args) => electron.ipcRenderer.invoke("onlyoffice:generateToken", args),
+    generateDocx: (args) => electron.ipcRenderer.invoke("onlyoffice:generateDocx", args),
+    openDocument: (args) => electron.ipcRenderer.invoke("onlyoffice:openDocument", args)
+  },
+  updater: {
+    check: () => electron.ipcRenderer.invoke("updater:check"),
+    download: (args) => electron.ipcRenderer.invoke("updater:download", args),
+    getVersion: () => electron.ipcRenderer.invoke("updater:getVersion")
+  },
+  report: {
+    getStatus: (args) => electron.ipcRenderer.invoke("report:getStatus", args),
+    submitAttestation: (args) => electron.ipcRenderer.invoke("report:submitAttestation", args),
+    verifyIntegrity: (args) => electron.ipcRenderer.invoke("report:verifyIntegrity", args)
+  },
+  audit: {
+    log: (args) => electron.ipcRenderer.invoke("audit:log", args),
+    getTrail: (args) => electron.ipcRenderer.invoke("audit:getTrail", args),
+    export: (args) => electron.ipcRenderer.invoke("audit:export", args)
+  },
+  testimony: {
+    prepare: (args) => electron.ipcRenderer.invoke("testimony:prepare", args)
   }
 };
 electron.contextBridge.exposeInMainWorld("psygil", api);

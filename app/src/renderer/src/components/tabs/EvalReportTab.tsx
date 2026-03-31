@@ -1,22 +1,803 @@
-import { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import OnlyOfficeEditor from '../editors/OnlyOfficeEditor'
+
+/**
+ * EvalReportTab — Sprint 10
+ *
+ * Displays the Writer Agent's draft report sections with Editor Agent annotations.
+ * Supports both HTML preview mode (existing) and OnlyOffice editor mode (new).
+ *
+ * DATA FLOW:
+ *   window.psygil.writer.getResult({ caseId }) → WriterOutput (sections)
+ *   window.psygil.editor.getResult({ caseId }) → EditorOutput (annotations)
+ *   window.psygil.onlyoffice.generateDocx({ caseId }) → DOCX file
+ *
+ * Features:
+ * - Report sections from Writer Agent, each tagged with content_type
+ * - Orange dashed border on AI-drafted sections requiring revision
+ * - Editor annotations displayed as inline flags with severity colors
+ * - Accept/dismiss per annotation
+ * - Section navigation sidebar
+ * - Mode toggle: Preview (HTML) ↔ Editor (OnlyOffice)
+ * - Generate DOCX button to create editable document
+ * - Falls back to static mock report when no agent data available
+ */
 
 export interface EvalReportTabProps {
   readonly caseId: number
 }
 
+// ---------------------------------------------------------------------------
+// Writer/Editor output shapes (mirrors main/agents/*.ts)
+// ---------------------------------------------------------------------------
+
+interface WriterSection {
+  section_name: string
+  section_number?: number
+  content: string
+  content_type: 'fully_generated' | 'draft_requiring_revision'
+  revision_notes?: string
+  sources: string[]
+  confidence: number
+}
+
+interface WriterOutput {
+  case_id: string
+  version: string
+  generated_at: string
+  sections: WriterSection[]
+  report_summary: {
+    patient_name?: string
+    evaluation_dates?: string
+    evaluation_type?: string
+    selected_diagnoses: string[]
+    total_sections: number
+    sections_requiring_revision: number
+    estimated_revision_time_minutes?: number
+  }
+}
+
+interface EditorAnnotation {
+  flag_id: string
+  location: {
+    section_name: string
+    paragraph_reference?: string
+    sentence_or_quote?: string
+  }
+  flag_type: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  description: string
+  suggestion: string
+}
+
+interface EditorOutput {
+  case_id: string
+  version: string
+  generated_at: string
+  review_summary: {
+    total_flags: number
+    critical_flags: number
+    high_flags: number
+    medium_flags: number
+    low_flags: number
+    overall_assessment: string
+  }
+  annotations: EditorAnnotation[]
+  revision_priorities?: Array<{
+    priority_order: number
+    section: string
+    key_issues: string[]
+  }>
+}
+
+// ---------------------------------------------------------------------------
+// Severity colors
+// ---------------------------------------------------------------------------
+
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: '#d32f2f',
+  high: '#f44336',
+  medium: '#ff9800',
+  low: '#2196f3',
+}
+
+const SEVERITY_BG: Record<string, string> = {
+  critical: '#ffebee',
+  high: '#ffebee',
+  medium: '#fff3e0',
+  low: '#e3f2fd',
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX.Element {
+  const [writerOutput, setWriterOutput] = useState<WriterOutput | null>(null)
+  const [editorOutput, setEditorOutput] = useState<EditorOutput | null>(null)
+  const [dismissedFlags, setDismissedFlags] = useState<Set<string>>(new Set())
+  const [activeSection, setActiveSection] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [toolbarTab, setToolbarTab] = useState('Home')
+  const [mode, setMode] = useState<'preview' | 'editor'>('preview')
+  const [docxPath, setDocxPath] = useState<string | null>(null)
+  const [docxVersion, setDocxVersion] = useState<number>(0)
+  const [generating, setGenerating] = useState(false)
+  const [ooStatus, setOoStatus] = useState<{ running: boolean; healthy: boolean } | null>(null)
+
+  // Load writer and editor outputs
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const [writerRes, editorRes] = await Promise.all([
+          window.psygil.writer.getResult({ caseId }),
+          window.psygil.editor.getResult({ caseId }),
+        ])
+        if (cancelled) return
+
+        if (writerRes.status === 'success' && writerRes.data) {
+          setWriterOutput(writerRes.data as WriterOutput)
+        }
+        if (editorRes.status === 'success' && editorRes.data) {
+          setEditorOutput(editorRes.data as EditorOutput)
+        }
+      } catch (err) {
+        console.error('[EvalReportTab] Failed to load agent results:', err)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [caseId])
+
+  // Check OnlyOffice status on mount
+  useEffect(() => {
+    let cancelled = false
+    const checkStatus = async () => {
+      try {
+        const res = await window.psygil.onlyoffice.status()
+        if (!cancelled && res.status === 'success') {
+          setOoStatus({ running: res.data.running, healthy: res.data.healthy })
+        }
+      } catch (err) {
+        console.error('[EvalReportTab] Failed to check OnlyOffice status:', err)
+      }
+    }
+    checkStatus()
+    return () => { cancelled = true }
+  }, [])
+
+  const hasWriter = !!writerOutput
+  const hasEditor = !!editorOutput
+  const canEditMode = hasWriter && ooStatus?.running && docxPath
+
+  // Get annotations for a section
+  const getAnnotationsForSection = (sectionName: string): EditorAnnotation[] => {
+    if (!editorOutput) return []
+    return editorOutput.annotations.filter(
+      (a) => a.location.section_name.toLowerCase() === sectionName.toLowerCase() && !dismissedFlags.has(a.flag_id)
+    )
+  }
+
+  // All non-dismissed annotations count
+  const activeAnnotationCount = editorOutput
+    ? editorOutput.annotations.filter((a) => !dismissedFlags.has(a.flag_id)).length
+    : 0
+
+  // -------------------------------------------------------------------------
+  // If we have Writer output, render the live report
+  // -------------------------------------------------------------------------
+
+  if (loading) {
+    return (
+      <div style={{ padding: '20px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+        Loading report...
+      </div>
+    )
+  }
+
+  if (!hasWriter) {
+    return <FallbackReport caseId={caseId} toolbarTab={toolbarTab} setToolbarTab={setToolbarTab} />
+  }
+
+  const summary = writerOutput.report_summary
+
+  // -------------------------------------------------------------------------
+  // Main layout: split view with editor/preview + sidebar
+  // -------------------------------------------------------------------------
+
   return (
-    <div
-      style={{
-        background: 'var(--panel)',
-        minHeight: '100%',
-        paddingBottom: 40,
-        overflowY: 'auto',
-      }}
-    >
-      {/* OnlyOffice-style ruler */}
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', flexDirection: 'column' }}>
+      {/* Top toolbar */}
       <div
-        className="oo-ruler"
+        style={{
+          padding: '8px 16px',
+          background: 'var(--panel)',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <button
+          onClick={async () => {
+            setGenerating(true)
+            try {
+              const res = await window.psygil.onlyoffice.generateDocx({ caseId })
+              if (res.status === 'success') {
+                setDocxPath(res.data.filePath)
+                setDocxVersion(res.data.version)
+                setMode('editor')
+              } else {
+                console.error('[EvalReportTab] Failed to generate DOCX:', res.message)
+              }
+            } catch (err) {
+              console.error('[EvalReportTab] Error generating DOCX:', err)
+            } finally {
+              setGenerating(false)
+            }
+          }}
+          disabled={generating}
+          style={{
+            padding: '4px 12px',
+            fontSize: '11px',
+            border: '1px solid var(--border)',
+            borderRadius: '4px',
+            backgroundColor: 'var(--bg)',
+            color: 'var(--text)',
+            cursor: generating ? 'not-allowed' : 'pointer',
+            opacity: generating ? 0.6 : 1,
+          }}
+        >
+          {generating ? 'Generating...' : 'Generate DOCX'}
+        </button>
+
+        {canEditMode && (
+          <>
+            <button
+              onClick={() => setMode(mode === 'preview' ? 'editor' : 'preview')}
+              style={{
+                padding: '4px 12px',
+                fontSize: '11px',
+                border: '1px solid var(--border)',
+                borderRadius: '4px',
+                backgroundColor: mode === 'editor' ? 'var(--accent)' : 'var(--bg)',
+                color: mode === 'editor' ? '#fff' : 'var(--text)',
+                cursor: 'pointer',
+              }}
+            >
+              {mode === 'preview' ? 'Open in Editor' : 'Show Preview'}
+            </button>
+            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+              v{docxVersion}
+            </span>
+          </>
+        )}
+
+        <span style={{ flex: 1 }} />
+      </div>
+
+      {/* Main content area */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* Editor or Preview */}
+        {mode === 'editor' && canEditMode && docxPath ? (
+          <OnlyOfficeEditor
+            caseId={caseId}
+            filePath={docxPath}
+            readOnly={false}
+            onDocumentReady={() => {
+              console.log('[EvalReportTab] Document ready')
+            }}
+            onDocumentSaved={() => {
+              console.log('[EvalReportTab] Document saved')
+            }}
+            onError={(msg) => {
+              console.error('[EvalReportTab] Editor error:', msg)
+            }}
+          />
+        ) : (
+          <ReportPreview
+            writerOutput={writerOutput}
+            editorOutput={editorOutput}
+            dismissedFlags={dismissedFlags}
+            setDismissedFlags={setDismissedFlags}
+            activeSection={activeSection}
+            setActiveSection={setActiveSection}
+            toolbarTab={toolbarTab}
+            setToolbarTab={setToolbarTab}
+            getAnnotationsForSection={getAnnotationsForSection}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// ReportPreview — extracted HTML preview component
+// ---------------------------------------------------------------------------
+
+interface ReportPreviewProps {
+  readonly writerOutput: WriterOutput
+  readonly editorOutput: EditorOutput | null
+  readonly dismissedFlags: Set<string>
+  readonly setDismissedFlags: (setter: (prev: Set<string>) => Set<string>) => void
+  readonly activeSection: string | null
+  readonly setActiveSection: (name: string | null) => void
+  readonly toolbarTab: string
+  readonly setToolbarTab: (tab: string) => void
+  readonly getAnnotationsForSection: (sectionName: string) => EditorAnnotation[]
+}
+
+function ReportPreview({
+  writerOutput,
+  editorOutput,
+  dismissedFlags,
+  setDismissedFlags,
+  activeSection,
+  setActiveSection,
+  toolbarTab,
+  setToolbarTab,
+  getAnnotationsForSection,
+}: ReportPreviewProps): React.JSX.Element {
+  const summary = writerOutput.report_summary
+  const hasEditor = !!editorOutput
+
+  const activeAnnotationCount = editorOutput
+    ? editorOutput.annotations.filter((a) => !dismissedFlags.has(a.flag_id)).length
+    : 0
+
+  return (
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', flex: 1 }}>
+      {/* Section navigation sidebar (right side, 25%) */}
+      <div
+        style={{
+          width: 'calc(25% - 0.5px)',
+          flexShrink: 0,
+          borderLeft: '1px solid var(--border)',
+          overflowY: 'auto',
+          padding: '8px 0',
+          background: 'var(--bg)',
+          order: 2,
+        }}
+      >
+        <div
+          style={{
+            padding: '4px 12px',
+            fontSize: '10px',
+            color: 'var(--text-secondary)',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            marginBottom: '4px',
+          }}
+        >
+          Sections
+        </div>
+        {writerOutput.sections.map((s, i) => {
+          const sectionAnnotations = getAnnotationsForSection(s.section_name)
+          const isActive = activeSection === s.section_name
+          return (
+            <div
+              key={i}
+              onClick={() => {
+                setActiveSection(s.section_name)
+                document.getElementById(`section-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+              style={{
+                padding: '6px 12px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                color: isActive ? 'var(--accent)' : 'var(--text)',
+                background: isActive ? 'var(--highlight)' : 'transparent',
+                borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.section_name}
+              </span>
+              <span style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+                {s.content_type === 'draft_requiring_revision' && (
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ff9800' }} />
+                )}
+                {sectionAnnotations.length > 0 && (
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      background: '#f44336',
+                      color: '#fff',
+                      borderRadius: '8px',
+                      padding: '0 4px',
+                      minWidth: '14px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {sectionAnnotations.length}
+                  </span>
+                )}
+              </span>
+            </div>
+          )
+        })}
+
+        {/* Report summary at bottom of sidebar */}
+        <div
+          style={{
+            margin: '12px 8px',
+            padding: '8px',
+            background: 'var(--panel)',
+            borderRadius: '4px',
+            fontSize: '10px',
+          }}
+        >
+          <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Report Summary</div>
+          <div style={{ color: 'var(--text)' }}>{summary.total_sections} sections</div>
+          {summary.sections_requiring_revision > 0 && (
+            <div style={{ color: '#ff9800' }}>{summary.sections_requiring_revision} need revision</div>
+          )}
+          {hasEditor && (
+            <div style={{ color: activeAnnotationCount > 0 ? '#f44336' : '#4caf50' }}>
+              {activeAnnotationCount} active flags
+            </div>
+          )}
+          {summary.selected_diagnoses.length > 0 && (
+            <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
+              Dx: {summary.selected_diagnoses.join(', ')}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main report content (left side, 75%) */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', order: 1 }}>
+        {/* Editor review banner */}
+        {hasEditor && (
+          <div
+            style={{
+              padding: '8px 16px',
+              fontSize: '12px',
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center',
+              borderBottom: '1px solid var(--border)',
+              flexShrink: 0,
+              background:
+                editorOutput.review_summary.overall_assessment === 'ready_for_clinician_review'
+                  ? '#e8f5e9'
+                  : '#fff3e0',
+            }}
+          >
+            <strong>Editor Review:</strong>
+            <span>{editorOutput.review_summary.overall_assessment.replace(/_/g, ' ')}</span>
+            <span style={{ color: 'var(--text-secondary)' }}>|</span>
+            {editorOutput.review_summary.critical_flags > 0 && (
+              <span style={{ color: '#d32f2f', fontWeight: 600 }}>
+                {editorOutput.review_summary.critical_flags} critical
+              </span>
+            )}
+            {editorOutput.review_summary.high_flags > 0 && (
+              <span style={{ color: '#f44336' }}>{editorOutput.review_summary.high_flags} high</span>
+            )}
+            {editorOutput.review_summary.medium_flags > 0 && (
+              <span style={{ color: '#ff9800' }}>{editorOutput.review_summary.medium_flags} medium</span>
+            )}
+            {editorOutput.review_summary.low_flags > 0 && (
+              <span style={{ color: '#2196f3' }}>{editorOutput.review_summary.low_flags} low</span>
+            )}
+            <span style={{ flex: 1 }} />
+            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+              Editor v{editorOutput.version}
+            </span>
+          </div>
+        )}
+
+        {/* Word-style toolbar */}
+        <WordToolbar activeTab={toolbarTab} setActiveTab={setToolbarTab} />
+
+        {/* Document body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+          <div
+            className="document-editor"
+            style={{ maxWidth: 860, margin: '0 auto', padding: '24px 60px', minHeight: '100%' }}
+          >
+            {/* Report header */}
+            {summary.evaluation_type && (
+              <>
+                <p
+                  style={{
+                    textAlign: 'center',
+                    textTransform: 'uppercase',
+                    fontWeight: 'bold',
+                    fontSize: 14,
+                    marginBottom: 8,
+                  }}
+                >
+                  CONFIDENTIAL FORENSIC EVALUATION REPORT
+                </p>
+                <p
+                  style={{
+                    textAlign: 'center',
+                    textTransform: 'uppercase',
+                    fontWeight: 'bold',
+                    fontSize: 14,
+                    marginBottom: 30,
+                  }}
+                >
+                  {summary.evaluation_type.toUpperCase()} EVALUATION
+                </p>
+              </>
+            )}
+
+            {/* Render each section */}
+            {writerOutput.sections.map((section, i) => {
+              const annotations = getAnnotationsForSection(section.section_name)
+              const isDraft = section.content_type === 'draft_requiring_revision'
+
+              return (
+                <div key={i} id={`section-${i}`} style={{ marginBottom: '24px' }}>
+                  {/* Section content */}
+                  {isDraft ? (
+                    <div
+                      style={{
+                        border: '2px dashed #ff9800',
+                        background: '#fff8e1',
+                        borderRadius: 4,
+                        padding: 16,
+                        position: 'relative',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'inline-block',
+                          background: '#ff9800',
+                          color: 'white',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          padding: '2px 8px',
+                          borderRadius: 3,
+                          marginBottom: 10,
+                        }}
+                      >
+                        AI DRAFT — CLINICIAN REVIEW REQUIRED
+                      </div>
+                      {section.revision_notes && (
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: '#e65100',
+                            marginBottom: '8px',
+                            fontStyle: 'italic',
+                          }}
+                        >
+                          Note: {section.revision_notes}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          color: '#333',
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: '1.7',
+                          fontSize: '13px',
+                        }}
+                      >
+                        <p style={{ marginBottom: 8 }}>
+                          <strong>{section.section_name.toUpperCase()}</strong>
+                        </p>
+                        {section.content}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7', fontSize: '13px' }}>
+                      <p style={{ marginBottom: 8 }}>
+                        <strong>{section.section_name.toUpperCase()}</strong>
+                      </p>
+                      {section.content}
+                    </div>
+                  )}
+
+                  {/* Sources */}
+                  {section.sources.length > 0 && (
+                    <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      Sources: {section.sources.join(', ')}
+                    </div>
+                  )}
+
+                  {/* Confidence */}
+                  {section.confidence < 0.8 && (
+                    <div style={{ fontSize: '10px', color: '#ff9800', marginTop: '2px' }}>
+                      Confidence: {Math.round(section.confidence * 100)}% — review carefully
+                    </div>
+                  )}
+
+                  {/* Editor annotations for this section */}
+                  {annotations.length > 0 && (
+                    <div style={{ marginTop: '8px' }}>
+                      {annotations.map((ann) => (
+                        <div
+                          key={ann.flag_id}
+                          style={{
+                            padding: '8px 12px',
+                            background: SEVERITY_BG[ann.severity] || '#f5f5f5',
+                            borderLeft: `4px solid ${SEVERITY_COLORS[ann.severity] || '#999'}`,
+                            borderRadius: '0 4px 4px 0',
+                            marginBottom: '6px',
+                            fontSize: '12px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '4px',
+                            }}
+                          >
+                            <span>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '1px 6px',
+                                  borderRadius: '3px',
+                                  fontSize: '10px',
+                                  fontWeight: 600,
+                                  color: '#fff',
+                                  background: SEVERITY_COLORS[ann.severity] || '#999',
+                                  marginRight: '6px',
+                                }}
+                              >
+                                {ann.severity.toUpperCase()}
+                              </span>
+                              <span style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
+                                {ann.flag_type.replace(/_/g, ' ')}
+                              </span>
+                            </span>
+                            <button
+                              onClick={() =>
+                                setDismissedFlags((prev) => new Set([...prev, ann.flag_id]))
+                              }
+                              style={{
+                                padding: '2px 8px',
+                                fontSize: '10px',
+                                cursor: 'pointer',
+                                background: 'transparent',
+                                border: '1px solid var(--border)',
+                                borderRadius: '3px',
+                                color: 'var(--text-secondary)',
+                              }}
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                          <div style={{ color: 'var(--text)', marginBottom: '4px' }}>
+                            {ann.description}
+                          </div>
+                          {ann.suggestion && (
+                            <div
+                              style={{
+                                color: 'var(--text-secondary)',
+                                fontStyle: 'italic',
+                                fontSize: '11px',
+                              }}
+                            >
+                              Suggestion: {ann.suggestion}
+                            </div>
+                          )}
+                          {ann.location.sentence_or_quote && (
+                            <div
+                              style={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '10px',
+                                marginTop: '4px',
+                              }}
+                            >
+                              "{ann.location.sentence_or_quote}"
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Revision priorities */}
+            {hasEditor && editorOutput.revision_priorities && editorOutput.revision_priorities.length > 0 && (
+              <div style={{ marginTop: '32px', padding: '16px', background: 'var(--bg)', borderRadius: '4px' }}>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    marginBottom: '12px',
+                    color: 'var(--text)',
+                  }}
+                >
+                  Revision Priorities
+                </div>
+                {editorOutput.revision_priorities.map((rp, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      marginBottom: '8px',
+                      display: 'flex',
+                      gap: '8px',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        background: 'var(--accent)',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {rp.priority_order}
+                    </span>
+                    <div>
+                      <strong>{rp.section}</strong>
+                      {rp.key_issues.map((issue, ii) => (
+                        <div key={ii} style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                          • {issue}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Generation metadata */}
+            <div
+              style={{
+                fontSize: '10px',
+                color: 'var(--text-secondary)',
+                marginTop: '32px',
+                borderTop: '1px solid var(--border)',
+                paddingTop: '8px',
+              }}
+            >
+              Writer v{writerOutput.version} | Generated: {writerOutput.generated_at}
+              {hasEditor && <> | Editor v{editorOutput.version}</>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Fallback: Static mock report (preserved from original Sprint 5 code)
+// ---------------------------------------------------------------------------
+
+function FallbackReport({
+  caseId,
+  toolbarTab,
+  setToolbarTab,
+}: {
+  caseId: number
+  toolbarTab: string
+  setToolbarTab: (tab: string) => void
+}): React.JSX.Element {
+  return (
+    <div style={{ background: 'var(--panel)', minHeight: '100%', paddingBottom: 40, overflowY: 'auto' }}>
+      {/* Ruler */}
+      <div
         style={{
           maxWidth: 860,
           margin: '0 auto',
@@ -31,385 +812,46 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
           fontFamily: "'JetBrains Mono', monospace",
         }}
       >
-        <span style={{ flex: 1, textAlign: 'center' }}>1</span>
-        <span style={{ flex: 1, textAlign: 'center' }}>2</span>
-        <span style={{ flex: 1, textAlign: 'center' }}>3</span>
-        <span style={{ flex: 1, textAlign: 'center' }}>4</span>
-        <span style={{ flex: 1, textAlign: 'center' }}>5</span>
-        <span style={{ flex: 1, textAlign: 'center' }}>6</span>
-        <span style={{ flex: 1, textAlign: 'center' }}>7</span>
-        <span style={{ flex: 1, textAlign: 'center' }}>8</span>
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+          <span key={n} style={{ flex: 1, textAlign: 'center' }}>
+            {n}
+          </span>
+        ))}
       </div>
 
-      {/* Word toolbar */}
-      <WordToolbar />
+      <WordToolbar activeTab={toolbarTab} setActiveTab={setToolbarTab} />
 
-      {/* Document editor */}
-      <div className="document-editor">
-        <p
-          style={{
-            textAlign: 'center',
-            textTransform: 'uppercase',
-            fontWeight: 'bold',
-            fontSize: 14,
-            marginBottom: 8,
-          }}
-        >
-          CONFIDENTIAL FORENSIC EVALUATION REPORT
-        </p>
-        <p
-          style={{
-            textAlign: 'center',
-            textTransform: 'uppercase',
-            fontWeight: 'bold',
-            fontSize: 14,
-            marginBottom: 30,
-          }}
-        >
-          COMPETENCY TO STAND TRIAL EVALUATION
-        </p>
-
-        <p style={{ marginBottom: 12 }}>
-          <strong>Evaluator:</strong> Truck Irwin, Psy.D., ABPP (Forensic Psychology)
-          <br />
-          <strong>License:</strong> CO-PSY-12847
-          <br />
-          <strong>Date of Report:</strong> March 19, 2026
-        </p>
-
-        <p style={{ marginTop: 24, marginBottom: 12 }}>
-          <strong>IDENTIFYING INFORMATION</strong>
-        </p>
-        <p style={{ marginBottom: 6 }}>
-          <strong>Name:</strong> Marcus D. Johnson
-          <br />
-          <strong>Date of Birth:</strong> June 14, 1991
-          <br />
-          <strong>Age:</strong> 34 years
-          <br />
-          <strong>Gender:</strong> Male
-          <br />
-          <strong>Ethnicity:</strong> African American
-          <br />
-          <strong>Education:</strong> 11th grade (no diploma)
-          <br />
-          <strong>Marital Status:</strong> Single
-          <br />
-          <strong>Current Location:</strong> Denver County Jail
-          <br />
-          <strong>Case Number:</strong> 2025CR-4821
-          <br />
-          <strong>Charges:</strong> Assault in the First Degree (F3), Criminal Mischief (M1)
-        </p>
-
-        <p style={{ marginTop: 20, marginBottom: 12 }}>
-          <strong>REFERRAL INFORMATION</strong>
-        </p>
-        <p>
-          Mr. Johnson was referred for a competency to stand trial evaluation by the Honorable
-          Judge Patricia Morales, Denver District Court, Division 3, pursuant to C.R.S. §
-          16-8.5-101. The court order, dated February 28, 2026, requests assessment of the
-          defendant's competency to proceed to trial.
-        </p>
-
-        <p style={{ marginTop: 20, marginBottom: 12 }}>
-          <strong>NOTIFICATION AND CONSENT</strong>
-        </p>
-        <p>
-          Mr. Johnson was advised that the purpose of this evaluation is not therapeutic. He was
-          informed that this evaluation is being conducted for the court, that I am not his
-          treating clinician, and that my report will be provided to the court and shared with
-          prosecution and defense. He was advised that communications made during this evaluation
-          are not protected by clinician-patient privilege and can be disclosed to the court. Mr.
-          Johnson acknowledged understanding of these limitations and agreed to proceed.
-        </p>
-
-        <p style={{ marginTop: 20, marginBottom: 12 }}>
-          <strong>SOURCES OF INFORMATION</strong>
-        </p>
-        <ol style={{ paddingLeft: 20, marginBottom: 12 }}>
-          <li>
-            Clinical interview with Mr. Johnson (3 sessions, 6.5 total hours)
-            <ul style={{ paddingLeft: 20, marginTop: 6 }}>
-              <li>Session 1: March 8, 2026 (2.5 hours)</li>
-              <li>Session 2: March 10, 2026 (2.0 hours)</li>
-              <li>Session 3: March 12, 2026 (2.0 hours)</li>
-            </ul>
-          </li>
-          <li>
-            Psychological Testing:
-            <ul style={{ paddingLeft: 20, marginTop: 6 }}>
-              <li>Minnesota Multiphasic Personality Inventory-3 (MMPI-3)</li>
-              <li>Personality Assessment Inventory (PAI)</li>
-              <li>Wechsler Adult Intelligence Scale, Fifth Edition (WAIS-V)</li>
-              <li>Test of Memory Malingering (TOMM)</li>
-              <li>Structured Interview of Reported Symptoms, 2nd Edition (SIRS-2)</li>
-            </ul>
-          </li>
-          <li>
-            Records Reviewed:
-            <ul style={{ paddingLeft: 20, marginTop: 6 }}>
-              <li>Court Order for Competency Evaluation (Feb 28, 2026)</li>
-              <li>Police Report, Incident #2025-DPD-48721</li>
-              <li>Denver Health Medical Center records (June 2024 – January 2025)</li>
-              <li>Denver County Jail medical records (February – March 2026)</li>
-              <li>Prior Competency Evaluation by Robert Smith, Ph.D. (2023)</li>
-            </ul>
-          </li>
-        </ol>
-
-        <AIDraftSection>
-          <p style={{ marginBottom: 8 }}>
-            <strong>RELEVANT BACKGROUND HISTORY</strong>
-          </p>
-          <p>
-            Mr. Johnson is a 34-year-old African American male with an 11th-grade education,
-            currently incarcerated at Denver County Jail pending trial. He reports a history of
-            intermittent homelessness and unstable housing over the past 3-4 years. Employment
-            history is sporadic, with most recent employment ending approximately two years ago
-            when Mr. Johnson stopped working due to what he describes as "people interfering with
-            my work."
-          </p>
-          <p style={{ marginTop: 8 }}>
-            Psychiatric history is significant for first hospitalization in June 2024 at Denver
-            Health Medical Center following police contact during an episode of acute psychosis.
-            He was diagnosed at that time with Unspecified Psychotic Disorder and started on
-            Risperidone 2mg daily. Mr. Johnson had a second hospitalization in September 2024
-            after discontinuing medication, and a third hospitalization in January 2025 following
-            his arrest for the current charges.
-          </p>
-          <p style={{ marginTop: 8 }}>
-            Mr. Johnson's substance use history includes occasional marijuana use in his 20s, but
-            he denies current substance abuse. He reports no significant medical history beyond
-            the psychiatric illnesses noted above. Family psychiatric history is unknown.
-          </p>
-        </AIDraftSection>
-
-        <p style={{ marginTop: 20, marginBottom: 12 }}>
-          <strong>BEHAVIORAL OBSERVATIONS</strong>
-        </p>
-        <p>
-          Mr. Johnson presented as a thin, 34-year-old African American male appearing his stated
-          age. He was neatly dressed in jail clothing but somewhat disheveled in appearance.
-          Speech was normal in rate and volume but occasionally pressured, with frequent
-          tangential comments related to persecutory concerns. Affect was constricted with limited
-          emotional range. Eye contact was poor, with occasional suspiciousness observed during
-          the evaluation.
-        </p>
-        <p style={{ marginTop: 8 }}>
-          Throughout all three sessions, Mr. Johnson endorsed auditory hallucinations ("hearing
-          voices") and persecutory delusions (beliefs that people are conspiring against him,
-          using technology to monitor him). His thought process was linear but interrupted by
-          preoccupation with these paranoid themes. Most notably, Mr. Johnson demonstrated limited
-          insight into his mental illness, attributing his symptoms to external persecution rather
-          than internal mental health processes.
-        </p>
-
-        <p style={{ marginTop: 20, marginBottom: 12 }}>
-          <strong>ASSESSMENT RESULTS</strong>
-        </p>
-        <p style={{ marginTop: 12, marginBottom: 8 }}>
-          <strong>Validity and Effort Testing</strong>
-        </p>
-        <p>
-          Mr. Johnson's performance on effort tests was entirely adequate. TOMM Trial 2 score of
-          48/50 (above the cut-score of 45) and SIRS-2 results showing honest responding across
-          all eight scales confirm genuine effort and absence of malingering. These results
-          indicate that his performance on personality and cognitive testing reflects genuine
-          functioning rather than intentional poor performance or symptom exaggeration.
-        </p>
-
-        <p style={{ marginTop: 12, marginBottom: 8 }}>
-          <strong>Cognitive Functioning (WAIS-V)</strong>
-        </p>
-        <p>
-          Mr. Johnson's WAIS-V composite scores indicate low-average intellectual functioning
-          (FSIQ=82, 12th percentile). Notable weaknesses in verbal comprehension (VCI=78, 7th
-          percentile) and working memory (WMI=80, 9th percentile) relative to visual-spatial
-          abilities (VSI=88, 21st percentile). These cognitive limitations are relevant to his
-          ability to understand complex legal concepts and instructions.
-        </p>
-
-        <p style={{ marginTop: 12, marginBottom: 8 }}>
-          <strong>Personality and Psychopathology (MMPI-3)</strong>
-        </p>
-        <p>
-          Mr. Johnson's MMPI-3 profile shows significant elevations on THD (75T — Thought
-          Dysfunction), RC6 (72T — Ideas of Persecution), and RC8 (78T — Aberrant Experiences).
-          All validity scales are within acceptable limits. This pattern is consistent with a
-          primary psychotic disorder with prominent thought disturbance and persecutory ideation.
-          No evidence of malingering or defensive responding.
-        </p>
-
-        <p style={{ marginTop: 12, marginBottom: 8 }}>
-          <strong>Personality and Psychopathology (PAI)</strong>
-        </p>
-        <p>
-          The PAI corroborates MMPI-3 findings. Mr. Johnson shows elevated SCZ (72T) and PAR
-          (68T) scales, consistent with schizophrenia-spectrum disorder with persecutory
-          features. Treatment scales show openness to treatment (RXR=42T, well below the
-          elevation threshold), and no current suicidality (SUI=48T).
-        </p>
-
-        <AIDraftSection>
-          <p style={{ marginBottom: 8 }}>
-            <strong>CLINICAL FORMULATION</strong>
-          </p>
-          <p>
-            Results of the current evaluation are consistent with a diagnosis of Schizophrenia,
-            First Episode, Currently in Acute Episode. Onset appears to have occurred in June
-            2024 (first hospitalization). The constellation of psychotic symptoms (auditory
-            hallucinations, persecutory delusions), thought disturbance (elevated THD and RC8 on
-            MMPI-3, elevated SCZ on PAI), and poor insight into illness are all consistent with
-            schizophrenia.
-          </p>
-          <p style={{ marginTop: 8 }}>
-            The patient's symptom presentation in the clinical interview aligns with test
-            findings. His endorsed auditory hallucinations and persecutory ideation match his
-            MMPI-3 RC8 and RC6 elevations and PAI SCZ and PAR elevations. His low-average
-            cognitive functioning (FSIQ=82) and notable verbal weakness (VCI=78) must be
-            considered in the context of his competency assessment.
-          </p>
-          <p style={{ marginTop: 8 }}>
-            Mr. Johnson's medications (Risperodone 4mg daily) have stabilized his acute
-            presentation somewhat since incarceration, but breakthrough symptoms persist,
-            particularly auditory hallucinations and paranoid ideation. His history of medication
-            non-compliance (stopping medications after prior hospitalizations) is a significant
-            prognostic factor.
-          </p>
-        </AIDraftSection>
-
-        <p style={{ marginTop: 20, marginBottom: 12 }}>
-          <strong>DIAGNOSTIC IMPRESSIONS</strong>
-        </p>
-        <p>
-          <strong>Axis I Diagnosis:</strong>
-        </p>
-        <p style={{ marginLeft: 20, marginTop: 8 }}>
-          <strong>Primary:</strong> Schizophrenia, First Episode, Currently in Acute Episode
-          (F20.9)
-          <br />
-          <strong>Secondary (Ruled Out):</strong> Major Depressive Disorder — Insufficient
-          evidence; depressive symptoms mild and secondary to psychosis
-        </p>
-
-        <AIDraftSection style={{ marginTop: 20 }}>
-          <p style={{ marginBottom: 8 }}>
-            <strong>COMPETENCY OPINION</strong>
-          </p>
-          <p>
-            The legal standard for competency to stand trial is established by Dusky v. United
-            States, 362 U.S. 402 (1960). The defendant must have: (1) a factual understanding of
-            the charges and proceedings, (2) a rational understanding of the charges and
-            proceedings, and (3) the ability to consult with counsel and assist in his defense.
-          </p>
-
-          <p style={{ marginTop: 12, marginBottom: 8 }}>
-            <strong>Factual Understanding of the Proceedings</strong>
-          </p>
-          <p>
-            Mr. Johnson demonstrates a basic but incomplete factual understanding of the legal
-            proceedings. He can name his charges (Assault and Criminal Mischief) but cannot
-            articulate what these charges mean or distinguish between felonies and
-            misdemeanors. He knows the names and roles of his attorney (Public Defender Marcus
-            Washington) and the judge (Judge Morales) but has limited understanding of their
-            functions in the legal process. He correctly understands that he is in court for
-            something that happened in January 2026, but his understanding of causality and
-            consequences is limited.
-          </p>
-
-          <p style={{ marginTop: 12, marginBottom: 8 }}>
-            <strong>Rational Understanding of the Proceedings</strong>
-          </p>
-          <p>
-            Mr. Johnson's rational understanding of the proceedings is significantly impaired.
-            His active psychotic symptoms — particularly his persecutory delusions — substantially
-            interfere with his ability to rationally appreciate the proceedings and their likely
-            consequences. During interviews, Mr. Johnson expressed beliefs that people at the jail
-            are conspiring against him and that the legal system is part of a larger conspiracy to
-            harm him. These beliefs prevented him from engaging in rational discussion about the
-            facts of his case or possible legal strategies.
-          </p>
-          <p style={{ marginTop: 8 }}>
-            Most critically, Mr. Johnson's auditory hallucinations and persecutory ideation cause
-            him to distrust his own attorney, expressing concerns that his attorney "might be in
-            on it too." This fundamental lack of trust in counsel, driven by psychotic symptoms,
-            severely compromises his ability to work rationally with his attorney or appreciate
-            the proceedings.
-          </p>
-
-          <p style={{ marginTop: 12, marginBottom: 8 }}>
-            <strong>Ability to Consult with Counsel</strong>
-          </p>
-          <p>
-            Mr. Johnson's ability to assist counsel and participate meaningfully in his defense
-            is substantially compromised by his psychotic symptoms. While he reports that his
-            attorney visits and attempts to explain legal matters, Mr. Johnson's paranoia prevents
-            him from trusting the information provided. He second-guesses his attorney's motives,
-            interprets discussions through a lens of conspiracy, and relies on hallucinatory input
-            ("the voices") to make sense of information.
-          </p>
-          <p style={{ marginTop: 8 }}>
-            Mr. Johnson has also expressed doubts about the factual events of January 15, 2026,
-            claiming confusion about what occurred and attributing his actions to external
-            influences rather than his own judgment. This makes meaningful collaboration with
-            counsel extremely difficult.
-          </p>
-
-          <p style={{ marginTop: 12, marginBottom: 8 }}>
-            <strong>Overall Competency Opinion</strong>
-          </p>
-          <p>
-            <strong>
-              OPINION: Mr. Marcus D. Johnson is NOT COMPETENT to stand trial at this time.
-            </strong>
-          </p>
-          <p style={{ marginTop: 8 }}>
-            The primary basis for this opinion is his impaired rational understanding of the
-            proceedings and his severely compromised ability to assist counsel, both directly
-            caused by active psychotic symptoms (auditory hallucinations, persecutory delusions,
-            paranoid ideation). While his basic factual understanding is adequate, the Dusky
-            standard requires all three prongs to be met. Mr. Johnson meets the first prong at a
-            basic level but fails prongs two and three.
-          </p>
-          <p style={{ marginTop: 8 }}>
-            His thought disturbance (confirmed by elevated THD, RC8, and RC6 on MMPI-3 and
-            elevated SCZ and PAR on PAI) and cognitive limitations (FSIQ=82, verbal weakness)
-            compound the impairment caused by his psychotic symptoms. The combination creates a
-            substantial barrier to rational participation in trial proceedings.
-          </p>
-        </AIDraftSection>
-
-        <p style={{ marginTop: 20, marginBottom: 12 }}>
-          <strong>RECOMMENDATIONS</strong>
-        </p>
-        <ol style={{ paddingLeft: 20, marginBottom: 12 }}>
-          <li>
-            Referral to Colorado Mental Health Institute at Pueblo (CDMH-P) for competency
-            restoration treatment, including psychiatric care and psychopharmacological
-            management.
-          </li>
-          <li>
-            Continue psychiatric medication (Risperidone or equivalent antipsychotic at current
-            or higher dose) with regular monitoring by a psychiatrist.
-          </li>
-          <li>
-            Individual psychotherapy aimed at improving insight into illness and medication
-            compliance.
-          </li>
-          <li>Re-evaluation recommended after 6 months of stabilization and competency restoration efforts.</li>
-        </ol>
+      <div className="document-editor" style={{ maxWidth: 860, margin: '0 auto', padding: '24px 60px' }}>
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text)' }}>
+            No Writer Agent output available.
+          </div>
+          <div style={{ fontSize: '12px' }}>
+            Run the Writer Agent from the agent panel to generate a draft evaluation report.
+            The Ingestor and Diagnostician agents must be run first, and diagnostic decisions must be saved.
+          </div>
+          <div style={{ fontSize: '11px', marginTop: '12px', color: 'var(--text-secondary)' }}>
+            Case ID: {caseId}
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-function WordToolbar(): React.JSX.Element {
-  const [activeTab, setActiveTab] = useState('Home')
+// ---------------------------------------------------------------------------
+// WordToolbar component
+// ---------------------------------------------------------------------------
 
+function WordToolbar({
+  activeTab,
+  setActiveTab,
+}: {
+  activeTab: string
+  setActiveTab: (tab: string) => void
+}): React.JSX.Element {
   return (
     <div
-      className="word-toolbar"
       style={{
         background: 'var(--panel)',
         borderBottom: '1px solid var(--border)',
@@ -421,7 +863,6 @@ function WordToolbar(): React.JSX.Element {
       }}
     >
       <div
-        className="word-toolbar-tabs"
         style={{
           display: 'flex',
           gap: 0,
@@ -433,7 +874,6 @@ function WordToolbar(): React.JSX.Element {
         {['File', 'Home', 'Insert', 'Layout', 'References', 'Review', 'View'].map((tab) => (
           <div
             key={tab}
-            className={`word-toolbar-tab${activeTab === tab ? ' active' : ''}`}
             onClick={() => setActiveTab(tab)}
             style={{
               padding: '4px 10px',
@@ -447,21 +887,9 @@ function WordToolbar(): React.JSX.Element {
           </div>
         ))}
       </div>
-
-      {/* Formatting tools (Home tab) */}
       {activeTab === 'Home' && (
-        <div
-          className="word-toolbar-tools"
-          style={{
-            display: 'flex',
-            gap: 6,
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            padding: '4px 0',
-          }}
-        >
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', padding: '4px 0' }}>
           <select
-            className="word-font-select"
             style={{
               padding: '2px 4px',
               background: 'var(--bg)',
@@ -474,10 +902,8 @@ function WordToolbar(): React.JSX.Element {
           >
             <option>Times New Roman</option>
             <option>Arial</option>
-            <option>Helvetica</option>
             <option>Calibri</option>
           </select>
-
           <select
             style={{
               padding: '2px 4px',
@@ -492,168 +918,30 @@ function WordToolbar(): React.JSX.Element {
             <option>10</option>
             <option>11</option>
             <option>12</option>
-            <option>13</option>
             <option>14</option>
           </select>
-
-          <div
-            style={{
-              width: 1,
-              height: 20,
-              background: 'var(--border)',
-              margin: '0 4px',
-            }}
-          />
-
-          <button
-            className="word-tool-btn bold-btn"
-            style={{
-              padding: '3px 6px',
-              background: 'none',
-              border: '1px solid transparent',
-              borderRadius: 3,
-              cursor: 'pointer',
-              fontSize: 12,
-              color: 'var(--text)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-              fontWeight: 700,
-            }}
-          >
-            B
-          </button>
-
-          <button
-            className="word-tool-btn italic-btn"
-            style={{
-              padding: '3px 6px',
-              background: 'none',
-              border: '1px solid transparent',
-              borderRadius: 3,
-              cursor: 'pointer',
-              fontSize: 12,
-              color: 'var(--text)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-              fontStyle: 'italic',
-            }}
-          >
-            I
-          </button>
-
-          <button
-            className="word-tool-btn underline-btn"
-            style={{
-              padding: '3px 6px',
-              background: 'none',
-              border: '1px solid transparent',
-              borderRadius: 3,
-              cursor: 'pointer',
-              fontSize: 12,
-              color: 'var(--text)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-              textDecoration: 'underline',
-            }}
-          >
-            U
-          </button>
-
-          <div
-            style={{
-              width: 1,
-              height: 20,
-              background: 'var(--border)',
-              margin: '0 4px',
-            }}
-          />
-
-          <button
-            style={{
-              padding: '3px 6px',
-              background: 'none',
-              border: '1px solid transparent',
-              borderRadius: 3,
-              cursor: 'pointer',
-              fontSize: 12,
-              color: 'var(--text)',
-            }}
-          >
-            ≡ Left
-          </button>
-
-          <button
-            style={{
-              padding: '3px 6px',
-              background: 'none',
-              border: '1px solid transparent',
-              borderRadius: 3,
-              cursor: 'pointer',
-              fontSize: 12,
-              color: 'var(--text)',
-            }}
-          >
-            ≣ Center
-          </button>
-
-          <button
-            style={{
-              padding: '3px 6px',
-              background: 'none',
-              border: '1px solid transparent',
-              borderRadius: 3,
-              cursor: 'pointer',
-              fontSize: 12,
-              color: 'var(--text)',
-            }}
-          >
-            ≡ Right
-          </button>
+          <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+          {['B', 'I', 'U'].map((btn) => (
+            <button
+              key={btn}
+              style={{
+                padding: '3px 6px',
+                background: 'none',
+                border: '1px solid transparent',
+                borderRadius: 3,
+                cursor: 'pointer',
+                fontSize: 12,
+                color: 'var(--text)',
+                fontWeight: btn === 'B' ? 700 : 400,
+                fontStyle: btn === 'I' ? 'italic' : 'normal',
+                textDecoration: btn === 'U' ? 'underline' : 'none',
+              }}
+            >
+              {btn}
+            </button>
+          ))}
         </div>
       )}
-    </div>
-  )
-}
-
-function AIDraftSection({
-  children,
-  style,
-}: {
-  readonly children: React.ReactNode
-  readonly style?: React.CSSProperties
-}): React.JSX.Element {
-  return (
-    <div
-      style={{
-        border: '2px dashed #ff9800',
-        background: '#fff8e1',
-        borderRadius: 4,
-        padding: 16,
-        margin: '16px 0',
-        position: 'relative',
-        ...style,
-      }}
-    >
-      <div
-        style={{
-          display: 'inline-block',
-          background: '#ff9800',
-          color: 'white',
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: 0.5,
-          padding: '2px 8px',
-          borderRadius: 3,
-          marginBottom: 10,
-        }}
-      >
-        AI DRAFT — CLINICIAN REVIEW REQUIRED
-      </div>
-      <div style={{ color: '#333' }}>{children}</div>
     </div>
   )
 }

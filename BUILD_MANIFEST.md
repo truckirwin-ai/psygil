@@ -1,7 +1,7 @@
 # BUILD MANIFEST — Psygil (Psygil) MVP
 # This file is the single source of truth for build execution.
 # EVERY session, EVERY sub-agent, EVERY task MUST read this file first.
-# Last updated: 2026-03-27 (Fang audit — Sprints 1+2 marked complete, Sprint 3 active)
+# Last updated: 2026-03-29 (Sprint 12 complete — security hardening + 96/96 tests passing)
 
 ---
 
@@ -65,9 +65,9 @@ If the spec seems wrong, STOP and flag it for Truck. Do not "fix" the spec by wr
 
 ## CURRENT SPRINT
 
-**Sprint:** 6
-**Goal:** AI Agent Pipeline — Ingestor, Diagnostician, Writer, Editor wired to live case data
-**Dates:** Started 2026-03-29
+**Sprint:** 12 ✅ COMPLETE
+**Goal:** Security Hardening — CSP, code signing, dependency audit, auto-update with Ed25519 verification, OnlyOffice lockdown
+**Completed:** 2026-03-29
 
 ---
 
@@ -141,7 +141,7 @@ If the spec seems wrong, STOP and flag it for Truck. Do not "fix" the spec by wr
 | 5.14 | Dashboard pinned + filter UX | ✅ DONE | 2026-03-29 | Dashboard always open, no close button, stage circles in tree, CASES filter dropdown |
 | 5.15 | Tree-filesystem sync fix | ✅ DONE | 2026-03-29 | LeftColumn rewritten: tree now reads from workspace.getTree() (real filesystem) with DB as metadata overlay. Chokidar auto-refresh wired. Enforcement comments added. |
 
-### Sprint 6 Tasks 🔄 IN PROGRESS (AI Agent Pipeline)
+### Sprint 6 Tasks ✅ COMPLETE (AI Agent Pipeline)
 | # | Task | Status | Assigned To | Notes |
 |---|------|--------|-------------|-------|
 | 6.1 | Agent runner framework | ✅ DONE | 2026-03-29 | runner.ts: AgentConfig → PII redact → Claude API → rehydrate → destroy map → AgentResult. agent-handlers.ts: IPC agent:run + agent:status. TS errors fixed (AgentType alignment). |
@@ -152,8 +152,80 @@ If the spec seems wrong, STOP and flag it for Truck. Do not "fix" the spec by wr
 | 6.6 | Agent status panel in RightColumn | ✅ DONE | 2026-03-29 | Live agent status: 2s polling, color-coded dots (green/orange/gray/red), elapsed time, token usage. "Run Ingestor" button disabled while agents running. |
 | 6.7 | Pipeline stage advancement | ✅ DONE | 2026-03-29 | pipeline/index.ts: checkStageAdvancement + advanceStage + getStageConditions. 6-stage conditions enforced (intake→docs→tests→ingestor→diagnostician→writer+editor+attestation). IPC: pipeline:check/advance/conditions. Preload wired. Legacy stage names handled. |
 
-### Sprint 7–12 Tasks
-[Populated when Sprint 6 agents are functional]
+### Sprint 7 Tasks ✅ COMPLETE (Wire Agent Pipeline to Live UI)
+**Goal:** Connect all 4 agent backends to the existing UI tab shells so data flows end-to-end: Ingestor output → Clinical Overview, Diagnostician output → DiagnosticsTab, Writer output → EvalReportTab, Editor output → annotations. Add diagnostic decision persistence (the DOCTOR ALWAYS DIAGNOSES UI).
+
+| # | Task | Status | Completed | Notes |
+|---|------|--------|-----------|-------|
+| 7.1 | Ingestor output → Clinical Overview wiring | ✅ DONE | 2026-03-29 | ClinicalOverviewTab.tsx full rewrite (~550 lines): proper React JSX, loads IngestorOutput via getResult(), sub-tabs: Intake, Referral, Collateral, Testing, Interviews, Timeline, Completeness, Diagnostics, Report. Falls back to basic data when no ingestor output. |
+| 7.2 | Diagnostician output → DiagnosticsTab wiring | ✅ DONE | 2026-03-29 | DiagnosticsTab.tsx full rewrite (~450 lines): loads DiagnosticianOutput, expandable diagnosis cards with criteria badges (met/not_met/insufficient_data), evidence, differentials, psycholegal analysis, functional impairment. Render/Rule Out/Defer per diagnosis — NO ACCEPT ALL. |
+| 7.3 | Diagnostic decision persistence | ✅ DONE | 2026-03-29 | New decisions/ module: diagnostic_decisions table (SQLite), CRUD (save/list/delete), IPC handlers registered. DiagnosticsTab loads saved decisions on mount, saves on clinician action, deletes on clear. Pipeline can check decisions exist. |
+| 7.4 | Writer output → EvalReportTab wiring | ✅ DONE | 2026-03-29 | EvalReportTab.tsx full rewrite (~450 lines): loads WriterOutput sections, section nav sidebar, draft indicators (orange dots), AI draft sections with orange dashed border + "AI DRAFT — CLINICIAN REVIEW REQUIRED" label, sources + confidence per section. |
+| 7.5 | Editor output → annotation overlay | ✅ DONE | 2026-03-29 | Combined with 7.4 in EvalReportTab: loads EditorOutput, review banner with flag counts by severity, inline annotations under each section with severity-colored borders, dismiss button per annotation, revision priorities section. |
+| 7.6 | Agent cascade triggers in RightColumn | ✅ DONE | 2026-03-29 | RightColumn rewrite: 4 agent run buttons (Ingestor→Diagnostician→Writer→Editor) with prerequisite checks. Each button enabled only when prior agent has persisted results. Result presence checked via getResult() on case change + after agent completion. |
+| 7.7 | Pipeline stage advancement UI | ✅ DONE | 2026-03-29 | PipelinePanel upgraded: "Advance to [Next Stage] →" button. Calls pipeline:check first — shows reason if blocked. Confirm/Cancel inline dialog. On success, calls onStageAdvanced callback to refresh case data. CenterColumn passes caseId + onRefreshCases. |
+
+### Sprint 8 Tasks ✅ COMPLETE
+
+| # | Task | Status | Completed | Notes |
+|---|------|--------|-----------|-------|
+| 8.1 | Drag-and-drop document upload modal | ✅ DONE | 2026-03-29 | DocumentUploadModal.tsx (~380 lines): drag-and-drop via webUtils.getPathForFile() (Electron 33 sandboxed renderer), native file picker fallback, per-file subfolder selector (7 subfolders), batch upload with sequential processing + status tracking. |
+| 8.2 | Score import modal (Publisher PDF + Manual Entry) | ✅ DONE | 2026-03-29 | ScoreImportModal.tsx (~550 lines): two pathways — Publisher PDF (file picker → Testing subfolder → prompts Ingestor run) and Manual Entry (9 instruments incl. "Other", date picker, clinical scales table, validity indicators table, notes). Combined tasks 8.2+8.4. |
+| 8.3 | Ingestor prompt enhanced for Q-Global/PARiConnect | ✅ DONE | 2026-03-29 | ingestor.ts system prompt updated with specific scale-by-scale extraction for MMPI-3, PAI, WAIS-V, TOMM, SIRS-2. mapDocType() enhanced with filePath param to detect Testing subfolder → test_score_report. |
+| 8.4 | Manual test score entry form | ✅ DONE | 2026-03-29 | Combined with 8.2. ScoreTable sub-component: dynamic add/remove rows, scaleName + rawScore + tScore + percentile + classification per row. |
+| 8.5 | Re-ingest workflow | ✅ DONE | 2026-03-29 | No new code needed — existing architecture supports re-running (each run creates new agent_results row, getLatest reads most recent, "Re-run" button already in cascade UI). |
+
+### Sprint 9 Tasks ✅ COMPLETE
+
+| # | Task | Status | Completed | Notes |
+|---|------|--------|-----------|-------|
+| 9.1 | Data Confirmation split-view tab | ✅ DONE | 2026-03-29 | DataConfirmationTab.tsx (~480 lines): left panel = source document text with selector, right panel = extracted data with confirmation controls. 6 data categories with per-category Confirmed/Corrected/Flagged status. ExtractedDataDisplay recursively renders JSON as readable cards. |
+| 9.2 | Confirm/Correct/Flag workflow per category | ✅ DONE | 2026-03-29 | Combined with 9.1. ConfirmationControls: 3 status buttons + notes textarea. "Ready to Advance" indicator when all required categories (Demographics, Referral Questions) confirmed. State persisted to SQLite via IPC. |
+| 9.3 | Manual behavioral observation entry | ✅ DONE | 2026-03-29 | Combined with 9.1. BehavioralObservationsPane includes manual observation textarea for clinician to add observations not captured in transcripts. |
+| 9.4 | Pipeline gate: block advance past Onboarding until confirmed | ✅ DONE | 2026-03-29 | data-confirmation.ts module: saveDataConfirmation/getDataConfirmation/isDataConfirmationComplete. IPC handlers + preload + types wired. Pipeline onboarding condition checks isDataConfirmationComplete() — blocks advancement if required categories not confirmed/corrected. DataConfirmationTab saves to DB via IPC. |
+
+### Sprint 10 Tasks ✅ COMPLETE
+
+| # | Task | Status | Completed | Notes |
+|---|------|--------|-----------|-------|
+| 10.1 | OnlyOffice Document Server lifecycle manager | ✅ DONE | 2026-03-29 | onlyoffice/index.ts (291 lines): Docker container orchestration (psygil-onlyoffice on port 9980), JWT auth with safeStorage, health polling (2s interval, 120s timeout), start/stop/status/getUrl. No external JWT dependency — built-in crypto HMAC-SHA256. |
+| 10.2 | DOCX generation from Writer Agent output | ✅ DONE | 2026-03-29 | onlyoffice/docx-generator.ts (358 lines): WriterOutput → .docx via docx package. Professional title page, H1/H2 section hierarchy, AI DRAFT markers (yellow highlight) on draft_requiring_revision sections, sources as italic footnotes, Editor annotations appendix with severity-coded flags. Versioned drafts (draft_v1.docx, draft_v2.docx). |
+| 10.3 | OnlyOffice IPC handlers + preload + types | ✅ DONE | 2026-03-29 | 7 IPC handlers: start, stop, status, getUrl, generateToken, generateDocx, openDocument. Preload onlyoffice namespace wired. Full type definitions in ipc.ts. Response envelope pattern (ok/fail). |
+| 10.4 | OnlyOffice editor component (iframe embed) | ✅ DONE | 2026-03-29 | editors/OnlyOfficeEditor.tsx (403 lines): Dynamic API script loading, DocsAPI.DocEditor initialization with JWT auth, desktop mode, comments + review enabled, autosave, editor destroy on unmount. Server status detection with "Start Server" fallback button. |
+| 10.5 | Replace EvalReportTab with dual-mode editor | ✅ DONE | 2026-03-29 | EvalReportTab.tsx full rewrite (947 lines): dual-mode — Preview (existing HTML renderer) and Editor (OnlyOffice iframe). "Generate DOCX" button creates report from Writer+Editor agent outputs. Mode toggle. 75/25 split layout (editor/sidebar). Section nav + editor flags summary in right sidebar. Existing HTML preview preserved as ReportPreview sub-component. |
+| 10.6 | Track changes + Editor Agent comments | ✅ DONE | 2026-03-29 | docx-generator inserts Editor annotations as Word comments with severity color coding (critical/high/medium/low). OnlyOffice config enables track changes + comments. Review mode available for clinician to accept/reject AI edits. |
+
+### Sprint 11 Tasks ✅ COMPLETE
+
+| # | Task | Status | Completed | Notes |
+|---|------|--------|-----------|-------|
+| 11.1 | Gate 3 flag review wired to real Editor Agent output | ✅ DONE | 2026-03-29 | AttestationTab checklist now validates real data: tests via documents.list, interviews via documents, diagnostics via diagnosticDecisions.list, report via writer.getResult, Daubert via editor.getResult. Pipeline bug fixed: review stage now queries audit_log (was incorrectly querying non-existent case_audit_log). |
+| 11.2 | Attestation with digital signature capture | ✅ DONE | 2026-03-29 | AttestationTab.tsx full rewrite (748 lines): typed signature input, editable attestation statement with default template, date picker. submitAttestation IPC → reports/index.ts validates review stage, copies final draft, generates PDF, computes SHA-256, locks report, logs to audit_log. Post-finalization: read-only state with hash display. |
+| 11.3 | Report lock + SHA-256 hash + sealed PDF generation | ✅ DONE | 2026-03-29 | reports/index.ts (355 lines): SHA-256 via crypto.createHash on final DOCX, stored in reports.integrity_hash. PDF via LibreOffice headless CLI (soffice --convert-to pdf) with graceful fallback. reports.is_locked=1 after signing. verifyIntegrity() recomputes hash for forensic verification. |
+| 11.4 | Comprehensive audit trail logging | ✅ DONE | 2026-03-29 | audit/index.ts (139 lines): logAuditEntry inserts to audit_log table with actor type/id, action_type, details JSON. getAuditTrail returns chronological entries. exportAuditTrail generates CSV or JSON. AuditTrailTab.tsx rewrite (523 lines): real IPC data, 10s auto-refresh, actor color coding, stats cards, CSV/JSON export as blob downloads, integrity verification button. |
+| 11.5 | Testimony preparation export | ✅ DONE | 2026-03-29 | testimony/index.ts (160 lines): prepareTestimonyPackage creates exports/testimony_{date}/ directory, collects final report (DOCX+PDF), test score docs, generates case_summary.md (metadata + diagnoses + top 10 audit entries), exports audit trail CSV. AttestationTab has "Prepare Testimony" button post-finalization. |
+
+### Sprint 12 Tasks ✅ COMPLETE
+
+| # | Task | Status | Completed | Notes |
+|---|------|--------|-----------|-------|
+| 12.1 | Content Security Policy (CSP) | ✅ DONE | 2026-03-29 | index.html: comprehensive CSP (default-src 'self', script-src 'self', connect-src Anthropic API + OnlyOffice, frame-src localhost:9980, object-src 'none', form-action 'none', frame-ancestors 'none'). Main process: session.webRequest.onHeadersReceived injects CSP headers on all responses. |
+| 12.2 | Code signing (macOS + Windows) | ✅ DONE | 2026-03-29 | electron-builder.yml: multi-platform config (macOS dmg/zip arm64+x64, Windows NSIS x64, Linux AppImage/deb). entitlements.mac.plist: hardened runtime. scripts/notarize.js: Apple notarization via @electron/notarize. scripts/sign-win.js: Authenticode via signtool. All env-var driven for CI. |
+| 12.3 | Dependency audit in CI | ✅ DONE | 2026-03-29 | scripts/audit-deps.sh: npm audit + pip-audit/safety for Python sidecar. .github/workflows/security-audit.yml: runs on push/PR/weekly schedule. Validates Electron security settings (contextIsolation, nodeIntegration, CSP). |
+| 12.4 | Auto-update with Ed25519 verification | ✅ DONE | 2026-03-29 | updater/index.ts: checks update server for manifest, downloads binary, verifies SHA-256 hash + Ed25519 signature before install. No external JWT/crypto deps. Periodic check (30s delay, 4hr interval). IPC handlers: check/download/getVersion. |
+| 12.5 | OnlyOffice macro/plugin lockdown | ✅ DONE | 2026-03-29 | Container env: WOPI_ENABLED=false. getSecureEditorConfig(): macros=false, macrosMode='disable', plugins=false, fillForms=false. OnlyOfficeEditor.tsx applies lockdown in DocsAPI config. openDocument handler merges secure config. |
+
+### Test Suite ✅ 96/96 PASSING
+
+| Module | Tests | Coverage |
+|--------|-------|----------|
+| Pipeline stage advancement | 24 | All 6 stages, 15 gates, full lifecycle Onboarding→Complete |
+| Data confirmation gate | 16 | Save/get/upsert, required category validation, status combos |
+| Audit trail | 14 | Log/query/export (CSV+JSON), actor mapping, ordering |
+| Report finalization | 10 | Status tracking, integrity hash, version management, transitions |
+| AI rate limiter + error handler | 32 | Pre-existing tests (retry, classification, logging) |
+
+Infrastructure: Vitest + in-memory SQLite (sql.js adapter), full schema, per-test reset, Electron API mocks.
 
 ---
 

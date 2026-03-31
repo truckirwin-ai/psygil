@@ -868,8 +868,12 @@ function runBaseMigration(sqlite) {
   createTablesFromSchema(sqlite);
   sqlite.exec(POST_MIGRATION_SQL);
 }
+function ensureViewsAndTriggers(sqlite) {
+  sqlite.exec(POST_MIGRATION_SQL);
+}
 main().catch((err) => {
   console.error("[migrate] FATAL:", err);
   process.exit(1);
 });
+exports.ensureViewsAndTriggers = ensureViewsAndTriggers;
 exports.runBaseMigration = runBaseMigration;

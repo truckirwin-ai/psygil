@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type {
   PsygilApi,
   WorkspaceFileChangedEvent,
@@ -21,9 +21,19 @@ import type {
   AgentRunParams,
   IngestorRunParams,
   IngestorGetResultParams,
+  DiagnosticianRunParams,
+  DiagnosticianGetResultParams,
+  WriterRunParams,
+  WriterGetResultParams,
+  EditorRunParams,
+  EditorGetResultParams,
   PipelineCheckParams,
   PipelineAdvanceParams,
+  PipelineSetStageParams,
   PipelineConditionsParams,
+  DiagnosticDecisionSaveParams,
+  DiagnosticDecisionListParams,
+  DiagnosticDecisionDeleteParams,
 } from '../shared/types'
 
 // IPC channel constants — must match main/ipc/handlers.ts
@@ -47,6 +57,7 @@ const CH = {
   DOCS_GET: 'documents:get',
   DOCS_DELETE: 'documents:delete',
   DOCS_PICK_FILE: 'documents:pickFile',
+  DOCS_PICK_FILES: 'documents:pickFiles',
   PII_REDACT: 'pii:redact',
   PII_REHYDRATE: 'pii:rehydrate',
   PII_DESTROY: 'pii:destroy',
@@ -58,11 +69,15 @@ const CH = {
   WS_OPEN_NATIVE: 'workspace:openNative',
   WS_PICK_FOLDER: 'workspace:pickFolder',
   WS_DEFAULT_PATH: 'workspace:getDefaultPath',
+  WS_GET_MALFORMED: 'workspace:getMalformed',
+  WS_SCAFFOLD: 'workspace:scaffold',
   WS_FILE_CHANGED: 'workspace:file-changed',
   API_KEY_STORE: 'apiKey:store',
   API_KEY_RETRIEVE: 'apiKey:retrieve',
   API_KEY_DELETE: 'apiKey:delete',
   API_KEY_HAS: 'apiKey:has',
+  DATA_CONFIRMATION_SAVE: 'data-confirmation:save',
+  DATA_CONFIRMATION_GET: 'data-confirmation:get',
 } as const
 
 // Typed API exposed to the renderer as window.psygil.
@@ -109,6 +124,8 @@ const api: PsygilApi = {
     get: (params: DocumentsGetParams) => ipcRenderer.invoke(CH.DOCS_GET, params),
     delete: (params: DocumentsDeleteParams) => ipcRenderer.invoke(CH.DOCS_DELETE, params),
     pickFile: () => ipcRenderer.invoke(CH.DOCS_PICK_FILE),
+    pickFiles: () => ipcRenderer.invoke(CH.DOCS_PICK_FILES),
+    getDroppedFilePath: (file: File) => webUtils.getPathForFile(file),
   },
 
   pii: {
@@ -130,11 +147,19 @@ const api: PsygilApi = {
     openNative: (path) => ipcRenderer.invoke(CH.WS_OPEN_NATIVE, path),
     pickFolder: () => ipcRenderer.invoke(CH.WS_PICK_FOLDER),
     getDefaultPath: () => ipcRenderer.invoke(CH.WS_DEFAULT_PATH),
+    getMalformed: () => ipcRenderer.invoke(CH.WS_GET_MALFORMED),
+    scaffold: (folderPath: string) => ipcRenderer.invoke(CH.WS_SCAFFOLD, folderPath),
     onFileChanged: (callback: (event: WorkspaceFileChangedEvent) => void) => {
-      ipcRenderer.on(CH.WS_FILE_CHANGED, (_event, data) => callback(data))
+      const wrapped = (_event: Electron.IpcRendererEvent, data: WorkspaceFileChangedEvent): void => { callback(data) }
+      ipcRenderer.on(CH.WS_FILE_CHANGED, wrapped)
+      return wrapped
     },
-    offFileChanged: () => {
-      ipcRenderer.removeAllListeners(CH.WS_FILE_CHANGED)
+    offFileChanged: (wrapped?: (...args: unknown[]) => void) => {
+      if (wrapped) {
+        ipcRenderer.removeListener(CH.WS_FILE_CHANGED, wrapped as never)
+      } else {
+        ipcRenderer.removeAllListeners(CH.WS_FILE_CHANGED)
+      }
     },
   },
 
@@ -160,10 +185,69 @@ const api: PsygilApi = {
     getResult: (params: IngestorGetResultParams) => ipcRenderer.invoke('ingestor:getResult', params),
   },
 
+  diagnostician: {
+    run: (params: DiagnosticianRunParams) => ipcRenderer.invoke('diagnostician:run', params),
+    getResult: (params: DiagnosticianGetResultParams) => ipcRenderer.invoke('diagnostician:getResult', params),
+  },
+
+  writer: {
+    run: (params: WriterRunParams) => ipcRenderer.invoke('writer:run', params),
+    getResult: (params: WriterGetResultParams) => ipcRenderer.invoke('writer:getResult', params),
+  },
+
+  editor: {
+    run: (params: EditorRunParams) => ipcRenderer.invoke('editor:run', params),
+    getResult: (params: EditorGetResultParams) => ipcRenderer.invoke('editor:getResult', params),
+  },
+
   pipeline: {
     check: (params: PipelineCheckParams) => ipcRenderer.invoke('pipeline:check', params),
     advance: (params: PipelineAdvanceParams) => ipcRenderer.invoke('pipeline:advance', params),
+    setStage: (params: PipelineSetStageParams) => ipcRenderer.invoke('pipeline:set-stage', params),
     conditions: (params: PipelineConditionsParams) => ipcRenderer.invoke('pipeline:conditions', params),
+  },
+
+  diagnosticDecisions: {
+    save: (params: DiagnosticDecisionSaveParams) => ipcRenderer.invoke('diagnosticDecision:save', params),
+    list: (params: DiagnosticDecisionListParams) => ipcRenderer.invoke('diagnosticDecision:list', params),
+    delete: (params: DiagnosticDecisionDeleteParams) => ipcRenderer.invoke('diagnosticDecision:delete', params),
+  },
+
+  dataConfirmation: {
+    save: (args: { caseId: number; categoryId: string; status: string; notes: string }) => ipcRenderer.invoke(CH.DATA_CONFIRMATION_SAVE, args),
+    get: (args: { caseId: number }) => ipcRenderer.invoke(CH.DATA_CONFIRMATION_GET, args),
+  },
+
+  onlyoffice: {
+    start: () => ipcRenderer.invoke('onlyoffice:start'),
+    stop: () => ipcRenderer.invoke('onlyoffice:stop'),
+    status: () => ipcRenderer.invoke('onlyoffice:status'),
+    getUrl: () => ipcRenderer.invoke('onlyoffice:getUrl'),
+    generateToken: (args: { payload: Record<string, unknown> }) => ipcRenderer.invoke('onlyoffice:generateToken', args),
+    generateDocx: (args: { caseId: number }) => ipcRenderer.invoke('onlyoffice:generateDocx', args),
+    openDocument: (args: { caseId: number; filePath?: string; readOnly?: boolean }) => ipcRenderer.invoke('onlyoffice:openDocument', args),
+  },
+
+  updater: {
+    check: () => ipcRenderer.invoke('updater:check'),
+    download: (args: { version: string }) => ipcRenderer.invoke('updater:download', args),
+    getVersion: () => ipcRenderer.invoke('updater:getVersion'),
+  },
+
+  report: {
+    getStatus: (args: { caseId: number }) => ipcRenderer.invoke('report:getStatus', args),
+    submitAttestation: (args: { caseId: number; signedBy: string; attestationStatement: string; signatureDate: string }) => ipcRenderer.invoke('report:submitAttestation', args),
+    verifyIntegrity: (args: { caseId: number }) => ipcRenderer.invoke('report:verifyIntegrity', args),
+  },
+
+  audit: {
+    log: (args: { caseId: number; actionType: string; actorType: 'clinician' | 'ai_agent' | 'system'; actorId?: string; details: Record<string, unknown>; relatedEntityType?: string; relatedEntityId?: number }) => ipcRenderer.invoke('audit:log', args),
+    getTrail: (args: { caseId: number }) => ipcRenderer.invoke('audit:getTrail', args),
+    export: (args: { caseId: number; format?: 'csv' | 'json' }) => ipcRenderer.invoke('audit:export', args),
+  },
+
+  testimony: {
+    prepare: (args: { caseId: number }) => ipcRenderer.invoke('testimony:prepare', args),
   },
 }
 

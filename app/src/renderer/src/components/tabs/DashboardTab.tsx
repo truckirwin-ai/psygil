@@ -1,25 +1,21 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  useDraggable,
+  pointerWithin,
+} from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
 import { CaseRow } from '../../../../shared/types/ipc'
 
 interface DashboardTabProps {
   cases: CaseRow[]
   onCaseClick: (caseId: number) => void
-}
-
-const STAGE_COLORS: Record<string, string> = {
-  onboarding: '#2196f3',
-  testing: '#9c27b0',
-  interview: '#e91e63',
-  diagnostics: '#ff9800',
-  review: '#ff5722',
-  complete: '#4caf50',
-}
-
-const SEVERITY_COLORS: Record<string, string> = {
-  Low: '#4caf50',
-  Moderate: '#ff9800',
-  High: '#f44336',
-  'Very High': '#9c27b0',
+  onRefresh?: () => void
 }
 
 const EVAL_TYPE_COLORS: Record<string, string> = {
@@ -37,12 +33,21 @@ const PIPELINE_STAGES = [
   { key: 'onboarding', label: 'Onboarding' },
   { key: 'testing', label: 'Testing' },
   { key: 'interview', label: 'Interview' },
-  { key: 'diagnostics', label: 'Diagnostics' },
+  { key: 'diagnostics', label: 'Report' },
   { key: 'review', label: 'Review' },
   { key: 'complete', label: 'Complete' },
 ]
 
-// Helper to map workflow_current_stage to stage string
+/** Stage card colors — light bg, darker text, border between */
+const STAGE_CARD_STYLES: Record<string, { bg: string; border: string; text: string; accent: string }> = {
+  onboarding:  { bg: '#e0f7fa', border: '#b2ebf2', text: '#00695c', accent: '#00897b' },
+  testing:     { bg: '#f3e5f5', border: '#e1bee7', text: '#6a1b9a', accent: '#8e24aa' },
+  interview:   { bg: '#fce4ec', border: '#f8bbd0', text: '#ad1457', accent: '#d81b60' },
+  diagnostics: { bg: '#fff3e0', border: '#ffe0b2', text: '#e65100', accent: '#f57c00' },
+  review:      { bg: '#fbe9e7', border: '#ffccbc', text: '#bf360c', accent: '#e64a19' },
+  complete:    { bg: '#e8f5e9', border: '#c8e6c9', text: '#2e7d32', accent: '#43a047' },
+}
+
 function mapStageToKey(stage: string | null): string {
   if (!stage) return 'onboarding'
   const s = stage.toLowerCase()
@@ -55,669 +60,574 @@ function mapStageToKey(stage: string | null): string {
   return 'onboarding'
 }
 
-// Helper to map case_status to readable status string
-function mapCaseStatus(status: string | null): string {
-  if (!status) return 'Onboarding'
-  const s = status.toLowerCase()
-  if (s.includes('onboard')) return 'Onboarding'
-  if (s.includes('test')) return 'Testing'
-  if (s.includes('interview')) return 'Interview'
-  if (s.includes('diagnos')) return 'Diagnostics'
-  if (s.includes('review')) return 'Review'
-  if (s.includes('complete')) return 'Complete'
-  if (s.includes('archived')) return 'Archived'
-  return 'Onboarding'
+function mapStageLabel(stage: string | null): string {
+  const key = mapStageToKey(stage)
+  return PIPELINE_STAGES.find((s) => s.key === key)?.label ?? 'Onboarding'
 }
 
-function mapSeverity(severity: string | null): string {
-  if (!severity) return 'Moderate'
-  const s = severity.toLowerCase()
-  if (s === 'low') return 'Low'
-  if (s === 'moderate') return 'Moderate'
-  if (s === 'high') return 'High'
-  if (s === 'very high' || s === 'veryhigh') return 'Very High'
-  return 'Moderate'
+function formatClientName(c: CaseRow): string {
+  const first = c.examinee_first_name ?? ''
+  const last = c.examinee_last_name ?? ''
+  const initial = first.charAt(0).toUpperCase()
+  const type = c.evaluation_type || ''
+  return `${last}, ${initial}. ${type ? `— ${type}` : ''}`.trim()
 }
 
-export default function DashboardTab({ cases, onCaseClick }: DashboardTabProps) {
+export default function DashboardTab({ cases, onCaseClick, onRefresh }: DashboardTabProps) {
   const [filterType, setFilterType] = useState('All')
-  const [filterStatus, setFilterStatus] = useState('All')
-  const [filterSeverity, setFilterSeverity] = useState('All')
+  const [filterStage, setFilterStage] = useState('All')
   const [searchText, setSearchText] = useState('')
+  const [searchCase, setSearchCase] = useState('')
+  const [dateSort, setDateSort] = useState<'desc' | 'asc'>('desc')
+  const [kanbanOpen, setKanbanOpen] = useState(true)
+  const [tableOpen, setTableOpen] = useState(false)
+  const [activeDragId, setActiveDragId] = useState<number | null>(null)
 
-  // Compute KPI stats
-  const stats = useMemo(() => {
-    const stageCounts = {
-      onboarding: 0,
-      testing: 0,
-      interview: 0,
-      diagnostics: 0,
-      review: 0,
-      complete: 0,
+  /* ── Horizontal splitter between kanban and case list ── */
+  const [kanbanHeight, setKanbanHeight] = useState(320)
+  const splitterDragging = useRef(false)
+  const splitterStartY = useRef(0)
+  const splitterStartH = useRef(0)
+
+  const onSplitterPointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault()
+    splitterDragging.current = true
+    splitterStartY.current = e.clientY
+    splitterStartH.current = kanbanHeight
+    // Ensure both panels are open when splitter is dragged
+    setKanbanOpen(true)
+    setTableOpen(true)
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }, [kanbanHeight])
+
+  const onSplitterPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!splitterDragging.current) return
+    const delta = e.clientY - splitterStartY.current
+    const newH = Math.max(120, Math.min(800, splitterStartH.current + delta))
+    setKanbanHeight(newH)
+  }, [])
+
+  const onSplitterPointerUp = useCallback(() => {
+    splitterDragging.current = false
+  }, [])
+
+  /* ── @dnd-kit setup ──
+   *
+   * PointerSensor with distance:5 — movement below 5px is a click, above is drag.
+   * pointerWithin collision — detects which droppable column the POINTER is inside.
+   * Unlike closestCenter (which uses the draggable element rect), pointerWithin
+   * uses the actual cursor coordinates, so it works perfectly with DragOverlay
+   * where the original card stays in place.
+   * DragOverlay — renders a visual clone following the cursor. The original card
+   * fades out. DragOverlay does NOT affect collision detection.
+   */
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id as number)
+  }, [])
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    setActiveDragId(null)
+    const { active, over } = event
+    if (!over) return
+    const caseId = active.id as number
+    const stage = over.id as string
+    // Only update if dropped on a valid pipeline stage
+    if (!PIPELINE_STAGES.some((s) => s.key === stage)) return
+    try {
+      await window.psygil?.pipeline?.setStage({ caseId, stage })
+      onRefresh?.()
+    } catch (err) {
+      console.error('[kanban] drop failed:', err)
     }
+  }, [onRefresh])
 
+  const toggleKanban = useCallback(() => {
+    if (kanbanOpen) {
+      // Collapsing kanban → expand list
+      setKanbanOpen(false)
+      setTableOpen(true)
+    } else {
+      // Expanding kanban → collapse list
+      setKanbanOpen(true)
+      setTableOpen(false)
+    }
+  }, [kanbanOpen])
+
+  const toggleTable = useCallback(() => {
+    if (tableOpen) {
+      // Collapsing list → expand kanban
+      setTableOpen(false)
+      setKanbanOpen(true)
+    } else {
+      // Expanding list → collapse kanban
+      setTableOpen(true)
+      setKanbanOpen(false)
+    }
+  }, [tableOpen])
+
+  const stats = useMemo(() => {
+    const stageCounts = { onboarding: 0, testing: 0, interview: 0, diagnostics: 0, review: 0, complete: 0 }
     let activeCount = 0
-    let completedCount = 0
-    let highSeverityCount = 0
-    let totalHours = 0
-    let hoursCount = 0
-
     cases.forEach((c) => {
-      // Pipeline stage counts
       const stage = mapStageToKey(c.workflow_current_stage)
       stageCounts[stage as keyof typeof stageCounts]++
-
-      // Active = not complete/archived
-      const status = mapCaseStatus(c.case_status)
-      if (status !== 'Complete' && status !== 'Archived') {
-        activeCount++
-      }
-      if (status === 'Complete') {
-        completedCount++
-      }
-
-      // High severity
-      const sev = mapSeverity(c.case_status)
-      if (sev === 'High' || sev === 'Very High') {
-        highSeverityCount++
-      }
+      if (stage !== 'complete') activeCount++
     })
-
-    const avgHours = hoursCount > 0 ? (totalHours / hoursCount).toFixed(1) : '0.0'
-
-    return {
-      active: activeCount,
-      completed: completedCount,
-      highSeverity: highSeverityCount,
-      avgHours,
-      stageCounts,
-    }
+    return { active: activeCount, stageCounts }
   }, [cases])
 
-  // Compute evaluation type breakdown
+  const casesByStage = useMemo(() => {
+    const grouped: Record<string, CaseRow[]> = {}
+    for (const s of PIPELINE_STAGES) grouped[s.key] = []
+    cases.forEach((c) => {
+      const key = mapStageToKey(c.workflow_current_stage)
+      grouped[key]?.push(c)
+    })
+    return grouped
+  }, [cases])
+
   const evalTypeStats = useMemo(() => {
     const counts: Record<string, number> = {}
     cases.forEach((c) => {
-      const type = c.evaluation_type || 'Unknown'
+      const type = c.evaluation_type || 'Untyped'
       counts[type] = (counts[type] || 0) + 1
     })
     return counts
   }, [cases])
 
-  // Compute severity breakdown
-  const severityStats = useMemo(() => {
-    const counts = { 'Very High': 0, High: 0, Moderate: 0, Low: 0 }
-    cases.forEach((c) => {
-      const sev = mapSeverity(c.case_status)
-      counts[sev as keyof typeof counts]++
-    })
-    return counts
+  const evalTypes = useMemo(() => {
+    return Array.from(new Set(cases.map((c) => c.evaluation_type).filter(Boolean))).sort() as string[]
   }, [cases])
 
-  // Get upcoming deadlines (within 30 days)
-  const upcomingDeadlines = useMemo(() => {
-    const now = new Date()
-    return cases
-      .filter((c) => {
-        const status = mapCaseStatus(c.case_status)
-        if (status === 'Complete' || status === 'Archived') return false
-        if (!c.completed_at) {
-          const deadline = c.created_at ? new Date(c.created_at) : now
-          const diffDays = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-          return diffDays >= 0 && diffDays <= 30
-        }
-        return false
-      })
-      .sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at) : new Date()
-        const dateB = b.created_at ? new Date(b.created_at) : new Date()
-        return dateA.getTime() - dateB.getTime()
-      })
-      .slice(0, 8)
-  }, [cases])
-
-  // Filter cases
   const filteredCases = useMemo(() => {
     let result = [...cases]
-
-    if (filterType !== 'All') {
-      result = result.filter((c) => c.evaluation_type === filterType)
+    if (filterType !== 'All') result = result.filter((c) => c.evaluation_type === filterType)
+    if (filterStage !== 'All') result = result.filter((c) => mapStageToKey(c.workflow_current_stage) === filterStage)
+    if (searchCase) {
+      const q = searchCase.toLowerCase()
+      result = result.filter((c) => c.case_number.toLowerCase().includes(q))
     }
-
-    if (filterStatus !== 'All') {
-      result = result.filter((c) => mapCaseStatus(c.case_status) === filterStatus)
-    }
-
-    if (filterSeverity !== 'All') {
-      result = result.filter((c) => mapSeverity(c.case_status) === filterSeverity)
-    }
-
     if (searchText) {
       const q = searchText.toLowerCase()
       result = result.filter((c) => {
         const name = `${c.examinee_last_name} ${c.examinee_first_name}`.toLowerCase()
-        const caseNum = c.case_number.toLowerCase()
-        const evalType = (c.evaluation_type || '').toLowerCase()
-        return name.includes(q) || caseNum.includes(q) || evalType.includes(q)
+        return name.includes(q)
       })
     }
-
-    // Sort by referral date (newest first)
+    const dir = dateSort === 'asc' ? 1 : -1
     result.sort((a, b) => {
       const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
-      return dateB - dateA
+      return (dateA - dateB) * dir
     })
-
     return result
-  }, [cases, filterType, filterStatus, filterSeverity, searchText])
+  }, [cases, filterType, filterStage, searchText, searchCase, dateSort])
 
-  // Get unique eval types for filter
-  const evalTypes = useMemo(() => {
-    return Array.from(new Set(cases.map((c) => c.evaluation_type).filter(Boolean)))
-      .sort() as string[]
-  }, [cases])
-
-  const maxSeverity = Math.max(...Object.values(severityStats))
+  const isFiltered = filterType !== 'All' || filterStage !== 'All' || searchText !== '' || searchCase !== ''
 
   return (
-    <div style={{ padding: '16px', fontSize: '13px', overflow: 'auto', height: '100%' }}>
-      {/* Header */}
+    <div style={{ padding: '12px', fontSize: '12px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '10px', flexShrink: 0 }}>
+        <h1 style={{ fontSize: '16px', margin: 0, fontWeight: 600 }}>Practice Dashboard</h1>
+        <span style={{ fontSize: '12px', color: '#283593', fontWeight: 600 }}>{cases.length} Total</span>
+        <span style={{ fontSize: '12px', color: '#1565c0', fontWeight: 600 }}>{stats.active} Active</span>
+      </div>
+
+      {/* ── Stage cards — click to toggle Kanban ── */}
       <div
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
+          display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px',
+          marginBottom: kanbanOpen ? '0' : '10px', cursor: 'pointer', userSelect: 'none', flexShrink: 0,
         }}
+        onClick={toggleKanban}
+        title={kanbanOpen ? 'Collapse Kanban board' : 'Expand Kanban board'}
       >
-        <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 600 }}>Practice Dashboard</h1>
-        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-          As of March 29, 2026 · {cases.length} total cases
-        </span>
-      </div>
-
-      {/* KPI Cards Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '12px' }}>
-        <KpiCard title="Active Cases" value={stats.active} color="var(--accent)" subtitle="in progress" />
-        <KpiCard title="Completed" value={stats.completed} color="#4caf50" subtitle="reports filed" />
-        <KpiCard title="High Severity" value={stats.highSeverity} color="#f44336" subtitle="high + very high" />
-        <KpiCard title="Avg Hours" value={stats.avgHours} color="var(--text)" subtitle="per evaluation" />
-      </div>
-
-      {/* Pipeline Breakdown Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', marginBottom: '20px' }}>
-        {PIPELINE_STAGES.map((stage) => (
-          <div
-            key={stage.key}
-            style={{
-              background: 'var(--panel)',
-              border: '1px solid var(--border)',
-              borderRadius: '4px',
-              padding: '8px',
-              textAlign: 'center',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '20px',
-                fontWeight: 700,
-                color: STAGE_COLORS[stage.key],
-              }}
-            >
-              {stats.stageCounts[stage.key as keyof typeof stats.stageCounts]}
+        {PIPELINE_STAGES.map((stage) => {
+          const sc = STAGE_CARD_STYLES[stage.key]
+          const count = stats.stageCounts[stage.key as keyof typeof stats.stageCounts] ?? 0
+          return (
+            <div key={stage.key} style={{
+              background: sc.bg, border: `1px solid ${sc.border}`,
+              borderRadius: kanbanOpen ? '4px 4px 0 0' : '4px',
+              padding: '6px 8px', textAlign: 'center',
+              display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '5px',
+            }}>
+              <span style={{ fontSize: '16px', fontWeight: 700, color: sc.text }}>{count}</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: sc.text }}>
+                {stage.label} {kanbanOpen ? '▴' : '▾'}
+              </span>
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{stage.label}</div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
-        {/* Severity Breakdown */}
-        <div
-          style={{
-            background: 'var(--panel)',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            padding: '12px',
-          }}
+      {/* ── Kanban board ── */}
+      {kanbanOpen && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={pointerWithin}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
         >
-          <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Severity Breakdown</div>
-          <div style={{ paddingTop: '8px' }}>
-            {['Very High', 'High', 'Moderate', 'Low'].map((sev) => {
-              const count = severityStats[sev as keyof typeof severityStats]
-              const pct = maxSeverity > 0 ? (count / maxSeverity) * 100 : 0
-              const color = SEVERITY_COLORS[sev] || '#999'
-              return (
-                <div key={sev} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '11px', minWidth: '64px', color: 'var(--text-secondary)' }}>
-                    {sev}
-                  </span>
-                  <div
-                    style={{
-                      flex: 1,
-                      height: '16px',
-                      background: 'var(--bg)',
-                      borderRadius: '3px',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${pct}%`,
-                        height: '100%',
-                        background: color,
-                        borderRadius: '3px',
-                        transition: 'width 0.3s',
-                      }}
-                    />
-                  </div>
-                  <span style={{ fontSize: '12px', fontWeight: 600, minWidth: '20px', textAlign: 'right' }}>
-                    {count}
-                  </span>
-                </div>
-              )
-            })}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px',
+            /* If list is collapsed, kanban fills all space. If both open, use fixed height. */
+            ...(tableOpen
+              ? { height: `${kanbanHeight}px`, minHeight: 0, flexShrink: 0 }
+              : { flex: 1, minHeight: 0 }),
+          }}>
+            {PIPELINE_STAGES.map((stage) => (
+              <KanbanColumn
+                key={stage.key}
+                stageKey={stage.key}
+                cases={casesByStage[stage.key] ?? []}
+                onCaseClick={onCaseClick}
+              />
+            ))}
           </div>
-        </div>
 
-        {/* Cases by Type */}
+          {/* DragOverlay — always mounted, conditionally renders children.
+              Provides the visual card that follows the cursor during drag.
+              Does NOT affect collision detection (pointerWithin uses cursor pos). */}
+          <DragOverlay dropAnimation={null}>
+            {activeDragId != null ? (() => {
+              const dragCase = cases.find((c) => c.case_id === activeDragId)
+              if (!dragCase) return null
+              const stageKey = mapStageToKey(dragCase.workflow_current_stage)
+              const sc = STAGE_CARD_STYLES[stageKey]
+              return <KanbanCardContent c={dragCase} sc={sc} isDragging />
+            })() : null}
+          </DragOverlay>
+        </DndContext>
+      )}
+
+      {/* ── Draggable horizontal splitter — visible when kanban is open ── */}
+      {kanbanOpen && (
         <div
+          onPointerDown={onSplitterPointerDown}
+          onPointerMove={onSplitterPointerMove}
+          onPointerUp={onSplitterPointerUp}
           style={{
-            background: 'var(--panel)',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            padding: '12px',
+            height: '6px', flexShrink: 0,
+            cursor: 'row-resize', userSelect: 'none',
+            background: splitterDragging.current ? 'var(--accent, #1565c0)' : 'transparent',
+            borderTop: '1px solid var(--border)',
+            borderBottom: '1px solid var(--border)',
+            transition: 'background 0.1s',
+            margin: '2px 0',
           }}
+          onPointerEnter={(e) => { (e.target as HTMLElement).style.background = 'var(--border, #ccc)' }}
+          onPointerLeave={(e) => { if (!splitterDragging.current) (e.target as HTMLElement).style.background = 'transparent' }}
+        />
+      )}
+
+      {/* ── Case List — expandable section ── */}
+      <div style={{
+        flex: tableOpen ? 1 : '0 0 auto',
+        minHeight: tableOpen ? 0 : undefined,
+        maxHeight: tableOpen ? undefined : '28px',
+        overflow: 'hidden',
+        display: 'flex', flexDirection: 'column',
+        paddingTop: '6px',
+      }}>
+        {/* Header bar — always visible */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}
+          onClick={toggleTable}
         >
-          <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Cases by Type</div>
-          <div style={{ paddingTop: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
+            Case List {tableOpen ? '▴' : '▾'}
+          </span>
+          {/* Type pills — compact summary */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginLeft: '4px' }} onClick={(e) => e.stopPropagation()}>
             {Object.entries(evalTypeStats)
               .sort((a, b) => b[1] - a[1])
-              .map(([type, count]) => (
-                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <span
-                    style={{
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: '50%',
-                      background: EVAL_TYPE_COLORS[type] || '#999',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ fontSize: '12px', flex: 1 }}>{type}</span>
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>{count}</span>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {/* Upcoming Deadlines */}
-        <div
-          style={{
-            background: 'var(--panel)',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            padding: '12px',
-          }}
-        >
-          <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Upcoming Deadlines</div>
-          <div
-            style={{
-              paddingTop: '4px',
-              maxHeight: '160px',
-              overflowY: 'auto',
-              fontSize: '12px',
-            }}
-          >
-            {upcomingDeadlines.length > 0 ? (
-              upcomingDeadlines.map((c, idx) => {
-                const deadline = c.created_at ? new Date(c.created_at) : new Date()
-                const now = new Date()
-                const days = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-                const isUrgent = days <= 7
+              .map(([type, count]) => {
+                const color = EVAL_TYPE_COLORS[type] || '#777'
                 return (
-                  <div
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '4px 0',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                  >
-                    <span>
-                      {c.examinee_last_name}, {c.examinee_first_name} — {c.evaluation_type}
-                    </span>
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        color: isUrgent ? '#f44336' : 'var(--text-secondary)',
-                      }}
-                    >
-                      {days}d
-                    </span>
-                  </div>
+                  <span key={type} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '3px',
+                    background: 'var(--panel)', border: '1px solid var(--border)',
+                    borderRadius: '3px', padding: '1px 6px', fontSize: '10px',
+                  }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }} />
+                    <span style={{ color: 'var(--text)' }}>{type}</span>
+                    <span style={{ fontWeight: 700, color }}>{count}</span>
+                  </span>
                 )
-              })
-            ) : (
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>No upcoming deadlines</div>
-            )}
+              })}
           </div>
+
+          {isFiltered && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setFilterType('All'); setFilterStage('All'); setSearchText(''); setSearchCase('') }}
+              style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit', padding: 0, marginLeft: '4px' }}
+            >
+              Clear filters
+            </button>
+          )}
+
+          <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
+            {filteredCases.length} of {cases.length} cases
+          </span>
         </div>
-      </div>
 
-      {/* Filter Controls */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '8px',
-          alignItems: 'center',
-          marginBottom: '12px',
-          flexWrap: 'wrap',
-        }}
-      >
-        <span
-          style={{
-            fontSize: '12px',
-            fontWeight: 600,
-            color: 'var(--text-secondary)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}
-        >
-          Filter:
-        </span>
-
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          style={{
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            padding: '4px 8px',
-            fontSize: '12px',
-            color: 'var(--text)',
-            fontFamily: 'inherit',
-          }}
-        >
-          <option value="All">Type: All</option>
-          {evalTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            padding: '4px 8px',
-            fontSize: '12px',
-            color: 'var(--text)',
-            fontFamily: 'inherit',
-          }}
-        >
-          <option value="All">Status: All</option>
-          {['Onboarding', 'Testing', 'Interview', 'Diagnostics', 'Review', 'Complete'].map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={filterSeverity}
-          onChange={(e) => setFilterSeverity(e.target.value)}
-          style={{
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            padding: '4px 8px',
-            fontSize: '12px',
-            color: 'var(--text)',
-            fontFamily: 'inherit',
-          }}
-        >
-          <option value="All">Severity: All</option>
-          {['Low', 'Moderate', 'High', 'Very High'].map((sev) => (
-            <option key={sev} value={sev}>
-              {sev}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="text"
-          placeholder="Search name, case #, diagnosis..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          style={{
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            padding: '4px 8px',
-            fontSize: '12px',
-            color: 'var(--text)',
-            fontFamily: 'inherit',
-            width: '220px',
-          }}
-        />
-
-        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
-          {filteredCases.length} of {cases.length} cases
-        </span>
-      </div>
-
-      {/* Case Table */}
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          marginBottom: '16px',
-          fontSize: '12px',
-        }}
-      >
-        <thead>
+          {/* Scrollable table */}
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+          <thead>
           <tr>
-            <th
-              style={{
-                background: 'var(--panel)',
-                padding: '6px 10px',
-                textAlign: 'left',
-                fontWeight: 600,
-                border: '1px solid var(--border)',
-              }}
-            >
-              Case #
+            <th style={TH}>
+              <input
+                type="text"
+                placeholder="Case #"
+                value={searchCase}
+                onChange={(e) => setSearchCase(e.target.value)}
+                style={{
+                  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '3px',
+                  padding: '2px 5px', fontSize: '11px', color: 'var(--text)', fontFamily: 'inherit',
+                  width: '100%', boxSizing: 'border-box', fontWeight: searchCase ? 600 : 400,
+                }}
+              />
             </th>
-            <th
-              style={{
-                background: 'var(--panel)',
-                padding: '6px 10px',
-                textAlign: 'left',
-                fontWeight: 600,
-                border: '1px solid var(--border)',
-              }}
-            >
-              Client
+            <th style={TH}>
+              <input
+                type="text"
+                placeholder="Client"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{
+                  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '3px',
+                  padding: '2px 5px', fontSize: '11px', color: 'var(--text)', fontFamily: 'inherit',
+                  width: '100%', boxSizing: 'border-box', fontWeight: searchText ? 600 : 400,
+                }}
+              />
             </th>
-            <th
-              style={{
-                background: 'var(--panel)',
-                padding: '6px 10px',
-                textAlign: 'left',
-                fontWeight: 600,
-                border: '1px solid var(--border)',
-              }}
-            >
-              Type
+            <th style={TH}>
+              <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
+                style={{ ...SEL, color: filterType !== 'All' ? 'var(--accent)' : 'var(--text)' }}>
+                <option value="All">Type ▾</option>
+                {evalTypes.map((t) => (<option key={t} value={t}>{t}</option>))}
+              </select>
             </th>
-            <th
-              style={{
-                background: 'var(--panel)',
-                padding: '6px 10px',
-                textAlign: 'left',
-                fontWeight: 600,
-                border: '1px solid var(--border)',
-              }}
-            >
-              Severity
+            <th style={TH}>
+              <select value={filterStage} onChange={(e) => setFilterStage(e.target.value)}
+                style={{ ...SEL, color: filterStage !== 'All' ? 'var(--accent)' : 'var(--text)' }}>
+                <option value="All">Stage ▾</option>
+                {PIPELINE_STAGES.map((s) => (<option key={s.key} value={s.key}>{s.label}</option>))}
+              </select>
             </th>
-            <th
-              style={{
-                background: 'var(--panel)',
-                padding: '6px 10px',
-                textAlign: 'left',
-                fontWeight: 600,
-                border: '1px solid var(--border)',
-              }}
-            >
-              Deadline
-            </th>
-            <th
-              style={{
-                background: 'var(--panel)',
-                padding: '6px 10px',
-                textAlign: 'left',
-                fontWeight: 600,
-                border: '1px solid var(--border)',
-              }}
-            >
-              Status
-            </th>
-            <th
-              style={{
-                background: 'var(--panel)',
-                padding: '6px 10px',
-                textAlign: 'left',
-                fontWeight: 600,
-                border: '1px solid var(--border)',
-              }}
-            >
-              Diagnosis
+            <th style={{ ...TH, cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => setDateSort((p) => p === 'desc' ? 'asc' : 'desc')}
+              title={`Sort ${dateSort === 'desc' ? 'oldest first' : 'newest first'}`}>
+              Deadline {dateSort === 'desc' ? '▾' : '▴'}
             </th>
           </tr>
         </thead>
         <tbody>
           {filteredCases.map((c, idx) => {
-            const name = `${c.examinee_last_name}, ${c.examinee_first_name}`
-            const status = mapCaseStatus(c.case_status)
-            const severity = mapSeverity(c.case_status)
-            const sevColor = SEVERITY_COLORS[severity] || '#999'
-            const statColor = STAGE_COLORS[mapStageToKey(c.workflow_current_stage)] || '#999'
-
-            const now = new Date()
-            const deadline = c.created_at ? new Date(c.created_at) : now
-            const isOverdue = status !== 'Complete' && status !== 'Archived' && deadline < now
-            const deadlineStr = deadline.toISOString().split('T')[0]
-
+            const stageKey = mapStageToKey(c.workflow_current_stage)
+            const sc = STAGE_CARD_STYLES[stageKey]
+            const referredDate = c.created_at ? c.created_at.split('T')[0] : '—'
+            const isComplete = stageKey === 'complete'
             return (
-              <tr
-                key={idx}
-                style={{
-                  cursor: 'pointer',
-                  background: idx % 2 === 0 ? 'transparent' : 'var(--highlight)',
-                }}
-                onClick={() => onCaseClick(c.case_id)}
-              >
-                <td style={{ padding: '6px 10px', border: '1px solid var(--border)' }}>
-                  #{c.case_number}
-                </td>
-                <td style={{ padding: '6px 10px', border: '1px solid var(--border)', fontWeight: 500 }}>
-                  {name}
-                </td>
-                <td style={{ padding: '6px 10px', border: '1px solid var(--border)' }}>
-                  {c.evaluation_type || '—'}
-                </td>
-                <td style={{ padding: '6px 10px', border: '1px solid var(--border)' }}>
-                  <span
-                    style={{
-                      background: sevColor,
-                      color: '#fff',
-                      padding: '1px 6px',
-                      borderRadius: '3px',
-                      fontSize: '11px',
-                    }}
-                  >
-                    {severity}
+              <tr key={c.case_id ?? idx}
+                style={{ cursor: 'pointer', background: idx % 2 === 0 ? 'transparent' : 'var(--highlight)' }}
+                onClick={() => onCaseClick(c.case_id)}>
+                <td style={{ ...TD, fontSize: '10px', color: 'var(--text-secondary)' }}>{c.case_number}</td>
+                <td style={{ ...TD, fontWeight: 500 }}>{formatClientName(c)}</td>
+                <td style={TD}>{c.evaluation_type || '—'}</td>
+                <td style={TD}>
+                  <span style={{ background: sc?.accent || '#999', color: '#fff', padding: '1px 6px', borderRadius: '3px', fontSize: '10px' }}>
+                    {mapStageLabel(c.workflow_current_stage)}
                   </span>
                 </td>
-                <td
-                  style={{
-                    padding: '6px 10px',
-                    border: '1px solid var(--border)',
-                    color: isOverdue ? '#f44336' : 'inherit',
-                    fontWeight: isOverdue ? 600 : 'normal',
-                  }}
-                >
-                  {isOverdue ? '⚠ ' : ''}{deadlineStr}
-                </td>
-                <td style={{ padding: '6px 10px', border: '1px solid var(--border)' }}>
-                  <span
-                    style={{
-                      background: statColor,
-                      color: '#fff',
-                      padding: '2px 8px',
-                      borderRadius: '3px',
-                      fontSize: '11px',
-                    }}
-                  >
-                    {status}
-                  </span>
-                </td>
-                <td
-                  style={{
-                    padding: '6px 10px',
-                    border: '1px solid var(--border)',
-                    fontSize: '11px',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  —
+                <td style={{ ...TD, fontSize: '10px', color: isComplete ? '#4caf50' : 'var(--text-secondary)' }}>
+                  {isComplete ? 'Done' : referredDate}
                 </td>
               </tr>
             )
           })}
         </tbody>
       </table>
+      </div>
+      </div>
     </div>
   )
 }
 
-// Helper component for KPI cards
-function KpiCard({
-  title,
-  value,
-  color,
-  subtitle,
-}: {
-  title: string
-  value: number | string
-  color: string
-  subtitle: string
+/* ──────────────────────────────────────────────
+   Kanban Column — droppable target
+   ────────────────────────────────────────────── */
+
+function KanbanColumn({ stageKey, cases: columnCases, onCaseClick }: {
+  stageKey: string
+  cases: CaseRow[]
+  onCaseClick: (caseId: number) => void
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stageKey })
+  const sc = STAGE_CARD_STYLES[stageKey]
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        background: isOver ? '#e0e0e0' : '#f0f0f0',
+        border: `1px solid ${isOver ? '#bbb' : '#ddd'}`,
+        borderTop: 'none', borderRadius: '0 0 4px 4px',
+        padding: '4px', overflowY: 'auto',
+        display: 'flex', flexDirection: 'column', gap: '5px',
+        transition: 'background 0.15s, border-color 0.15s',
+        boxShadow: isOver ? 'inset 0 0 8px rgba(0,0,0,0.08)' : 'none',
+      }}
+    >
+      {columnCases.length === 0 && (
+        <div style={{ fontSize: '11px', color: sc.text, opacity: 0.35, textAlign: 'center', padding: '20px 0' }}>
+          No cases
+        </div>
+      )}
+      {columnCases.map((c) => (
+        <KanbanCard
+          key={c.case_id}
+          c={c}
+          sc={sc}
+          onClick={() => onCaseClick(c.case_id)}
+        />
+      ))}
+    </div>
+  )
+}
+
+/* ──────────────────────────────────────────────
+   Kanban Card — draggable item
+   ────────────────────────────────────────────── */
+
+function KanbanCard({ c, sc, onClick }: {
+  c: CaseRow
+  sc: { bg: string; border: string; text: string; accent: string }
+  onClick: () => void
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: c.case_id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      onClick={onClick}
+      style={{
+        /* No transform — the DragOverlay renders the visual clone that follows
+           the cursor. This card stays in place but fades out while dragging. */
+        opacity: isDragging ? 0.35 : 1,
+        transition: isDragging ? 'none' : 'opacity 0.15s',
+      }}
+    >
+      <KanbanCardContent c={c} sc={sc} isDragging={isDragging} />
+    </div>
+  )
+}
+
+/* ──────────────────────────────────────────────
+   Kanban Card Content — shared between card and overlay
+   ────────────────────────────────────────────── */
+
+function KanbanCardContent({ c, sc, isDragging }: {
+  c: CaseRow
+  sc: { bg: string; border: string; text: string; accent: string }
+  isDragging?: boolean
+}) {
+  const complaint = c.evaluation_questions || null
+  const referral = c.referral_source || null
+  const evalType = c.evaluation_type || 'Untyped'
+  const deadline = c.created_at ? c.created_at.split('T')[0] : null
+  const daysUntil = deadline ? Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000) : null
+  const isUrgent = daysUntil !== null && daysUntil <= 5
+
+  const ROW: React.CSSProperties = {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+  }
+
   return (
     <div
       style={{
-        background: 'var(--panel)',
-        border: '1px solid var(--border)',
-        borderRadius: '4px',
-        padding: '12px',
+        background: '#fff', border: `1px solid ${sc.border}`,
+        borderLeft: `3px solid ${sc.accent}`,
+        borderRadius: '3px', padding: '6px 8px',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        lineHeight: '1.4',
+        fontSize: '11px',
+        userSelect: 'none',
+        boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.2)' : undefined,
       }}
     >
-      <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-secondary)' }}>
-        {title}
+      {/* Row 1: Name (left) — Type (right) */}
+      <div style={{ ...ROW, marginBottom: '2px' }}>
+        <span style={{ fontWeight: 700, color: '#111', fontSize: '12px' }}>
+          {c.examinee_last_name}, {(c.examinee_first_name ?? '').charAt(0)}.
+        </span>
+        <span style={{
+          background: sc.accent, color: '#fff', padding: '1px 5px',
+          borderRadius: '2px', fontSize: '9px', fontWeight: 600, flexShrink: 0, marginLeft: '4px',
+        }}>
+          {evalType}
+        </span>
       </div>
-      <div style={{ fontSize: '26px', fontWeight: 700, color }}>{value}</div>
-      <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{subtitle}</div>
+
+      {/* Row 2: Complaint — full width, truncated; blank line if empty */}
+      <div style={{
+        color: '#333', fontSize: '10px', fontStyle: 'italic',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        marginBottom: '2px', minHeight: '14px',
+      }}>
+        {complaint || '\u00A0'}
+      </div>
+
+      {/* Row 3: Case # (left) — "Deadline:" label (right) */}
+      <div style={{ ...ROW, marginBottom: '2px' }}>
+        <span style={{ color: '#555', fontSize: '10px' }}>{c.case_number}</span>
+        {deadline && (
+          <span style={{ color: '#888', fontSize: '10px', flexShrink: 0, marginLeft: '4px' }}>Deadline:</span>
+        )}
+      </div>
+
+      {/* Row 4: Referral source (left) — Deadline date (right) */}
+      <div style={ROW}>
+        <span style={{ color: '#555', fontSize: '10px' }}>{referral || ''}</span>
+        {deadline && (
+          <span style={{
+            fontSize: '10px', fontWeight: isUrgent ? 800 : 600, flexShrink: 0, marginLeft: '4px',
+            color: isUrgent ? '#c62828' : '#555',
+          }}>
+            {deadline}
+          </span>
+        )}
+      </div>
     </div>
   )
+}
+
+/* ──────────────────────────────────────────────
+   Shared table styles
+   ────────────────────────────────────────────── */
+
+const TH: React.CSSProperties = {
+  background: 'var(--panel)', padding: '5px 8px', textAlign: 'left',
+  fontWeight: 600, fontSize: '11px', border: '1px solid var(--border)', whiteSpace: 'nowrap',
+}
+
+const SEL: React.CSSProperties = {
+  background: 'transparent', border: 'none', fontWeight: 600, fontSize: '11px',
+  color: 'var(--text)', fontFamily: 'inherit', cursor: 'pointer',
+  padding: 0, margin: 0,
+  WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none',
+}
+
+const TD: React.CSSProperties = {
+  padding: '4px 8px', border: '1px solid var(--border)',
 }

@@ -7,6 +7,7 @@
 
 import { ipcMain } from 'electron'
 import type { IpcResponse } from '../../shared/types'
+import { getSqlite } from '../db/connection'
 import {
   checkStageAdvancement,
   advanceStage,
@@ -18,6 +19,8 @@ import type {
   PipelineCheckResult,
   PipelineAdvanceParams,
   PipelineAdvanceResult,
+  PipelineSetStageParams,
+  PipelineSetStageResult,
   PipelineConditionsParams,
   PipelineConditionsResult,
 } from '../../shared/types'
@@ -84,6 +87,33 @@ function handlePipelineAdvance(
 }
 
 // ---------------------------------------------------------------------------
+// Handler: pipeline:set-stage  (arbitrary stage change, e.g. Kanban drag-drop)
+// ---------------------------------------------------------------------------
+
+function handlePipelineSetStage(
+  _event: Electron.IpcMainInvokeEvent,
+  params: PipelineSetStageParams,
+): IpcResponse<PipelineSetStageResult> {
+  try {
+    const db = getSqlite()
+    const row = db.prepare('SELECT workflow_current_stage FROM cases WHERE case_id = ?').get(params.caseId) as { workflow_current_stage: string } | undefined
+    if (!row) return fail('CASE_NOT_FOUND', `Case ${params.caseId} not found`)
+
+    const previousStage = row.workflow_current_stage || 'onboarding'
+    const newStatus = params.stage === 'complete' ? 'completed' : 'in_progress'
+
+    db.prepare('UPDATE cases SET workflow_current_stage = ?, case_status = ?, last_modified = datetime(\'now\') WHERE case_id = ?')
+      .run(params.stage, newStatus, params.caseId)
+
+    console.log(`[pipeline] Stage set: case ${params.caseId} ${previousStage} → ${params.stage}`)
+    return ok({ success: true, newStage: params.stage, previousStage })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return fail('PIPELINE_SET_STAGE_FAILED', `Failed to set stage: ${message}`)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Handler: pipeline:conditions
 // ---------------------------------------------------------------------------
 
@@ -113,7 +143,8 @@ function handlePipelineConditions(
 export function registerPipelineHandlers(): void {
   ipcMain.handle('pipeline:check', handlePipelineCheck)
   ipcMain.handle('pipeline:advance', handlePipelineAdvance)
+  ipcMain.handle('pipeline:set-stage', handlePipelineSetStage)
   ipcMain.handle('pipeline:conditions', handlePipelineConditions)
 
-  console.log('[pipeline] IPC handlers registered: pipeline:check, pipeline:advance, pipeline:conditions')
+  console.log('[pipeline] IPC handlers registered: pipeline:check, pipeline:advance, pipeline:set-stage, pipeline:conditions')
 }

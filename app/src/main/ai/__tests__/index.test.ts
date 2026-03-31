@@ -227,7 +227,9 @@ describe('Error Handler', () => {
 
     errors.forEach((error) => {
       expect(error.message).not.toContain('sk-ant')
-      expect(error.suggestedAction).not.toContain('sk-ant')
+      if (error.suggestedAction) {
+        expect(error.suggestedAction).not.toContain('sk-ant')
+      }
     })
   })
 

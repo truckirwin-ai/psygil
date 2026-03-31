@@ -59,6 +59,13 @@ EXTRACTION RULES:
      * CRITICAL: Do NOT independently interpret or score tests. Extract only what the publisher score report explicitly states
      * Flag any missing subtests or incomplete administrations
      * Include the source document, date, and any administrator notes
+   - PUBLISHER SCORE REPORT FORMATS (documents typed as "test_score_report"):
+     * Q-Global (Pearson MMPI-3): Extract all clinical scales (ANX, FRS, OBS, DEP, HLT, BIZ, ANG, CYN, ASP, TPA, LSE, SOD, FAM, WRK, TRT), validity indicators (VRIN-T, TRIN-T, F, Fp, Fs, L, K), supplementary items (PS, HPI, RC scales). Include rawScore, tScore, percentile, classification for each.
+     * PARiConnect (PAI): Extract all clinical scales, validity scales (NIM, PIM, ICN, INF), treatment indicators. Include rawScore, tScore, percentile for each.
+     * WAIS-V (Pearson): Extract subtest scaled scores, Index scores (VCI, VSI, FRI, WMI, PSI), FSIQ, GAI. Include scaled_score, composite_score, percentile, confidence_interval.
+     * TOMM: Extract Trial 1, Trial 2, Retention scores. Report pass/fail status (cutoff: 45).
+     * SIRS-2: Extract scale classifications (Genuine, Indeterminate, Probable Feigning, Definite Feigning). Report per-scale results.
+   - For each test, output a sub-object in test_administrations with keys: instrumentId, instrumentName, publisher, administrationDate, importSource, clinicalScales (object), validityIndicators (object), status, completeness
 
 4. BEHAVIORAL OBSERVATIONS FROM TRANSCRIPTS:
    - If audio/video transcripts are provided, extract behavioral observations
@@ -94,11 +101,13 @@ Clinical, precise, objective. Use professional terminology. Avoid speculation.`
 // Document type mapping (file doc_type → ingestor document_type enum)
 // ---------------------------------------------------------------------------
 
-function mapDocType(docType: string): string {
+function mapDocType(docType: string, filePath?: string | null): string {
   const map: Record<string, string> = {
     referral: 'referral_letter',
     intake: 'intake_form',
     test_report: 'test_score_report',
+    score_report: 'test_score_report',
+    transcript_vtt: 'transcript_vtt',
     transcript: 'transcript_vtt',
     collateral: 'collateral_medical',
     medical_record: 'collateral_medical',
@@ -108,6 +117,15 @@ function mapDocType(docType: string): string {
     report: 'prior_evaluation',
     other: 'collateral_medical',
   }
+
+  // If the file lives in the Testing subfolder, it's likely a score report
+  if (filePath) {
+    const normalized = filePath.replace(/\\/g, '/')
+    if (normalized.includes('/Testing/') || normalized.includes('/testing/')) {
+      return 'test_score_report'
+    }
+  }
+
   return map[docType] ?? 'collateral_medical'
 }
 
@@ -187,7 +205,7 @@ export async function runIngestorAgent(caseId: number): Promise<AgentResult<Inge
     .filter((d) => d.indexed_content) // Only documents with extracted text
     .map((d) => ({
       document_name: d.original_filename,
-      document_type: mapDocType(d.document_type),
+      document_type: mapDocType(d.document_type, d.file_path),
       text_content: d.indexed_content!,
       upload_date: d.upload_date,
     }))

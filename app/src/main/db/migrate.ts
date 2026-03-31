@@ -914,6 +914,16 @@ export function runBaseMigration(sqlite: ReturnType<typeof import('better-sqlite
   sqlite.exec(POST_MIGRATION_SQL)
 }
 
+/**
+ * Re-apply views, FTS tables, and triggers. Safe to call repeatedly
+ * because all statements use IF NOT EXISTS / IF NOT EXISTS patterns.
+ * Called after incremental migrations to restore views that may have
+ * been dropped during table recreation (e.g. migration 007).
+ */
+export function ensureViewsAndTriggers(sqlite: ReturnType<typeof import('better-sqlite3')>): void {
+  sqlite.exec(POST_MIGRATION_SQL)
+}
+
 main().catch((err) => {
   console.error('[migrate] FATAL:', err)
   process.exit(1)

@@ -156,9 +156,9 @@ function buildTreeFromFilesystem(
     const evalType = dbCase?.evaluation_type ?? ''
     const caseId = dbCase?.case_id
 
-    // Build label: "Johnson, Marcus — CST" or folder name if no DB match
+    // Build label: "Johnson, M. — CST" or folder name if no DB match
     const label = dbCase
-      ? `${dbCase.examinee_last_name}, ${dbCase.examinee_first_name}${evalType ? ` — ${evalType}` : ''}`
+      ? `${dbCase.examinee_last_name}, ${(dbCase.examinee_first_name ?? '').charAt(0).toUpperCase()}.${evalType ? ` — ${evalType}` : ''}`
       : folder.name
 
     const children = convertFolderChildren(folder.children ?? [], caseId)
@@ -521,10 +521,10 @@ export default function LeftColumn({
       void loadDataRef.current()
     }
 
-    window.psygil?.workspace?.onFileChanged?.(handler)
+    const wrapped = window.psygil?.workspace?.onFileChanged?.(handler)
 
     return () => {
-      window.psygil?.workspace?.offFileChanged?.()
+      window.psygil?.workspace?.offFileChanged?.(wrapped)
     }
   }, [])
 

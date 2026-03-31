@@ -586,3 +586,23 @@ export const caseAssignments = sqliteTable('case_assignments', {
   index('idx_case_assignments_user_id').on(table.user_id),
   index('idx_case_assignments_role_in_case').on(table.role_in_case),
 ])
+
+// ============================================================================
+// 30. DIAGNOSTIC DECISIONS — ██ DOCTOR ALWAYS DIAGNOSES ██
+// ============================================================================
+
+export const diagnosticDecisions = sqliteTable('diagnostic_decisions', {
+  decision_id: integer('decision_id').primaryKey({ autoIncrement: true }),
+  case_id: integer('case_id').notNull().references(() => cases.case_id, { onDelete: 'cascade' }),
+  diagnosis_key: text('diagnosis_key').notNull(),
+  icd_code: text('icd_code').notNull().default(''),
+  diagnosis_name: text('diagnosis_name').notNull(),
+  decision: text('decision').notNull(), // CHECK: render | rule_out | defer
+  clinician_notes: text('clinician_notes').notNull().default(''),
+  decided_at: text('decided_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updated_at: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  uniqueIndex('idx_diagnostic_decisions_unique').on(table.case_id, table.diagnosis_key),
+  index('idx_diagnostic_decisions_case_id').on(table.case_id),
+  index('idx_diagnostic_decisions_decision').on(table.decision),
+])

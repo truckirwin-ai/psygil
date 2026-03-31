@@ -36,6 +36,17 @@ export async function initDb(): Promise<void> {
 
   // Run incremental migrations (003+)
   runMigrations(result.sqlite)
+
+  // Always re-run POST_MIGRATION_SQL to ensure views/FTS/triggers exist.
+  // This is safe because all statements use IF NOT EXISTS.
+  // Required after migrations that drop and recreate tables (e.g. 007).
+  try {
+    const { ensureViewsAndTriggers } = await import('./migrate')
+    ensureViewsAndTriggers(result.sqlite)
+  } catch {
+    // Non-fatal — views are convenience, not required for core functionality
+    console.warn('[db] Failed to ensure views/triggers (non-fatal)')
+  }
 }
 
 /** Get the Drizzle ORM instance. Throws if initDb() hasn't been called. */

@@ -1,3 +1,6 @@
+function getDefaultExportFromCjs(x) {
+  return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
+}
 var jsxRuntime = { exports: {} };
 var reactJsxRuntime_production = {};
 /**
@@ -11,9 +14,9 @@ var reactJsxRuntime_production = {};
  */
 var REACT_ELEMENT_TYPE$2 = Symbol.for("react.transitional.element"), REACT_FRAGMENT_TYPE$2 = Symbol.for("react.fragment");
 function jsxProd(type, config, maybeKey) {
-  var key = null;
-  void 0 !== maybeKey && (key = "" + maybeKey);
-  void 0 !== config.key && (key = "" + config.key);
+  var key2 = null;
+  void 0 !== maybeKey && (key2 = "" + maybeKey);
+  void 0 !== config.key && (key2 = "" + config.key);
   if ("key" in config) {
     maybeKey = {};
     for (var propName in config)
@@ -23,7 +26,7 @@ function jsxProd(type, config, maybeKey) {
   return {
     $$typeof: REACT_ELEMENT_TYPE$2,
     type,
-    key,
+    key: key2,
     ref: void 0 !== config ? config : null,
     props: maybeKey
   };
@@ -360,15 +363,15 @@ pureComponentPrototype.constructor = PureComponent;
 assign$1(pureComponentPrototype, Component.prototype);
 pureComponentPrototype.isPureReactComponent = true;
 var isArrayImpl$1 = Array.isArray;
-function noop$3() {
+function noop$4() {
 }
 var ReactSharedInternals$2 = { H: null, A: null, T: null, S: null }, hasOwnProperty$1 = Object.prototype.hasOwnProperty;
-function ReactElement(type, key, props) {
+function ReactElement(type, key2, props) {
   var refProp = props.ref;
   return {
     $$typeof: REACT_ELEMENT_TYPE$1,
     type,
-    key,
+    key: key2,
     ref: void 0 !== refProp ? refProp : null,
     props
   };
@@ -379,9 +382,9 @@ function cloneAndReplaceKey(oldElement, newKey) {
 function isValidElement(object) {
   return "object" === typeof object && null !== object && object.$$typeof === REACT_ELEMENT_TYPE$1;
 }
-function escape(key) {
+function escape(key2) {
   var escaperLookup = { "=": "=0", ":": "=2" };
-  return "$" + key.replace(/[=:]/g, function(match) {
+  return "$" + key2.replace(/[=:]/g, function(match) {
     return escaperLookup[match];
   });
 }
@@ -396,7 +399,7 @@ function resolveThenable(thenable) {
     case "rejected":
       throw thenable.reason;
     default:
-      switch ("string" === typeof thenable.status ? thenable.then(noop$3, noop$3) : (thenable.status = "pending", thenable.then(
+      switch ("string" === typeof thenable.status ? thenable.then(noop$4, noop$4) : (thenable.status = "pending", thenable.then(
         function(fulfilledValue) {
           "pending" === thenable.status && (thenable.status = "fulfilled", thenable.value = fulfilledValue);
         },
@@ -586,9 +589,9 @@ react_production.cloneElement = function(element, config, children) {
     throw Error(
       "The argument must be a React element, but you passed " + element + "."
     );
-  var props = assign$1({}, element.props), key = element.key;
+  var props = assign$1({}, element.props), key2 = element.key;
   if (null != config)
-    for (propName in void 0 !== config.key && (key = "" + config.key), config)
+    for (propName in void 0 !== config.key && (key2 = "" + config.key), config)
       !hasOwnProperty$1.call(config, propName) || "key" === propName || "__self" === propName || "__source" === propName || "ref" === propName && void 0 === config.ref || (props[propName] = config[propName]);
   var propName = arguments.length - 2;
   if (1 === propName) props.children = children;
@@ -597,28 +600,28 @@ react_production.cloneElement = function(element, config, children) {
       childArray[i] = arguments[i + 2];
     props.children = childArray;
   }
-  return ReactElement(element.type, key, props);
+  return ReactElement(element.type, key2, props);
 };
-react_production.createContext = function(defaultValue) {
-  defaultValue = {
+react_production.createContext = function(defaultValue2) {
+  defaultValue2 = {
     $$typeof: REACT_CONTEXT_TYPE$1,
-    _currentValue: defaultValue,
-    _currentValue2: defaultValue,
+    _currentValue: defaultValue2,
+    _currentValue2: defaultValue2,
     _threadCount: 0,
     Provider: null,
     Consumer: null
   };
-  defaultValue.Provider = defaultValue;
-  defaultValue.Consumer = {
+  defaultValue2.Provider = defaultValue2;
+  defaultValue2.Consumer = {
     $$typeof: REACT_CONSUMER_TYPE$1,
-    _context: defaultValue
+    _context: defaultValue2
   };
-  return defaultValue;
+  return defaultValue2;
 };
 react_production.createElement = function(type, config, children) {
-  var propName, props = {}, key = null;
+  var propName, props = {}, key2 = null;
   if (null != config)
-    for (propName in void 0 !== config.key && (key = "" + config.key), config)
+    for (propName in void 0 !== config.key && (key2 = "" + config.key), config)
       hasOwnProperty$1.call(config, propName) && "key" !== propName && "__self" !== propName && "__source" !== propName && (props[propName] = config[propName]);
   var childrenLength = arguments.length - 2;
   if (1 === childrenLength) props.children = children;
@@ -630,7 +633,7 @@ react_production.createElement = function(type, config, children) {
   if (type && type.defaultProps)
     for (propName in childrenLength = type.defaultProps, childrenLength)
       void 0 === props[propName] && (props[propName] = childrenLength[propName]);
-  return ReactElement(type, key, props);
+  return ReactElement(type, key2, props);
 };
 react_production.createRef = function() {
   return { current: null };
@@ -659,7 +662,7 @@ react_production.startTransition = function(scope) {
   try {
     var returnValue = scope(), onStartTransitionFinish = ReactSharedInternals$2.S;
     null !== onStartTransitionFinish && onStartTransitionFinish(currentTransition, returnValue);
-    "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && returnValue.then(noop$3, reportGlobalError$1);
+    "object" === typeof returnValue && null !== returnValue && "function" === typeof returnValue.then && returnValue.then(noop$4, reportGlobalError$1);
   } catch (error) {
     reportGlobalError$1(error);
   } finally {
@@ -707,11 +710,11 @@ react_production.useLayoutEffect = function(create, deps) {
 react_production.useMemo = function(create, deps) {
   return ReactSharedInternals$2.H.useMemo(create, deps);
 };
-react_production.useOptimistic = function(passthrough, reducer) {
-  return ReactSharedInternals$2.H.useOptimistic(passthrough, reducer);
+react_production.useOptimistic = function(passthrough, reducer2) {
+  return ReactSharedInternals$2.H.useOptimistic(passthrough, reducer2);
 };
-react_production.useReducer = function(reducer, initialArg, init) {
-  return ReactSharedInternals$2.H.useReducer(reducer, initialArg, init);
+react_production.useReducer = function(reducer2, initialArg, init) {
+  return ReactSharedInternals$2.H.useReducer(reducer2, initialArg, init);
 };
 react_production.useRef = function(initialValue) {
   return ReactSharedInternals$2.H.useRef(initialValue);
@@ -734,6 +737,7 @@ react_production.version = "19.2.4";
   react.exports = react_production;
 }
 var reactExports = react.exports;
+const React$2 = /* @__PURE__ */ getDefaultExportFromCjs(reactExports);
 var reactDom = { exports: {} };
 var reactDom_production = {};
 /**
@@ -755,30 +759,30 @@ function formatProdErrorMessage$1(code) {
   }
   return "Minified React error #" + code + "; visit " + url + " for the full message or use the non-minified dev environment for full errors and additional helpful warnings.";
 }
-function noop$2() {
+function noop$3() {
 }
 var Internals = {
   d: {
-    f: noop$2,
+    f: noop$3,
     r: function() {
       throw Error(formatProdErrorMessage$1(522));
     },
-    D: noop$2,
-    C: noop$2,
-    L: noop$2,
-    m: noop$2,
-    X: noop$2,
-    S: noop$2,
-    M: noop$2
+    D: noop$3,
+    C: noop$3,
+    L: noop$3,
+    m: noop$3,
+    X: noop$3,
+    S: noop$3,
+    M: noop$3
   },
   p: 0,
   findDOMNode: null
 }, REACT_PORTAL_TYPE$1 = Symbol.for("react.portal");
 function createPortal$1(children, containerInfo, implementation) {
-  var key = 3 < arguments.length && void 0 !== arguments[3] ? arguments[3] : null;
+  var key2 = 3 < arguments.length && void 0 !== arguments[3] ? arguments[3] : null;
   return {
     $$typeof: REACT_PORTAL_TYPE$1,
-    key: null == key ? null : "" + key,
+    key: null == key2 ? null : "" + key2,
     children,
     containerInfo,
     implementation
@@ -792,10 +796,10 @@ function getCrossOriginStringAs(as, input) {
 }
 reactDom_production.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = Internals;
 reactDom_production.createPortal = function(children, container) {
-  var key = 2 < arguments.length && void 0 !== arguments[2] ? arguments[2] : null;
+  var key2 = 2 < arguments.length && void 0 !== arguments[2] ? arguments[2] : null;
   if (!container || 1 !== container.nodeType && 9 !== container.nodeType && 11 !== container.nodeType)
     throw Error(formatProdErrorMessage$1(299));
-  return createPortal$1(children, container, null, key);
+  return createPortal$1(children, container, null, key2);
 };
 reactDom_production.flushSync = function(fn) {
   var previousTransition = ReactSharedInternals$1.T, previousUpdatePriority = Internals.p;
@@ -1092,8 +1096,8 @@ var isArrayImpl = Array.isArray, ReactSharedInternals = React.__CLIENT_INTERNALS
   method: null,
   action: null
 }, valueStack = [], index = -1;
-function createCursor(defaultValue) {
-  return { current: defaultValue };
+function createCursor(defaultValue2) {
+  return { current: defaultValue2 };
 }
 function pop(cursor) {
   0 > index || (cursor.current = valueStack[index], valueStack[index] = null, index--);
@@ -1732,7 +1736,7 @@ function escapeSelectorAttributeValueInsideDoubleQuotes(value) {
     }
   );
 }
-function updateInput(element, value, defaultValue, lastDefaultValue, checked, defaultChecked, type, name) {
+function updateInput(element, value, defaultValue2, lastDefaultValue, checked, defaultChecked, type, name) {
   element.name = "";
   null != type && "function" !== typeof type && "symbol" !== typeof type && "boolean" !== typeof type ? element.type = type : element.removeAttribute("type");
   if (null != value)
@@ -1743,20 +1747,20 @@ function updateInput(element, value, defaultValue, lastDefaultValue, checked, de
       element.value !== "" + getToStringValue(value) && (element.value = "" + getToStringValue(value));
   else
     "submit" !== type && "reset" !== type || element.removeAttribute("value");
-  null != value ? setDefaultValue(element, type, getToStringValue(value)) : null != defaultValue ? setDefaultValue(element, type, getToStringValue(defaultValue)) : null != lastDefaultValue && element.removeAttribute("value");
+  null != value ? setDefaultValue(element, type, getToStringValue(value)) : null != defaultValue2 ? setDefaultValue(element, type, getToStringValue(defaultValue2)) : null != lastDefaultValue && element.removeAttribute("value");
   null == checked && null != defaultChecked && (element.defaultChecked = !!defaultChecked);
   null != checked && (element.checked = checked && "function" !== typeof checked && "symbol" !== typeof checked);
   null != name && "function" !== typeof name && "symbol" !== typeof name && "boolean" !== typeof name ? element.name = "" + getToStringValue(name) : element.removeAttribute("name");
 }
-function initInput(element, value, defaultValue, checked, defaultChecked, type, name, isHydrating2) {
+function initInput(element, value, defaultValue2, checked, defaultChecked, type, name, isHydrating2) {
   null != type && "function" !== typeof type && "symbol" !== typeof type && "boolean" !== typeof type && (element.type = type);
-  if (null != value || null != defaultValue) {
+  if (null != value || null != defaultValue2) {
     if (!("submit" !== type && "reset" !== type || void 0 !== value && null !== value)) {
       track(element);
       return;
     }
-    defaultValue = null != defaultValue ? "" + getToStringValue(defaultValue) : "";
-    value = null != value ? "" + getToStringValue(value) : defaultValue;
+    defaultValue2 = null != defaultValue2 ? "" + getToStringValue(defaultValue2) : "";
+    value = null != value ? "" + getToStringValue(value) : defaultValue2;
     isHydrating2 || value === element.value || (element.value = value);
     element.defaultValue = value;
   }
@@ -1792,30 +1796,30 @@ function updateOptions(node, multiple, propValue, setDefaultSelected) {
     null !== multiple && (multiple.selected = true);
   }
 }
-function updateTextarea(element, value, defaultValue) {
-  if (null != value && (value = "" + getToStringValue(value), value !== element.value && (element.value = value), null == defaultValue)) {
+function updateTextarea(element, value, defaultValue2) {
+  if (null != value && (value = "" + getToStringValue(value), value !== element.value && (element.value = value), null == defaultValue2)) {
     element.defaultValue !== value && (element.defaultValue = value);
     return;
   }
-  element.defaultValue = null != defaultValue ? "" + getToStringValue(defaultValue) : "";
+  element.defaultValue = null != defaultValue2 ? "" + getToStringValue(defaultValue2) : "";
 }
-function initTextarea(element, value, defaultValue, children) {
+function initTextarea(element, value, defaultValue2, children) {
   if (null == value) {
     if (null != children) {
-      if (null != defaultValue) throw Error(formatProdErrorMessage(92));
+      if (null != defaultValue2) throw Error(formatProdErrorMessage(92));
       if (isArrayImpl(children)) {
         if (1 < children.length) throw Error(formatProdErrorMessage(93));
         children = children[0];
       }
-      defaultValue = children;
+      defaultValue2 = children;
     }
-    null == defaultValue && (defaultValue = "");
-    value = defaultValue;
+    null == defaultValue2 && (defaultValue2 = "");
+    value = defaultValue2;
   }
-  defaultValue = getToStringValue(value);
-  element.defaultValue = defaultValue;
+  defaultValue2 = getToStringValue(value);
+  element.defaultValue = defaultValue2;
   children = element.textContent;
-  children === defaultValue && "" !== children && null !== children && (element.value = children);
+  children === defaultValue2 && "" !== children && null !== children && (element.value = children);
   track(element);
 }
 function setTextContent(node, text) {
@@ -1837,18 +1841,18 @@ function setValueForStyle(style2, styleName, value) {
   var isCustomProperty = 0 === styleName.indexOf("--");
   null == value || "boolean" === typeof value || "" === value ? isCustomProperty ? style2.setProperty(styleName, "") : "float" === styleName ? style2.cssFloat = "" : style2[styleName] = "" : isCustomProperty ? style2.setProperty(styleName, value) : "number" !== typeof value || 0 === value || unitlessNumbers.has(styleName) ? "float" === styleName ? style2.cssFloat = value : style2[styleName] = ("" + value).trim() : style2[styleName] = value + "px";
 }
-function setValueForStyles(node, styles, prevStyles) {
-  if (null != styles && "object" !== typeof styles)
+function setValueForStyles(node, styles2, prevStyles) {
+  if (null != styles2 && "object" !== typeof styles2)
     throw Error(formatProdErrorMessage(62));
   node = node.style;
   if (null != prevStyles) {
     for (var styleName in prevStyles)
-      !prevStyles.hasOwnProperty(styleName) || null != styles && styles.hasOwnProperty(styleName) || (0 === styleName.indexOf("--") ? node.setProperty(styleName, "") : "float" === styleName ? node.cssFloat = "" : node[styleName] = "");
-    for (var styleName$16 in styles)
-      styleName = styles[styleName$16], styles.hasOwnProperty(styleName$16) && prevStyles[styleName$16] !== styleName && setValueForStyle(node, styleName$16, styleName);
+      !prevStyles.hasOwnProperty(styleName) || null != styles2 && styles2.hasOwnProperty(styleName) || (0 === styleName.indexOf("--") ? node.setProperty(styleName, "") : "float" === styleName ? node.cssFloat = "" : node[styleName] = "");
+    for (var styleName$16 in styles2)
+      styleName = styles2[styleName$16], styles2.hasOwnProperty(styleName$16) && prevStyles[styleName$16] !== styleName && setValueForStyle(node, styleName$16, styleName);
   } else
-    for (var styleName$17 in styles)
-      styles.hasOwnProperty(styleName$17) && setValueForStyle(node, styleName$17, styles[styleName$17]);
+    for (var styleName$17 in styles2)
+      styles2.hasOwnProperty(styleName$17) && setValueForStyle(node, styleName$17, styles2[styleName$17]);
 }
 function isCustomElement(tagName) {
   if (-1 === tagName.indexOf("-")) return false;
@@ -2056,8 +2060,8 @@ function getListener(inst, registrationName) {
     );
   return stateNode;
 }
-var canUseDOM = !("undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement), passiveBrowserEventsSupported = false;
-if (canUseDOM)
+var canUseDOM$1 = !("undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement), passiveBrowserEventsSupported = false;
+if (canUseDOM$1)
   try {
     var options = {};
     Object.defineProperty(options, "passive", {
@@ -2229,8 +2233,8 @@ function getEventModifierState() {
 var KeyboardEventInterface = assign({}, UIEventInterface, {
   key: function(nativeEvent) {
     if (nativeEvent.key) {
-      var key = normalizeKey[nativeEvent.key] || nativeEvent.key;
-      if ("Unidentified" !== key) return key;
+      var key2 = normalizeKey[nativeEvent.key] || nativeEvent.key;
+      if ("Unidentified" !== key2) return key2;
     }
     return "keypress" === nativeEvent.type ? (nativeEvent = getEventCharCode(nativeEvent), 13 === nativeEvent ? "Enter" : String.fromCharCode(nativeEvent)) : "keydown" === nativeEvent.type || "keyup" === nativeEvent.type ? translateToKey[nativeEvent.keyCode] || "Unidentified" : "";
   },
@@ -2288,9 +2292,9 @@ var KeyboardEventInterface = assign({}, UIEventInterface, {
 }), SyntheticWheelEvent = createSyntheticEvent(WheelEventInterface), ToggleEventInterface = assign({}, EventInterface, {
   newState: 0,
   oldState: 0
-}), SyntheticToggleEvent = createSyntheticEvent(ToggleEventInterface), END_KEYCODES = [9, 13, 27, 32], canUseCompositionEvent = canUseDOM && "CompositionEvent" in window, documentMode = null;
-canUseDOM && "documentMode" in document && (documentMode = document.documentMode);
-var canUseTextInputEvent = canUseDOM && "TextEvent" in window && !documentMode, useFallbackCompositionData = canUseDOM && (!canUseCompositionEvent || documentMode && 8 < documentMode && 11 >= documentMode), SPACEBAR_CHAR = String.fromCharCode(32), hasSpaceKeypress = false;
+}), SyntheticToggleEvent = createSyntheticEvent(ToggleEventInterface), END_KEYCODES = [9, 13, 27, 32], canUseCompositionEvent = canUseDOM$1 && "CompositionEvent" in window, documentMode = null;
+canUseDOM$1 && "documentMode" in document && (documentMode = document.documentMode);
+var canUseTextInputEvent = canUseDOM$1 && "TextEvent" in window && !documentMode, useFallbackCompositionData = canUseDOM$1 && (!canUseCompositionEvent || documentMode && 8 < documentMode && 11 >= documentMode), SPACEBAR_CHAR = String.fromCharCode(32), hasSpaceKeypress = false;
 function isFallbackCompositionEnd(domEventName, nativeEvent) {
   switch (domEventName) {
     case "keyup":
@@ -2387,9 +2391,9 @@ function getTargetInstForChangeEvent(domEventName, targetInst) {
   if ("change" === domEventName) return targetInst;
 }
 var isInputEventSupported = false;
-if (canUseDOM) {
+if (canUseDOM$1) {
   var JSCompiler_inline_result$jscomp$286;
-  if (canUseDOM) {
+  if (canUseDOM$1) {
     var isSupported$jscomp$inline_427 = "oninput" in document;
     if (!isSupported$jscomp$inline_427) {
       var element$jscomp$inline_428 = document.createElement("div");
@@ -2494,7 +2498,7 @@ function hasSelectionCapabilities(elem) {
   var nodeName = elem && elem.nodeName && elem.nodeName.toLowerCase();
   return nodeName && ("input" === nodeName && ("text" === elem.type || "search" === elem.type || "tel" === elem.type || "url" === elem.type || "password" === elem.type) || "textarea" === nodeName || "true" === elem.contentEditable);
 }
-var skipSelectionChangeEvent = canUseDOM && "documentMode" in document && 11 >= document.documentMode, activeElement = null, activeElementInst = null, lastSelection = null, mouseDown = false;
+var skipSelectionChangeEvent = canUseDOM$1 && "documentMode" in document && 11 >= document.documentMode, activeElement = null, activeElementInst = null, lastSelection = null, mouseDown = false;
 function constructSelectEvent(dispatchQueue, nativeEvent, nativeEventTarget) {
   var doc = nativeEventTarget.window === nativeEventTarget ? nativeEventTarget.document : 9 === nativeEventTarget.nodeType ? nativeEventTarget : nativeEventTarget.ownerDocument;
   mouseDown || null == activeElement || activeElement !== getActiveElement(doc) || (doc = activeElement, "selectionStart" in doc && hasSelectionCapabilities(doc) ? doc = { start: doc.selectionStart, end: doc.selectionEnd } : (doc = (doc.ownerDocument && doc.ownerDocument.defaultView || window).getSelection(), doc = {
@@ -2526,7 +2530,7 @@ var vendorPrefixes = {
   transitioncancel: makePrefixMap("Transition", "TransitionCancel"),
   transitionend: makePrefixMap("Transition", "TransitionEnd")
 }, prefixedEventNames = {}, style = {};
-canUseDOM && (style = document.createElement("div").style, "AnimationEvent" in window || (delete vendorPrefixes.animationend.animation, delete vendorPrefixes.animationiteration.animation, delete vendorPrefixes.animationstart.animation), "TransitionEvent" in window || delete vendorPrefixes.transitionend.transition);
+canUseDOM$1 && (style = document.createElement("div").style, "AnimationEvent" in window || (delete vendorPrefixes.animationend.animation, delete vendorPrefixes.animationiteration.animation, delete vendorPrefixes.animationstart.animation), "TransitionEvent" in window || delete vendorPrefixes.transitionend.transition);
 function getVendorPrefixedEventName(eventName) {
   if (prefixedEventNames[eventName]) return prefixedEventNames[eventName];
   if (!vendorPrefixes[eventName]) return eventName;
@@ -2611,9 +2615,9 @@ function getRootForUpdatedFiber(sourceFiber) {
   return 3 === sourceFiber.tag ? sourceFiber.stateNode : null;
 }
 var emptyContextObject = {};
-function FiberNode(tag, pendingProps, key, mode) {
+function FiberNode(tag, pendingProps, key2, mode) {
   this.tag = tag;
-  this.key = key;
+  this.key = key2;
   this.sibling = this.child = this.return = this.stateNode = this.type = this.elementType = null;
   this.index = 0;
   this.refCleanup = this.ref = null;
@@ -2625,8 +2629,8 @@ function FiberNode(tag, pendingProps, key, mode) {
   this.childLanes = this.lanes = 0;
   this.alternate = null;
 }
-function createFiberImplClass(tag, pendingProps, key, mode) {
-  return new FiberNode(tag, pendingProps, key, mode);
+function createFiberImplClass(tag, pendingProps, key2, mode) {
+  return new FiberNode(tag, pendingProps, key2, mode);
 }
 function shouldConstruct(Component2) {
   Component2 = Component2.prototype;
@@ -2664,7 +2668,7 @@ function resetWorkInProgress(workInProgress2, renderLanes2) {
   });
   return workInProgress2;
 }
-function createFiberFromTypeAndProps(type, key, pendingProps, owner, mode, lanes) {
+function createFiberFromTypeAndProps(type, key2, pendingProps, owner, mode, lanes) {
   var fiberTag = 0;
   owner = type;
   if ("function" === typeof type) shouldConstruct(type) && (fiberTag = 1);
@@ -2677,19 +2681,19 @@ function createFiberFromTypeAndProps(type, key, pendingProps, owner, mode, lanes
   else
     a: switch (type) {
       case REACT_ACTIVITY_TYPE:
-        return type = createFiberImplClass(31, pendingProps, key, mode), type.elementType = REACT_ACTIVITY_TYPE, type.lanes = lanes, type;
+        return type = createFiberImplClass(31, pendingProps, key2, mode), type.elementType = REACT_ACTIVITY_TYPE, type.lanes = lanes, type;
       case REACT_FRAGMENT_TYPE:
-        return createFiberFromFragment(pendingProps.children, mode, lanes, key);
+        return createFiberFromFragment(pendingProps.children, mode, lanes, key2);
       case REACT_STRICT_MODE_TYPE:
         fiberTag = 8;
         mode |= 24;
         break;
       case REACT_PROFILER_TYPE:
-        return type = createFiberImplClass(12, pendingProps, key, mode | 2), type.elementType = REACT_PROFILER_TYPE, type.lanes = lanes, type;
+        return type = createFiberImplClass(12, pendingProps, key2, mode | 2), type.elementType = REACT_PROFILER_TYPE, type.lanes = lanes, type;
       case REACT_SUSPENSE_TYPE:
-        return type = createFiberImplClass(13, pendingProps, key, mode), type.elementType = REACT_SUSPENSE_TYPE, type.lanes = lanes, type;
+        return type = createFiberImplClass(13, pendingProps, key2, mode), type.elementType = REACT_SUSPENSE_TYPE, type.lanes = lanes, type;
       case REACT_SUSPENSE_LIST_TYPE:
-        return type = createFiberImplClass(19, pendingProps, key, mode), type.elementType = REACT_SUSPENSE_LIST_TYPE, type.lanes = lanes, type;
+        return type = createFiberImplClass(19, pendingProps, key2, mode), type.elementType = REACT_SUSPENSE_LIST_TYPE, type.lanes = lanes, type;
       default:
         if ("object" === typeof type && null !== type)
           switch (type.$$typeof) {
@@ -2716,14 +2720,14 @@ function createFiberFromTypeAndProps(type, key, pendingProps, owner, mode, lanes
         );
         owner = null;
     }
-  key = createFiberImplClass(fiberTag, pendingProps, key, mode);
-  key.elementType = type;
-  key.type = owner;
-  key.lanes = lanes;
-  return key;
+  key2 = createFiberImplClass(fiberTag, pendingProps, key2, mode);
+  key2.elementType = type;
+  key2.type = owner;
+  key2.lanes = lanes;
+  return key2;
 }
-function createFiberFromFragment(elements, mode, lanes, key) {
-  elements = createFiberImplClass(7, elements, key, mode);
+function createFiberFromFragment(elements, mode, lanes, key2) {
+  elements = createFiberImplClass(7, elements, key2, mode);
   elements.lanes = lanes;
   return elements;
 }
@@ -3345,13 +3349,13 @@ function createChildReconciler(shouldTrackSideEffects) {
     current.return = returnFiber;
     return current;
   }
-  function updateFragment(returnFiber, current, fragment, lanes, key) {
+  function updateFragment(returnFiber, current, fragment, lanes, key2) {
     if (null === current || 7 !== current.tag)
       return current = createFiberFromFragment(
         fragment,
         returnFiber.mode,
         lanes,
-        key
+        key2
       ), current.return = returnFiber, current;
     current = useFiber(current, fragment);
     current.return = returnFiber;
@@ -3404,20 +3408,20 @@ function createChildReconciler(shouldTrackSideEffects) {
     return null;
   }
   function updateSlot(returnFiber, oldFiber, newChild, lanes) {
-    var key = null !== oldFiber ? oldFiber.key : null;
+    var key2 = null !== oldFiber ? oldFiber.key : null;
     if ("string" === typeof newChild && "" !== newChild || "number" === typeof newChild || "bigint" === typeof newChild)
-      return null !== key ? null : updateTextNode(returnFiber, oldFiber, "" + newChild, lanes);
+      return null !== key2 ? null : updateTextNode(returnFiber, oldFiber, "" + newChild, lanes);
     if ("object" === typeof newChild && null !== newChild) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE:
-          return newChild.key === key ? updateElement(returnFiber, oldFiber, newChild, lanes) : null;
+          return newChild.key === key2 ? updateElement(returnFiber, oldFiber, newChild, lanes) : null;
         case REACT_PORTAL_TYPE:
-          return newChild.key === key ? updatePortal(returnFiber, oldFiber, newChild, lanes) : null;
+          return newChild.key === key2 ? updatePortal(returnFiber, oldFiber, newChild, lanes) : null;
         case REACT_LAZY_TYPE:
           return newChild = resolveLazy(newChild), updateSlot(returnFiber, oldFiber, newChild, lanes);
       }
       if (isArrayImpl(newChild) || getIteratorFn(newChild))
-        return null !== key ? null : updateFragment(returnFiber, oldFiber, newChild, lanes, null);
+        return null !== key2 ? null : updateFragment(returnFiber, oldFiber, newChild, lanes, null);
       if ("function" === typeof newChild.then)
         return updateSlot(
           returnFiber,
@@ -3568,10 +3572,10 @@ function createChildReconciler(shouldTrackSideEffects) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE:
           a: {
-            for (var key = newChild.key; null !== currentFirstChild; ) {
-              if (currentFirstChild.key === key) {
-                key = newChild.type;
-                if (key === REACT_FRAGMENT_TYPE) {
+            for (var key2 = newChild.key; null !== currentFirstChild; ) {
+              if (currentFirstChild.key === key2) {
+                key2 = newChild.type;
+                if (key2 === REACT_FRAGMENT_TYPE) {
                   if (7 === currentFirstChild.tag) {
                     deleteRemainingChildren(
                       returnFiber,
@@ -3585,7 +3589,7 @@ function createChildReconciler(shouldTrackSideEffects) {
                     returnFiber = lanes;
                     break a;
                   }
-                } else if (currentFirstChild.elementType === key || "object" === typeof key && null !== key && key.$$typeof === REACT_LAZY_TYPE && resolveLazy(key) === currentFirstChild.type) {
+                } else if (currentFirstChild.elementType === key2 || "object" === typeof key2 && null !== key2 && key2.$$typeof === REACT_LAZY_TYPE && resolveLazy(key2) === currentFirstChild.type) {
                   deleteRemainingChildren(
                     returnFiber,
                     currentFirstChild.sibling
@@ -3618,8 +3622,8 @@ function createChildReconciler(shouldTrackSideEffects) {
           return placeSingleChild(returnFiber);
         case REACT_PORTAL_TYPE:
           a: {
-            for (key = newChild.key; null !== currentFirstChild; ) {
-              if (currentFirstChild.key === key)
+            for (key2 = newChild.key; null !== currentFirstChild; ) {
+              if (currentFirstChild.key === key2)
                 if (4 === currentFirstChild.tag && currentFirstChild.stateNode.containerInfo === newChild.containerInfo && currentFirstChild.stateNode.implementation === newChild.implementation) {
                   deleteRemainingChildren(
                     returnFiber,
@@ -3657,9 +3661,9 @@ function createChildReconciler(shouldTrackSideEffects) {
           lanes
         );
       if (getIteratorFn(newChild)) {
-        key = getIteratorFn(newChild);
-        if ("function" !== typeof key) throw Error(formatProdErrorMessage(150));
-        newChild = key.call(newChild);
+        key2 = getIteratorFn(newChild);
+        if ("function" !== typeof key2) throw Error(formatProdErrorMessage(150));
+        newChild = key2.call(newChild);
         return reconcileChildrenIterator(
           returnFiber,
           currentFirstChild,
@@ -4126,14 +4130,14 @@ function useMemoCache(size) {
 function basicStateReducer(state, action) {
   return "function" === typeof action ? action(state) : action;
 }
-function updateReducer(reducer) {
+function updateReducer(reducer2) {
   var hook = updateWorkInProgressHook();
-  return updateReducerImpl(hook, currentHook, reducer);
+  return updateReducerImpl(hook, currentHook, reducer2);
 }
-function updateReducerImpl(hook, current, reducer) {
+function updateReducerImpl(hook, current, reducer2) {
   var queue = hook.queue;
   if (null === queue) throw Error(formatProdErrorMessage(311));
-  queue.lastRenderedReducer = reducer;
+  queue.lastRenderedReducer = reducer2;
   var baseQueue = hook.baseQueue, pendingQueue = queue.pending;
   if (null !== pendingQueue) {
     if (null !== baseQueue) {
@@ -4178,8 +4182,8 @@ function updateReducerImpl(hook, current, reducer) {
             next: null
           }, null === newBaseQueueLast ? (newBaseQueueFirst = newBaseQueueLast = updateLane, baseFirst = pendingQueue) : newBaseQueueLast = newBaseQueueLast.next = updateLane, currentlyRenderingFiber.lanes |= revertLane, workInProgressRootSkippedLanes |= revertLane;
         updateLane = update.action;
-        shouldDoubleInvokeUserFnsInHooksDEV && reducer(pendingQueue, updateLane);
-        pendingQueue = update.hasEagerState ? update.eagerState : reducer(pendingQueue, updateLane);
+        shouldDoubleInvokeUserFnsInHooksDEV && reducer2(pendingQueue, updateLane);
+        pendingQueue = update.hasEagerState ? update.eagerState : reducer2(pendingQueue, updateLane);
       } else
         revertLane = {
           lane: updateLane,
@@ -4193,8 +4197,8 @@ function updateReducerImpl(hook, current, reducer) {
       update = update.next;
     } while (null !== update && update !== current);
     null === newBaseQueueLast ? baseFirst = pendingQueue : newBaseQueueLast.next = newBaseQueueFirst;
-    if (!objectIs(pendingQueue, hook.memoizedState) && (didReceiveUpdate = true, didReadFromEntangledAsyncAction$60 && (reducer = currentEntangledActionThenable, null !== reducer)))
-      throw reducer;
+    if (!objectIs(pendingQueue, hook.memoizedState) && (didReceiveUpdate = true, didReadFromEntangledAsyncAction$60 && (reducer2 = currentEntangledActionThenable, null !== reducer2)))
+      throw reducer2;
     hook.memoizedState = pendingQueue;
     hook.baseState = baseFirst;
     hook.baseQueue = newBaseQueueLast;
@@ -4203,16 +4207,16 @@ function updateReducerImpl(hook, current, reducer) {
   null === baseQueue && (queue.lanes = 0);
   return [hook.memoizedState, queue.dispatch];
 }
-function rerenderReducer(reducer) {
+function rerenderReducer(reducer2) {
   var hook = updateWorkInProgressHook(), queue = hook.queue;
   if (null === queue) throw Error(formatProdErrorMessage(311));
-  queue.lastRenderedReducer = reducer;
+  queue.lastRenderedReducer = reducer2;
   var dispatch = queue.dispatch, lastRenderPhaseUpdate = queue.pending, newState = hook.memoizedState;
   if (null !== lastRenderPhaseUpdate) {
     queue.pending = null;
     var update = lastRenderPhaseUpdate = lastRenderPhaseUpdate.next;
     do
-      newState = reducer(newState, update.action), update = update.next;
+      newState = reducer2(newState, update.action), update = update.next;
     while (update !== lastRenderPhaseUpdate);
     objectIs(newState, hook.memoizedState) || (didReceiveUpdate = true);
     hook.memoizedState = newState;
@@ -4309,12 +4313,12 @@ function mountStateImpl(initialState) {
   };
   return hook;
 }
-function updateOptimisticImpl(hook, current, passthrough, reducer) {
+function updateOptimisticImpl(hook, current, passthrough, reducer2) {
   hook.baseState = passthrough;
   return updateReducerImpl(
     hook,
     currentHook,
-    "function" === typeof reducer ? reducer : basicStateReducer
+    "function" === typeof reducer2 ? reducer2 : basicStateReducer
   );
 }
 function dispatchActionState(fiber, actionQueue, setPendingState, setState, payload) {
@@ -4567,8 +4571,8 @@ function useEffectEventImpl(payload) {
   if (null === componentUpdateQueue)
     componentUpdateQueue = createFunctionComponentUpdateQueue(), currentlyRenderingFiber.updateQueue = componentUpdateQueue, componentUpdateQueue.events = [payload];
   else {
-    var events = componentUpdateQueue.events;
-    null === events ? componentUpdateQueue.events = [payload] : events.push(payload);
+    var events2 = componentUpdateQueue.events;
+    null === events2 ? componentUpdateQueue.events = [payload] : events2.push(payload);
   }
 }
 function updateEvent(callback) {
@@ -4690,7 +4694,7 @@ function startTransition(fiber, queue, pendingState, finishedState, callback) {
     ReactDOMSharedInternals.p = previousPriority, null !== prevTransition && null !== currentTransition.types && (prevTransition.types = currentTransition.types), ReactSharedInternals.T = prevTransition;
   }
 }
-function noop() {
+function noop$2() {
 }
 function startHostTransition(formFiber, pendingState, action, formData) {
   if (5 !== formFiber.tag) throw Error(formatProdErrorMessage(476));
@@ -4700,7 +4704,7 @@ function startHostTransition(formFiber, pendingState, action, formData) {
     queue,
     pendingState,
     sharedNotPendingObject,
-    null === action ? noop : function() {
+    null === action ? noop$2 : function() {
       requestFormReset$1(formFiber);
       return action(formData);
     }
@@ -4929,7 +4933,7 @@ var HooksDispatcherOnMount = {
     hook.memoizedState = [nextValue, deps];
     return nextValue;
   },
-  useReducer: function(reducer, initialArg, init) {
+  useReducer: function(reducer2, initialArg, init) {
     var hook = mountWorkInProgressHook();
     if (void 0 !== init) {
       var initialState = init(initialArg);
@@ -4943,20 +4947,20 @@ var HooksDispatcherOnMount = {
       }
     } else initialState = initialArg;
     hook.memoizedState = hook.baseState = initialState;
-    reducer = {
+    reducer2 = {
       pending: null,
       lanes: 0,
       dispatch: null,
-      lastRenderedReducer: reducer,
+      lastRenderedReducer: reducer2,
       lastRenderedState: initialState
     };
-    hook.queue = reducer;
-    reducer = reducer.dispatch = dispatchReducerAction.bind(
+    hook.queue = reducer2;
+    reducer2 = reducer2.dispatch = dispatchReducerAction.bind(
       null,
       currentlyRenderingFiber,
-      reducer
+      reducer2
     );
-    return [hook.memoizedState, reducer];
+    return [hook.memoizedState, reducer2];
   },
   useRef: function(initialValue) {
     var hook = mountWorkInProgressHook();
@@ -5109,9 +5113,9 @@ var HooksDispatcherOnMount = {
   useHostTransitionStatus,
   useFormState: updateActionState,
   useActionState: updateActionState,
-  useOptimistic: function(passthrough, reducer) {
+  useOptimistic: function(passthrough, reducer2) {
     var hook = updateWorkInProgressHook();
-    return updateOptimisticImpl(hook, currentHook, passthrough, reducer);
+    return updateOptimisticImpl(hook, currentHook, passthrough, reducer2);
   },
   useMemoCache,
   useCacheRefresh: updateRefresh
@@ -5154,10 +5158,10 @@ var HooksDispatcherOnRerender = {
   useHostTransitionStatus,
   useFormState: rerenderActionState,
   useActionState: rerenderActionState,
-  useOptimistic: function(passthrough, reducer) {
+  useOptimistic: function(passthrough, reducer2) {
     var hook = updateWorkInProgressHook();
     if (null !== currentHook)
-      return updateOptimisticImpl(hook, currentHook, passthrough, reducer);
+      return updateOptimisticImpl(hook, currentHook, passthrough, reducer2);
     hook.baseState = passthrough;
     return [passthrough, hook.queue.dispatch];
   },
@@ -5367,8 +5371,8 @@ function updateForwardRef(current, workInProgress2, Component2, nextProps, rende
   var ref = workInProgress2.ref;
   if ("ref" in nextProps) {
     var propsWithoutRef = {};
-    for (var key in nextProps)
-      "ref" !== key && (propsWithoutRef[key] = nextProps[key]);
+    for (var key2 in nextProps)
+      "ref" !== key2 && (propsWithoutRef[key2] = nextProps[key2]);
   } else propsWithoutRef = nextProps;
   prepareToReadContext(workInProgress2);
   nextProps = renderWithHooks(
@@ -5379,10 +5383,10 @@ function updateForwardRef(current, workInProgress2, Component2, nextProps, rende
     ref,
     renderLanes2
   );
-  key = checkDidRenderIdHook();
+  key2 = checkDidRenderIdHook();
   if (null !== current && !didReceiveUpdate)
     return bailoutHooks(current, workInProgress2, renderLanes2), bailoutOnAlreadyFinishedWork(current, workInProgress2, renderLanes2);
-  isHydrating && key && pushMaterializedTreeId(workInProgress2);
+  isHydrating && key2 && pushMaterializedTreeId(workInProgress2);
   workInProgress2.flags |= 1;
   reconcileChildren(current, workInProgress2, nextProps, renderLanes2);
   return workInProgress2.child;
@@ -10137,8 +10141,8 @@ function checkForUnmatchedText(serverText, clientText) {
   clientText = normalizeMarkupForTextOrAttribute(clientText);
   return normalizeMarkupForTextOrAttribute(serverText) === clientText ? true : false;
 }
-function setProp(domElement, tag, key, value, props, prevValue) {
-  switch (key) {
+function setProp(domElement, tag, key2, value, props, prevValue) {
+  switch (key2) {
     case "children":
       "string" === typeof value ? "body" === tag || "textarea" === tag && "" === value || setTextContent(domElement, value) : ("number" === typeof value || "bigint" === typeof value) && "body" !== tag && setTextContent(domElement, "" + value);
       break;
@@ -10153,7 +10157,7 @@ function setProp(domElement, tag, key, value, props, prevValue) {
     case "viewBox":
     case "width":
     case "height":
-      setValueForKnownAttribute(domElement, key, value);
+      setValueForKnownAttribute(domElement, key2, value);
       break;
     case "style":
       setValueForStyles(domElement, value, prevValue);
@@ -10165,27 +10169,27 @@ function setProp(domElement, tag, key, value, props, prevValue) {
       }
     case "src":
     case "href":
-      if ("" === value && ("a" !== tag || "href" !== key)) {
-        domElement.removeAttribute(key);
+      if ("" === value && ("a" !== tag || "href" !== key2)) {
+        domElement.removeAttribute(key2);
         break;
       }
       if (null == value || "function" === typeof value || "symbol" === typeof value || "boolean" === typeof value) {
-        domElement.removeAttribute(key);
+        domElement.removeAttribute(key2);
         break;
       }
       value = sanitizeURL("" + value);
-      domElement.setAttribute(key, value);
+      domElement.setAttribute(key2, value);
       break;
     case "action":
     case "formAction":
       if ("function" === typeof value) {
         domElement.setAttribute(
-          key,
+          key2,
           "javascript:throw new Error('A React form was unexpectedly submitted. If you called form.submit() manually, consider using form.requestSubmit() instead. If you\\'re trying to use event.stopPropagation() in a submit event handler, consider also calling event.preventDefault().')"
         );
         break;
       } else
-        "function" === typeof prevValue && ("formAction" === key ? ("input" !== tag && setProp(domElement, tag, "name", props.name, props, null), setProp(
+        "function" === typeof prevValue && ("formAction" === key2 ? ("input" !== tag && setProp(domElement, tag, "name", props.name, props, null), setProp(
           domElement,
           tag,
           "formEncType",
@@ -10208,11 +10212,11 @@ function setProp(domElement, tag, key, value, props, prevValue) {
           null
         )) : (setProp(domElement, tag, "encType", props.encType, props, null), setProp(domElement, tag, "method", props.method, props, null), setProp(domElement, tag, "target", props.target, props, null)));
       if (null == value || "symbol" === typeof value || "boolean" === typeof value) {
-        domElement.removeAttribute(key);
+        domElement.removeAttribute(key2);
         break;
       }
       value = sanitizeURL("" + value);
-      domElement.setAttribute(key, value);
+      domElement.setAttribute(key2, value);
       break;
     case "onClick":
       null != value && (domElement.onclick = noop$1);
@@ -10227,10 +10231,10 @@ function setProp(domElement, tag, key, value, props, prevValue) {
       if (null != value) {
         if ("object" !== typeof value || !("__html" in value))
           throw Error(formatProdErrorMessage(61));
-        key = value.__html;
-        if (null != key) {
+        key2 = value.__html;
+        if (null != key2) {
           if (null != props.children) throw Error(formatProdErrorMessage(60));
-          domElement.innerHTML = key;
+          domElement.innerHTML = key2;
         }
       }
       break;
@@ -10254,11 +10258,11 @@ function setProp(domElement, tag, key, value, props, prevValue) {
         domElement.removeAttribute("xlink:href");
         break;
       }
-      key = sanitizeURL("" + value);
+      key2 = sanitizeURL("" + value);
       domElement.setAttributeNS(
         "http://www.w3.org/1999/xlink",
         "xlink:href",
-        key
+        key2
       );
       break;
     case "contentEditable":
@@ -10269,7 +10273,7 @@ function setProp(domElement, tag, key, value, props, prevValue) {
     case "externalResourcesRequired":
     case "focusable":
     case "preserveAlpha":
-      null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key, "" + value) : domElement.removeAttribute(key);
+      null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key2, "" + value) : domElement.removeAttribute(key2);
       break;
     case "inert":
     case "allowFullScreen":
@@ -10294,21 +10298,21 @@ function setProp(domElement, tag, key, value, props, prevValue) {
     case "scoped":
     case "seamless":
     case "itemScope":
-      value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key, "") : domElement.removeAttribute(key);
+      value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key2, "") : domElement.removeAttribute(key2);
       break;
     case "capture":
     case "download":
-      true === value ? domElement.setAttribute(key, "") : false !== value && null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key, value) : domElement.removeAttribute(key);
+      true === value ? domElement.setAttribute(key2, "") : false !== value && null != value && "function" !== typeof value && "symbol" !== typeof value ? domElement.setAttribute(key2, value) : domElement.removeAttribute(key2);
       break;
     case "cols":
     case "rows":
     case "size":
     case "span":
-      null != value && "function" !== typeof value && "symbol" !== typeof value && !isNaN(value) && 1 <= value ? domElement.setAttribute(key, value) : domElement.removeAttribute(key);
+      null != value && "function" !== typeof value && "symbol" !== typeof value && !isNaN(value) && 1 <= value ? domElement.setAttribute(key2, value) : domElement.removeAttribute(key2);
       break;
     case "rowSpan":
     case "start":
-      null == value || "function" === typeof value || "symbol" === typeof value || isNaN(value) ? domElement.removeAttribute(key) : domElement.setAttribute(key, value);
+      null == value || "function" === typeof value || "symbol" === typeof value || isNaN(value) ? domElement.removeAttribute(key2) : domElement.setAttribute(key2, value);
       break;
     case "popover":
       listenToNonDelegatedEvent("beforetoggle", domElement);
@@ -10394,12 +10398,12 @@ function setProp(domElement, tag, key, value, props, prevValue) {
     case "textContent":
       break;
     default:
-      if (!(2 < key.length) || "o" !== key[0] && "O" !== key[0] || "n" !== key[1] && "N" !== key[1])
-        key = aliases.get(key) || key, setValueForAttribute(domElement, key, value);
+      if (!(2 < key2.length) || "o" !== key2[0] && "O" !== key2[0] || "n" !== key2[1] && "N" !== key2[1])
+        key2 = aliases.get(key2) || key2, setValueForAttribute(domElement, key2, value);
   }
 }
-function setPropOnCustomElement(domElement, tag, key, value, props, prevValue) {
-  switch (key) {
+function setPropOnCustomElement(domElement, tag, key2, value, props, prevValue) {
+  switch (key2) {
     case "style":
       setValueForStyles(domElement, value, prevValue);
       break;
@@ -10407,10 +10411,10 @@ function setPropOnCustomElement(domElement, tag, key, value, props, prevValue) {
       if (null != value) {
         if ("object" !== typeof value || !("__html" in value))
           throw Error(formatProdErrorMessage(61));
-        key = value.__html;
-        if (null != key) {
+        key2 = value.__html;
+        if (null != key2) {
           if (null != props.children) throw Error(formatProdErrorMessage(60));
-          domElement.innerHTML = key;
+          domElement.innerHTML = key2;
         }
       }
       break;
@@ -10435,14 +10439,14 @@ function setPropOnCustomElement(domElement, tag, key, value, props, prevValue) {
     case "textContent":
       break;
     default:
-      if (!registrationNameDependencies.hasOwnProperty(key))
+      if (!registrationNameDependencies.hasOwnProperty(key2))
         a: {
-          if ("o" === key[0] && "n" === key[1] && (props = key.endsWith("Capture"), tag = key.slice(2, props ? key.length - 7 : void 0), prevValue = domElement[internalPropsKey] || null, prevValue = null != prevValue ? prevValue[key] : null, "function" === typeof prevValue && domElement.removeEventListener(tag, prevValue, props), "function" === typeof value)) {
-            "function" !== typeof prevValue && null !== prevValue && (key in domElement ? domElement[key] = null : domElement.hasAttribute(key) && domElement.removeAttribute(key));
+          if ("o" === key2[0] && "n" === key2[1] && (props = key2.endsWith("Capture"), tag = key2.slice(2, props ? key2.length - 7 : void 0), prevValue = domElement[internalPropsKey] || null, prevValue = null != prevValue ? prevValue[key2] : null, "function" === typeof prevValue && domElement.removeEventListener(tag, prevValue, props), "function" === typeof value)) {
+            "function" !== typeof prevValue && null !== prevValue && (key2 in domElement ? domElement[key2] = null : domElement.hasAttribute(key2) && domElement.removeAttribute(key2));
             domElement.addEventListener(tag, value, props);
             break a;
           }
-          key in domElement ? domElement[key] = value : true === value ? domElement.setAttribute(key, "") : setValueForAttribute(domElement, key, value);
+          key2 in domElement ? domElement[key2] = value : true === value ? domElement.setAttribute(key2, "") : setValueForAttribute(domElement, key2, value);
         }
   }
 }
@@ -10484,7 +10488,7 @@ function setInitialProperties(domElement, tag, props) {
       return;
     case "input":
       listenToNonDelegatedEvent("invalid", domElement);
-      var defaultValue = propKey = propValue = hasSrcSet = null, checked = null, defaultChecked = null;
+      var defaultValue2 = propKey = propValue = hasSrcSet = null, checked = null, defaultChecked = null;
       for (hasSrc in props)
         if (props.hasOwnProperty(hasSrc)) {
           var propValue$184 = props[hasSrc];
@@ -10506,7 +10510,7 @@ function setInitialProperties(domElement, tag, props) {
                 propKey = propValue$184;
                 break;
               case "defaultValue":
-                defaultValue = propValue$184;
+                defaultValue2 = propValue$184;
                 break;
               case "children":
               case "dangerouslySetInnerHTML":
@@ -10520,7 +10524,7 @@ function setInitialProperties(domElement, tag, props) {
       initInput(
         domElement,
         propKey,
-        defaultValue,
+        defaultValue2,
         checked,
         defaultChecked,
         propValue,
@@ -10532,18 +10536,18 @@ function setInitialProperties(domElement, tag, props) {
       listenToNonDelegatedEvent("invalid", domElement);
       hasSrc = propValue = propKey = null;
       for (hasSrcSet in props)
-        if (props.hasOwnProperty(hasSrcSet) && (defaultValue = props[hasSrcSet], null != defaultValue))
+        if (props.hasOwnProperty(hasSrcSet) && (defaultValue2 = props[hasSrcSet], null != defaultValue2))
           switch (hasSrcSet) {
             case "value":
-              propKey = defaultValue;
+              propKey = defaultValue2;
               break;
             case "defaultValue":
-              propValue = defaultValue;
+              propValue = defaultValue2;
               break;
             case "multiple":
-              hasSrc = defaultValue;
+              hasSrc = defaultValue2;
             default:
-              setProp(domElement, tag, hasSrcSet, defaultValue, props, null);
+              setProp(domElement, tag, hasSrcSet, defaultValue2, props, null);
           }
       tag = propKey;
       props = propValue;
@@ -10554,22 +10558,22 @@ function setInitialProperties(domElement, tag, props) {
       listenToNonDelegatedEvent("invalid", domElement);
       propKey = hasSrcSet = hasSrc = null;
       for (propValue in props)
-        if (props.hasOwnProperty(propValue) && (defaultValue = props[propValue], null != defaultValue))
+        if (props.hasOwnProperty(propValue) && (defaultValue2 = props[propValue], null != defaultValue2))
           switch (propValue) {
             case "value":
-              hasSrc = defaultValue;
+              hasSrc = defaultValue2;
               break;
             case "defaultValue":
-              hasSrcSet = defaultValue;
+              hasSrcSet = defaultValue2;
               break;
             case "children":
-              propKey = defaultValue;
+              propKey = defaultValue2;
               break;
             case "dangerouslySetInnerHTML":
-              if (null != defaultValue) throw Error(formatProdErrorMessage(91));
+              if (null != defaultValue2) throw Error(formatProdErrorMessage(91));
               break;
             default:
-              setProp(domElement, tag, propValue, defaultValue, props, null);
+              setProp(domElement, tag, propValue, defaultValue2, props, null);
           }
       initTextarea(domElement, hasSrc, hasSrcSet, propKey);
       return;
@@ -10645,8 +10649,8 @@ function setInitialProperties(domElement, tag, props) {
         return;
       }
   }
-  for (defaultValue in props)
-    props.hasOwnProperty(defaultValue) && (hasSrc = props[defaultValue], null != hasSrc && setProp(domElement, tag, defaultValue, hasSrc, props, null));
+  for (defaultValue2 in props)
+    props.hasOwnProperty(defaultValue2) && (hasSrc = props[defaultValue2], null != hasSrc && setProp(domElement, tag, defaultValue2, hasSrc, props, null));
 }
 function updateProperties(domElement, tag, lastProps, nextProps) {
   switch (tag) {
@@ -10660,7 +10664,7 @@ function updateProperties(domElement, tag, lastProps, nextProps) {
     case "li":
       break;
     case "input":
-      var name = null, type = null, value = null, defaultValue = null, lastDefaultValue = null, checked = null, defaultChecked = null;
+      var name = null, type = null, value = null, defaultValue2 = null, lastDefaultValue = null, checked = null, defaultChecked = null;
       for (propKey in lastProps) {
         var lastProp = lastProps[propKey];
         if (lastProps.hasOwnProperty(propKey) && null != lastProp)
@@ -10696,7 +10700,7 @@ function updateProperties(domElement, tag, lastProps, nextProps) {
               value = propKey;
               break;
             case "defaultValue":
-              defaultValue = propKey;
+              defaultValue2 = propKey;
               break;
             case "children":
             case "dangerouslySetInnerHTML":
@@ -10717,7 +10721,7 @@ function updateProperties(domElement, tag, lastProps, nextProps) {
       updateInput(
         domElement,
         value,
-        defaultValue,
+        defaultValue2,
         lastDefaultValue,
         checked,
         defaultChecked,
@@ -10726,7 +10730,7 @@ function updateProperties(domElement, tag, lastProps, nextProps) {
       );
       return;
     case "select":
-      propKey = value = defaultValue = propKey$201 = null;
+      propKey = value = defaultValue2 = propKey$201 = null;
       for (type in lastProps)
         if (lastDefaultValue = lastProps[type], lastProps.hasOwnProperty(type) && null != lastDefaultValue)
           switch (type) {
@@ -10751,7 +10755,7 @@ function updateProperties(domElement, tag, lastProps, nextProps) {
               propKey$201 = type;
               break;
             case "defaultValue":
-              defaultValue = type;
+              defaultValue2 = type;
               break;
             case "multiple":
               value = type;
@@ -10765,22 +10769,22 @@ function updateProperties(domElement, tag, lastProps, nextProps) {
                 lastDefaultValue
               );
           }
-      tag = defaultValue;
+      tag = defaultValue2;
       lastProps = value;
       nextProps = propKey;
       null != propKey$201 ? updateOptions(domElement, !!lastProps, propKey$201, false) : !!nextProps !== !!lastProps && (null != tag ? updateOptions(domElement, !!lastProps, tag, true) : updateOptions(domElement, !!lastProps, lastProps ? [] : "", false));
       return;
     case "textarea":
       propKey = propKey$201 = null;
-      for (defaultValue in lastProps)
-        if (name = lastProps[defaultValue], lastProps.hasOwnProperty(defaultValue) && null != name && !nextProps.hasOwnProperty(defaultValue))
-          switch (defaultValue) {
+      for (defaultValue2 in lastProps)
+        if (name = lastProps[defaultValue2], lastProps.hasOwnProperty(defaultValue2) && null != name && !nextProps.hasOwnProperty(defaultValue2))
+          switch (defaultValue2) {
             case "value":
               break;
             case "children":
               break;
             default:
-              setProp(domElement, tag, defaultValue, null, nextProps, name);
+              setProp(domElement, tag, defaultValue2, null, nextProps, name);
           }
       for (value in nextProps)
         if (name = nextProps[value], type = lastProps[value], nextProps.hasOwnProperty(value) && (null != name || null != type))
@@ -11254,29 +11258,29 @@ function preload(href, as, options) {
     ) + '"]', "string" === typeof options.imageSizes && (preloadSelector += '[imagesizes="' + escapeSelectorAttributeValueInsideDoubleQuotes(
       options.imageSizes
     ) + '"]')) : preloadSelector += '[href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"]' : preloadSelector += '[href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"]';
-    var key = preloadSelector;
+    var key2 = preloadSelector;
     switch (as) {
       case "style":
-        key = getStyleKey(href);
+        key2 = getStyleKey(href);
         break;
       case "script":
-        key = getScriptKey(href);
+        key2 = getScriptKey(href);
     }
-    preloadPropsMap.has(key) || (href = assign(
+    preloadPropsMap.has(key2) || (href = assign(
       {
         rel: "preload",
         href: "image" === as && options && options.imageSrcSet ? void 0 : href,
         as
       },
       options
-    ), preloadPropsMap.set(key, href), null !== ownerDocument.querySelector(preloadSelector) || "style" === as && ownerDocument.querySelector(getStylesheetSelectorFromKey(key)) || "script" === as && ownerDocument.querySelector(getScriptSelectorFromKey(key)) || (as = ownerDocument.createElement("link"), setInitialProperties(as, "link", href), markNodeAsHoistable(as), ownerDocument.head.appendChild(as)));
+    ), preloadPropsMap.set(key2, href), null !== ownerDocument.querySelector(preloadSelector) || "style" === as && ownerDocument.querySelector(getStylesheetSelectorFromKey(key2)) || "script" === as && ownerDocument.querySelector(getScriptSelectorFromKey(key2)) || (as = ownerDocument.createElement("link"), setInitialProperties(as, "link", href), markNodeAsHoistable(as), ownerDocument.head.appendChild(as)));
   }
 }
 function preloadModule(href, options) {
   previousDispatcher.m(href, options);
   var ownerDocument = globalDocument;
   if (ownerDocument && href) {
-    var as = options && "string" === typeof options.as ? options.as : "script", preloadSelector = 'link[rel="modulepreload"][as="' + escapeSelectorAttributeValueInsideDoubleQuotes(as) + '"][href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"]', key = preloadSelector;
+    var as = options && "string" === typeof options.as ? options.as : "script", preloadSelector = 'link[rel="modulepreload"][as="' + escapeSelectorAttributeValueInsideDoubleQuotes(as) + '"][href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"]', key2 = preloadSelector;
     switch (as) {
       case "audioworklet":
       case "paintworklet":
@@ -11284,9 +11288,9 @@ function preloadModule(href, options) {
       case "sharedworker":
       case "worker":
       case "script":
-        key = getScriptKey(href);
+        key2 = getScriptKey(href);
     }
-    if (!preloadPropsMap.has(key) && (href = assign({ rel: "modulepreload", href }, options), preloadPropsMap.set(key, href), null === ownerDocument.querySelector(preloadSelector))) {
+    if (!preloadPropsMap.has(key2) && (href = assign({ rel: "modulepreload", href }, options), preloadPropsMap.set(key2, href), null === ownerDocument.querySelector(preloadSelector))) {
       switch (as) {
         case "audioworklet":
         case "paintworklet":
@@ -11294,7 +11298,7 @@ function preloadModule(href, options) {
         case "sharedworker":
         case "worker":
         case "script":
-          if (ownerDocument.querySelector(getScriptSelectorFromKey(key)))
+          if (ownerDocument.querySelector(getScriptSelectorFromKey(key2)))
             return;
       }
       as = ownerDocument.createElement("link");
@@ -11308,13 +11312,13 @@ function preinitStyle(href, precedence, options) {
   previousDispatcher.S(href, precedence, options);
   var ownerDocument = globalDocument;
   if (ownerDocument && href) {
-    var styles = getResourcesFromRoot(ownerDocument).hoistableStyles, key = getStyleKey(href);
+    var styles2 = getResourcesFromRoot(ownerDocument).hoistableStyles, key2 = getStyleKey(href);
     precedence = precedence || "default";
-    var resource = styles.get(key);
+    var resource = styles2.get(key2);
     if (!resource) {
       var state = { loading: 0, preload: null };
       if (resource = ownerDocument.querySelector(
-        getStylesheetSelectorFromKey(key)
+        getStylesheetSelectorFromKey(key2)
       ))
         state.loading = 5;
       else {
@@ -11322,7 +11326,7 @@ function preinitStyle(href, precedence, options) {
           { rel: "stylesheet", href, "data-precedence": precedence },
           options
         );
-        (options = preloadPropsMap.get(key)) && adoptPreloadPropsForStylesheet(href, options);
+        (options = preloadPropsMap.get(key2)) && adoptPreloadPropsForStylesheet(href, options);
         var link = resource = ownerDocument.createElement("link");
         markNodeAsHoistable(link);
         setInitialProperties(link, "link", href);
@@ -11345,7 +11349,7 @@ function preinitStyle(href, precedence, options) {
         count: 1,
         state
       };
-      styles.set(key, resource);
+      styles2.set(key2, resource);
     }
   }
 }
@@ -11353,26 +11357,26 @@ function preinitScript(src, options) {
   previousDispatcher.X(src, options);
   var ownerDocument = globalDocument;
   if (ownerDocument && src) {
-    var scripts = getResourcesFromRoot(ownerDocument).hoistableScripts, key = getScriptKey(src), resource = scripts.get(key);
-    resource || (resource = ownerDocument.querySelector(getScriptSelectorFromKey(key)), resource || (src = assign({ src, async: true }, options), (options = preloadPropsMap.get(key)) && adoptPreloadPropsForScript(src, options), resource = ownerDocument.createElement("script"), markNodeAsHoistable(resource), setInitialProperties(resource, "link", src), ownerDocument.head.appendChild(resource)), resource = {
+    var scripts = getResourcesFromRoot(ownerDocument).hoistableScripts, key2 = getScriptKey(src), resource = scripts.get(key2);
+    resource || (resource = ownerDocument.querySelector(getScriptSelectorFromKey(key2)), resource || (src = assign({ src, async: true }, options), (options = preloadPropsMap.get(key2)) && adoptPreloadPropsForScript(src, options), resource = ownerDocument.createElement("script"), markNodeAsHoistable(resource), setInitialProperties(resource, "link", src), ownerDocument.head.appendChild(resource)), resource = {
       type: "script",
       instance: resource,
       count: 1,
       state: null
-    }, scripts.set(key, resource));
+    }, scripts.set(key2, resource));
   }
 }
 function preinitModuleScript(src, options) {
   previousDispatcher.M(src, options);
   var ownerDocument = globalDocument;
   if (ownerDocument && src) {
-    var scripts = getResourcesFromRoot(ownerDocument).hoistableScripts, key = getScriptKey(src), resource = scripts.get(key);
-    resource || (resource = ownerDocument.querySelector(getScriptSelectorFromKey(key)), resource || (src = assign({ src, async: true, type: "module" }, options), (options = preloadPropsMap.get(key)) && adoptPreloadPropsForScript(src, options), resource = ownerDocument.createElement("script"), markNodeAsHoistable(resource), setInitialProperties(resource, "link", src), ownerDocument.head.appendChild(resource)), resource = {
+    var scripts = getResourcesFromRoot(ownerDocument).hoistableScripts, key2 = getScriptKey(src), resource = scripts.get(key2);
+    resource || (resource = ownerDocument.querySelector(getScriptSelectorFromKey(key2)), resource || (src = assign({ src, async: true, type: "module" }, options), (options = preloadPropsMap.get(key2)) && adoptPreloadPropsForScript(src, options), resource = ownerDocument.createElement("script"), markNodeAsHoistable(resource), setInitialProperties(resource, "link", src), ownerDocument.head.appendChild(resource)), resource = {
       type: "script",
       instance: resource,
       count: 1,
       state: null
-    }, scripts.set(key, resource));
+    }, scripts.set(key2, resource));
   }
 }
 function getResource(type, currentProps, pendingProps, currentResource) {
@@ -11442,8 +11446,8 @@ function getResource(type, currentProps, pendingProps, currentResource) {
 function getStyleKey(href) {
   return 'href="' + escapeSelectorAttributeValueInsideDoubleQuotes(href) + '"';
 }
-function getStylesheetSelectorFromKey(key) {
-  return 'link[rel="stylesheet"][' + key + "]";
+function getStylesheetSelectorFromKey(key2) {
+  return 'link[rel="stylesheet"][' + key2 + "]";
 }
 function stylesheetPropsFromRawProps(rawProps) {
   return assign({}, rawProps, {
@@ -11451,18 +11455,18 @@ function stylesheetPropsFromRawProps(rawProps) {
     precedence: null
   });
 }
-function preloadStylesheet(ownerDocument, key, preloadProps, state) {
-  ownerDocument.querySelector('link[rel="preload"][as="style"][' + key + "]") ? state.loading = 1 : (key = ownerDocument.createElement("link"), state.preload = key, key.addEventListener("load", function() {
+function preloadStylesheet(ownerDocument, key2, preloadProps, state) {
+  ownerDocument.querySelector('link[rel="preload"][as="style"][' + key2 + "]") ? state.loading = 1 : (key2 = ownerDocument.createElement("link"), state.preload = key2, key2.addEventListener("load", function() {
     return state.loading |= 1;
-  }), key.addEventListener("error", function() {
+  }), key2.addEventListener("error", function() {
     return state.loading |= 2;
-  }), setInitialProperties(key, "link", preloadProps), markNodeAsHoistable(key), ownerDocument.head.appendChild(key));
+  }), setInitialProperties(key2, "link", preloadProps), markNodeAsHoistable(key2), ownerDocument.head.appendChild(key2));
 }
 function getScriptKey(src) {
   return '[src="' + escapeSelectorAttributeValueInsideDoubleQuotes(src) + '"]';
 }
-function getScriptSelectorFromKey(key) {
-  return "script[async]" + key;
+function getScriptSelectorFromKey(key2) {
+  return "script[async]" + key2;
 }
 function acquireResource(hoistableRoot, resource, props) {
   resource.count++;
@@ -11611,8 +11615,8 @@ function preloadResource(resource) {
 function suspendResource(state, hoistableRoot, resource, props) {
   if ("stylesheet" === resource.type && ("string" !== typeof props.media || false !== matchMedia(props.media).matches) && 0 === (resource.state.loading & 4)) {
     if (null === resource.instance) {
-      var key = getStyleKey(props.href), instance = hoistableRoot.querySelector(
-        getStylesheetSelectorFromKey(key)
+      var key2 = getStyleKey(props.href), instance = hoistableRoot.querySelector(
+        getStylesheetSelectorFromKey(key2)
       );
       if (instance) {
         hoistableRoot = instance._p;
@@ -11624,7 +11628,7 @@ function suspendResource(state, hoistableRoot, resource, props) {
       }
       instance = hoistableRoot.ownerDocument || hoistableRoot;
       props = stylesheetPropsFromRawProps(props);
-      (key = preloadPropsMap.get(key)) && adoptPreloadPropsForStylesheet(props, key);
+      (key2 = preloadPropsMap.get(key2)) && adoptPreloadPropsForStylesheet(props, key2);
       instance = instance.createElement("link");
       markNodeAsHoistable(instance);
       var linkInstance = instance;
@@ -12174,8 +12178,8 @@ function attemptReplayContinuousQueuedEvent(queuedEvent) {
   }
   return true;
 }
-function attemptReplayContinuousQueuedEventInMap(queuedEvent, key, map) {
-  attemptReplayContinuousQueuedEvent(queuedEvent) && map.delete(key);
+function attemptReplayContinuousQueuedEventInMap(queuedEvent, key2, map) {
+  attemptReplayContinuousQueuedEvent(queuedEvent) && map.delete(key2);
 }
 function replayUnblockedEvents() {
   hasScheduledReplayAttempt = false;
@@ -12659,278 +12663,165 @@ function Statusbar() {
     }
   );
 }
-function ContextMenu({
-  menu,
-  onClose
-}) {
-  const handleFinderClick = reactExports.useCallback(() => {
-    void window.psygil?.workspace?.openInFinder?.(menu.path);
-    onClose();
-  }, [menu.path, onClose]);
-  const handleNativeClick = reactExports.useCallback(() => {
-    if (!menu.isDirectory) {
-      void window.psygil?.workspace?.openNative?.(menu.path);
-    }
-    onClose();
-  }, [menu.path, menu.isDirectory, onClose]);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      style: {
-        position: "fixed",
-        top: menu.y,
-        left: menu.x,
-        zIndex: 9e3,
-        background: "var(--panel)",
-        border: "1px solid var(--border)",
-        borderRadius: 4,
-        boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-        minWidth: 180,
-        padding: "4px 0",
-        fontSize: 12
-      },
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            style: { padding: "6px 14px", cursor: "pointer", color: "var(--text)" },
-            onMouseEnter: (e) => {
-              e.currentTarget.style.background = "var(--highlight)";
-            },
-            onMouseLeave: (e) => {
-              e.currentTarget.style.background = "transparent";
-            },
-            onClick: handleFinderClick,
-            children: "📂 Reveal in Finder"
-          }
-        ),
-        !menu.isDirectory && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            style: { padding: "6px 14px", cursor: "pointer", color: "var(--text)" },
-            onMouseEnter: (e) => {
-              e.currentTarget.style.background = "var(--highlight)";
-            },
-            onMouseLeave: (e) => {
-              e.currentTarget.style.background = "transparent";
-            },
-            onClick: handleNativeClick,
-            children: "↗ Open with Default App"
-          }
-        )
-      ]
-    }
-  );
-}
-const STAGE_COLORS$1 = {
+const STAGE_COLORS$2 = {
   onboarding: "#2196f3",
-  gate_1: "#2196f3",
   testing: "#9c27b0",
-  gate_2: "#9c27b0",
   interview: "#e91e63",
   diagnostics: "#ff9800",
-  gate_3: "#ff9800",
   review: "#ff5722",
-  complete: "#4caf50",
-  finalized: "#4caf50",
-  intake: "#2196f3"
+  complete: "#4caf50"
 };
-const STAGE_LABELS = {
-  onboarding: "Onboarding",
-  gate_1: "Onboarding",
-  testing: "Testing",
-  gate_2: "Testing",
-  interview: "Interview",
-  diagnostics: "Diagnostics",
-  gate_3: "Diagnostics",
-  review: "Review",
-  complete: "Complete",
-  finalized: "Complete",
-  intake: "Intake"
+const SUBFOLDER_ICONS = {
+  intake: "📋",
+  referral: "📄",
+  collateral: "📁",
+  testing: "📊",
+  interviews: "🎙",
+  diagnostics: "⚖",
+  reports: "📝",
+  archive: "📦"
 };
-const CASE_SUBFOLDERS = [
-  "_Inbox",
-  "Collateral",
-  "Testing",
-  "Interviews",
-  "Diagnostics",
-  "Reports",
-  "Archive"
-];
-function buildTreeLookup(nodes) {
-  const map = /* @__PURE__ */ new Map();
-  function walk(node) {
-    map.set(node.path, node);
-    if (node.children) {
-      for (const child of node.children) {
-        walk(child);
-      }
-    }
+function fileIcon(name) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  switch (ext) {
+    case "pdf":
+      return "📕";
+    case "doc":
+    case "docx":
+      return "📄";
+    case "xls":
+    case "xlsx":
+      return "📊";
+    case "txt":
+      return "📝";
+    case "png":
+    case "jpg":
+    case "jpeg":
+    case "gif":
+    case "webp":
+      return "🖼";
+    case "mp3":
+    case "wav":
+    case "ogg":
+    case "m4a":
+      return "🎵";
+    case "mp4":
+    case "mov":
+    case "avi":
+      return "🎬";
+    case "json":
+      return "{ }";
+    case "csv":
+      return "📊";
+    default:
+      return "📄";
   }
-  for (const n of nodes) {
-    walk(n);
-  }
-  return map;
 }
-function LeftColumn({
-  onOpenTab,
-  onNewCase,
-  refreshRef
-}) {
-  const [ctxMenu, setCtxMenu] = reactExports.useState(null);
-  const [wsStatus, setWsStatus] = reactExports.useState("loading");
-  const [cases, setCases] = reactExports.useState([]);
-  const [wsTree, setWsTree] = reactExports.useState([]);
-  const [treeLookup, setTreeLookup] = reactExports.useState(/* @__PURE__ */ new Map());
-  reactExports.useEffect(() => {
-    setTreeLookup(buildTreeLookup(wsTree));
-  }, [wsTree]);
-  const loadTree = reactExports.useCallback(async () => {
-    const resp = await window.psygil?.workspace?.getTree?.();
-    if (resp?.status === "success") {
-      setWsTree(resp.data);
+const CASE_FOLDER_PATTERN = /^(\d{4}-\d{4})\s+([^,]+),\s+(.+)$/;
+function buildTreeFromFilesystem(fsTree, casesByNumber) {
+  const tree = [];
+  tree.push({
+    id: "dashboard",
+    label: "Dashboard",
+    icon: "📊",
+    tabType: "dashboard"
+  });
+  const systemFolders = [];
+  const caseFolders = [];
+  const otherEntries = [];
+  for (const node of fsTree) {
+    if (node.name.startsWith("_")) {
+      systemFolders.push(node);
+    } else if (node.isDirectory && CASE_FOLDER_PATTERN.test(node.name)) {
+      caseFolders.push(node);
+    } else {
+      otherEntries.push(node);
     }
-  }, []);
-  const loadCases = reactExports.useCallback(async () => {
-    console.log("[LeftColumn] calling cases.list...");
-    const resp = await window.psygil?.cases?.list?.();
-    console.log("[LeftColumn] cases.list response:", resp);
-    if (resp?.status === "success") {
-      console.log("[LeftColumn] setting cases:", resp.data.cases.length);
-      setCases(resp.data.cases);
+  }
+  for (const folder of caseFolders) {
+    const match = CASE_FOLDER_PATTERN.exec(folder.name);
+    const caseNumber = match?.[1] ?? "";
+    const dbCase = casesByNumber.get(caseNumber);
+    const stageKey = dbCase?.workflow_current_stage ?? "onboarding";
+    const stageColor = STAGE_COLORS$2[stageKey] ?? "#999";
+    const evalType = dbCase?.evaluation_type ?? "";
+    const caseId = dbCase?.case_id;
+    const label = dbCase ? `${dbCase.examinee_last_name}, ${(dbCase.examinee_first_name ?? "").charAt(0).toUpperCase()}.${evalType ? ` — ${evalType}` : ""}` : folder.name;
+    const children = convertFolderChildren(folder.children ?? [], caseId);
+    if (caseId != null) {
+      children.unshift({
+        id: `${caseId}-overview`,
+        label: "Clinical Overview",
+        icon: "📋",
+        tabType: "clinical-overview",
+        caseId
+      });
     }
-  }, []);
-  const loadCasesRef = reactExports.useRef(loadCases);
-  loadCasesRef.current = loadCases;
-  reactExports.useEffect(() => {
-    refreshRef.current = () => {
-      void loadCasesRef.current();
-    };
-  }, [refreshRef]);
-  reactExports.useEffect(() => {
-    let cancelled = false;
-    async function init(isRetry = false) {
-      const resp = await window.psygil?.workspace?.getPath?.();
-      console.log("[LeftColumn] workspace.getPath:", resp);
-      if (cancelled) return;
-      if (resp?.status === "success" && resp.data !== null) {
-        setWsStatus("ready");
-        await Promise.all([loadTree(), loadCases()]);
-        if (!isRetry) {
-          setTimeout(() => {
-            if (!cancelled) void init(true);
-          }, 1500);
-        }
-      } else {
-        setWsStatus("no-workspace");
-      }
-    }
-    void init();
-    return () => {
-      cancelled = true;
-    };
-  }, [loadTree, loadCases]);
-  reactExports.useEffect(() => {
-    if (wsStatus !== "ready") return;
-    window.psygil?.workspace?.onFileChanged?.(() => {
-      void loadTree();
+    tree.push({
+      id: `case-folder:${folder.path}`,
+      label,
+      icon: "📁",
+      stageColor,
+      children,
+      caseId
     });
-    return () => {
-      window.psygil?.workspace?.offFileChanged?.();
-    };
-  }, [wsStatus, loadTree]);
-  const handleChooseFolder = reactExports.useCallback(async () => {
-    const pickResp = await window.psygil?.workspace?.pickFolder?.();
-    if (pickResp?.status !== "success" || pickResp.data === null) return;
-    const setResp = await window.psygil?.workspace?.setPath?.(pickResp.data);
-    if (setResp?.status === "success") {
-      setWsStatus("ready");
-      await Promise.all([loadTree(), loadCases()]);
-    }
-  }, [loadTree, loadCases]);
-  const handleUseDefault = reactExports.useCallback(async () => {
-    const defaultResp = await window.psygil?.workspace?.getDefaultPath?.();
-    if (defaultResp?.status !== "success") return;
-    const setResp = await window.psygil?.workspace?.setPath?.(defaultResp.data);
-    if (setResp?.status === "success") {
-      setWsStatus("ready");
-      await Promise.all([loadTree(), loadCases()]);
-    }
-  }, [loadTree, loadCases]);
-  const handleRefresh = reactExports.useCallback(() => {
-    void Promise.all([loadTree(), loadCases()]);
-  }, [loadTree, loadCases]);
-  const bodyContent = () => {
-    if (wsStatus === "no-workspace") {
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeOverlay, { onChoose: () => {
-        void handleChooseFolder();
-      }, onUseDefault: () => {
-        void handleUseDefault();
-      } });
-    }
-    if (wsStatus === "loading") {
-      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-secondary)", fontSize: 13 }, children: "Loading…" });
-    }
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(CasesView, { cases, treeLookup, onOpenTab, onContextMenu: setCtxMenu });
-  };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      style: { display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" },
-      onClick: () => setCtxMenu(null),
-      children: [
-        ctxMenu !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(ContextMenu, { menu: ctxMenu, onClose: () => setCtxMenu(null) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-header", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Cases" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              className: "panel-hdr-btn",
-              "aria-label": "New Case",
-              title: "New Case",
-              onClick: onNewCase,
-              children: "＋"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Refresh", title: "Refresh", onClick: handleRefresh, children: "↻" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: "4px 0" }, children: bodyContent() }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { borderTop: "1px solid var(--border)", flexShrink: 0 }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Resources" }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px 12px" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "DSM-5-TR Reference" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "State Statutes" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", cursor: "pointer", padding: "4px 0" }, children: "APA Guidelines" })
-          ] })
-        ] })
-      ]
-    }
-  );
-}
-function CasesView({
-  cases,
-  treeLookup,
-  onOpenTab,
-  onContextMenu
-}) {
-  if (cases.length === 0) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "16px 12px", fontSize: 12, color: "var(--text-secondary)", textAlign: "center" }, children: "No cases yet. Click + to create one." });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: cases.map((c) => /* @__PURE__ */ jsxRuntimeExports.jsx(CaseNode, { caseRow: c, treeLookup, onOpenTab, onContextMenu }, c.case_id)) });
+  for (const entry of otherEntries) {
+    tree.push(convertFolderNode(entry, void 0));
+  }
+  if (systemFolders.length > 0) {
+    const sysChildren = systemFolders.map((f) => convertFolderNode(f, void 0));
+    tree.push({
+      id: "system-folders",
+      label: "Workspace",
+      icon: "📂",
+      children: sysChildren
+    });
+  }
+  tree.push({
+    id: "settings",
+    label: "Settings",
+    icon: "⚙",
+    tabType: "settings"
+  });
+  return tree;
 }
-function CaseNode({
-  caseRow,
-  treeLookup,
+function convertFolderChildren(children, caseId) {
+  return children.map((child) => convertFolderNode(child, caseId));
+}
+function convertFolderNode(node, caseId) {
+  const lowerName = node.name.toLowerCase();
+  if (node.isDirectory) {
+    const icon = SUBFOLDER_ICONS[lowerName] ?? "📁";
+    const children = (node.children ?? []).map((c) => convertFolderNode(c, caseId));
+    return {
+      id: `fs:${node.path}`,
+      label: node.name,
+      icon,
+      children,
+      caseId,
+      filePath: node.path
+    };
+  }
+  return {
+    id: `fs:${node.path}`,
+    label: node.name,
+    icon: fileIcon(node.name),
+    caseId,
+    filePath: node.path,
+    tabType: "document-viewer"
+  };
+}
+function TreeNodeComponent({
+  node,
+  depth,
   onOpenTab,
-  onContextMenu
+  activeNodeId,
+  onSetActive,
+  onNodeClick
 }) {
-  const [expanded, setExpanded] = reactExports.useState(false);
-  const stage = caseRow.workflow_current_stage ?? "onboarding";
-  const stageColor = STAGE_COLORS$1[stage] ?? "#9e9e9e";
-  const stageLabel = STAGE_LABELS[stage] ?? stage;
-  const caseName = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`;
-  const evalType = caseRow.evaluation_type ?? "";
-  const caseFolder = caseRow.folder_path ? treeLookup.get(caseRow.folder_path) : void 0;
+  const [expanded, setExpanded] = reactExports.useState(node.expanded ?? false);
+  const hasChildren = (node.children?.length ?? 0) > 0;
   const handleChevronClick = reactExports.useCallback(
     (e) => {
       e.stopPropagation();
@@ -12938,14 +12829,17 @@ function CaseNode({
     },
     []
   );
-  const handleNameClick = reactExports.useCallback(() => {
-    onOpenTab({
-      id: `overview:${caseRow.case_id}`,
-      title: caseName,
-      type: "clinical-overview",
-      caseId: caseRow.case_id
-    });
-  }, [caseRow.case_id, caseName, onOpenTab]);
+  const handleNodeClick = reactExports.useCallback(
+    (e) => {
+      if (e.detail === 1 && !e.currentTarget.className.includes("tree-chevron")) {
+        onSetActive(node.id);
+        onNodeClick(node);
+      }
+    },
+    [node, onSetActive, onNodeClick]
+  );
+  const indent = 8 + depth * 16;
+  const isActive = activeNodeId === node.id;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
@@ -12953,244 +12847,9640 @@ function CaseNode({
         style: {
           display: "flex",
           alignItems: "center",
-          padding: "3px 8px",
+          padding: "3px 0",
+          paddingLeft: `${indent}px`,
           gap: 4,
           fontSize: 13,
-          color: "var(--text)",
-          cursor: "default"
+          color: isActive ? "white" : "var(--text)",
+          cursor: "pointer",
+          userSelect: "none",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          transition: "background 0.1s",
+          background: isActive ? "var(--accent)" : "transparent"
         },
         onMouseEnter: (e) => {
-          e.currentTarget.style.background = "var(--highlight)";
+          if (!isActive) {
+            e.currentTarget.style.background = "var(--highlight)";
+          }
         },
         onMouseLeave: (e) => {
-          e.currentTarget.style.background = "transparent";
+          if (!isActive) {
+            e.currentTarget.style.background = "transparent";
+          }
         },
+        onClick: handleNodeClick,
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
+          hasChildren ? /* @__PURE__ */ jsxRuntimeExports.jsx(
             "span",
             {
-              style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0, textAlign: "center", cursor: "pointer" },
+              className: "tree-chevron",
+              style: {
+                width: 16,
+                fontSize: 10,
+                color: isActive ? "white" : "var(--text-secondary)",
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer"
+              },
               onClick: handleChevronClick,
               title: expanded ? "Collapse" : "Expand",
               children: expanded ? "▾" : "▸"
             }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
             "span",
             {
-              style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, minWidth: 0, cursor: "pointer" },
-              onClick: handleNameClick,
-              title: `Open ${caseName}`,
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis" }, children: caseName }),
-                evalType !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, color: "var(--text-secondary)", flexShrink: 0 }, children: evalType })
-              ]
+              style: {
+                width: 16,
+                flexShrink: 0,
+                visibility: "hidden"
+              }
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             "span",
             {
               style: {
-                background: stageColor,
-                color: "#ffffff",
-                fontSize: 10,
-                fontWeight: 600,
-                borderRadius: 3,
-                padding: "2px 6px",
+                width: 16,
+                height: 16,
                 flexShrink: 0,
-                whiteSpace: "nowrap"
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 14,
+                color: isActive ? "white" : "var(--text-secondary)"
               },
-              children: stageLabel
+              children: node.icon
             }
-          )
-        ]
-      }
-    ),
-    expanded && CASE_SUBFOLDERS.map((sub) => {
-      const subNode = caseFolder?.children?.find((c) => c.name === sub);
-      return /* @__PURE__ */ jsxRuntimeExports.jsx(FolderSubNode, { name: sub, folderNode: subNode, depth: 1, onOpenTab, onContextMenu }, sub);
-    })
-  ] });
-}
-function FolderSubNode({
-  name,
-  folderNode,
-  depth,
-  onOpenTab,
-  onContextMenu
-}) {
-  const [expanded, setExpanded] = reactExports.useState(false);
-  const children = folderNode?.children ?? [];
-  const fileCount = children.filter((c) => !c.isDirectory).length;
-  const handleContextMenu = reactExports.useCallback(
-    (e) => {
-      if (folderNode?.path) {
-        e.preventDefault();
-        e.stopPropagation();
-        onContextMenu({ x: e.clientX, y: e.clientY, path: folderNode.path, isDirectory: true });
-      }
-    },
-    [folderNode?.path, onContextMenu]
-  );
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          padding: "3px 8px",
-          paddingLeft: 8 + depth * 16,
-          gap: 4,
-          cursor: "pointer",
-          fontSize: 13,
-          color: "var(--text)"
-        },
-        onMouseEnter: (e) => {
-          e.currentTarget.style.background = "var(--highlight)";
-        },
-        onMouseLeave: (e) => {
-          e.currentTarget.style.background = "transparent";
-        },
-        onClick: () => setExpanded((p) => !p),
-        onContextMenu: handleContextMenu,
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, fontSize: 10, color: "var(--text-secondary)", flexShrink: 0, textAlign: "center" }, children: expanded ? "▾" : "▸" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, height: 16, fontSize: 14, flexShrink: 0, color: "var(--text-secondary)" }, children: "📁" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: name }),
-          fileCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
             "span",
             {
               style: {
-                background: "var(--accent)",
-                color: "#ffffff",
-                fontSize: 10,
-                fontWeight: 600,
-                borderRadius: 3,
-                padding: "1px 5px",
-                flexShrink: 0
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap"
               },
-              children: fileCount
+              children: node.label
+            }
+          ),
+          node.stageColor && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              style: {
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: node.stageColor,
+                flexShrink: 0,
+                marginLeft: "auto",
+                marginRight: 4,
+                boxShadow: isActive ? "0 0 0 1px rgba(255,255,255,0.5)" : "none"
+              },
+              title: `Stage: ${Object.entries(STAGE_COLORS$2).find(([, c]) => c === node.stageColor)?.[0] ?? ""}`
             }
           )
         ]
       }
     ),
-    expanded && children.map(
-      (child) => child.isDirectory ? /* @__PURE__ */ jsxRuntimeExports.jsx(FolderSubNode, { name: child.name, folderNode: child, depth: depth + 1, onOpenTab, onContextMenu }, child.path) : /* @__PURE__ */ jsxRuntimeExports.jsx(FileLeafNode, { node: child, depth: depth + 1, onOpenTab, onContextMenu }, child.path)
-    )
+    hasChildren && expanded && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: node.children.map((child) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      TreeNodeComponent,
+      {
+        node: child,
+        depth: depth + 1,
+        onOpenTab,
+        activeNodeId,
+        onSetActive,
+        onNodeClick
+      },
+      child.id
+    )) })
   ] });
 }
-function FileLeafNode({
-  node,
-  depth,
+function LeftColumn({
   onOpenTab,
-  onContextMenu
+  onNewCase,
+  refreshRef
 }) {
-  const handleClick = reactExports.useCallback(() => {
-    onOpenTab({ id: `doc:${node.path}`, title: node.name, type: "document", filePath: node.path });
-  }, [node.path, node.name, onOpenTab]);
-  const handleContextMenu = reactExports.useCallback(
-    (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onContextMenu({ x: e.clientX, y: e.clientY, path: node.path, isDirectory: false });
-    },
-    [node.path, onContextMenu]
-  );
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      style: {
-        display: "flex",
-        alignItems: "center",
-        padding: "3px 8px",
-        paddingLeft: 8 + depth * 16,
-        gap: 4,
-        cursor: "pointer",
-        fontSize: 13,
-        color: "var(--text)"
-      },
-      onMouseEnter: (e) => {
-        e.currentTarget.style.background = "var(--highlight)";
-      },
-      onMouseLeave: (e) => {
-        e.currentTarget.style.background = "transparent";
-      },
-      onClick: handleClick,
-      onContextMenu: handleContextMenu,
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, flexShrink: 0 } }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 16, height: 16, fontSize: 14, flexShrink: 0, color: "var(--text-secondary)" }, children: "📄" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: node.name })
-      ]
+  const [cases, setCases] = reactExports.useState([]);
+  const [fsTree, setFsTree] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
+  const [activeNodeId, setActiveNodeId] = reactExports.useState(null);
+  const [stageFilter, setStageFilter] = reactExports.useState("all");
+  const [typeFilter, setTypeFilter] = reactExports.useState("all");
+  const [showFilterMenu, setShowFilterMenu] = reactExports.useState(false);
+  const filterRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    if (!showFilterMenu) return;
+    const handler = (e) => {
+      if (filterRef.current && !filterRef.current.contains(e.target)) {
+        setShowFilterMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showFilterMenu]);
+  const loadData = reactExports.useCallback(async () => {
+    setLoading(true);
+    try {
+      const [treeResp, casesResp] = await Promise.all([
+        window.psygil?.workspace?.getTree?.(),
+        window.psygil?.cases?.list?.()
+      ]);
+      if (treeResp?.status === "success") {
+        setFsTree(treeResp.data);
+      }
+      if (casesResp?.status === "success") {
+        setCases(casesResp.data.cases);
+      }
+    } catch (err) {
+      console.error("[LeftColumn] Error loading data:", err);
+    } finally {
+      setLoading(false);
     }
+  }, []);
+  const loadDataRef = reactExports.useRef(loadData);
+  loadDataRef.current = loadData;
+  reactExports.useEffect(() => {
+    refreshRef.current = () => {
+      void loadDataRef.current();
+    };
+  }, [refreshRef]);
+  reactExports.useEffect(() => {
+    void loadData();
+  }, [loadData]);
+  reactExports.useEffect(() => {
+    const handler = () => {
+      void loadDataRef.current();
+    };
+    const wrapped = window.psygil?.workspace?.onFileChanged?.(handler);
+    return () => {
+      window.psygil?.workspace?.offFileChanged?.(wrapped);
+    };
+  }, []);
+  const casesByNumber = reactExports.useMemo(() => {
+    const map = /* @__PURE__ */ new Map();
+    for (const c of cases) {
+      if (c.case_number) {
+        map.set(c.case_number, c);
+      }
+    }
+    return map;
+  }, [cases]);
+  const treeData = reactExports.useMemo(() => {
+    let tree = buildTreeFromFilesystem(fsTree, casesByNumber);
+    if (stageFilter !== "all" || typeFilter !== "all") {
+      tree = tree.filter((node) => {
+        if (!node.id.startsWith("case-folder:")) return true;
+        const caseId = node.caseId;
+        if (caseId == null) return true;
+        const dbCase = cases.find((c) => c.case_id === caseId);
+        if (!dbCase) return true;
+        if (stageFilter !== "all") {
+          const stage = dbCase.workflow_current_stage ?? "onboarding";
+          if (stage !== stageFilter) return false;
+        }
+        if (typeFilter !== "all") {
+          const evalType = dbCase.evaluation_type ?? "";
+          if (evalType !== typeFilter) return false;
+        }
+        return true;
+      });
+    }
+    return tree;
+  }, [fsTree, casesByNumber, cases, stageFilter, typeFilter]);
+  const evalTypes = reactExports.useMemo(() => {
+    const types = /* @__PURE__ */ new Set();
+    for (const c of cases) {
+      if (c.evaluation_type) types.add(c.evaluation_type);
+    }
+    return Array.from(types).sort();
+  }, [cases]);
+  const activeFilterCount = (stageFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0);
+  const handleNodeClick = reactExports.useCallback(
+    (node) => {
+      if (node.tabType === "dashboard") {
+        onOpenTab({ id: "dashboard", title: "Dashboard", type: "dashboard" });
+        return;
+      }
+      if (node.tabType === "settings") {
+        onOpenTab({ id: "settings", title: "Settings", type: "settings" });
+        return;
+      }
+      if (node.tabType === "clinical-overview" && node.caseId != null) {
+        const dbCase = cases.find((c) => c.case_id === node.caseId);
+        const title = dbCase ? `${dbCase.examinee_last_name}, ${dbCase.examinee_first_name}` : "Clinical Overview";
+        onOpenTab({
+          id: `overview:${node.caseId}`,
+          title,
+          type: "clinical-overview",
+          caseId: node.caseId
+        });
+        return;
+      }
+      if (node.tabType === "document-viewer" && node.filePath) {
+        onOpenTab({
+          id: `doc:${node.filePath}`,
+          title: node.label,
+          type: "document-viewer",
+          filePath: node.filePath,
+          caseId: node.caseId
+        });
+        return;
+      }
+    },
+    [cases, onOpenTab]
   );
-}
-function WelcomeOverlay({
-  onChoose,
-  onUseDefault
-}) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
       style: {
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
         height: "100%",
         background: "var(--bg)",
-        padding: "24px 16px",
-        textAlign: "center"
+        overflow: "hidden"
       },
       children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 12 }, children: "📂" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 8 }, children: "Welcome to Psygil" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text-secondary)", marginBottom: 24, lineHeight: 1.5, maxWidth: 220 }, children: "Choose a folder to store your case files. This folder will contain all your cases, documents, and reports." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
           {
-            onClick: onChoose,
+            className: "panel-header",
             style: {
-              background: "var(--accent)",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: 4,
-              padding: "8px 20px",
-              fontSize: 13,
+              display: "flex",
+              alignItems: "center",
+              height: 32,
+              padding: "0 12px",
+              background: "var(--panel)",
+              borderBottom: "1px solid var(--border)",
+              fontSize: 11,
               fontWeight: 600,
-              cursor: "pointer",
-              marginBottom: 8,
-              width: "100%",
-              maxWidth: 200
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              color: "var(--text-secondary)",
+              userSelect: "none",
+              flexShrink: 0,
+              gap: 6
             },
-            children: "Choose Folder"
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "CASES" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { ref: filterRef, style: { position: "relative", marginLeft: "auto" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "button",
+                  {
+                    onClick: () => setShowFilterMenu((p) => !p),
+                    style: {
+                      background: activeFilterCount > 0 ? "var(--accent)" : "none",
+                      border: "none",
+                      color: activeFilterCount > 0 ? "#fff" : "var(--text-secondary)",
+                      cursor: "pointer",
+                      fontSize: 10,
+                      padding: activeFilterCount > 0 ? "1px 5px" : 0,
+                      borderRadius: 3,
+                      width: activeFilterCount > 0 ? "auto" : 20,
+                      height: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 3
+                    },
+                    title: "Filter cases",
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 12 }, children: "☰" }),
+                      activeFilterCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: activeFilterCount })
+                    ]
+                  }
+                ),
+                showFilterMenu && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      position: "absolute",
+                      top: 24,
+                      right: 0,
+                      width: 200,
+                      background: "var(--panel)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      zIndex: 100,
+                      padding: "8px 0"
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "4px 12px" }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 10, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }, children: "Stage" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                          "select",
+                          {
+                            value: stageFilter,
+                            onChange: (e) => setStageFilter(e.target.value),
+                            style: {
+                              width: "100%",
+                              padding: "4px 6px",
+                              fontSize: 12,
+                              background: "var(--bg)",
+                              color: "var(--text)",
+                              border: "1px solid var(--border)",
+                              borderRadius: 4,
+                              fontFamily: "inherit"
+                            },
+                            children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "all", children: "All Stages" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "onboarding", children: "Onboarding" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "testing", children: "Testing" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "interview", children: "Interview" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "diagnostics", children: "Diagnostics" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "review", children: "Review" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "complete", children: "Complete" })
+                            ]
+                          }
+                        )
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "4px 12px" }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 10, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }, children: "Eval Type" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                          "select",
+                          {
+                            value: typeFilter,
+                            onChange: (e) => setTypeFilter(e.target.value),
+                            style: {
+                              width: "100%",
+                              padding: "4px 6px",
+                              fontSize: 12,
+                              background: "var(--bg)",
+                              color: "var(--text)",
+                              border: "1px solid var(--border)",
+                              borderRadius: 4,
+                              fontFamily: "inherit"
+                            },
+                            children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "all", children: "All Types" }),
+                              evalTypes.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: t, children: t }, t))
+                            ]
+                          }
+                        )
+                      ] }),
+                      activeFilterCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "6px 12px 2px", borderTop: "1px solid var(--border)", marginTop: 4 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          onClick: () => {
+                            setStageFilter("all");
+                            setTypeFilter("all");
+                          },
+                          style: {
+                            width: "100%",
+                            padding: "4px 0",
+                            fontSize: 11,
+                            fontWeight: 500,
+                            background: "none",
+                            border: "none",
+                            color: "var(--accent)",
+                            cursor: "pointer",
+                            fontFamily: "inherit"
+                          },
+                          children: "Clear Filters"
+                        }
+                      ) })
+                    ]
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: onNewCase,
+                  style: {
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-secondary)",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    padding: 0,
+                    width: 20,
+                    height: 20,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  },
+                  title: "New Case",
+                  children: "+"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => {
+                    void loadData();
+                  },
+                  style: {
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-secondary)",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    padding: 0,
+                    width: 20,
+                    height: 20,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  },
+                  title: "Refresh",
+                  children: "↻"
+                }
+              )
+            ]
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
+          "div",
           {
-            onClick: onUseDefault,
             style: {
-              background: "transparent",
-              color: "var(--text-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              padding: "8px 20px",
-              fontSize: 13,
-              cursor: "pointer",
-              width: "100%",
-              maxWidth: 200
+              flex: 1,
+              overflowY: "auto",
+              padding: "4px 0"
             },
-            children: "Use Default"
+            children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                  color: "var(--text-secondary)",
+                  fontSize: 13
+                },
+                children: "Loading…"
+              }
+            ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: treeData.map((node) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+              TreeNodeComponent,
+              {
+                node,
+                depth: 0,
+                onOpenTab,
+                activeNodeId,
+                onSetActive: setActiveNodeId,
+                onNodeClick: handleNodeClick
+              },
+              node.id
+            )) })
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "var(--text-secondary)", marginTop: 12, opacity: 0.7 }, children: "Default: ~/Documents/Psygil Cases/" })
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            style: {
+              borderTop: "1px solid var(--border)",
+              flexShrink: 0
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  className: "panel-header",
+                  style: {
+                    display: "flex",
+                    alignItems: "center",
+                    height: 32,
+                    padding: "0 12px",
+                    background: "var(--panel)",
+                    borderBottom: "1px solid var(--border)",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    color: "var(--text-secondary)",
+                    userSelect: "none"
+                  },
+                  children: "RESOURCES"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  style: {
+                    padding: "8px 12px",
+                    fontSize: 12,
+                    color: "var(--text-secondary)"
+                  },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        style: {
+                          cursor: "pointer",
+                          padding: "4px 0",
+                          transition: "color 0.15s"
+                        },
+                        onMouseEnter: (e) => {
+                          e.currentTarget.style.color = "var(--accent)";
+                        },
+                        onMouseLeave: (e) => {
+                          e.currentTarget.style.color = "var(--text-secondary)";
+                        },
+                        children: "DSM-5-TR Reference"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        style: {
+                          cursor: "pointer",
+                          padding: "4px 0",
+                          transition: "color 0.15s"
+                        },
+                        onMouseEnter: (e) => {
+                          e.currentTarget.style.color = "var(--accent)";
+                        },
+                        onMouseLeave: (e) => {
+                          e.currentTarget.style.color = "var(--text-secondary)";
+                        },
+                        children: "Colorado CST Statute"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        style: {
+                          cursor: "pointer",
+                          padding: "4px 0",
+                          transition: "color 0.15s"
+                        },
+                        onMouseEnter: (e) => {
+                          e.currentTarget.style.color = "var(--accent)";
+                        },
+                        onMouseLeave: (e) => {
+                          e.currentTarget.style.color = "var(--text-secondary)";
+                        },
+                        children: "Dusky Standard"
+                      }
+                    )
+                  ]
+                }
+              )
+            ]
+          }
+        )
       ]
     }
   );
 }
+const canUseDOM = typeof window !== "undefined" && typeof window.document !== "undefined" && typeof window.document.createElement !== "undefined";
+function isWindow(element) {
+  const elementString = Object.prototype.toString.call(element);
+  return elementString === "[object Window]" || // In Electron context the Window object serializes to [object global]
+  elementString === "[object global]";
+}
+function isNode(node) {
+  return "nodeType" in node;
+}
+function getWindow(target) {
+  var _target$ownerDocument, _target$ownerDocument2;
+  if (!target) {
+    return window;
+  }
+  if (isWindow(target)) {
+    return target;
+  }
+  if (!isNode(target)) {
+    return window;
+  }
+  return (_target$ownerDocument = (_target$ownerDocument2 = target.ownerDocument) == null ? void 0 : _target$ownerDocument2.defaultView) != null ? _target$ownerDocument : window;
+}
+function isDocument(node) {
+  const {
+    Document
+  } = getWindow(node);
+  return node instanceof Document;
+}
+function isHTMLElement(node) {
+  if (isWindow(node)) {
+    return false;
+  }
+  return node instanceof getWindow(node).HTMLElement;
+}
+function isSVGElement(node) {
+  return node instanceof getWindow(node).SVGElement;
+}
+function getOwnerDocument(target) {
+  if (!target) {
+    return document;
+  }
+  if (isWindow(target)) {
+    return target.document;
+  }
+  if (!isNode(target)) {
+    return document;
+  }
+  if (isDocument(target)) {
+    return target;
+  }
+  if (isHTMLElement(target) || isSVGElement(target)) {
+    return target.ownerDocument;
+  }
+  return document;
+}
+const useIsomorphicLayoutEffect = canUseDOM ? reactExports.useLayoutEffect : reactExports.useEffect;
+function useEvent(handler) {
+  const handlerRef = reactExports.useRef(handler);
+  useIsomorphicLayoutEffect(() => {
+    handlerRef.current = handler;
+  });
+  return reactExports.useCallback(function() {
+    for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+    return handlerRef.current == null ? void 0 : handlerRef.current(...args);
+  }, []);
+}
+function useInterval() {
+  const intervalRef = reactExports.useRef(null);
+  const set = reactExports.useCallback((listener, duration) => {
+    intervalRef.current = setInterval(listener, duration);
+  }, []);
+  const clear = reactExports.useCallback(() => {
+    if (intervalRef.current !== null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+  return [set, clear];
+}
+function useLatestValue(value, dependencies) {
+  if (dependencies === void 0) {
+    dependencies = [value];
+  }
+  const valueRef = reactExports.useRef(value);
+  useIsomorphicLayoutEffect(() => {
+    if (valueRef.current !== value) {
+      valueRef.current = value;
+    }
+  }, dependencies);
+  return valueRef;
+}
+function useLazyMemo(callback, dependencies) {
+  const valueRef = reactExports.useRef();
+  return reactExports.useMemo(
+    () => {
+      const newValue = callback(valueRef.current);
+      valueRef.current = newValue;
+      return newValue;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [...dependencies]
+  );
+}
+function useNodeRef(onChange) {
+  const onChangeHandler = useEvent(onChange);
+  const node = reactExports.useRef(null);
+  const setNodeRef = reactExports.useCallback(
+    (element) => {
+      if (element !== node.current) {
+        onChangeHandler == null ? void 0 : onChangeHandler(element, node.current);
+      }
+      node.current = element;
+    },
+    //eslint-disable-next-line
+    []
+  );
+  return [node, setNodeRef];
+}
+function usePrevious(value) {
+  const ref = reactExports.useRef();
+  reactExports.useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref.current;
+}
+let ids = {};
+function useUniqueId(prefix2, value) {
+  return reactExports.useMemo(() => {
+    if (value) {
+      return value;
+    }
+    const id = ids[prefix2] == null ? 0 : ids[prefix2] + 1;
+    ids[prefix2] = id;
+    return prefix2 + "-" + id;
+  }, [prefix2, value]);
+}
+function createAdjustmentFn(modifier) {
+  return function(object) {
+    for (var _len = arguments.length, adjustments = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+      adjustments[_key - 1] = arguments[_key];
+    }
+    return adjustments.reduce((accumulator, adjustment) => {
+      const entries = Object.entries(adjustment);
+      for (const [key2, valueAdjustment] of entries) {
+        const value = accumulator[key2];
+        if (value != null) {
+          accumulator[key2] = value + modifier * valueAdjustment;
+        }
+      }
+      return accumulator;
+    }, {
+      ...object
+    });
+  };
+}
+const add = /* @__PURE__ */ createAdjustmentFn(1);
+const subtract = /* @__PURE__ */ createAdjustmentFn(-1);
+function hasViewportRelativeCoordinates(event) {
+  return "clientX" in event && "clientY" in event;
+}
+function isKeyboardEvent(event) {
+  if (!event) {
+    return false;
+  }
+  const {
+    KeyboardEvent
+  } = getWindow(event.target);
+  return KeyboardEvent && event instanceof KeyboardEvent;
+}
+function isTouchEvent(event) {
+  if (!event) {
+    return false;
+  }
+  const {
+    TouchEvent
+  } = getWindow(event.target);
+  return TouchEvent && event instanceof TouchEvent;
+}
+function getEventCoordinates(event) {
+  if (isTouchEvent(event)) {
+    if (event.touches && event.touches.length) {
+      const {
+        clientX: x,
+        clientY: y
+      } = event.touches[0];
+      return {
+        x,
+        y
+      };
+    } else if (event.changedTouches && event.changedTouches.length) {
+      const {
+        clientX: x,
+        clientY: y
+      } = event.changedTouches[0];
+      return {
+        x,
+        y
+      };
+    }
+  }
+  if (hasViewportRelativeCoordinates(event)) {
+    return {
+      x: event.clientX,
+      y: event.clientY
+    };
+  }
+  return null;
+}
+const CSS = /* @__PURE__ */ Object.freeze({
+  Translate: {
+    toString(transform) {
+      if (!transform) {
+        return;
+      }
+      const {
+        x,
+        y
+      } = transform;
+      return "translate3d(" + (x ? Math.round(x) : 0) + "px, " + (y ? Math.round(y) : 0) + "px, 0)";
+    }
+  },
+  Scale: {
+    toString(transform) {
+      if (!transform) {
+        return;
+      }
+      const {
+        scaleX,
+        scaleY
+      } = transform;
+      return "scaleX(" + scaleX + ") scaleY(" + scaleY + ")";
+    }
+  },
+  Transform: {
+    toString(transform) {
+      if (!transform) {
+        return;
+      }
+      return [CSS.Translate.toString(transform), CSS.Scale.toString(transform)].join(" ");
+    }
+  },
+  Transition: {
+    toString(_ref) {
+      let {
+        property,
+        duration,
+        easing
+      } = _ref;
+      return property + " " + duration + "ms " + easing;
+    }
+  }
+});
+const SELECTOR = "a,frame,iframe,input:not([type=hidden]):not(:disabled),select:not(:disabled),textarea:not(:disabled),button:not(:disabled),*[tabindex]";
+function findFirstFocusableNode(element) {
+  if (element.matches(SELECTOR)) {
+    return element;
+  }
+  return element.querySelector(SELECTOR);
+}
+const hiddenStyles = {
+  display: "none"
+};
+function HiddenText(_ref) {
+  let {
+    id,
+    value
+  } = _ref;
+  return React$2.createElement("div", {
+    id,
+    style: hiddenStyles
+  }, value);
+}
+function LiveRegion(_ref) {
+  let {
+    id,
+    announcement,
+    ariaLiveType = "assertive"
+  } = _ref;
+  const visuallyHidden = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: 1,
+    height: 1,
+    margin: -1,
+    border: 0,
+    padding: 0,
+    overflow: "hidden",
+    clip: "rect(0 0 0 0)",
+    clipPath: "inset(100%)",
+    whiteSpace: "nowrap"
+  };
+  return React$2.createElement("div", {
+    id,
+    style: visuallyHidden,
+    role: "status",
+    "aria-live": ariaLiveType,
+    "aria-atomic": true
+  }, announcement);
+}
+function useAnnouncement() {
+  const [announcement, setAnnouncement] = reactExports.useState("");
+  const announce = reactExports.useCallback((value) => {
+    if (value != null) {
+      setAnnouncement(value);
+    }
+  }, []);
+  return {
+    announce,
+    announcement
+  };
+}
+const DndMonitorContext = /* @__PURE__ */ reactExports.createContext(null);
+function useDndMonitor(listener) {
+  const registerListener = reactExports.useContext(DndMonitorContext);
+  reactExports.useEffect(() => {
+    if (!registerListener) {
+      throw new Error("useDndMonitor must be used within a children of <DndContext>");
+    }
+    const unsubscribe = registerListener(listener);
+    return unsubscribe;
+  }, [listener, registerListener]);
+}
+function useDndMonitorProvider() {
+  const [listeners] = reactExports.useState(() => /* @__PURE__ */ new Set());
+  const registerListener = reactExports.useCallback((listener) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }, [listeners]);
+  const dispatch = reactExports.useCallback((_ref) => {
+    let {
+      type,
+      event
+    } = _ref;
+    listeners.forEach((listener) => {
+      var _listener$type;
+      return (_listener$type = listener[type]) == null ? void 0 : _listener$type.call(listener, event);
+    });
+  }, [listeners]);
+  return [dispatch, registerListener];
+}
+const defaultScreenReaderInstructions = {
+  draggable: "\n    To pick up a draggable item, press the space bar.\n    While dragging, use the arrow keys to move the item.\n    Press space again to drop the item in its new position, or press escape to cancel.\n  "
+};
+const defaultAnnouncements = {
+  onDragStart(_ref) {
+    let {
+      active: active2
+    } = _ref;
+    return "Picked up draggable item " + active2.id + ".";
+  },
+  onDragOver(_ref2) {
+    let {
+      active: active2,
+      over
+    } = _ref2;
+    if (over) {
+      return "Draggable item " + active2.id + " was moved over droppable area " + over.id + ".";
+    }
+    return "Draggable item " + active2.id + " is no longer over a droppable area.";
+  },
+  onDragEnd(_ref3) {
+    let {
+      active: active2,
+      over
+    } = _ref3;
+    if (over) {
+      return "Draggable item " + active2.id + " was dropped over droppable area " + over.id;
+    }
+    return "Draggable item " + active2.id + " was dropped.";
+  },
+  onDragCancel(_ref4) {
+    let {
+      active: active2
+    } = _ref4;
+    return "Dragging was cancelled. Draggable item " + active2.id + " was dropped.";
+  }
+};
+function Accessibility(_ref) {
+  let {
+    announcements = defaultAnnouncements,
+    container,
+    hiddenTextDescribedById,
+    screenReaderInstructions = defaultScreenReaderInstructions
+  } = _ref;
+  const {
+    announce,
+    announcement
+  } = useAnnouncement();
+  const liveRegionId = useUniqueId("DndLiveRegion");
+  const [mounted, setMounted] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    setMounted(true);
+  }, []);
+  useDndMonitor(reactExports.useMemo(() => ({
+    onDragStart(_ref2) {
+      let {
+        active: active2
+      } = _ref2;
+      announce(announcements.onDragStart({
+        active: active2
+      }));
+    },
+    onDragMove(_ref3) {
+      let {
+        active: active2,
+        over
+      } = _ref3;
+      if (announcements.onDragMove) {
+        announce(announcements.onDragMove({
+          active: active2,
+          over
+        }));
+      }
+    },
+    onDragOver(_ref4) {
+      let {
+        active: active2,
+        over
+      } = _ref4;
+      announce(announcements.onDragOver({
+        active: active2,
+        over
+      }));
+    },
+    onDragEnd(_ref5) {
+      let {
+        active: active2,
+        over
+      } = _ref5;
+      announce(announcements.onDragEnd({
+        active: active2,
+        over
+      }));
+    },
+    onDragCancel(_ref6) {
+      let {
+        active: active2,
+        over
+      } = _ref6;
+      announce(announcements.onDragCancel({
+        active: active2,
+        over
+      }));
+    }
+  }), [announce, announcements]));
+  if (!mounted) {
+    return null;
+  }
+  const markup = React$2.createElement(React$2.Fragment, null, React$2.createElement(HiddenText, {
+    id: hiddenTextDescribedById,
+    value: screenReaderInstructions.draggable
+  }), React$2.createElement(LiveRegion, {
+    id: liveRegionId,
+    announcement
+  }));
+  return container ? reactDomExports.createPortal(markup, container) : markup;
+}
+var Action;
+(function(Action2) {
+  Action2["DragStart"] = "dragStart";
+  Action2["DragMove"] = "dragMove";
+  Action2["DragEnd"] = "dragEnd";
+  Action2["DragCancel"] = "dragCancel";
+  Action2["DragOver"] = "dragOver";
+  Action2["RegisterDroppable"] = "registerDroppable";
+  Action2["SetDroppableDisabled"] = "setDroppableDisabled";
+  Action2["UnregisterDroppable"] = "unregisterDroppable";
+})(Action || (Action = {}));
+function noop() {
+}
+function useSensor(sensor, options) {
+  return reactExports.useMemo(
+    () => ({
+      sensor,
+      options: options != null ? options : {}
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sensor, options]
+  );
+}
+function useSensors() {
+  for (var _len = arguments.length, sensors = new Array(_len), _key = 0; _key < _len; _key++) {
+    sensors[_key] = arguments[_key];
+  }
+  return reactExports.useMemo(
+    () => [...sensors].filter((sensor) => sensor != null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [...sensors]
+  );
+}
+const defaultCoordinates = /* @__PURE__ */ Object.freeze({
+  x: 0,
+  y: 0
+});
+function distanceBetween(p1, p2) {
+  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+}
+function getRelativeTransformOrigin(event, rect) {
+  const eventCoordinates = getEventCoordinates(event);
+  if (!eventCoordinates) {
+    return "0 0";
+  }
+  const transformOrigin = {
+    x: (eventCoordinates.x - rect.left) / rect.width * 100,
+    y: (eventCoordinates.y - rect.top) / rect.height * 100
+  };
+  return transformOrigin.x + "% " + transformOrigin.y + "%";
+}
+function sortCollisionsAsc(_ref, _ref2) {
+  let {
+    data: {
+      value: a
+    }
+  } = _ref;
+  let {
+    data: {
+      value: b
+    }
+  } = _ref2;
+  return a - b;
+}
+function sortCollisionsDesc(_ref3, _ref4) {
+  let {
+    data: {
+      value: a
+    }
+  } = _ref3;
+  let {
+    data: {
+      value: b
+    }
+  } = _ref4;
+  return b - a;
+}
+function cornersOfRectangle(_ref5) {
+  let {
+    left,
+    top,
+    height,
+    width
+  } = _ref5;
+  return [{
+    x: left,
+    y: top
+  }, {
+    x: left + width,
+    y: top
+  }, {
+    x: left,
+    y: top + height
+  }, {
+    x: left + width,
+    y: top + height
+  }];
+}
+function getFirstCollision(collisions, property) {
+  if (!collisions || collisions.length === 0) {
+    return null;
+  }
+  const [firstCollision] = collisions;
+  return firstCollision[property];
+}
+function getIntersectionRatio(entry, target) {
+  const top = Math.max(target.top, entry.top);
+  const left = Math.max(target.left, entry.left);
+  const right = Math.min(target.left + target.width, entry.left + entry.width);
+  const bottom = Math.min(target.top + target.height, entry.top + entry.height);
+  const width = right - left;
+  const height = bottom - top;
+  if (left < right && top < bottom) {
+    const targetArea = target.width * target.height;
+    const entryArea = entry.width * entry.height;
+    const intersectionArea = width * height;
+    const intersectionRatio = intersectionArea / (targetArea + entryArea - intersectionArea);
+    return Number(intersectionRatio.toFixed(4));
+  }
+  return 0;
+}
+const rectIntersection = (_ref) => {
+  let {
+    collisionRect,
+    droppableRects,
+    droppableContainers
+  } = _ref;
+  const collisions = [];
+  for (const droppableContainer of droppableContainers) {
+    const {
+      id
+    } = droppableContainer;
+    const rect = droppableRects.get(id);
+    if (rect) {
+      const intersectionRatio = getIntersectionRatio(rect, collisionRect);
+      if (intersectionRatio > 0) {
+        collisions.push({
+          id,
+          data: {
+            droppableContainer,
+            value: intersectionRatio
+          }
+        });
+      }
+    }
+  }
+  return collisions.sort(sortCollisionsDesc);
+};
+function isPointWithinRect(point, rect) {
+  const {
+    top,
+    left,
+    bottom,
+    right
+  } = rect;
+  return top <= point.y && point.y <= bottom && left <= point.x && point.x <= right;
+}
+const pointerWithin = (_ref) => {
+  let {
+    droppableContainers,
+    droppableRects,
+    pointerCoordinates
+  } = _ref;
+  if (!pointerCoordinates) {
+    return [];
+  }
+  const collisions = [];
+  for (const droppableContainer of droppableContainers) {
+    const {
+      id
+    } = droppableContainer;
+    const rect = droppableRects.get(id);
+    if (rect && isPointWithinRect(pointerCoordinates, rect)) {
+      const corners = cornersOfRectangle(rect);
+      const distances = corners.reduce((accumulator, corner) => {
+        return accumulator + distanceBetween(pointerCoordinates, corner);
+      }, 0);
+      const effectiveDistance = Number((distances / 4).toFixed(4));
+      collisions.push({
+        id,
+        data: {
+          droppableContainer,
+          value: effectiveDistance
+        }
+      });
+    }
+  }
+  return collisions.sort(sortCollisionsAsc);
+};
+function adjustScale(transform, rect1, rect2) {
+  return {
+    ...transform,
+    scaleX: rect1 && rect2 ? rect1.width / rect2.width : 1,
+    scaleY: rect1 && rect2 ? rect1.height / rect2.height : 1
+  };
+}
+function getRectDelta(rect1, rect2) {
+  return rect1 && rect2 ? {
+    x: rect1.left - rect2.left,
+    y: rect1.top - rect2.top
+  } : defaultCoordinates;
+}
+function createRectAdjustmentFn(modifier) {
+  return function adjustClientRect(rect) {
+    for (var _len = arguments.length, adjustments = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+      adjustments[_key - 1] = arguments[_key];
+    }
+    return adjustments.reduce((acc, adjustment) => ({
+      ...acc,
+      top: acc.top + modifier * adjustment.y,
+      bottom: acc.bottom + modifier * adjustment.y,
+      left: acc.left + modifier * adjustment.x,
+      right: acc.right + modifier * adjustment.x
+    }), {
+      ...rect
+    });
+  };
+}
+const getAdjustedRect = /* @__PURE__ */ createRectAdjustmentFn(1);
+function parseTransform(transform) {
+  if (transform.startsWith("matrix3d(")) {
+    const transformArray = transform.slice(9, -1).split(/, /);
+    return {
+      x: +transformArray[12],
+      y: +transformArray[13],
+      scaleX: +transformArray[0],
+      scaleY: +transformArray[5]
+    };
+  } else if (transform.startsWith("matrix(")) {
+    const transformArray = transform.slice(7, -1).split(/, /);
+    return {
+      x: +transformArray[4],
+      y: +transformArray[5],
+      scaleX: +transformArray[0],
+      scaleY: +transformArray[3]
+    };
+  }
+  return null;
+}
+function inverseTransform(rect, transform, transformOrigin) {
+  const parsedTransform = parseTransform(transform);
+  if (!parsedTransform) {
+    return rect;
+  }
+  const {
+    scaleX,
+    scaleY,
+    x: translateX,
+    y: translateY
+  } = parsedTransform;
+  const x = rect.left - translateX - (1 - scaleX) * parseFloat(transformOrigin);
+  const y = rect.top - translateY - (1 - scaleY) * parseFloat(transformOrigin.slice(transformOrigin.indexOf(" ") + 1));
+  const w = scaleX ? rect.width / scaleX : rect.width;
+  const h = scaleY ? rect.height / scaleY : rect.height;
+  return {
+    width: w,
+    height: h,
+    top: y,
+    right: x + w,
+    bottom: y + h,
+    left: x
+  };
+}
+const defaultOptions = {
+  ignoreTransform: false
+};
+function getClientRect(element, options) {
+  if (options === void 0) {
+    options = defaultOptions;
+  }
+  let rect = element.getBoundingClientRect();
+  if (options.ignoreTransform) {
+    const {
+      transform,
+      transformOrigin
+    } = getWindow(element).getComputedStyle(element);
+    if (transform) {
+      rect = inverseTransform(rect, transform, transformOrigin);
+    }
+  }
+  const {
+    top,
+    left,
+    width,
+    height,
+    bottom,
+    right
+  } = rect;
+  return {
+    top,
+    left,
+    width,
+    height,
+    bottom,
+    right
+  };
+}
+function getTransformAgnosticClientRect(element) {
+  return getClientRect(element, {
+    ignoreTransform: true
+  });
+}
+function getWindowClientRect(element) {
+  const width = element.innerWidth;
+  const height = element.innerHeight;
+  return {
+    top: 0,
+    left: 0,
+    right: width,
+    bottom: height,
+    width,
+    height
+  };
+}
+function isFixed(node, computedStyle) {
+  if (computedStyle === void 0) {
+    computedStyle = getWindow(node).getComputedStyle(node);
+  }
+  return computedStyle.position === "fixed";
+}
+function isScrollable(element, computedStyle) {
+  if (computedStyle === void 0) {
+    computedStyle = getWindow(element).getComputedStyle(element);
+  }
+  const overflowRegex = /(auto|scroll|overlay)/;
+  const properties2 = ["overflow", "overflowX", "overflowY"];
+  return properties2.some((property) => {
+    const value = computedStyle[property];
+    return typeof value === "string" ? overflowRegex.test(value) : false;
+  });
+}
+function getScrollableAncestors(element, limit) {
+  const scrollParents = [];
+  function findScrollableAncestors(node) {
+    if (limit != null && scrollParents.length >= limit) {
+      return scrollParents;
+    }
+    if (!node) {
+      return scrollParents;
+    }
+    if (isDocument(node) && node.scrollingElement != null && !scrollParents.includes(node.scrollingElement)) {
+      scrollParents.push(node.scrollingElement);
+      return scrollParents;
+    }
+    if (!isHTMLElement(node) || isSVGElement(node)) {
+      return scrollParents;
+    }
+    if (scrollParents.includes(node)) {
+      return scrollParents;
+    }
+    const computedStyle = getWindow(element).getComputedStyle(node);
+    if (node !== element) {
+      if (isScrollable(node, computedStyle)) {
+        scrollParents.push(node);
+      }
+    }
+    if (isFixed(node, computedStyle)) {
+      return scrollParents;
+    }
+    return findScrollableAncestors(node.parentNode);
+  }
+  if (!element) {
+    return scrollParents;
+  }
+  return findScrollableAncestors(element);
+}
+function getFirstScrollableAncestor(node) {
+  const [firstScrollableAncestor] = getScrollableAncestors(node, 1);
+  return firstScrollableAncestor != null ? firstScrollableAncestor : null;
+}
+function getScrollableElement(element) {
+  if (!canUseDOM || !element) {
+    return null;
+  }
+  if (isWindow(element)) {
+    return element;
+  }
+  if (!isNode(element)) {
+    return null;
+  }
+  if (isDocument(element) || element === getOwnerDocument(element).scrollingElement) {
+    return window;
+  }
+  if (isHTMLElement(element)) {
+    return element;
+  }
+  return null;
+}
+function getScrollXCoordinate(element) {
+  if (isWindow(element)) {
+    return element.scrollX;
+  }
+  return element.scrollLeft;
+}
+function getScrollYCoordinate(element) {
+  if (isWindow(element)) {
+    return element.scrollY;
+  }
+  return element.scrollTop;
+}
+function getScrollCoordinates(element) {
+  return {
+    x: getScrollXCoordinate(element),
+    y: getScrollYCoordinate(element)
+  };
+}
+var Direction;
+(function(Direction2) {
+  Direction2[Direction2["Forward"] = 1] = "Forward";
+  Direction2[Direction2["Backward"] = -1] = "Backward";
+})(Direction || (Direction = {}));
+function isDocumentScrollingElement(element) {
+  if (!canUseDOM || !element) {
+    return false;
+  }
+  return element === document.scrollingElement;
+}
+function getScrollPosition(scrollingContainer) {
+  const minScroll = {
+    x: 0,
+    y: 0
+  };
+  const dimensions = isDocumentScrollingElement(scrollingContainer) ? {
+    height: window.innerHeight,
+    width: window.innerWidth
+  } : {
+    height: scrollingContainer.clientHeight,
+    width: scrollingContainer.clientWidth
+  };
+  const maxScroll = {
+    x: scrollingContainer.scrollWidth - dimensions.width,
+    y: scrollingContainer.scrollHeight - dimensions.height
+  };
+  const isTop = scrollingContainer.scrollTop <= minScroll.y;
+  const isLeft = scrollingContainer.scrollLeft <= minScroll.x;
+  const isBottom = scrollingContainer.scrollTop >= maxScroll.y;
+  const isRight = scrollingContainer.scrollLeft >= maxScroll.x;
+  return {
+    isTop,
+    isLeft,
+    isBottom,
+    isRight,
+    maxScroll,
+    minScroll
+  };
+}
+const defaultThreshold = {
+  x: 0.2,
+  y: 0.2
+};
+function getScrollDirectionAndSpeed(scrollContainer, scrollContainerRect, _ref, acceleration, thresholdPercentage) {
+  let {
+    top,
+    left,
+    right,
+    bottom
+  } = _ref;
+  if (acceleration === void 0) {
+    acceleration = 10;
+  }
+  if (thresholdPercentage === void 0) {
+    thresholdPercentage = defaultThreshold;
+  }
+  const {
+    isTop,
+    isBottom,
+    isLeft,
+    isRight
+  } = getScrollPosition(scrollContainer);
+  const direction = {
+    x: 0,
+    y: 0
+  };
+  const speed = {
+    x: 0,
+    y: 0
+  };
+  const threshold = {
+    height: scrollContainerRect.height * thresholdPercentage.y,
+    width: scrollContainerRect.width * thresholdPercentage.x
+  };
+  if (!isTop && top <= scrollContainerRect.top + threshold.height) {
+    direction.y = Direction.Backward;
+    speed.y = acceleration * Math.abs((scrollContainerRect.top + threshold.height - top) / threshold.height);
+  } else if (!isBottom && bottom >= scrollContainerRect.bottom - threshold.height) {
+    direction.y = Direction.Forward;
+    speed.y = acceleration * Math.abs((scrollContainerRect.bottom - threshold.height - bottom) / threshold.height);
+  }
+  if (!isRight && right >= scrollContainerRect.right - threshold.width) {
+    direction.x = Direction.Forward;
+    speed.x = acceleration * Math.abs((scrollContainerRect.right - threshold.width - right) / threshold.width);
+  } else if (!isLeft && left <= scrollContainerRect.left + threshold.width) {
+    direction.x = Direction.Backward;
+    speed.x = acceleration * Math.abs((scrollContainerRect.left + threshold.width - left) / threshold.width);
+  }
+  return {
+    direction,
+    speed
+  };
+}
+function getScrollElementRect(element) {
+  if (element === document.scrollingElement) {
+    const {
+      innerWidth,
+      innerHeight
+    } = window;
+    return {
+      top: 0,
+      left: 0,
+      right: innerWidth,
+      bottom: innerHeight,
+      width: innerWidth,
+      height: innerHeight
+    };
+  }
+  const {
+    top,
+    left,
+    right,
+    bottom
+  } = element.getBoundingClientRect();
+  return {
+    top,
+    left,
+    right,
+    bottom,
+    width: element.clientWidth,
+    height: element.clientHeight
+  };
+}
+function getScrollOffsets(scrollableAncestors) {
+  return scrollableAncestors.reduce((acc, node) => {
+    return add(acc, getScrollCoordinates(node));
+  }, defaultCoordinates);
+}
+function getScrollXOffset(scrollableAncestors) {
+  return scrollableAncestors.reduce((acc, node) => {
+    return acc + getScrollXCoordinate(node);
+  }, 0);
+}
+function getScrollYOffset(scrollableAncestors) {
+  return scrollableAncestors.reduce((acc, node) => {
+    return acc + getScrollYCoordinate(node);
+  }, 0);
+}
+function scrollIntoViewIfNeeded(element, measure) {
+  if (measure === void 0) {
+    measure = getClientRect;
+  }
+  if (!element) {
+    return;
+  }
+  const {
+    top,
+    left,
+    bottom,
+    right
+  } = measure(element);
+  const firstScrollableAncestor = getFirstScrollableAncestor(element);
+  if (!firstScrollableAncestor) {
+    return;
+  }
+  if (bottom <= 0 || right <= 0 || top >= window.innerHeight || left >= window.innerWidth) {
+    element.scrollIntoView({
+      block: "center",
+      inline: "center"
+    });
+  }
+}
+const properties = [["x", ["left", "right"], getScrollXOffset], ["y", ["top", "bottom"], getScrollYOffset]];
+class Rect {
+  constructor(rect, element) {
+    this.rect = void 0;
+    this.width = void 0;
+    this.height = void 0;
+    this.top = void 0;
+    this.bottom = void 0;
+    this.right = void 0;
+    this.left = void 0;
+    const scrollableAncestors = getScrollableAncestors(element);
+    const scrollOffsets = getScrollOffsets(scrollableAncestors);
+    this.rect = {
+      ...rect
+    };
+    this.width = rect.width;
+    this.height = rect.height;
+    for (const [axis, keys, getScrollOffset] of properties) {
+      for (const key2 of keys) {
+        Object.defineProperty(this, key2, {
+          get: () => {
+            const currentOffsets = getScrollOffset(scrollableAncestors);
+            const scrollOffsetsDeltla = scrollOffsets[axis] - currentOffsets;
+            return this.rect[key2] + scrollOffsetsDeltla;
+          },
+          enumerable: true
+        });
+      }
+    }
+    Object.defineProperty(this, "rect", {
+      enumerable: false
+    });
+  }
+}
+class Listeners {
+  constructor(target) {
+    this.target = void 0;
+    this.listeners = [];
+    this.removeAll = () => {
+      this.listeners.forEach((listener) => {
+        var _this$target;
+        return (_this$target = this.target) == null ? void 0 : _this$target.removeEventListener(...listener);
+      });
+    };
+    this.target = target;
+  }
+  add(eventName, handler, options) {
+    var _this$target2;
+    (_this$target2 = this.target) == null ? void 0 : _this$target2.addEventListener(eventName, handler, options);
+    this.listeners.push([eventName, handler, options]);
+  }
+}
+function getEventListenerTarget(target) {
+  const {
+    EventTarget
+  } = getWindow(target);
+  return target instanceof EventTarget ? target : getOwnerDocument(target);
+}
+function hasExceededDistance(delta, measurement) {
+  const dx = Math.abs(delta.x);
+  const dy = Math.abs(delta.y);
+  if (typeof measurement === "number") {
+    return Math.sqrt(dx ** 2 + dy ** 2) > measurement;
+  }
+  if ("x" in measurement && "y" in measurement) {
+    return dx > measurement.x && dy > measurement.y;
+  }
+  if ("x" in measurement) {
+    return dx > measurement.x;
+  }
+  if ("y" in measurement) {
+    return dy > measurement.y;
+  }
+  return false;
+}
+var EventName;
+(function(EventName2) {
+  EventName2["Click"] = "click";
+  EventName2["DragStart"] = "dragstart";
+  EventName2["Keydown"] = "keydown";
+  EventName2["ContextMenu"] = "contextmenu";
+  EventName2["Resize"] = "resize";
+  EventName2["SelectionChange"] = "selectionchange";
+  EventName2["VisibilityChange"] = "visibilitychange";
+})(EventName || (EventName = {}));
+function preventDefault(event) {
+  event.preventDefault();
+}
+function stopPropagation(event) {
+  event.stopPropagation();
+}
+var KeyboardCode;
+(function(KeyboardCode2) {
+  KeyboardCode2["Space"] = "Space";
+  KeyboardCode2["Down"] = "ArrowDown";
+  KeyboardCode2["Right"] = "ArrowRight";
+  KeyboardCode2["Left"] = "ArrowLeft";
+  KeyboardCode2["Up"] = "ArrowUp";
+  KeyboardCode2["Esc"] = "Escape";
+  KeyboardCode2["Enter"] = "Enter";
+  KeyboardCode2["Tab"] = "Tab";
+})(KeyboardCode || (KeyboardCode = {}));
+const defaultKeyboardCodes = {
+  start: [KeyboardCode.Space, KeyboardCode.Enter],
+  cancel: [KeyboardCode.Esc],
+  end: [KeyboardCode.Space, KeyboardCode.Enter, KeyboardCode.Tab]
+};
+const defaultKeyboardCoordinateGetter = (event, _ref) => {
+  let {
+    currentCoordinates
+  } = _ref;
+  switch (event.code) {
+    case KeyboardCode.Right:
+      return {
+        ...currentCoordinates,
+        x: currentCoordinates.x + 25
+      };
+    case KeyboardCode.Left:
+      return {
+        ...currentCoordinates,
+        x: currentCoordinates.x - 25
+      };
+    case KeyboardCode.Down:
+      return {
+        ...currentCoordinates,
+        y: currentCoordinates.y + 25
+      };
+    case KeyboardCode.Up:
+      return {
+        ...currentCoordinates,
+        y: currentCoordinates.y - 25
+      };
+  }
+  return void 0;
+};
+class KeyboardSensor {
+  constructor(props) {
+    this.props = void 0;
+    this.autoScrollEnabled = false;
+    this.referenceCoordinates = void 0;
+    this.listeners = void 0;
+    this.windowListeners = void 0;
+    this.props = props;
+    const {
+      event: {
+        target
+      }
+    } = props;
+    this.props = props;
+    this.listeners = new Listeners(getOwnerDocument(target));
+    this.windowListeners = new Listeners(getWindow(target));
+    this.handleKeyDown = this.handleKeyDown.bind(this);
+    this.handleCancel = this.handleCancel.bind(this);
+    this.attach();
+  }
+  attach() {
+    this.handleStart();
+    this.windowListeners.add(EventName.Resize, this.handleCancel);
+    this.windowListeners.add(EventName.VisibilityChange, this.handleCancel);
+    setTimeout(() => this.listeners.add(EventName.Keydown, this.handleKeyDown));
+  }
+  handleStart() {
+    const {
+      activeNode,
+      onStart
+    } = this.props;
+    const node = activeNode.node.current;
+    if (node) {
+      scrollIntoViewIfNeeded(node);
+    }
+    onStart(defaultCoordinates);
+  }
+  handleKeyDown(event) {
+    if (isKeyboardEvent(event)) {
+      const {
+        active: active2,
+        context,
+        options
+      } = this.props;
+      const {
+        keyboardCodes = defaultKeyboardCodes,
+        coordinateGetter = defaultKeyboardCoordinateGetter,
+        scrollBehavior = "smooth"
+      } = options;
+      const {
+        code
+      } = event;
+      if (keyboardCodes.end.includes(code)) {
+        this.handleEnd(event);
+        return;
+      }
+      if (keyboardCodes.cancel.includes(code)) {
+        this.handleCancel(event);
+        return;
+      }
+      const {
+        collisionRect
+      } = context.current;
+      const currentCoordinates = collisionRect ? {
+        x: collisionRect.left,
+        y: collisionRect.top
+      } : defaultCoordinates;
+      if (!this.referenceCoordinates) {
+        this.referenceCoordinates = currentCoordinates;
+      }
+      const newCoordinates = coordinateGetter(event, {
+        active: active2,
+        context: context.current,
+        currentCoordinates
+      });
+      if (newCoordinates) {
+        const coordinatesDelta = subtract(newCoordinates, currentCoordinates);
+        const scrollDelta = {
+          x: 0,
+          y: 0
+        };
+        const {
+          scrollableAncestors
+        } = context.current;
+        for (const scrollContainer of scrollableAncestors) {
+          const direction = event.code;
+          const {
+            isTop,
+            isRight,
+            isLeft,
+            isBottom,
+            maxScroll,
+            minScroll
+          } = getScrollPosition(scrollContainer);
+          const scrollElementRect = getScrollElementRect(scrollContainer);
+          const clampedCoordinates = {
+            x: Math.min(direction === KeyboardCode.Right ? scrollElementRect.right - scrollElementRect.width / 2 : scrollElementRect.right, Math.max(direction === KeyboardCode.Right ? scrollElementRect.left : scrollElementRect.left + scrollElementRect.width / 2, newCoordinates.x)),
+            y: Math.min(direction === KeyboardCode.Down ? scrollElementRect.bottom - scrollElementRect.height / 2 : scrollElementRect.bottom, Math.max(direction === KeyboardCode.Down ? scrollElementRect.top : scrollElementRect.top + scrollElementRect.height / 2, newCoordinates.y))
+          };
+          const canScrollX = direction === KeyboardCode.Right && !isRight || direction === KeyboardCode.Left && !isLeft;
+          const canScrollY = direction === KeyboardCode.Down && !isBottom || direction === KeyboardCode.Up && !isTop;
+          if (canScrollX && clampedCoordinates.x !== newCoordinates.x) {
+            const newScrollCoordinates = scrollContainer.scrollLeft + coordinatesDelta.x;
+            const canScrollToNewCoordinates = direction === KeyboardCode.Right && newScrollCoordinates <= maxScroll.x || direction === KeyboardCode.Left && newScrollCoordinates >= minScroll.x;
+            if (canScrollToNewCoordinates && !coordinatesDelta.y) {
+              scrollContainer.scrollTo({
+                left: newScrollCoordinates,
+                behavior: scrollBehavior
+              });
+              return;
+            }
+            if (canScrollToNewCoordinates) {
+              scrollDelta.x = scrollContainer.scrollLeft - newScrollCoordinates;
+            } else {
+              scrollDelta.x = direction === KeyboardCode.Right ? scrollContainer.scrollLeft - maxScroll.x : scrollContainer.scrollLeft - minScroll.x;
+            }
+            if (scrollDelta.x) {
+              scrollContainer.scrollBy({
+                left: -scrollDelta.x,
+                behavior: scrollBehavior
+              });
+            }
+            break;
+          } else if (canScrollY && clampedCoordinates.y !== newCoordinates.y) {
+            const newScrollCoordinates = scrollContainer.scrollTop + coordinatesDelta.y;
+            const canScrollToNewCoordinates = direction === KeyboardCode.Down && newScrollCoordinates <= maxScroll.y || direction === KeyboardCode.Up && newScrollCoordinates >= minScroll.y;
+            if (canScrollToNewCoordinates && !coordinatesDelta.x) {
+              scrollContainer.scrollTo({
+                top: newScrollCoordinates,
+                behavior: scrollBehavior
+              });
+              return;
+            }
+            if (canScrollToNewCoordinates) {
+              scrollDelta.y = scrollContainer.scrollTop - newScrollCoordinates;
+            } else {
+              scrollDelta.y = direction === KeyboardCode.Down ? scrollContainer.scrollTop - maxScroll.y : scrollContainer.scrollTop - minScroll.y;
+            }
+            if (scrollDelta.y) {
+              scrollContainer.scrollBy({
+                top: -scrollDelta.y,
+                behavior: scrollBehavior
+              });
+            }
+            break;
+          }
+        }
+        this.handleMove(event, add(subtract(newCoordinates, this.referenceCoordinates), scrollDelta));
+      }
+    }
+  }
+  handleMove(event, coordinates) {
+    const {
+      onMove
+    } = this.props;
+    event.preventDefault();
+    onMove(coordinates);
+  }
+  handleEnd(event) {
+    const {
+      onEnd
+    } = this.props;
+    event.preventDefault();
+    this.detach();
+    onEnd();
+  }
+  handleCancel(event) {
+    const {
+      onCancel
+    } = this.props;
+    event.preventDefault();
+    this.detach();
+    onCancel();
+  }
+  detach() {
+    this.listeners.removeAll();
+    this.windowListeners.removeAll();
+  }
+}
+KeyboardSensor.activators = [{
+  eventName: "onKeyDown",
+  handler: (event, _ref, _ref2) => {
+    let {
+      keyboardCodes = defaultKeyboardCodes,
+      onActivation
+    } = _ref;
+    let {
+      active: active2
+    } = _ref2;
+    const {
+      code
+    } = event.nativeEvent;
+    if (keyboardCodes.start.includes(code)) {
+      const activator = active2.activatorNode.current;
+      if (activator && event.target !== activator) {
+        return false;
+      }
+      event.preventDefault();
+      onActivation == null ? void 0 : onActivation({
+        event: event.nativeEvent
+      });
+      return true;
+    }
+    return false;
+  }
+}];
+function isDistanceConstraint(constraint) {
+  return Boolean(constraint && "distance" in constraint);
+}
+function isDelayConstraint(constraint) {
+  return Boolean(constraint && "delay" in constraint);
+}
+class AbstractPointerSensor {
+  constructor(props, events2, listenerTarget) {
+    var _getEventCoordinates;
+    if (listenerTarget === void 0) {
+      listenerTarget = getEventListenerTarget(props.event.target);
+    }
+    this.props = void 0;
+    this.events = void 0;
+    this.autoScrollEnabled = true;
+    this.document = void 0;
+    this.activated = false;
+    this.initialCoordinates = void 0;
+    this.timeoutId = null;
+    this.listeners = void 0;
+    this.documentListeners = void 0;
+    this.windowListeners = void 0;
+    this.props = props;
+    this.events = events2;
+    const {
+      event
+    } = props;
+    const {
+      target
+    } = event;
+    this.props = props;
+    this.events = events2;
+    this.document = getOwnerDocument(target);
+    this.documentListeners = new Listeners(this.document);
+    this.listeners = new Listeners(listenerTarget);
+    this.windowListeners = new Listeners(getWindow(target));
+    this.initialCoordinates = (_getEventCoordinates = getEventCoordinates(event)) != null ? _getEventCoordinates : defaultCoordinates;
+    this.handleStart = this.handleStart.bind(this);
+    this.handleMove = this.handleMove.bind(this);
+    this.handleEnd = this.handleEnd.bind(this);
+    this.handleCancel = this.handleCancel.bind(this);
+    this.handleKeydown = this.handleKeydown.bind(this);
+    this.removeTextSelection = this.removeTextSelection.bind(this);
+    this.attach();
+  }
+  attach() {
+    const {
+      events: events2,
+      props: {
+        options: {
+          activationConstraint,
+          bypassActivationConstraint
+        }
+      }
+    } = this;
+    this.listeners.add(events2.move.name, this.handleMove, {
+      passive: false
+    });
+    this.listeners.add(events2.end.name, this.handleEnd);
+    if (events2.cancel) {
+      this.listeners.add(events2.cancel.name, this.handleCancel);
+    }
+    this.windowListeners.add(EventName.Resize, this.handleCancel);
+    this.windowListeners.add(EventName.DragStart, preventDefault);
+    this.windowListeners.add(EventName.VisibilityChange, this.handleCancel);
+    this.windowListeners.add(EventName.ContextMenu, preventDefault);
+    this.documentListeners.add(EventName.Keydown, this.handleKeydown);
+    if (activationConstraint) {
+      if (bypassActivationConstraint != null && bypassActivationConstraint({
+        event: this.props.event,
+        activeNode: this.props.activeNode,
+        options: this.props.options
+      })) {
+        return this.handleStart();
+      }
+      if (isDelayConstraint(activationConstraint)) {
+        this.timeoutId = setTimeout(this.handleStart, activationConstraint.delay);
+        this.handlePending(activationConstraint);
+        return;
+      }
+      if (isDistanceConstraint(activationConstraint)) {
+        this.handlePending(activationConstraint);
+        return;
+      }
+    }
+    this.handleStart();
+  }
+  detach() {
+    this.listeners.removeAll();
+    this.windowListeners.removeAll();
+    setTimeout(this.documentListeners.removeAll, 50);
+    if (this.timeoutId !== null) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+  }
+  handlePending(constraint, offset) {
+    const {
+      active: active2,
+      onPending
+    } = this.props;
+    onPending(active2, constraint, this.initialCoordinates, offset);
+  }
+  handleStart() {
+    const {
+      initialCoordinates
+    } = this;
+    const {
+      onStart
+    } = this.props;
+    if (initialCoordinates) {
+      this.activated = true;
+      this.documentListeners.add(EventName.Click, stopPropagation, {
+        capture: true
+      });
+      this.removeTextSelection();
+      this.documentListeners.add(EventName.SelectionChange, this.removeTextSelection);
+      onStart(initialCoordinates);
+    }
+  }
+  handleMove(event) {
+    var _getEventCoordinates2;
+    const {
+      activated,
+      initialCoordinates,
+      props
+    } = this;
+    const {
+      onMove,
+      options: {
+        activationConstraint
+      }
+    } = props;
+    if (!initialCoordinates) {
+      return;
+    }
+    const coordinates = (_getEventCoordinates2 = getEventCoordinates(event)) != null ? _getEventCoordinates2 : defaultCoordinates;
+    const delta = subtract(initialCoordinates, coordinates);
+    if (!activated && activationConstraint) {
+      if (isDistanceConstraint(activationConstraint)) {
+        if (activationConstraint.tolerance != null && hasExceededDistance(delta, activationConstraint.tolerance)) {
+          return this.handleCancel();
+        }
+        if (hasExceededDistance(delta, activationConstraint.distance)) {
+          return this.handleStart();
+        }
+      }
+      if (isDelayConstraint(activationConstraint)) {
+        if (hasExceededDistance(delta, activationConstraint.tolerance)) {
+          return this.handleCancel();
+        }
+      }
+      this.handlePending(activationConstraint, delta);
+      return;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    onMove(coordinates);
+  }
+  handleEnd() {
+    const {
+      onAbort,
+      onEnd
+    } = this.props;
+    this.detach();
+    if (!this.activated) {
+      onAbort(this.props.active);
+    }
+    onEnd();
+  }
+  handleCancel() {
+    const {
+      onAbort,
+      onCancel
+    } = this.props;
+    this.detach();
+    if (!this.activated) {
+      onAbort(this.props.active);
+    }
+    onCancel();
+  }
+  handleKeydown(event) {
+    if (event.code === KeyboardCode.Esc) {
+      this.handleCancel();
+    }
+  }
+  removeTextSelection() {
+    var _this$document$getSel;
+    (_this$document$getSel = this.document.getSelection()) == null ? void 0 : _this$document$getSel.removeAllRanges();
+  }
+}
+const events = {
+  cancel: {
+    name: "pointercancel"
+  },
+  move: {
+    name: "pointermove"
+  },
+  end: {
+    name: "pointerup"
+  }
+};
+class PointerSensor extends AbstractPointerSensor {
+  constructor(props) {
+    const {
+      event
+    } = props;
+    const listenerTarget = getOwnerDocument(event.target);
+    super(props, events, listenerTarget);
+  }
+}
+PointerSensor.activators = [{
+  eventName: "onPointerDown",
+  handler: (_ref, _ref2) => {
+    let {
+      nativeEvent: event
+    } = _ref;
+    let {
+      onActivation
+    } = _ref2;
+    if (!event.isPrimary || event.button !== 0) {
+      return false;
+    }
+    onActivation == null ? void 0 : onActivation({
+      event
+    });
+    return true;
+  }
+}];
+const events$1 = {
+  move: {
+    name: "mousemove"
+  },
+  end: {
+    name: "mouseup"
+  }
+};
+var MouseButton;
+(function(MouseButton2) {
+  MouseButton2[MouseButton2["RightClick"] = 2] = "RightClick";
+})(MouseButton || (MouseButton = {}));
+class MouseSensor extends AbstractPointerSensor {
+  constructor(props) {
+    super(props, events$1, getOwnerDocument(props.event.target));
+  }
+}
+MouseSensor.activators = [{
+  eventName: "onMouseDown",
+  handler: (_ref, _ref2) => {
+    let {
+      nativeEvent: event
+    } = _ref;
+    let {
+      onActivation
+    } = _ref2;
+    if (event.button === MouseButton.RightClick) {
+      return false;
+    }
+    onActivation == null ? void 0 : onActivation({
+      event
+    });
+    return true;
+  }
+}];
+const events$2 = {
+  cancel: {
+    name: "touchcancel"
+  },
+  move: {
+    name: "touchmove"
+  },
+  end: {
+    name: "touchend"
+  }
+};
+class TouchSensor extends AbstractPointerSensor {
+  constructor(props) {
+    super(props, events$2);
+  }
+  static setup() {
+    window.addEventListener(events$2.move.name, noop2, {
+      capture: false,
+      passive: false
+    });
+    return function teardown() {
+      window.removeEventListener(events$2.move.name, noop2);
+    };
+    function noop2() {
+    }
+  }
+}
+TouchSensor.activators = [{
+  eventName: "onTouchStart",
+  handler: (_ref, _ref2) => {
+    let {
+      nativeEvent: event
+    } = _ref;
+    let {
+      onActivation
+    } = _ref2;
+    const {
+      touches
+    } = event;
+    if (touches.length > 1) {
+      return false;
+    }
+    onActivation == null ? void 0 : onActivation({
+      event
+    });
+    return true;
+  }
+}];
+var AutoScrollActivator;
+(function(AutoScrollActivator2) {
+  AutoScrollActivator2[AutoScrollActivator2["Pointer"] = 0] = "Pointer";
+  AutoScrollActivator2[AutoScrollActivator2["DraggableRect"] = 1] = "DraggableRect";
+})(AutoScrollActivator || (AutoScrollActivator = {}));
+var TraversalOrder;
+(function(TraversalOrder2) {
+  TraversalOrder2[TraversalOrder2["TreeOrder"] = 0] = "TreeOrder";
+  TraversalOrder2[TraversalOrder2["ReversedTreeOrder"] = 1] = "ReversedTreeOrder";
+})(TraversalOrder || (TraversalOrder = {}));
+function useAutoScroller(_ref) {
+  let {
+    acceleration,
+    activator = AutoScrollActivator.Pointer,
+    canScroll,
+    draggingRect,
+    enabled,
+    interval = 5,
+    order = TraversalOrder.TreeOrder,
+    pointerCoordinates,
+    scrollableAncestors,
+    scrollableAncestorRects,
+    delta,
+    threshold
+  } = _ref;
+  const scrollIntent = useScrollIntent({
+    delta,
+    disabled: !enabled
+  });
+  const [setAutoScrollInterval, clearAutoScrollInterval] = useInterval();
+  const scrollSpeed = reactExports.useRef({
+    x: 0,
+    y: 0
+  });
+  const scrollDirection = reactExports.useRef({
+    x: 0,
+    y: 0
+  });
+  const rect = reactExports.useMemo(() => {
+    switch (activator) {
+      case AutoScrollActivator.Pointer:
+        return pointerCoordinates ? {
+          top: pointerCoordinates.y,
+          bottom: pointerCoordinates.y,
+          left: pointerCoordinates.x,
+          right: pointerCoordinates.x
+        } : null;
+      case AutoScrollActivator.DraggableRect:
+        return draggingRect;
+    }
+  }, [activator, draggingRect, pointerCoordinates]);
+  const scrollContainerRef = reactExports.useRef(null);
+  const autoScroll = reactExports.useCallback(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) {
+      return;
+    }
+    const scrollLeft = scrollSpeed.current.x * scrollDirection.current.x;
+    const scrollTop = scrollSpeed.current.y * scrollDirection.current.y;
+    scrollContainer.scrollBy(scrollLeft, scrollTop);
+  }, []);
+  const sortedScrollableAncestors = reactExports.useMemo(() => order === TraversalOrder.TreeOrder ? [...scrollableAncestors].reverse() : scrollableAncestors, [order, scrollableAncestors]);
+  reactExports.useEffect(
+    () => {
+      if (!enabled || !scrollableAncestors.length || !rect) {
+        clearAutoScrollInterval();
+        return;
+      }
+      for (const scrollContainer of sortedScrollableAncestors) {
+        if ((canScroll == null ? void 0 : canScroll(scrollContainer)) === false) {
+          continue;
+        }
+        const index2 = scrollableAncestors.indexOf(scrollContainer);
+        const scrollContainerRect = scrollableAncestorRects[index2];
+        if (!scrollContainerRect) {
+          continue;
+        }
+        const {
+          direction,
+          speed
+        } = getScrollDirectionAndSpeed(scrollContainer, scrollContainerRect, rect, acceleration, threshold);
+        for (const axis of ["x", "y"]) {
+          if (!scrollIntent[axis][direction[axis]]) {
+            speed[axis] = 0;
+            direction[axis] = 0;
+          }
+        }
+        if (speed.x > 0 || speed.y > 0) {
+          clearAutoScrollInterval();
+          scrollContainerRef.current = scrollContainer;
+          setAutoScrollInterval(autoScroll, interval);
+          scrollSpeed.current = speed;
+          scrollDirection.current = direction;
+          return;
+        }
+      }
+      scrollSpeed.current = {
+        x: 0,
+        y: 0
+      };
+      scrollDirection.current = {
+        x: 0,
+        y: 0
+      };
+      clearAutoScrollInterval();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      acceleration,
+      autoScroll,
+      canScroll,
+      clearAutoScrollInterval,
+      enabled,
+      interval,
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      JSON.stringify(rect),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      JSON.stringify(scrollIntent),
+      setAutoScrollInterval,
+      scrollableAncestors,
+      sortedScrollableAncestors,
+      scrollableAncestorRects,
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      JSON.stringify(threshold)
+    ]
+  );
+}
+const defaultScrollIntent = {
+  x: {
+    [Direction.Backward]: false,
+    [Direction.Forward]: false
+  },
+  y: {
+    [Direction.Backward]: false,
+    [Direction.Forward]: false
+  }
+};
+function useScrollIntent(_ref2) {
+  let {
+    delta,
+    disabled
+  } = _ref2;
+  const previousDelta = usePrevious(delta);
+  return useLazyMemo((previousIntent) => {
+    if (disabled || !previousDelta || !previousIntent) {
+      return defaultScrollIntent;
+    }
+    const direction = {
+      x: Math.sign(delta.x - previousDelta.x),
+      y: Math.sign(delta.y - previousDelta.y)
+    };
+    return {
+      x: {
+        [Direction.Backward]: previousIntent.x[Direction.Backward] || direction.x === -1,
+        [Direction.Forward]: previousIntent.x[Direction.Forward] || direction.x === 1
+      },
+      y: {
+        [Direction.Backward]: previousIntent.y[Direction.Backward] || direction.y === -1,
+        [Direction.Forward]: previousIntent.y[Direction.Forward] || direction.y === 1
+      }
+    };
+  }, [disabled, delta, previousDelta]);
+}
+function useCachedNode(draggableNodes, id) {
+  const draggableNode = id != null ? draggableNodes.get(id) : void 0;
+  const node = draggableNode ? draggableNode.node.current : null;
+  return useLazyMemo((cachedNode) => {
+    var _ref;
+    if (id == null) {
+      return null;
+    }
+    return (_ref = node != null ? node : cachedNode) != null ? _ref : null;
+  }, [node, id]);
+}
+function useCombineActivators(sensors, getSyntheticHandler) {
+  return reactExports.useMemo(() => sensors.reduce((accumulator, sensor) => {
+    const {
+      sensor: Sensor
+    } = sensor;
+    const sensorActivators = Sensor.activators.map((activator) => ({
+      eventName: activator.eventName,
+      handler: getSyntheticHandler(activator.handler, sensor)
+    }));
+    return [...accumulator, ...sensorActivators];
+  }, []), [sensors, getSyntheticHandler]);
+}
+var MeasuringStrategy;
+(function(MeasuringStrategy2) {
+  MeasuringStrategy2[MeasuringStrategy2["Always"] = 0] = "Always";
+  MeasuringStrategy2[MeasuringStrategy2["BeforeDragging"] = 1] = "BeforeDragging";
+  MeasuringStrategy2[MeasuringStrategy2["WhileDragging"] = 2] = "WhileDragging";
+})(MeasuringStrategy || (MeasuringStrategy = {}));
+var MeasuringFrequency;
+(function(MeasuringFrequency2) {
+  MeasuringFrequency2["Optimized"] = "optimized";
+})(MeasuringFrequency || (MeasuringFrequency = {}));
+const defaultValue = /* @__PURE__ */ new Map();
+function useDroppableMeasuring(containers, _ref) {
+  let {
+    dragging,
+    dependencies,
+    config
+  } = _ref;
+  const [queue, setQueue] = reactExports.useState(null);
+  const {
+    frequency,
+    measure,
+    strategy
+  } = config;
+  const containersRef = reactExports.useRef(containers);
+  const disabled = isDisabled();
+  const disabledRef = useLatestValue(disabled);
+  const measureDroppableContainers = reactExports.useCallback(function(ids2) {
+    if (ids2 === void 0) {
+      ids2 = [];
+    }
+    if (disabledRef.current) {
+      return;
+    }
+    setQueue((value) => {
+      if (value === null) {
+        return ids2;
+      }
+      return value.concat(ids2.filter((id) => !value.includes(id)));
+    });
+  }, [disabledRef]);
+  const timeoutId = reactExports.useRef(null);
+  const droppableRects = useLazyMemo((previousValue) => {
+    if (disabled && !dragging) {
+      return defaultValue;
+    }
+    if (!previousValue || previousValue === defaultValue || containersRef.current !== containers || queue != null) {
+      const map = /* @__PURE__ */ new Map();
+      for (let container of containers) {
+        if (!container) {
+          continue;
+        }
+        if (queue && queue.length > 0 && !queue.includes(container.id) && container.rect.current) {
+          map.set(container.id, container.rect.current);
+          continue;
+        }
+        const node = container.node.current;
+        const rect = node ? new Rect(measure(node), node) : null;
+        container.rect.current = rect;
+        if (rect) {
+          map.set(container.id, rect);
+        }
+      }
+      return map;
+    }
+    return previousValue;
+  }, [containers, queue, dragging, disabled, measure]);
+  reactExports.useEffect(() => {
+    containersRef.current = containers;
+  }, [containers]);
+  reactExports.useEffect(
+    () => {
+      if (disabled) {
+        return;
+      }
+      measureDroppableContainers();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dragging, disabled]
+  );
+  reactExports.useEffect(
+    () => {
+      if (queue && queue.length > 0) {
+        setQueue(null);
+      }
+    },
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(queue)]
+  );
+  reactExports.useEffect(
+    () => {
+      if (disabled || typeof frequency !== "number" || timeoutId.current !== null) {
+        return;
+      }
+      timeoutId.current = setTimeout(() => {
+        measureDroppableContainers();
+        timeoutId.current = null;
+      }, frequency);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [frequency, disabled, measureDroppableContainers, ...dependencies]
+  );
+  return {
+    droppableRects,
+    measureDroppableContainers,
+    measuringScheduled: queue != null
+  };
+  function isDisabled() {
+    switch (strategy) {
+      case MeasuringStrategy.Always:
+        return false;
+      case MeasuringStrategy.BeforeDragging:
+        return dragging;
+      default:
+        return !dragging;
+    }
+  }
+}
+function useInitialValue(value, computeFn) {
+  return useLazyMemo((previousValue) => {
+    if (!value) {
+      return null;
+    }
+    if (previousValue) {
+      return previousValue;
+    }
+    return typeof computeFn === "function" ? computeFn(value) : value;
+  }, [computeFn, value]);
+}
+function useInitialRect(node, measure) {
+  return useInitialValue(node, measure);
+}
+function useMutationObserver(_ref) {
+  let {
+    callback,
+    disabled
+  } = _ref;
+  const handleMutations = useEvent(callback);
+  const mutationObserver = reactExports.useMemo(() => {
+    if (disabled || typeof window === "undefined" || typeof window.MutationObserver === "undefined") {
+      return void 0;
+    }
+    const {
+      MutationObserver
+    } = window;
+    return new MutationObserver(handleMutations);
+  }, [handleMutations, disabled]);
+  reactExports.useEffect(() => {
+    return () => mutationObserver == null ? void 0 : mutationObserver.disconnect();
+  }, [mutationObserver]);
+  return mutationObserver;
+}
+function useResizeObserver(_ref) {
+  let {
+    callback,
+    disabled
+  } = _ref;
+  const handleResize = useEvent(callback);
+  const resizeObserver = reactExports.useMemo(
+    () => {
+      if (disabled || typeof window === "undefined" || typeof window.ResizeObserver === "undefined") {
+        return void 0;
+      }
+      const {
+        ResizeObserver
+      } = window;
+      return new ResizeObserver(handleResize);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [disabled]
+  );
+  reactExports.useEffect(() => {
+    return () => resizeObserver == null ? void 0 : resizeObserver.disconnect();
+  }, [resizeObserver]);
+  return resizeObserver;
+}
+function defaultMeasure(element) {
+  return new Rect(getClientRect(element), element);
+}
+function useRect(element, measure, fallbackRect) {
+  if (measure === void 0) {
+    measure = defaultMeasure;
+  }
+  const [rect, setRect] = reactExports.useState(null);
+  function measureRect() {
+    setRect((currentRect) => {
+      if (!element) {
+        return null;
+      }
+      if (element.isConnected === false) {
+        var _ref;
+        return (_ref = currentRect != null ? currentRect : fallbackRect) != null ? _ref : null;
+      }
+      const newRect = measure(element);
+      if (JSON.stringify(currentRect) === JSON.stringify(newRect)) {
+        return currentRect;
+      }
+      return newRect;
+    });
+  }
+  const mutationObserver = useMutationObserver({
+    callback(records) {
+      if (!element) {
+        return;
+      }
+      for (const record of records) {
+        const {
+          type,
+          target
+        } = record;
+        if (type === "childList" && target instanceof HTMLElement && target.contains(element)) {
+          measureRect();
+          break;
+        }
+      }
+    }
+  });
+  const resizeObserver = useResizeObserver({
+    callback: measureRect
+  });
+  useIsomorphicLayoutEffect(() => {
+    measureRect();
+    if (element) {
+      resizeObserver == null ? void 0 : resizeObserver.observe(element);
+      mutationObserver == null ? void 0 : mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    } else {
+      resizeObserver == null ? void 0 : resizeObserver.disconnect();
+      mutationObserver == null ? void 0 : mutationObserver.disconnect();
+    }
+  }, [element]);
+  return rect;
+}
+function useRectDelta(rect) {
+  const initialRect = useInitialValue(rect);
+  return getRectDelta(rect, initialRect);
+}
+const defaultValue$1 = [];
+function useScrollableAncestors(node) {
+  const previousNode = reactExports.useRef(node);
+  const ancestors = useLazyMemo((previousValue) => {
+    if (!node) {
+      return defaultValue$1;
+    }
+    if (previousValue && previousValue !== defaultValue$1 && node && previousNode.current && node.parentNode === previousNode.current.parentNode) {
+      return previousValue;
+    }
+    return getScrollableAncestors(node);
+  }, [node]);
+  reactExports.useEffect(() => {
+    previousNode.current = node;
+  }, [node]);
+  return ancestors;
+}
+function useScrollOffsets(elements) {
+  const [scrollCoordinates, setScrollCoordinates] = reactExports.useState(null);
+  const prevElements = reactExports.useRef(elements);
+  const handleScroll = reactExports.useCallback((event) => {
+    const scrollingElement = getScrollableElement(event.target);
+    if (!scrollingElement) {
+      return;
+    }
+    setScrollCoordinates((scrollCoordinates2) => {
+      if (!scrollCoordinates2) {
+        return null;
+      }
+      scrollCoordinates2.set(scrollingElement, getScrollCoordinates(scrollingElement));
+      return new Map(scrollCoordinates2);
+    });
+  }, []);
+  reactExports.useEffect(() => {
+    const previousElements = prevElements.current;
+    if (elements !== previousElements) {
+      cleanup(previousElements);
+      const entries = elements.map((element) => {
+        const scrollableElement = getScrollableElement(element);
+        if (scrollableElement) {
+          scrollableElement.addEventListener("scroll", handleScroll, {
+            passive: true
+          });
+          return [scrollableElement, getScrollCoordinates(scrollableElement)];
+        }
+        return null;
+      }).filter((entry) => entry != null);
+      setScrollCoordinates(entries.length ? new Map(entries) : null);
+      prevElements.current = elements;
+    }
+    return () => {
+      cleanup(elements);
+      cleanup(previousElements);
+    };
+    function cleanup(elements2) {
+      elements2.forEach((element) => {
+        const scrollableElement = getScrollableElement(element);
+        scrollableElement == null ? void 0 : scrollableElement.removeEventListener("scroll", handleScroll);
+      });
+    }
+  }, [handleScroll, elements]);
+  return reactExports.useMemo(() => {
+    if (elements.length) {
+      return scrollCoordinates ? Array.from(scrollCoordinates.values()).reduce((acc, coordinates) => add(acc, coordinates), defaultCoordinates) : getScrollOffsets(elements);
+    }
+    return defaultCoordinates;
+  }, [elements, scrollCoordinates]);
+}
+function useScrollOffsetsDelta(scrollOffsets, dependencies) {
+  if (dependencies === void 0) {
+    dependencies = [];
+  }
+  const initialScrollOffsets = reactExports.useRef(null);
+  reactExports.useEffect(
+    () => {
+      initialScrollOffsets.current = null;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    dependencies
+  );
+  reactExports.useEffect(() => {
+    const hasScrollOffsets = scrollOffsets !== defaultCoordinates;
+    if (hasScrollOffsets && !initialScrollOffsets.current) {
+      initialScrollOffsets.current = scrollOffsets;
+    }
+    if (!hasScrollOffsets && initialScrollOffsets.current) {
+      initialScrollOffsets.current = null;
+    }
+  }, [scrollOffsets]);
+  return initialScrollOffsets.current ? subtract(scrollOffsets, initialScrollOffsets.current) : defaultCoordinates;
+}
+function useSensorSetup(sensors) {
+  reactExports.useEffect(
+    () => {
+      if (!canUseDOM) {
+        return;
+      }
+      const teardownFns = sensors.map((_ref) => {
+        let {
+          sensor
+        } = _ref;
+        return sensor.setup == null ? void 0 : sensor.setup();
+      });
+      return () => {
+        for (const teardown of teardownFns) {
+          teardown == null ? void 0 : teardown();
+        }
+      };
+    },
+    // TO-DO: Sensors length could theoretically change which would not be a valid dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    sensors.map((_ref2) => {
+      let {
+        sensor
+      } = _ref2;
+      return sensor;
+    })
+  );
+}
+function useSyntheticListeners(listeners, id) {
+  return reactExports.useMemo(() => {
+    return listeners.reduce((acc, _ref) => {
+      let {
+        eventName,
+        handler
+      } = _ref;
+      acc[eventName] = (event) => {
+        handler(event, id);
+      };
+      return acc;
+    }, {});
+  }, [listeners, id]);
+}
+function useWindowRect(element) {
+  return reactExports.useMemo(() => element ? getWindowClientRect(element) : null, [element]);
+}
+const defaultValue$2 = [];
+function useRects(elements, measure) {
+  if (measure === void 0) {
+    measure = getClientRect;
+  }
+  const [firstElement] = elements;
+  const windowRect = useWindowRect(firstElement ? getWindow(firstElement) : null);
+  const [rects, setRects] = reactExports.useState(defaultValue$2);
+  function measureRects() {
+    setRects(() => {
+      if (!elements.length) {
+        return defaultValue$2;
+      }
+      return elements.map((element) => isDocumentScrollingElement(element) ? windowRect : new Rect(measure(element), element));
+    });
+  }
+  const resizeObserver = useResizeObserver({
+    callback: measureRects
+  });
+  useIsomorphicLayoutEffect(() => {
+    resizeObserver == null ? void 0 : resizeObserver.disconnect();
+    measureRects();
+    elements.forEach((element) => resizeObserver == null ? void 0 : resizeObserver.observe(element));
+  }, [elements]);
+  return rects;
+}
+function getMeasurableNode(node) {
+  if (!node) {
+    return null;
+  }
+  if (node.children.length > 1) {
+    return node;
+  }
+  const firstChild = node.children[0];
+  return isHTMLElement(firstChild) ? firstChild : node;
+}
+function useDragOverlayMeasuring(_ref) {
+  let {
+    measure
+  } = _ref;
+  const [rect, setRect] = reactExports.useState(null);
+  const handleResize = reactExports.useCallback((entries) => {
+    for (const {
+      target
+    } of entries) {
+      if (isHTMLElement(target)) {
+        setRect((rect2) => {
+          const newRect = measure(target);
+          return rect2 ? {
+            ...rect2,
+            width: newRect.width,
+            height: newRect.height
+          } : newRect;
+        });
+        break;
+      }
+    }
+  }, [measure]);
+  const resizeObserver = useResizeObserver({
+    callback: handleResize
+  });
+  const handleNodeChange = reactExports.useCallback((element) => {
+    const node = getMeasurableNode(element);
+    resizeObserver == null ? void 0 : resizeObserver.disconnect();
+    if (node) {
+      resizeObserver == null ? void 0 : resizeObserver.observe(node);
+    }
+    setRect(node ? measure(node) : null);
+  }, [measure, resizeObserver]);
+  const [nodeRef, setRef] = useNodeRef(handleNodeChange);
+  return reactExports.useMemo(() => ({
+    nodeRef,
+    rect,
+    setRef
+  }), [rect, nodeRef, setRef]);
+}
+const defaultSensors = [{
+  sensor: PointerSensor,
+  options: {}
+}, {
+  sensor: KeyboardSensor,
+  options: {}
+}];
+const defaultData = {
+  current: {}
+};
+const defaultMeasuringConfiguration = {
+  draggable: {
+    measure: getTransformAgnosticClientRect
+  },
+  droppable: {
+    measure: getTransformAgnosticClientRect,
+    strategy: MeasuringStrategy.WhileDragging,
+    frequency: MeasuringFrequency.Optimized
+  },
+  dragOverlay: {
+    measure: getClientRect
+  }
+};
+class DroppableContainersMap extends Map {
+  get(id) {
+    var _super$get;
+    return id != null ? (_super$get = super.get(id)) != null ? _super$get : void 0 : void 0;
+  }
+  toArray() {
+    return Array.from(this.values());
+  }
+  getEnabled() {
+    return this.toArray().filter((_ref) => {
+      let {
+        disabled
+      } = _ref;
+      return !disabled;
+    });
+  }
+  getNodeFor(id) {
+    var _this$get$node$curren, _this$get;
+    return (_this$get$node$curren = (_this$get = this.get(id)) == null ? void 0 : _this$get.node.current) != null ? _this$get$node$curren : void 0;
+  }
+}
+const defaultPublicContext = {
+  activatorEvent: null,
+  active: null,
+  activeNode: null,
+  activeNodeRect: null,
+  collisions: null,
+  containerNodeRect: null,
+  draggableNodes: /* @__PURE__ */ new Map(),
+  droppableRects: /* @__PURE__ */ new Map(),
+  droppableContainers: /* @__PURE__ */ new DroppableContainersMap(),
+  over: null,
+  dragOverlay: {
+    nodeRef: {
+      current: null
+    },
+    rect: null,
+    setRef: noop
+  },
+  scrollableAncestors: [],
+  scrollableAncestorRects: [],
+  measuringConfiguration: defaultMeasuringConfiguration,
+  measureDroppableContainers: noop,
+  windowRect: null,
+  measuringScheduled: false
+};
+const defaultInternalContext = {
+  activatorEvent: null,
+  activators: [],
+  active: null,
+  activeNodeRect: null,
+  ariaDescribedById: {
+    draggable: ""
+  },
+  dispatch: noop,
+  draggableNodes: /* @__PURE__ */ new Map(),
+  over: null,
+  measureDroppableContainers: noop
+};
+const InternalContext = /* @__PURE__ */ reactExports.createContext(defaultInternalContext);
+const PublicContext = /* @__PURE__ */ reactExports.createContext(defaultPublicContext);
+function getInitialState() {
+  return {
+    draggable: {
+      active: null,
+      initialCoordinates: {
+        x: 0,
+        y: 0
+      },
+      nodes: /* @__PURE__ */ new Map(),
+      translate: {
+        x: 0,
+        y: 0
+      }
+    },
+    droppable: {
+      containers: new DroppableContainersMap()
+    }
+  };
+}
+function reducer(state, action) {
+  switch (action.type) {
+    case Action.DragStart:
+      return {
+        ...state,
+        draggable: {
+          ...state.draggable,
+          initialCoordinates: action.initialCoordinates,
+          active: action.active
+        }
+      };
+    case Action.DragMove:
+      if (state.draggable.active == null) {
+        return state;
+      }
+      return {
+        ...state,
+        draggable: {
+          ...state.draggable,
+          translate: {
+            x: action.coordinates.x - state.draggable.initialCoordinates.x,
+            y: action.coordinates.y - state.draggable.initialCoordinates.y
+          }
+        }
+      };
+    case Action.DragEnd:
+    case Action.DragCancel:
+      return {
+        ...state,
+        draggable: {
+          ...state.draggable,
+          active: null,
+          initialCoordinates: {
+            x: 0,
+            y: 0
+          },
+          translate: {
+            x: 0,
+            y: 0
+          }
+        }
+      };
+    case Action.RegisterDroppable: {
+      const {
+        element
+      } = action;
+      const {
+        id
+      } = element;
+      const containers = new DroppableContainersMap(state.droppable.containers);
+      containers.set(id, element);
+      return {
+        ...state,
+        droppable: {
+          ...state.droppable,
+          containers
+        }
+      };
+    }
+    case Action.SetDroppableDisabled: {
+      const {
+        id,
+        key: key2,
+        disabled
+      } = action;
+      const element = state.droppable.containers.get(id);
+      if (!element || key2 !== element.key) {
+        return state;
+      }
+      const containers = new DroppableContainersMap(state.droppable.containers);
+      containers.set(id, {
+        ...element,
+        disabled
+      });
+      return {
+        ...state,
+        droppable: {
+          ...state.droppable,
+          containers
+        }
+      };
+    }
+    case Action.UnregisterDroppable: {
+      const {
+        id,
+        key: key2
+      } = action;
+      const element = state.droppable.containers.get(id);
+      if (!element || key2 !== element.key) {
+        return state;
+      }
+      const containers = new DroppableContainersMap(state.droppable.containers);
+      containers.delete(id);
+      return {
+        ...state,
+        droppable: {
+          ...state.droppable,
+          containers
+        }
+      };
+    }
+    default: {
+      return state;
+    }
+  }
+}
+function RestoreFocus(_ref) {
+  let {
+    disabled
+  } = _ref;
+  const {
+    active: active2,
+    activatorEvent,
+    draggableNodes
+  } = reactExports.useContext(InternalContext);
+  const previousActivatorEvent = usePrevious(activatorEvent);
+  const previousActiveId = usePrevious(active2 == null ? void 0 : active2.id);
+  reactExports.useEffect(() => {
+    if (disabled) {
+      return;
+    }
+    if (!activatorEvent && previousActivatorEvent && previousActiveId != null) {
+      if (!isKeyboardEvent(previousActivatorEvent)) {
+        return;
+      }
+      if (document.activeElement === previousActivatorEvent.target) {
+        return;
+      }
+      const draggableNode = draggableNodes.get(previousActiveId);
+      if (!draggableNode) {
+        return;
+      }
+      const {
+        activatorNode,
+        node
+      } = draggableNode;
+      if (!activatorNode.current && !node.current) {
+        return;
+      }
+      requestAnimationFrame(() => {
+        for (const element of [activatorNode.current, node.current]) {
+          if (!element) {
+            continue;
+          }
+          const focusableNode = findFirstFocusableNode(element);
+          if (focusableNode) {
+            focusableNode.focus();
+            break;
+          }
+        }
+      });
+    }
+  }, [activatorEvent, disabled, draggableNodes, previousActiveId, previousActivatorEvent]);
+  return null;
+}
+function applyModifiers(modifiers, _ref) {
+  let {
+    transform,
+    ...args
+  } = _ref;
+  return modifiers != null && modifiers.length ? modifiers.reduce((accumulator, modifier) => {
+    return modifier({
+      transform: accumulator,
+      ...args
+    });
+  }, transform) : transform;
+}
+function useMeasuringConfiguration(config) {
+  return reactExports.useMemo(
+    () => ({
+      draggable: {
+        ...defaultMeasuringConfiguration.draggable,
+        ...config == null ? void 0 : config.draggable
+      },
+      droppable: {
+        ...defaultMeasuringConfiguration.droppable,
+        ...config == null ? void 0 : config.droppable
+      },
+      dragOverlay: {
+        ...defaultMeasuringConfiguration.dragOverlay,
+        ...config == null ? void 0 : config.dragOverlay
+      }
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [config == null ? void 0 : config.draggable, config == null ? void 0 : config.droppable, config == null ? void 0 : config.dragOverlay]
+  );
+}
+function useLayoutShiftScrollCompensation(_ref) {
+  let {
+    activeNode,
+    measure,
+    initialRect,
+    config = true
+  } = _ref;
+  const initialized = reactExports.useRef(false);
+  const {
+    x,
+    y
+  } = typeof config === "boolean" ? {
+    x: config,
+    y: config
+  } : config;
+  useIsomorphicLayoutEffect(() => {
+    const disabled = !x && !y;
+    if (disabled || !activeNode) {
+      initialized.current = false;
+      return;
+    }
+    if (initialized.current || !initialRect) {
+      return;
+    }
+    const node = activeNode == null ? void 0 : activeNode.node.current;
+    if (!node || node.isConnected === false) {
+      return;
+    }
+    const rect = measure(node);
+    const rectDelta = getRectDelta(rect, initialRect);
+    if (!x) {
+      rectDelta.x = 0;
+    }
+    if (!y) {
+      rectDelta.y = 0;
+    }
+    initialized.current = true;
+    if (Math.abs(rectDelta.x) > 0 || Math.abs(rectDelta.y) > 0) {
+      const firstScrollableAncestor = getFirstScrollableAncestor(node);
+      if (firstScrollableAncestor) {
+        firstScrollableAncestor.scrollBy({
+          top: rectDelta.y,
+          left: rectDelta.x
+        });
+      }
+    }
+  }, [activeNode, x, y, initialRect, measure]);
+}
+const ActiveDraggableContext = /* @__PURE__ */ reactExports.createContext({
+  ...defaultCoordinates,
+  scaleX: 1,
+  scaleY: 1
+});
+var Status;
+(function(Status2) {
+  Status2[Status2["Uninitialized"] = 0] = "Uninitialized";
+  Status2[Status2["Initializing"] = 1] = "Initializing";
+  Status2[Status2["Initialized"] = 2] = "Initialized";
+})(Status || (Status = {}));
+const DndContext = /* @__PURE__ */ reactExports.memo(function DndContext2(_ref) {
+  var _sensorContext$curren, _dragOverlay$nodeRef$, _dragOverlay$rect, _over$rect;
+  let {
+    id,
+    accessibility,
+    autoScroll = true,
+    children,
+    sensors = defaultSensors,
+    collisionDetection = rectIntersection,
+    measuring,
+    modifiers,
+    ...props
+  } = _ref;
+  const store = reactExports.useReducer(reducer, void 0, getInitialState);
+  const [state, dispatch] = store;
+  const [dispatchMonitorEvent, registerMonitorListener] = useDndMonitorProvider();
+  const [status, setStatus] = reactExports.useState(Status.Uninitialized);
+  const isInitialized = status === Status.Initialized;
+  const {
+    draggable: {
+      active: activeId,
+      nodes: draggableNodes,
+      translate
+    },
+    droppable: {
+      containers: droppableContainers
+    }
+  } = state;
+  const node = activeId != null ? draggableNodes.get(activeId) : null;
+  const activeRects = reactExports.useRef({
+    initial: null,
+    translated: null
+  });
+  const active2 = reactExports.useMemo(() => {
+    var _node$data;
+    return activeId != null ? {
+      id: activeId,
+      // It's possible for the active node to unmount while dragging
+      data: (_node$data = node == null ? void 0 : node.data) != null ? _node$data : defaultData,
+      rect: activeRects
+    } : null;
+  }, [activeId, node]);
+  const activeRef = reactExports.useRef(null);
+  const [activeSensor, setActiveSensor] = reactExports.useState(null);
+  const [activatorEvent, setActivatorEvent] = reactExports.useState(null);
+  const latestProps = useLatestValue(props, Object.values(props));
+  const draggableDescribedById = useUniqueId("DndDescribedBy", id);
+  const enabledDroppableContainers = reactExports.useMemo(() => droppableContainers.getEnabled(), [droppableContainers]);
+  const measuringConfiguration = useMeasuringConfiguration(measuring);
+  const {
+    droppableRects,
+    measureDroppableContainers,
+    measuringScheduled
+  } = useDroppableMeasuring(enabledDroppableContainers, {
+    dragging: isInitialized,
+    dependencies: [translate.x, translate.y],
+    config: measuringConfiguration.droppable
+  });
+  const activeNode = useCachedNode(draggableNodes, activeId);
+  const activationCoordinates = reactExports.useMemo(() => activatorEvent ? getEventCoordinates(activatorEvent) : null, [activatorEvent]);
+  const autoScrollOptions = getAutoScrollerOptions();
+  const initialActiveNodeRect = useInitialRect(activeNode, measuringConfiguration.draggable.measure);
+  useLayoutShiftScrollCompensation({
+    activeNode: activeId != null ? draggableNodes.get(activeId) : null,
+    config: autoScrollOptions.layoutShiftCompensation,
+    initialRect: initialActiveNodeRect,
+    measure: measuringConfiguration.draggable.measure
+  });
+  const activeNodeRect = useRect(activeNode, measuringConfiguration.draggable.measure, initialActiveNodeRect);
+  const containerNodeRect = useRect(activeNode ? activeNode.parentElement : null);
+  const sensorContext = reactExports.useRef({
+    activatorEvent: null,
+    active: null,
+    activeNode,
+    collisionRect: null,
+    collisions: null,
+    droppableRects,
+    draggableNodes,
+    draggingNode: null,
+    draggingNodeRect: null,
+    droppableContainers,
+    over: null,
+    scrollableAncestors: [],
+    scrollAdjustedTranslate: null
+  });
+  const overNode = droppableContainers.getNodeFor((_sensorContext$curren = sensorContext.current.over) == null ? void 0 : _sensorContext$curren.id);
+  const dragOverlay = useDragOverlayMeasuring({
+    measure: measuringConfiguration.dragOverlay.measure
+  });
+  const draggingNode = (_dragOverlay$nodeRef$ = dragOverlay.nodeRef.current) != null ? _dragOverlay$nodeRef$ : activeNode;
+  const draggingNodeRect = isInitialized ? (_dragOverlay$rect = dragOverlay.rect) != null ? _dragOverlay$rect : activeNodeRect : null;
+  const usesDragOverlay = Boolean(dragOverlay.nodeRef.current && dragOverlay.rect);
+  const nodeRectDelta = useRectDelta(usesDragOverlay ? null : activeNodeRect);
+  const windowRect = useWindowRect(draggingNode ? getWindow(draggingNode) : null);
+  const scrollableAncestors = useScrollableAncestors(isInitialized ? overNode != null ? overNode : activeNode : null);
+  const scrollableAncestorRects = useRects(scrollableAncestors);
+  const modifiedTranslate = applyModifiers(modifiers, {
+    transform: {
+      x: translate.x - nodeRectDelta.x,
+      y: translate.y - nodeRectDelta.y,
+      scaleX: 1,
+      scaleY: 1
+    },
+    activatorEvent,
+    active: active2,
+    activeNodeRect,
+    containerNodeRect,
+    draggingNodeRect,
+    over: sensorContext.current.over,
+    overlayNodeRect: dragOverlay.rect,
+    scrollableAncestors,
+    scrollableAncestorRects,
+    windowRect
+  });
+  const pointerCoordinates = activationCoordinates ? add(activationCoordinates, translate) : null;
+  const scrollOffsets = useScrollOffsets(scrollableAncestors);
+  const scrollAdjustment = useScrollOffsetsDelta(scrollOffsets);
+  const activeNodeScrollDelta = useScrollOffsetsDelta(scrollOffsets, [activeNodeRect]);
+  const scrollAdjustedTranslate = add(modifiedTranslate, scrollAdjustment);
+  const collisionRect = draggingNodeRect ? getAdjustedRect(draggingNodeRect, modifiedTranslate) : null;
+  const collisions = active2 && collisionRect ? collisionDetection({
+    active: active2,
+    collisionRect,
+    droppableRects,
+    droppableContainers: enabledDroppableContainers,
+    pointerCoordinates
+  }) : null;
+  const overId = getFirstCollision(collisions, "id");
+  const [over, setOver] = reactExports.useState(null);
+  const appliedTranslate = usesDragOverlay ? modifiedTranslate : add(modifiedTranslate, activeNodeScrollDelta);
+  const transform = adjustScale(appliedTranslate, (_over$rect = over == null ? void 0 : over.rect) != null ? _over$rect : null, activeNodeRect);
+  const activeSensorRef = reactExports.useRef(null);
+  const instantiateSensor = reactExports.useCallback(
+    (event, _ref2) => {
+      let {
+        sensor: Sensor,
+        options
+      } = _ref2;
+      if (activeRef.current == null) {
+        return;
+      }
+      const activeNode2 = draggableNodes.get(activeRef.current);
+      if (!activeNode2) {
+        return;
+      }
+      const activatorEvent2 = event.nativeEvent;
+      const sensorInstance = new Sensor({
+        active: activeRef.current,
+        activeNode: activeNode2,
+        event: activatorEvent2,
+        options,
+        // Sensors need to be instantiated with refs for arguments that change over time
+        // otherwise they are frozen in time with the stale arguments
+        context: sensorContext,
+        onAbort(id2) {
+          const draggableNode = draggableNodes.get(id2);
+          if (!draggableNode) {
+            return;
+          }
+          const {
+            onDragAbort
+          } = latestProps.current;
+          const event2 = {
+            id: id2
+          };
+          onDragAbort == null ? void 0 : onDragAbort(event2);
+          dispatchMonitorEvent({
+            type: "onDragAbort",
+            event: event2
+          });
+        },
+        onPending(id2, constraint, initialCoordinates, offset) {
+          const draggableNode = draggableNodes.get(id2);
+          if (!draggableNode) {
+            return;
+          }
+          const {
+            onDragPending
+          } = latestProps.current;
+          const event2 = {
+            id: id2,
+            constraint,
+            initialCoordinates,
+            offset
+          };
+          onDragPending == null ? void 0 : onDragPending(event2);
+          dispatchMonitorEvent({
+            type: "onDragPending",
+            event: event2
+          });
+        },
+        onStart(initialCoordinates) {
+          const id2 = activeRef.current;
+          if (id2 == null) {
+            return;
+          }
+          const draggableNode = draggableNodes.get(id2);
+          if (!draggableNode) {
+            return;
+          }
+          const {
+            onDragStart
+          } = latestProps.current;
+          const event2 = {
+            activatorEvent: activatorEvent2,
+            active: {
+              id: id2,
+              data: draggableNode.data,
+              rect: activeRects
+            }
+          };
+          reactDomExports.unstable_batchedUpdates(() => {
+            onDragStart == null ? void 0 : onDragStart(event2);
+            setStatus(Status.Initializing);
+            dispatch({
+              type: Action.DragStart,
+              initialCoordinates,
+              active: id2
+            });
+            dispatchMonitorEvent({
+              type: "onDragStart",
+              event: event2
+            });
+            setActiveSensor(activeSensorRef.current);
+            setActivatorEvent(activatorEvent2);
+          });
+        },
+        onMove(coordinates) {
+          dispatch({
+            type: Action.DragMove,
+            coordinates
+          });
+        },
+        onEnd: createHandler(Action.DragEnd),
+        onCancel: createHandler(Action.DragCancel)
+      });
+      activeSensorRef.current = sensorInstance;
+      function createHandler(type) {
+        return async function handler() {
+          const {
+            active: active3,
+            collisions: collisions2,
+            over: over2,
+            scrollAdjustedTranslate: scrollAdjustedTranslate2
+          } = sensorContext.current;
+          let event2 = null;
+          if (active3 && scrollAdjustedTranslate2) {
+            const {
+              cancelDrop
+            } = latestProps.current;
+            event2 = {
+              activatorEvent: activatorEvent2,
+              active: active3,
+              collisions: collisions2,
+              delta: scrollAdjustedTranslate2,
+              over: over2
+            };
+            if (type === Action.DragEnd && typeof cancelDrop === "function") {
+              const shouldCancel = await Promise.resolve(cancelDrop(event2));
+              if (shouldCancel) {
+                type = Action.DragCancel;
+              }
+            }
+          }
+          activeRef.current = null;
+          reactDomExports.unstable_batchedUpdates(() => {
+            dispatch({
+              type
+            });
+            setStatus(Status.Uninitialized);
+            setOver(null);
+            setActiveSensor(null);
+            setActivatorEvent(null);
+            activeSensorRef.current = null;
+            const eventName = type === Action.DragEnd ? "onDragEnd" : "onDragCancel";
+            if (event2) {
+              const handler2 = latestProps.current[eventName];
+              handler2 == null ? void 0 : handler2(event2);
+              dispatchMonitorEvent({
+                type: eventName,
+                event: event2
+              });
+            }
+          });
+        };
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [draggableNodes]
+  );
+  const bindActivatorToSensorInstantiator = reactExports.useCallback((handler, sensor) => {
+    return (event, active3) => {
+      const nativeEvent = event.nativeEvent;
+      const activeDraggableNode = draggableNodes.get(active3);
+      if (
+        // Another sensor is already instantiating
+        activeRef.current !== null || // No active draggable
+        !activeDraggableNode || // Event has already been captured
+        nativeEvent.dndKit || nativeEvent.defaultPrevented
+      ) {
+        return;
+      }
+      const activationContext = {
+        active: activeDraggableNode
+      };
+      const shouldActivate = handler(event, sensor.options, activationContext);
+      if (shouldActivate === true) {
+        nativeEvent.dndKit = {
+          capturedBy: sensor.sensor
+        };
+        activeRef.current = active3;
+        instantiateSensor(event, sensor);
+      }
+    };
+  }, [draggableNodes, instantiateSensor]);
+  const activators = useCombineActivators(sensors, bindActivatorToSensorInstantiator);
+  useSensorSetup(sensors);
+  useIsomorphicLayoutEffect(() => {
+    if (activeNodeRect && status === Status.Initializing) {
+      setStatus(Status.Initialized);
+    }
+  }, [activeNodeRect, status]);
+  reactExports.useEffect(
+    () => {
+      const {
+        onDragMove
+      } = latestProps.current;
+      const {
+        active: active3,
+        activatorEvent: activatorEvent2,
+        collisions: collisions2,
+        over: over2
+      } = sensorContext.current;
+      if (!active3 || !activatorEvent2) {
+        return;
+      }
+      const event = {
+        active: active3,
+        activatorEvent: activatorEvent2,
+        collisions: collisions2,
+        delta: {
+          x: scrollAdjustedTranslate.x,
+          y: scrollAdjustedTranslate.y
+        },
+        over: over2
+      };
+      reactDomExports.unstable_batchedUpdates(() => {
+        onDragMove == null ? void 0 : onDragMove(event);
+        dispatchMonitorEvent({
+          type: "onDragMove",
+          event
+        });
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scrollAdjustedTranslate.x, scrollAdjustedTranslate.y]
+  );
+  reactExports.useEffect(
+    () => {
+      const {
+        active: active3,
+        activatorEvent: activatorEvent2,
+        collisions: collisions2,
+        droppableContainers: droppableContainers2,
+        scrollAdjustedTranslate: scrollAdjustedTranslate2
+      } = sensorContext.current;
+      if (!active3 || activeRef.current == null || !activatorEvent2 || !scrollAdjustedTranslate2) {
+        return;
+      }
+      const {
+        onDragOver
+      } = latestProps.current;
+      const overContainer = droppableContainers2.get(overId);
+      const over2 = overContainer && overContainer.rect.current ? {
+        id: overContainer.id,
+        rect: overContainer.rect.current,
+        data: overContainer.data,
+        disabled: overContainer.disabled
+      } : null;
+      const event = {
+        active: active3,
+        activatorEvent: activatorEvent2,
+        collisions: collisions2,
+        delta: {
+          x: scrollAdjustedTranslate2.x,
+          y: scrollAdjustedTranslate2.y
+        },
+        over: over2
+      };
+      reactDomExports.unstable_batchedUpdates(() => {
+        setOver(over2);
+        onDragOver == null ? void 0 : onDragOver(event);
+        dispatchMonitorEvent({
+          type: "onDragOver",
+          event
+        });
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [overId]
+  );
+  useIsomorphicLayoutEffect(() => {
+    sensorContext.current = {
+      activatorEvent,
+      active: active2,
+      activeNode,
+      collisionRect,
+      collisions,
+      droppableRects,
+      draggableNodes,
+      draggingNode,
+      draggingNodeRect,
+      droppableContainers,
+      over,
+      scrollableAncestors,
+      scrollAdjustedTranslate
+    };
+    activeRects.current = {
+      initial: draggingNodeRect,
+      translated: collisionRect
+    };
+  }, [active2, activeNode, collisions, collisionRect, draggableNodes, draggingNode, draggingNodeRect, droppableRects, droppableContainers, over, scrollableAncestors, scrollAdjustedTranslate]);
+  useAutoScroller({
+    ...autoScrollOptions,
+    delta: translate,
+    draggingRect: collisionRect,
+    pointerCoordinates,
+    scrollableAncestors,
+    scrollableAncestorRects
+  });
+  const publicContext = reactExports.useMemo(() => {
+    const context = {
+      active: active2,
+      activeNode,
+      activeNodeRect,
+      activatorEvent,
+      collisions,
+      containerNodeRect,
+      dragOverlay,
+      draggableNodes,
+      droppableContainers,
+      droppableRects,
+      over,
+      measureDroppableContainers,
+      scrollableAncestors,
+      scrollableAncestorRects,
+      measuringConfiguration,
+      measuringScheduled,
+      windowRect
+    };
+    return context;
+  }, [active2, activeNode, activeNodeRect, activatorEvent, collisions, containerNodeRect, dragOverlay, draggableNodes, droppableContainers, droppableRects, over, measureDroppableContainers, scrollableAncestors, scrollableAncestorRects, measuringConfiguration, measuringScheduled, windowRect]);
+  const internalContext = reactExports.useMemo(() => {
+    const context = {
+      activatorEvent,
+      activators,
+      active: active2,
+      activeNodeRect,
+      ariaDescribedById: {
+        draggable: draggableDescribedById
+      },
+      dispatch,
+      draggableNodes,
+      over,
+      measureDroppableContainers
+    };
+    return context;
+  }, [activatorEvent, activators, active2, activeNodeRect, dispatch, draggableDescribedById, draggableNodes, over, measureDroppableContainers]);
+  return React$2.createElement(DndMonitorContext.Provider, {
+    value: registerMonitorListener
+  }, React$2.createElement(InternalContext.Provider, {
+    value: internalContext
+  }, React$2.createElement(PublicContext.Provider, {
+    value: publicContext
+  }, React$2.createElement(ActiveDraggableContext.Provider, {
+    value: transform
+  }, children)), React$2.createElement(RestoreFocus, {
+    disabled: (accessibility == null ? void 0 : accessibility.restoreFocus) === false
+  })), React$2.createElement(Accessibility, {
+    ...accessibility,
+    hiddenTextDescribedById: draggableDescribedById
+  }));
+  function getAutoScrollerOptions() {
+    const activeSensorDisablesAutoscroll = (activeSensor == null ? void 0 : activeSensor.autoScrollEnabled) === false;
+    const autoScrollGloballyDisabled = typeof autoScroll === "object" ? autoScroll.enabled === false : autoScroll === false;
+    const enabled = isInitialized && !activeSensorDisablesAutoscroll && !autoScrollGloballyDisabled;
+    if (typeof autoScroll === "object") {
+      return {
+        ...autoScroll,
+        enabled
+      };
+    }
+    return {
+      enabled
+    };
+  }
+});
+const NullContext = /* @__PURE__ */ reactExports.createContext(null);
+const defaultRole = "button";
+const ID_PREFIX = "Draggable";
+function useDraggable(_ref) {
+  let {
+    id,
+    data,
+    disabled = false,
+    attributes
+  } = _ref;
+  const key2 = useUniqueId(ID_PREFIX);
+  const {
+    activators,
+    activatorEvent,
+    active: active2,
+    activeNodeRect,
+    ariaDescribedById,
+    draggableNodes,
+    over
+  } = reactExports.useContext(InternalContext);
+  const {
+    role = defaultRole,
+    roleDescription = "draggable",
+    tabIndex = 0
+  } = attributes != null ? attributes : {};
+  const isDragging = (active2 == null ? void 0 : active2.id) === id;
+  const transform = reactExports.useContext(isDragging ? ActiveDraggableContext : NullContext);
+  const [node, setNodeRef] = useNodeRef();
+  const [activatorNode, setActivatorNodeRef] = useNodeRef();
+  const listeners = useSyntheticListeners(activators, id);
+  const dataRef = useLatestValue(data);
+  useIsomorphicLayoutEffect(
+    () => {
+      draggableNodes.set(id, {
+        id,
+        key: key2,
+        node,
+        activatorNode,
+        data: dataRef
+      });
+      return () => {
+        const node2 = draggableNodes.get(id);
+        if (node2 && node2.key === key2) {
+          draggableNodes.delete(id);
+        }
+      };
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [draggableNodes, id]
+  );
+  const memoizedAttributes = reactExports.useMemo(() => ({
+    role,
+    tabIndex,
+    "aria-disabled": disabled,
+    "aria-pressed": isDragging && role === defaultRole ? true : void 0,
+    "aria-roledescription": roleDescription,
+    "aria-describedby": ariaDescribedById.draggable
+  }), [disabled, role, tabIndex, isDragging, roleDescription, ariaDescribedById.draggable]);
+  return {
+    active: active2,
+    activatorEvent,
+    activeNodeRect,
+    attributes: memoizedAttributes,
+    isDragging,
+    listeners: disabled ? void 0 : listeners,
+    node,
+    over,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform
+  };
+}
+function useDndContext() {
+  return reactExports.useContext(PublicContext);
+}
+const ID_PREFIX$1 = "Droppable";
+const defaultResizeObserverConfig = {
+  timeout: 25
+};
+function useDroppable(_ref) {
+  let {
+    data,
+    disabled = false,
+    id,
+    resizeObserverConfig
+  } = _ref;
+  const key2 = useUniqueId(ID_PREFIX$1);
+  const {
+    active: active2,
+    dispatch,
+    over,
+    measureDroppableContainers
+  } = reactExports.useContext(InternalContext);
+  const previous = reactExports.useRef({
+    disabled
+  });
+  const resizeObserverConnected = reactExports.useRef(false);
+  const rect = reactExports.useRef(null);
+  const callbackId = reactExports.useRef(null);
+  const {
+    disabled: resizeObserverDisabled,
+    updateMeasurementsFor,
+    timeout: resizeObserverTimeout
+  } = {
+    ...defaultResizeObserverConfig,
+    ...resizeObserverConfig
+  };
+  const ids2 = useLatestValue(updateMeasurementsFor != null ? updateMeasurementsFor : id);
+  const handleResize = reactExports.useCallback(
+    () => {
+      if (!resizeObserverConnected.current) {
+        resizeObserverConnected.current = true;
+        return;
+      }
+      if (callbackId.current != null) {
+        clearTimeout(callbackId.current);
+      }
+      callbackId.current = setTimeout(() => {
+        measureDroppableContainers(Array.isArray(ids2.current) ? ids2.current : [ids2.current]);
+        callbackId.current = null;
+      }, resizeObserverTimeout);
+    },
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+    [resizeObserverTimeout]
+  );
+  const resizeObserver = useResizeObserver({
+    callback: handleResize,
+    disabled: resizeObserverDisabled || !active2
+  });
+  const handleNodeChange = reactExports.useCallback((newElement, previousElement) => {
+    if (!resizeObserver) {
+      return;
+    }
+    if (previousElement) {
+      resizeObserver.unobserve(previousElement);
+      resizeObserverConnected.current = false;
+    }
+    if (newElement) {
+      resizeObserver.observe(newElement);
+    }
+  }, [resizeObserver]);
+  const [nodeRef, setNodeRef] = useNodeRef(handleNodeChange);
+  const dataRef = useLatestValue(data);
+  reactExports.useEffect(() => {
+    if (!resizeObserver || !nodeRef.current) {
+      return;
+    }
+    resizeObserver.disconnect();
+    resizeObserverConnected.current = false;
+    resizeObserver.observe(nodeRef.current);
+  }, [nodeRef, resizeObserver]);
+  reactExports.useEffect(
+    () => {
+      dispatch({
+        type: Action.RegisterDroppable,
+        element: {
+          id,
+          key: key2,
+          disabled,
+          node: nodeRef,
+          rect,
+          data: dataRef
+        }
+      });
+      return () => dispatch({
+        type: Action.UnregisterDroppable,
+        key: key2,
+        id
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [id]
+  );
+  reactExports.useEffect(() => {
+    if (disabled !== previous.current.disabled) {
+      dispatch({
+        type: Action.SetDroppableDisabled,
+        id,
+        key: key2,
+        disabled
+      });
+      previous.current.disabled = disabled;
+    }
+  }, [id, key2, disabled, dispatch]);
+  return {
+    active: active2,
+    rect,
+    isOver: (over == null ? void 0 : over.id) === id,
+    node: nodeRef,
+    over,
+    setNodeRef
+  };
+}
+function AnimationManager(_ref) {
+  let {
+    animation,
+    children
+  } = _ref;
+  const [clonedChildren, setClonedChildren] = reactExports.useState(null);
+  const [element, setElement] = reactExports.useState(null);
+  const previousChildren = usePrevious(children);
+  if (!children && !clonedChildren && previousChildren) {
+    setClonedChildren(previousChildren);
+  }
+  useIsomorphicLayoutEffect(() => {
+    if (!element) {
+      return;
+    }
+    const key2 = clonedChildren == null ? void 0 : clonedChildren.key;
+    const id = clonedChildren == null ? void 0 : clonedChildren.props.id;
+    if (key2 == null || id == null) {
+      setClonedChildren(null);
+      return;
+    }
+    Promise.resolve(animation(id, element)).then(() => {
+      setClonedChildren(null);
+    });
+  }, [animation, clonedChildren, element]);
+  return React$2.createElement(React$2.Fragment, null, children, clonedChildren ? reactExports.cloneElement(clonedChildren, {
+    ref: setElement
+  }) : null);
+}
+const defaultTransform = {
+  x: 0,
+  y: 0,
+  scaleX: 1,
+  scaleY: 1
+};
+function NullifiedContextProvider(_ref) {
+  let {
+    children
+  } = _ref;
+  return React$2.createElement(InternalContext.Provider, {
+    value: defaultInternalContext
+  }, React$2.createElement(ActiveDraggableContext.Provider, {
+    value: defaultTransform
+  }, children));
+}
+const baseStyles = {
+  position: "fixed",
+  touchAction: "none"
+};
+const defaultTransition = (activatorEvent) => {
+  const isKeyboardActivator = isKeyboardEvent(activatorEvent);
+  return isKeyboardActivator ? "transform 250ms ease" : void 0;
+};
+const PositionedOverlay = /* @__PURE__ */ reactExports.forwardRef((_ref, ref) => {
+  let {
+    as,
+    activatorEvent,
+    adjustScale: adjustScale2,
+    children,
+    className,
+    rect,
+    style: style2,
+    transform,
+    transition = defaultTransition
+  } = _ref;
+  if (!rect) {
+    return null;
+  }
+  const scaleAdjustedTransform = adjustScale2 ? transform : {
+    ...transform,
+    scaleX: 1,
+    scaleY: 1
+  };
+  const styles2 = {
+    ...baseStyles,
+    width: rect.width,
+    height: rect.height,
+    top: rect.top,
+    left: rect.left,
+    transform: CSS.Transform.toString(scaleAdjustedTransform),
+    transformOrigin: adjustScale2 && activatorEvent ? getRelativeTransformOrigin(activatorEvent, rect) : void 0,
+    transition: typeof transition === "function" ? transition(activatorEvent) : transition,
+    ...style2
+  };
+  return React$2.createElement(as, {
+    className,
+    style: styles2,
+    ref
+  }, children);
+});
+const defaultDropAnimationSideEffects = (options) => (_ref) => {
+  let {
+    active: active2,
+    dragOverlay
+  } = _ref;
+  const originalStyles = {};
+  const {
+    styles: styles2,
+    className
+  } = options;
+  if (styles2 != null && styles2.active) {
+    for (const [key2, value] of Object.entries(styles2.active)) {
+      if (value === void 0) {
+        continue;
+      }
+      originalStyles[key2] = active2.node.style.getPropertyValue(key2);
+      active2.node.style.setProperty(key2, value);
+    }
+  }
+  if (styles2 != null && styles2.dragOverlay) {
+    for (const [key2, value] of Object.entries(styles2.dragOverlay)) {
+      if (value === void 0) {
+        continue;
+      }
+      dragOverlay.node.style.setProperty(key2, value);
+    }
+  }
+  if (className != null && className.active) {
+    active2.node.classList.add(className.active);
+  }
+  if (className != null && className.dragOverlay) {
+    dragOverlay.node.classList.add(className.dragOverlay);
+  }
+  return function cleanup() {
+    for (const [key2, value] of Object.entries(originalStyles)) {
+      active2.node.style.setProperty(key2, value);
+    }
+    if (className != null && className.active) {
+      active2.node.classList.remove(className.active);
+    }
+  };
+};
+const defaultKeyframeResolver = (_ref2) => {
+  let {
+    transform: {
+      initial,
+      final
+    }
+  } = _ref2;
+  return [{
+    transform: CSS.Transform.toString(initial)
+  }, {
+    transform: CSS.Transform.toString(final)
+  }];
+};
+const defaultDropAnimationConfiguration = {
+  duration: 250,
+  easing: "ease",
+  keyframes: defaultKeyframeResolver,
+  sideEffects: /* @__PURE__ */ defaultDropAnimationSideEffects({
+    styles: {
+      active: {
+        opacity: "0"
+      }
+    }
+  })
+};
+function useDropAnimation(_ref3) {
+  let {
+    config,
+    draggableNodes,
+    droppableContainers,
+    measuringConfiguration
+  } = _ref3;
+  return useEvent((id, node) => {
+    if (config === null) {
+      return;
+    }
+    const activeDraggable = draggableNodes.get(id);
+    if (!activeDraggable) {
+      return;
+    }
+    const activeNode = activeDraggable.node.current;
+    if (!activeNode) {
+      return;
+    }
+    const measurableNode = getMeasurableNode(node);
+    if (!measurableNode) {
+      return;
+    }
+    const {
+      transform
+    } = getWindow(node).getComputedStyle(node);
+    const parsedTransform = parseTransform(transform);
+    if (!parsedTransform) {
+      return;
+    }
+    const animation = typeof config === "function" ? config : createDefaultDropAnimation(config);
+    scrollIntoViewIfNeeded(activeNode, measuringConfiguration.draggable.measure);
+    return animation({
+      active: {
+        id,
+        data: activeDraggable.data,
+        node: activeNode,
+        rect: measuringConfiguration.draggable.measure(activeNode)
+      },
+      draggableNodes,
+      dragOverlay: {
+        node,
+        rect: measuringConfiguration.dragOverlay.measure(measurableNode)
+      },
+      droppableContainers,
+      measuringConfiguration,
+      transform: parsedTransform
+    });
+  });
+}
+function createDefaultDropAnimation(options) {
+  const {
+    duration,
+    easing,
+    sideEffects,
+    keyframes
+  } = {
+    ...defaultDropAnimationConfiguration,
+    ...options
+  };
+  return (_ref4) => {
+    let {
+      active: active2,
+      dragOverlay,
+      transform,
+      ...rest
+    } = _ref4;
+    if (!duration) {
+      return;
+    }
+    const delta = {
+      x: dragOverlay.rect.left - active2.rect.left,
+      y: dragOverlay.rect.top - active2.rect.top
+    };
+    const scale = {
+      scaleX: transform.scaleX !== 1 ? active2.rect.width * transform.scaleX / dragOverlay.rect.width : 1,
+      scaleY: transform.scaleY !== 1 ? active2.rect.height * transform.scaleY / dragOverlay.rect.height : 1
+    };
+    const finalTransform = {
+      x: transform.x - delta.x,
+      y: transform.y - delta.y,
+      ...scale
+    };
+    const animationKeyframes = keyframes({
+      ...rest,
+      active: active2,
+      dragOverlay,
+      transform: {
+        initial: transform,
+        final: finalTransform
+      }
+    });
+    const [firstKeyframe] = animationKeyframes;
+    const lastKeyframe = animationKeyframes[animationKeyframes.length - 1];
+    if (JSON.stringify(firstKeyframe) === JSON.stringify(lastKeyframe)) {
+      return;
+    }
+    const cleanup = sideEffects == null ? void 0 : sideEffects({
+      active: active2,
+      dragOverlay,
+      ...rest
+    });
+    const animation = dragOverlay.node.animate(animationKeyframes, {
+      duration,
+      easing,
+      fill: "forwards"
+    });
+    return new Promise((resolve) => {
+      animation.onfinish = () => {
+        cleanup == null ? void 0 : cleanup();
+        resolve();
+      };
+    });
+  };
+}
+let key = 0;
+function useKey(id) {
+  return reactExports.useMemo(() => {
+    if (id == null) {
+      return;
+    }
+    key++;
+    return key;
+  }, [id]);
+}
+const DragOverlay = /* @__PURE__ */ React$2.memo((_ref) => {
+  let {
+    adjustScale: adjustScale2 = false,
+    children,
+    dropAnimation: dropAnimationConfig,
+    style: style2,
+    transition,
+    modifiers,
+    wrapperElement = "div",
+    className,
+    zIndex = 999
+  } = _ref;
+  const {
+    activatorEvent,
+    active: active2,
+    activeNodeRect,
+    containerNodeRect,
+    draggableNodes,
+    droppableContainers,
+    dragOverlay,
+    over,
+    measuringConfiguration,
+    scrollableAncestors,
+    scrollableAncestorRects,
+    windowRect
+  } = useDndContext();
+  const transform = reactExports.useContext(ActiveDraggableContext);
+  const key2 = useKey(active2 == null ? void 0 : active2.id);
+  const modifiedTransform = applyModifiers(modifiers, {
+    activatorEvent,
+    active: active2,
+    activeNodeRect,
+    containerNodeRect,
+    draggingNodeRect: dragOverlay.rect,
+    over,
+    overlayNodeRect: dragOverlay.rect,
+    scrollableAncestors,
+    scrollableAncestorRects,
+    transform,
+    windowRect
+  });
+  const initialRect = useInitialValue(activeNodeRect);
+  const dropAnimation = useDropAnimation({
+    config: dropAnimationConfig,
+    draggableNodes,
+    droppableContainers,
+    measuringConfiguration
+  });
+  const ref = initialRect ? dragOverlay.setRef : void 0;
+  return React$2.createElement(NullifiedContextProvider, null, React$2.createElement(AnimationManager, {
+    animation: dropAnimation
+  }, active2 && key2 ? React$2.createElement(PositionedOverlay, {
+    key: key2,
+    id: active2.id,
+    ref,
+    as: wrapperElement,
+    activatorEvent,
+    adjustScale: adjustScale2,
+    className,
+    transition,
+    rect: initialRect,
+    style: {
+      zIndex,
+      ...style2
+    },
+    transform: modifiedTransform
+  }, children) : null));
+});
+const EVAL_TYPE_COLORS = {
+  CST: "#2196f3",
+  Custody: "#9c27b0",
+  Risk: "#f44336",
+  "PTSD Dx": "#ff9800",
+  "ADHD Dx": "#4caf50",
+  Malingering: "#795548",
+  Fitness: "#607d8b",
+  Capacity: "#00bcd4"
+};
+const PIPELINE_STAGES = [
+  { key: "onboarding", label: "Onboarding" },
+  { key: "testing", label: "Testing" },
+  { key: "interview", label: "Interview" },
+  { key: "diagnostics", label: "Report" },
+  { key: "review", label: "Review" },
+  { key: "complete", label: "Complete" }
+];
+const STAGE_CARD_STYLES = {
+  onboarding: { bg: "#e0f7fa", border: "#b2ebf2", text: "#00695c", accent: "#00897b" },
+  testing: { bg: "#f3e5f5", border: "#e1bee7", text: "#6a1b9a", accent: "#8e24aa" },
+  interview: { bg: "#fce4ec", border: "#f8bbd0", text: "#ad1457", accent: "#d81b60" },
+  diagnostics: { bg: "#fff3e0", border: "#ffe0b2", text: "#e65100", accent: "#f57c00" },
+  review: { bg: "#fbe9e7", border: "#ffccbc", text: "#bf360c", accent: "#e64a19" },
+  complete: { bg: "#e8f5e9", border: "#c8e6c9", text: "#2e7d32", accent: "#43a047" }
+};
+function mapStageToKey(stage) {
+  if (!stage) return "onboarding";
+  const s = stage.toLowerCase();
+  if (s.includes("onboard")) return "onboarding";
+  if (s.includes("test")) return "testing";
+  if (s.includes("interview")) return "interview";
+  if (s.includes("diagnos")) return "diagnostics";
+  if (s.includes("review")) return "review";
+  if (s.includes("complete")) return "complete";
+  return "onboarding";
+}
+function mapStageLabel(stage) {
+  const key2 = mapStageToKey(stage);
+  return PIPELINE_STAGES.find((s) => s.key === key2)?.label ?? "Onboarding";
+}
+function formatClientName(c) {
+  const first = c.examinee_first_name ?? "";
+  const last = c.examinee_last_name ?? "";
+  const initial = first.charAt(0).toUpperCase();
+  const type = c.evaluation_type || "";
+  return `${last}, ${initial}. ${type ? `— ${type}` : ""}`.trim();
+}
+function DashboardTab({ cases, onCaseClick, onRefresh }) {
+  const [filterType, setFilterType] = reactExports.useState("All");
+  const [filterStage, setFilterStage] = reactExports.useState("All");
+  const [searchText, setSearchText] = reactExports.useState("");
+  const [searchCase, setSearchCase] = reactExports.useState("");
+  const [dateSort, setDateSort] = reactExports.useState("desc");
+  const [kanbanOpen, setKanbanOpen] = reactExports.useState(true);
+  const [tableOpen, setTableOpen] = reactExports.useState(false);
+  const [activeDragId, setActiveDragId] = reactExports.useState(null);
+  const [kanbanHeight, setKanbanHeight] = reactExports.useState(320);
+  const splitterDragging = reactExports.useRef(false);
+  const splitterStartY = reactExports.useRef(0);
+  const splitterStartH = reactExports.useRef(0);
+  const onSplitterPointerDown = reactExports.useCallback((e) => {
+    e.preventDefault();
+    splitterDragging.current = true;
+    splitterStartY.current = e.clientY;
+    splitterStartH.current = kanbanHeight;
+    setKanbanOpen(true);
+    setTableOpen(true);
+    e.target.setPointerCapture(e.pointerId);
+  }, [kanbanHeight]);
+  const onSplitterPointerMove = reactExports.useCallback((e) => {
+    if (!splitterDragging.current) return;
+    const delta = e.clientY - splitterStartY.current;
+    const newH = Math.max(120, Math.min(800, splitterStartH.current + delta));
+    setKanbanHeight(newH);
+  }, []);
+  const onSplitterPointerUp = reactExports.useCallback(() => {
+    splitterDragging.current = false;
+  }, []);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+  const handleDragStart = reactExports.useCallback((event) => {
+    setActiveDragId(event.active.id);
+  }, []);
+  const handleDragEnd = reactExports.useCallback(async (event) => {
+    setActiveDragId(null);
+    const { active: active2, over } = event;
+    if (!over) return;
+    const caseId = active2.id;
+    const stage = over.id;
+    if (!PIPELINE_STAGES.some((s) => s.key === stage)) return;
+    try {
+      await window.psygil?.pipeline?.setStage({ caseId, stage });
+      onRefresh?.();
+    } catch (err) {
+      console.error("[kanban] drop failed:", err);
+    }
+  }, [onRefresh]);
+  const toggleKanban = reactExports.useCallback(() => {
+    if (kanbanOpen) {
+      setKanbanOpen(false);
+      setTableOpen(true);
+    } else {
+      setKanbanOpen(true);
+      setTableOpen(false);
+    }
+  }, [kanbanOpen]);
+  const toggleTable = reactExports.useCallback(() => {
+    if (tableOpen) {
+      setTableOpen(false);
+      setKanbanOpen(true);
+    } else {
+      setTableOpen(true);
+      setKanbanOpen(false);
+    }
+  }, [tableOpen]);
+  const stats = reactExports.useMemo(() => {
+    const stageCounts = { onboarding: 0, testing: 0, interview: 0, diagnostics: 0, review: 0, complete: 0 };
+    let activeCount = 0;
+    cases.forEach((c) => {
+      const stage = mapStageToKey(c.workflow_current_stage);
+      stageCounts[stage]++;
+      if (stage !== "complete") activeCount++;
+    });
+    return { active: activeCount, stageCounts };
+  }, [cases]);
+  const casesByStage = reactExports.useMemo(() => {
+    const grouped = {};
+    for (const s of PIPELINE_STAGES) grouped[s.key] = [];
+    cases.forEach((c) => {
+      const key2 = mapStageToKey(c.workflow_current_stage);
+      grouped[key2]?.push(c);
+    });
+    return grouped;
+  }, [cases]);
+  const evalTypeStats = reactExports.useMemo(() => {
+    const counts = {};
+    cases.forEach((c) => {
+      const type = c.evaluation_type || "Untyped";
+      counts[type] = (counts[type] || 0) + 1;
+    });
+    return counts;
+  }, [cases]);
+  const evalTypes = reactExports.useMemo(() => {
+    return Array.from(new Set(cases.map((c) => c.evaluation_type).filter(Boolean))).sort();
+  }, [cases]);
+  const filteredCases = reactExports.useMemo(() => {
+    let result = [...cases];
+    if (filterType !== "All") result = result.filter((c) => c.evaluation_type === filterType);
+    if (filterStage !== "All") result = result.filter((c) => mapStageToKey(c.workflow_current_stage) === filterStage);
+    if (searchCase) {
+      const q = searchCase.toLowerCase();
+      result = result.filter((c) => c.case_number.toLowerCase().includes(q));
+    }
+    if (searchText) {
+      const q = searchText.toLowerCase();
+      result = result.filter((c) => {
+        const name = `${c.examinee_last_name} ${c.examinee_first_name}`.toLowerCase();
+        return name.includes(q);
+      });
+    }
+    const dir = dateSort === "asc" ? 1 : -1;
+    result.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return (dateA - dateB) * dir;
+    });
+    return result;
+  }, [cases, filterType, filterStage, searchText, searchCase, dateSort]);
+  const isFiltered = filterType !== "All" || filterStage !== "All" || searchText !== "" || searchCase !== "";
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "12px", fontSize: "12px", height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "baseline", gap: "16px", marginBottom: "10px", flexShrink: 0 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { style: { fontSize: "16px", margin: 0, fontWeight: 600 }, children: "Practice Dashboard" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: "12px", color: "#283593", fontWeight: 600 }, children: [
+        cases.length,
+        " Total"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: "12px", color: "#1565c0", fontWeight: 600 }, children: [
+        stats.active,
+        " Active"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          display: "grid",
+          gridTemplateColumns: "repeat(6, 1fr)",
+          gap: "6px",
+          marginBottom: kanbanOpen ? "0" : "10px",
+          cursor: "pointer",
+          userSelect: "none",
+          flexShrink: 0
+        },
+        onClick: toggleKanban,
+        title: kanbanOpen ? "Collapse Kanban board" : "Expand Kanban board",
+        children: PIPELINE_STAGES.map((stage) => {
+          const sc = STAGE_CARD_STYLES[stage.key];
+          const count = stats.stageCounts[stage.key] ?? 0;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+            background: sc.bg,
+            border: `1px solid ${sc.border}`,
+            borderRadius: kanbanOpen ? "4px 4px 0 0" : "4px",
+            padding: "6px 8px",
+            textAlign: "center",
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "center",
+            gap: "5px"
+          }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "16px", fontWeight: 700, color: sc.text }, children: count }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: "13px", fontWeight: 700, color: sc.text }, children: [
+              stage.label,
+              " ",
+              kanbanOpen ? "▴" : "▾"
+            ] })
+          ] }, stage.key);
+        })
+      }
+    ),
+    kanbanOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      DndContext,
+      {
+        sensors,
+        collisionDetection: pointerWithin,
+        onDragStart: handleDragStart,
+        onDragEnd: handleDragEnd,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+            display: "grid",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: "6px",
+            /* If list is collapsed, kanban fills all space. If both open, use fixed height. */
+            ...tableOpen ? { height: `${kanbanHeight}px`, minHeight: 0, flexShrink: 0 } : { flex: 1, minHeight: 0 }
+          }, children: PIPELINE_STAGES.map((stage) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            KanbanColumn,
+            {
+              stageKey: stage.key,
+              cases: casesByStage[stage.key] ?? [],
+              onCaseClick
+            },
+            stage.key
+          )) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DragOverlay, { dropAnimation: null, children: activeDragId != null ? (() => {
+            const dragCase = cases.find((c) => c.case_id === activeDragId);
+            if (!dragCase) return null;
+            const stageKey = mapStageToKey(dragCase.workflow_current_stage);
+            const sc = STAGE_CARD_STYLES[stageKey];
+            return /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanCardContent, { c: dragCase, sc, isDragging: true });
+          })() : null })
+        ]
+      }
+    ),
+    kanbanOpen && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        onPointerDown: onSplitterPointerDown,
+        onPointerMove: onSplitterPointerMove,
+        onPointerUp: onSplitterPointerUp,
+        style: {
+          height: "6px",
+          flexShrink: 0,
+          cursor: "row-resize",
+          userSelect: "none",
+          background: splitterDragging.current ? "var(--accent, #1565c0)" : "transparent",
+          borderTop: "1px solid var(--border)",
+          borderBottom: "1px solid var(--border)",
+          transition: "background 0.1s",
+          margin: "2px 0"
+        },
+        onPointerEnter: (e) => {
+          e.target.style.background = "var(--border, #ccc)";
+        },
+        onPointerLeave: (e) => {
+          if (!splitterDragging.current) e.target.style.background = "transparent";
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+      flex: tableOpen ? 1 : "0 0 auto",
+      minHeight: tableOpen ? 0 : void 0,
+      maxHeight: tableOpen ? void 0 : "28px",
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      paddingTop: "6px"
+    }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", cursor: "pointer", userSelect: "none", flexShrink: 0 },
+          onClick: toggleTable,
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: "12px", fontWeight: 600, color: "var(--text)" }, children: [
+              "Case List ",
+              tableOpen ? "▴" : "▾"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", gap: "4px", flexWrap: "wrap", marginLeft: "4px" }, onClick: (e) => e.stopPropagation(), children: Object.entries(evalTypeStats).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
+              const color = EVAL_TYPE_COLORS[type] || "#777";
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: {
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "3px",
+                background: "var(--panel)",
+                border: "1px solid var(--border)",
+                borderRadius: "3px",
+                padding: "1px 6px",
+                fontSize: "10px"
+              }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: "6px", height: "6px", borderRadius: "50%", background: color, flexShrink: 0 } }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text)" }, children: type }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 700, color }, children: count })
+              ] }, type);
+            }) }),
+            isFiltered && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: (e) => {
+                  e.stopPropagation();
+                  setFilterType("All");
+                  setFilterStage("All");
+                  setSearchText("");
+                  setSearchCase("");
+                },
+                style: { background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "11px", fontFamily: "inherit", padding: 0, marginLeft: "4px" },
+                children: "Clear filters"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: "10px", color: "var(--text-secondary)", marginLeft: "auto" }, children: [
+              filteredCases.length,
+              " of ",
+              cases.length,
+              " cases"
+            ] })
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, minHeight: 0, overflowY: "auto" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "11px" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: TH, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "text",
+              placeholder: "Case #",
+              value: searchCase,
+              onChange: (e) => setSearchCase(e.target.value),
+              style: {
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: "3px",
+                padding: "2px 5px",
+                fontSize: "11px",
+                color: "var(--text)",
+                fontFamily: "inherit",
+                width: "100%",
+                boxSizing: "border-box",
+                fontWeight: searchCase ? 600 : 400
+              }
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: TH, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "text",
+              placeholder: "Client",
+              value: searchText,
+              onChange: (e) => setSearchText(e.target.value),
+              style: {
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: "3px",
+                padding: "2px 5px",
+                fontSize: "11px",
+                color: "var(--text)",
+                fontFamily: "inherit",
+                width: "100%",
+                boxSizing: "border-box",
+                fontWeight: searchText ? 600 : 400
+              }
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: TH, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              value: filterType,
+              onChange: (e) => setFilterType(e.target.value),
+              style: { ...SEL, color: filterType !== "All" ? "var(--accent)" : "var(--text)" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "All", children: "Type ▾" }),
+                evalTypes.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: t, children: t }, t))
+              ]
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: TH, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              value: filterStage,
+              onChange: (e) => setFilterStage(e.target.value),
+              style: { ...SEL, color: filterStage !== "All" ? "var(--accent)" : "var(--text)" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "All", children: "Stage ▾" }),
+                PIPELINE_STAGES.map((s) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: s.key, children: s.label }, s.key))
+              ]
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "th",
+            {
+              style: { ...TH, cursor: "pointer", userSelect: "none" },
+              onClick: () => setDateSort((p) => p === "desc" ? "asc" : "desc"),
+              title: `Sort ${dateSort === "desc" ? "oldest first" : "newest first"}`,
+              children: [
+                "Deadline ",
+                dateSort === "desc" ? "▾" : "▴"
+              ]
+            }
+          )
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: filteredCases.map((c, idx) => {
+          const stageKey = mapStageToKey(c.workflow_current_stage);
+          const sc = STAGE_CARD_STYLES[stageKey];
+          const referredDate = c.created_at ? c.created_at.split("T")[0] : "—";
+          const isComplete = stageKey === "complete";
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "tr",
+            {
+              style: { cursor: "pointer", background: idx % 2 === 0 ? "transparent" : "var(--highlight)" },
+              onClick: () => onCaseClick(c.case_id),
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...TD, fontSize: "10px", color: "var(--text-secondary)" }, children: c.case_number }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...TD, fontWeight: 500 }, children: formatClientName(c) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: TD, children: c.evaluation_type || "—" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: TD, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { background: sc?.accent || "#999", color: "#fff", padding: "1px 6px", borderRadius: "3px", fontSize: "10px" }, children: mapStageLabel(c.workflow_current_stage) }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...TD, fontSize: "10px", color: isComplete ? "#4caf50" : "var(--text-secondary)" }, children: isComplete ? "Done" : referredDate })
+              ]
+            },
+            c.case_id ?? idx
+          );
+        }) })
+      ] }) })
+    ] })
+  ] });
+}
+function KanbanColumn({ stageKey, cases: columnCases, onCaseClick }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stageKey });
+  const sc = STAGE_CARD_STYLES[stageKey];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      ref: setNodeRef,
+      style: {
+        background: isOver ? "#e0e0e0" : "#f0f0f0",
+        border: `1px solid ${isOver ? "#bbb" : "#ddd"}`,
+        borderTop: "none",
+        borderRadius: "0 0 4px 4px",
+        padding: "4px",
+        overflowY: "auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: "5px",
+        transition: "background 0.15s, border-color 0.15s",
+        boxShadow: isOver ? "inset 0 0 8px rgba(0,0,0,0.08)" : "none"
+      },
+      children: [
+        columnCases.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: sc.text, opacity: 0.35, textAlign: "center", padding: "20px 0" }, children: "No cases" }),
+        columnCases.map((c) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          KanbanCard,
+          {
+            c,
+            sc,
+            onClick: () => onCaseClick(c.case_id)
+          },
+          c.case_id
+        ))
+      ]
+    }
+  );
+}
+function KanbanCard({ c, sc, onClick }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: c.case_id });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      ref: setNodeRef,
+      ...listeners,
+      ...attributes,
+      onClick,
+      style: {
+        /* No transform — the DragOverlay renders the visual clone that follows
+           the cursor. This card stays in place but fades out while dragging. */
+        opacity: isDragging ? 0.35 : 1,
+        transition: isDragging ? "none" : "opacity 0.15s"
+      },
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx(KanbanCardContent, { c, sc, isDragging })
+    }
+  );
+}
+function KanbanCardContent({ c, sc, isDragging }) {
+  const complaint = c.evaluation_questions || null;
+  const referral = c.referral_source || null;
+  const evalType = c.evaluation_type || "Untyped";
+  const deadline = c.created_at ? c.created_at.split("T")[0] : null;
+  const daysUntil = deadline ? Math.ceil((new Date(deadline).getTime() - Date.now()) / 864e5) : null;
+  const isUrgent = daysUntil !== null && daysUntil <= 5;
+  const ROW = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "baseline"
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        background: "#fff",
+        border: `1px solid ${sc.border}`,
+        borderLeft: `3px solid ${sc.accent}`,
+        borderRadius: "3px",
+        padding: "6px 8px",
+        cursor: isDragging ? "grabbing" : "grab",
+        lineHeight: "1.4",
+        fontSize: "11px",
+        userSelect: "none",
+        boxShadow: isDragging ? "0 4px 12px rgba(0,0,0,0.2)" : void 0
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...ROW, marginBottom: "2px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontWeight: 700, color: "#111", fontSize: "12px" }, children: [
+            c.examinee_last_name,
+            ", ",
+            (c.examinee_first_name ?? "").charAt(0),
+            "."
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
+            background: sc.accent,
+            color: "#fff",
+            padding: "1px 5px",
+            borderRadius: "2px",
+            fontSize: "9px",
+            fontWeight: 600,
+            flexShrink: 0,
+            marginLeft: "4px"
+          }, children: evalType })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+          color: "#333",
+          fontSize: "10px",
+          fontStyle: "italic",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          marginBottom: "2px",
+          minHeight: "14px"
+        }, children: complaint || " " }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...ROW, marginBottom: "2px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#555", fontSize: "10px" }, children: c.case_number }),
+          deadline && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#888", fontSize: "10px", flexShrink: 0, marginLeft: "4px" }, children: "Deadline:" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: ROW, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#555", fontSize: "10px" }, children: referral || "" }),
+          deadline && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
+            fontSize: "10px",
+            fontWeight: isUrgent ? 800 : 600,
+            flexShrink: 0,
+            marginLeft: "4px",
+            color: isUrgent ? "#c62828" : "#555"
+          }, children: deadline })
+        ] })
+      ]
+    }
+  );
+}
+const TH = {
+  background: "var(--panel)",
+  padding: "5px 8px",
+  textAlign: "left",
+  fontWeight: 600,
+  fontSize: "11px",
+  border: "1px solid var(--border)",
+  whiteSpace: "nowrap"
+};
+const SEL = {
+  background: "transparent",
+  border: "none",
+  fontWeight: 600,
+  fontSize: "11px",
+  color: "var(--text)",
+  fontFamily: "inherit",
+  cursor: "pointer",
+  padding: 0,
+  margin: 0,
+  WebkitAppearance: "none",
+  MozAppearance: "none",
+  appearance: "none"
+};
+const TD = {
+  padding: "4px 8px",
+  border: "1px solid var(--border)"
+};
+const testResultsTab = "_testResultsTab_lm4qg_1";
+const subTabBar = "_subTabBar_lm4qg_8";
+const subTab = "_subTab_lm4qg_8";
+const active = "_active_lm4qg_43";
+const pane = "_pane_lm4qg_50";
+const table = "_table_lm4qg_84";
+const elevatedRow = "_elevatedRow_lm4qg_108";
+const card = "_card_lm4qg_114";
+const placeholder$1 = "_placeholder_lm4qg_128";
+const valid = "_valid_lm4qg_142";
+const styles$2 = {
+  testResultsTab,
+  subTabBar,
+  subTab,
+  active,
+  pane,
+  table,
+  elevatedRow,
+  card,
+  placeholder: placeholder$1,
+  valid
+};
+const JOHNSON_TESTS = {
+  "mmpi3": {
+    name: "MMPI-3",
+    abbrev: "Minnesota Multiphasic Personality Inventory-3",
+    date: "Mar 10, 2026",
+    scores: [
+      // Validity scales
+      [
+        { scale: "Cannot Say", abbrev: "CNS", tScore: 2, interpretation: "Acceptable (≤15)" },
+        { scale: "Variable Response Inconsistency", abbrev: "VRIN-r", tScore: 52, interpretation: "Consistent responding" },
+        { scale: "True Response Inconsistency", abbrev: "TRIN-r", tScore: 55, interpretation: "Acceptable" },
+        { scale: "Infrequent Responses", abbrev: "F-r", tScore: 62, interpretation: "Within normal limits" },
+        { scale: "Infrequent Psychopathology", abbrev: "Fp-r", tScore: 55, interpretation: "No feigned psychopathology" },
+        { scale: "Infrequent Somatic", abbrev: "Fs-r", tScore: 48, interpretation: "No somatic over-reporting" },
+        { scale: "Symptom Validity", abbrev: "FBS-r", tScore: 52, interpretation: "No symptom exaggeration" },
+        { scale: "Response Bias Scale", abbrev: "RBS", tScore: 58, interpretation: "No over-reporting" },
+        { scale: "Uncommonly Virtuous", abbrev: "L-r", tScore: 48, interpretation: "No positive impression management" },
+        { scale: "Adjustment Validity", abbrev: "K-r", tScore: 44, interpretation: "No defensiveness" }
+      ],
+      // Higher-order scales
+      [
+        { scale: "Emotional/Internalizing", abbrev: "EID", tScore: 65, interpretation: "Moderate emotional distress" },
+        { scale: "Thought Dysfunction", abbrev: "THD", tScore: 75, interpretation: "Significant thought disturbance", isElevated: true },
+        { scale: "Behavioral/Externalizing", abbrev: "BXD", tScore: 58, interpretation: "Within normal limits" }
+      ],
+      // Restructured clinical scales
+      [
+        { scale: "Demoralization", abbrev: "RCd", tScore: 62, interpretation: "Mild distress" },
+        { scale: "Somatic Complaints", abbrev: "RC1", tScore: 48, interpretation: "No somatic concerns" },
+        { scale: "Low Positive Emotions", abbrev: "RC2", tScore: 55, interpretation: "Mildly reduced positive affect" },
+        { scale: "Cynicism", abbrev: "RC3", tScore: 52, interpretation: "Average interpersonal trust" },
+        { scale: "Antisocial Behavior", abbrev: "RC4", tScore: 58, interpretation: "Slightly elevated rule-breaking" },
+        { scale: "Ideas of Persecution", abbrev: "RC6", tScore: 72, interpretation: "Persecutory ideation endorsed", isElevated: true },
+        { scale: "Dysfunctional Negative Emotions", abbrev: "RC7", tScore: 60, interpretation: "Some anxiety/irritability" },
+        { scale: "Aberrant Experiences", abbrev: "RC8", tScore: 78, interpretation: "Unusual perceptual experiences", isElevated: true },
+        { scale: "Hypomanic Activation", abbrev: "RC9", tScore: 52, interpretation: "Average energy/activation" }
+      ]
+    ],
+    clinical: "Schizophrenia-consistent profile with significant elevations on THD (75T), RC6 (72T), and RC8 (78T), indicating thought disturbance, persecutory ideation, and unusual perceptual experiences. Validity scales are acceptable."
+  },
+  "pai": {
+    name: "PAI",
+    abbrev: "Personality Assessment Inventory",
+    date: "Mar 10, 2026",
+    scores: [
+      // Validity scales
+      [
+        { scale: "Inconsistency", abbrev: "INC", tScore: 52, interpretation: "Consistent" },
+        { scale: "Infrequency", abbrev: "INF", tScore: 48, interpretation: "Acceptable" },
+        { scale: "Negative Impression", abbrev: "NIM", tScore: 58, interpretation: "No over-reporting" },
+        { scale: "Positive Impression", abbrev: "PIM", tScore: 45, interpretation: "No defensiveness" }
+      ],
+      // Clinical scales
+      [
+        { scale: "Somatic Complaints", abbrev: "SOM", tScore: 52, interpretation: "Normal" },
+        { scale: "Anxiety", abbrev: "ANX", tScore: 62, interpretation: "Mild anxiety" },
+        { scale: "Anxiety-Related Disorders", abbrev: "ARD", tScore: 58, interpretation: "Normal" },
+        { scale: "Depression", abbrev: "DEP", tScore: 60, interpretation: "Mild depressive features" },
+        { scale: "Mania", abbrev: "MAN", tScore: 55, interpretation: "Normal" },
+        { scale: "Paranoia", abbrev: "PAR", tScore: 68, interpretation: "Persecutory ideation", isElevated: true },
+        { scale: "Schizophrenia", abbrev: "SCZ", tScore: 72, interpretation: "Thought disturbance", isElevated: true },
+        { scale: "Borderline Features", abbrev: "BOR", tScore: 55, interpretation: "Normal" },
+        { scale: "Antisocial Features", abbrev: "ANT", tScore: 58, interpretation: "Normal" },
+        { scale: "Alcohol Problems", abbrev: "ALC", tScore: 48, interpretation: "No concerns" },
+        { scale: "Drug Problems", abbrev: "DRG", tScore: 45, interpretation: "No concerns" }
+      ],
+      // Treatment scales
+      [
+        { scale: "Aggression", tScore: 55, interpretation: "Normal" },
+        { scale: "Suicidal Ideation", tScore: 48, interpretation: "No current SI" },
+        { scale: "Stress", tScore: 62, interpretation: "Moderate stress" },
+        { scale: "Nonsupport", tScore: 58, interpretation: "Some perceived lack of support" },
+        { scale: "Treatment Rejection", tScore: 42, interpretation: "Open to treatment" }
+      ]
+    ],
+    clinical: "PAI profile corroborates MMPI-3 findings. SCZ (72T) and PAR (68T) elevations consistent with schizophrenia spectrum disorder. Treatment scales favorable."
+  },
+  "waisv": {
+    name: "WAIS-V",
+    abbrev: "Wechsler Adult Intelligence Scale, Fifth Edition",
+    date: "Mar 11, 2026",
+    scores: [
+      // Composite scores
+      [
+        { scale: "Full Scale IQ", score: "82", tScore: 82, interpretation: "Low Average (12th percentile)" },
+        { scale: "Verbal Comprehension", score: "78", tScore: 78, interpretation: "Borderline (7th percentile)" },
+        { scale: "Visual Spatial", score: "88", tScore: 88, interpretation: "Low Average (21st percentile)" },
+        { scale: "Fluid Reasoning", score: "85", tScore: 85, interpretation: "Low Average (16th percentile)" },
+        { scale: "Working Memory", score: "80", tScore: 80, interpretation: "Low Average (9th percentile)" },
+        { scale: "Processing Speed", score: "86", tScore: 86, interpretation: "Low Average (18th percentile)" }
+      ],
+      // Subtests
+      [
+        { scale: "Similarities", score: "6", interpretation: "9th percentile" },
+        { scale: "Vocabulary", score: "5", interpretation: "5th percentile" },
+        { scale: "Block Design", score: "8", interpretation: "25th percentile" },
+        { scale: "Visual Puzzles", score: "7", interpretation: "16th percentile" },
+        { scale: "Matrix Reasoning", score: "7", interpretation: "16th percentile" },
+        { scale: "Figure Weights", score: "8", interpretation: "25th percentile" },
+        { scale: "Digit Span", score: "6", interpretation: "9th percentile" },
+        { scale: "Arithmetic", score: "7", interpretation: "16th percentile" },
+        { scale: "Symbol Search", score: "7", interpretation: "16th percentile" },
+        { scale: "Coding", score: "8", interpretation: "25th percentile" }
+      ]
+    ],
+    clinical: "Low-average intellectual functioning with notable verbal weakness relative to visual-spatial skills. Working memory impairment may reflect attention difficulties in active psychosis."
+  },
+  "tomm": {
+    name: "TOMM",
+    abbrev: "Test of Memory Malingering",
+    date: "Mar 11, 2026",
+    scores: [
+      [
+        { scale: "Trial 1", score: "42/50", interpretation: "Adequate performance" },
+        { scale: "Trial 2", score: "48/50", interpretation: "PASS — Above cut score", isElevated: true }
+      ]
+    ],
+    clinical: "No indication of feigned memory impairment. Performance well above cut score (45) indicates genuine memory functioning and adequate effort."
+  },
+  "sirs2": {
+    name: "SIRS-2",
+    abbrev: "Structured Interview of Reported Symptoms, 2nd Edition",
+    date: "Mar 12, 2026",
+    scores: [
+      [
+        { scale: "Reported Cognition Problems", abbrev: "RC", score: "3", interpretation: "Honest" },
+        { scale: "Reported Affective Problems", abbrev: "RA", score: "2", interpretation: "Honest" },
+        { scale: "Reported Neurological Symptoms", abbrev: "RN", score: "4", interpretation: "Honest" },
+        { scale: "Reported Low Awareness", abbrev: "RLA", score: "1", interpretation: "Honest" },
+        { scale: "Unusual Symptom Combinations", abbrev: "USC", score: "2", interpretation: "Honest" },
+        { scale: "Rare Symptoms", abbrev: "RS", score: "1", interpretation: "Honest" },
+        { scale: "Symptom Combinations", abbrev: "SC", score: "0", interpretation: "Honest" },
+        { scale: "Inconsistency of Symptoms", abbrev: "IS", score: "1", interpretation: "Honest" }
+      ]
+    ],
+    clinical: 'All primary scales in "Honest" classification range. No evidence of symptom fabrication or malingering.'
+  }
+};
+const TestResultsTab = ({ caseId }) => {
+  const [activeInstrument, setActiveInstrument] = reactExports.useState("summary");
+  const isJohnson = caseId === 1 || caseId === 0;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.testResultsTab, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.subTabBar, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          className: `${styles$2.subTab} ${activeInstrument === "summary" ? styles$2.active : ""}`,
+          onClick: () => setActiveInstrument("summary"),
+          children: "Summary"
+        }
+      ),
+      isJohnson && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: `${styles$2.subTab} ${activeInstrument === "mmpi3" ? styles$2.active : ""}`,
+            onClick: () => setActiveInstrument("mmpi3"),
+            children: "MMPI-3"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: `${styles$2.subTab} ${activeInstrument === "pai" ? styles$2.active : ""}`,
+            onClick: () => setActiveInstrument("pai"),
+            children: "PAI"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: `${styles$2.subTab} ${activeInstrument === "waisv" ? styles$2.active : ""}`,
+            onClick: () => setActiveInstrument("waisv"),
+            children: "WAIS-V"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: `${styles$2.subTab} ${activeInstrument === "tomm" ? styles$2.active : ""}`,
+            onClick: () => setActiveInstrument("tomm"),
+            children: "TOMM"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: `${styles$2.subTab} ${activeInstrument === "sirs2" ? styles$2.active : ""}`,
+            onClick: () => setActiveInstrument("sirs2"),
+            children: "SIRS-2"
+          }
+        )
+      ] })
+    ] }),
+    activeInstrument === "summary" && /* @__PURE__ */ jsxRuntimeExports.jsx(SummaryPane, { isJohnson }),
+    isJohnson && activeInstrument in JOHNSON_TESTS && /* @__PURE__ */ jsxRuntimeExports.jsx(InstrumentPane, { data: JOHNSON_TESTS[activeInstrument] }),
+    !isJohnson && activeInstrument !== "summary" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$2.placeholder, children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Test results data not yet available for this case." }) })
+  ] });
+};
+const SummaryPane = ({ isJohnson }) => {
+  if (!isJohnson) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$2.placeholder, children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Test results summary pending. Check back after testing phase." }) });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.pane, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Test Results Summary" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { color: "var(--text-secondary)", fontSize: "12px", marginBottom: "16px" }, children: "Johnson, Marcus D. — CST Evaluation" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: styles$2.table, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Instrument" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Status" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Validity" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Key Findings" })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "MMPI-3" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "Complete" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: styles$2.valid, children: "Valid" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "Schizophrenia-consistent profile (THD=75T, RC6=72T, RC8=78T)" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "PAI" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "Complete" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: styles$2.valid, children: "Valid" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "Elevated SCZ (72T) and PAR (68T)" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "WAIS-V" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "Complete" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: styles$2.valid, children: "Valid" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "Low-average IQ (FSIQ=82), verbal weakness (VCI=78)" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: styles$2.elevatedRow, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "TOMM" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "Complete" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: styles$2.valid, children: "Valid Effort" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "No malingering (Trial 2: 48/50, pass)" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "SIRS-2" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "Complete" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: styles$2.valid, children: "Honest" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: "All scales in honest range — no symptom fabrication" })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: { marginTop: "24px" }, children: "Interpretation" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$2.card, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+      "All test instruments converge on a diagnosis of ",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Schizophrenia, First Episode, Currently in Acute Episode" }),
+      ". Personality testing (MMPI-3, PAI) shows prominent thought disturbance and persecutory ideation. Cognitive testing (WAIS-V) shows low-average functioning with particular weakness in verbal comprehension. Validity and effort measures confirm genuine responding and adequate effort across all instruments."
+    ] }) })
+  ] });
+};
+const InstrumentPane = ({ data }) => {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$2.pane, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: data.name }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { color: "var(--text-secondary)", fontSize: "12px", marginBottom: "16px" }, children: [
+      data.abbrev,
+      " | Administered: ",
+      data.date
+    ] }),
+    data.scores.map((section, sectionIdx) => {
+      let sectionTitle = "";
+      if (data.name === "MMPI-3") {
+        if (sectionIdx === 0) sectionTitle = "Validity Scales";
+        else if (sectionIdx === 1) sectionTitle = "Higher-Order Scales";
+        else if (sectionIdx === 2) sectionTitle = "Restructured Clinical Scales (RC)";
+      } else if (data.name === "PAI") {
+        if (sectionIdx === 0) sectionTitle = "Validity Scales";
+        else if (sectionIdx === 1) sectionTitle = "Clinical Scales";
+        else if (sectionIdx === 2) sectionTitle = "Treatment Scales";
+      } else if (data.name === "WAIS-V") {
+        if (sectionIdx === 0) sectionTitle = "Composite Scores";
+        else if (sectionIdx === 1) sectionTitle = "Primary Subtests (Scaled Scores)";
+      }
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        sectionTitle && /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: sectionTitle }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: styles$2.table, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Scale" }),
+            section[0].abbrev && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Abbrev" }),
+            section[0].tScore !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "T-Score" }),
+            section[0].score !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Score" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Interpretation" })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: section.map((row, rowIdx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: row.isElevated ? styles$2.elevatedRow : "", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.scale }),
+            section[0].abbrev && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.abbrev || "" }),
+            section[0].tScore !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.tScore || "" }),
+            section[0].score !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.score || "" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.interpretation })
+          ] }, rowIdx)) })
+        ] })
+      ] }, sectionIdx);
+    }),
+    data.clinical && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Clinical Interpretation" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$2.card, children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: data.clinical }) })
+    ] })
+  ] });
+};
+const sectionHeader = {
+  fontSize: "14px",
+  fontWeight: 600,
+  marginBottom: "12px",
+  paddingBottom: "6px",
+  borderBottom: "1px solid var(--border)",
+  color: "var(--text)"
+};
+const cardStyle = {
+  border: "1px solid var(--border)",
+  borderRadius: "4px",
+  marginBottom: "16px",
+  overflow: "hidden"
+};
+const cardHeaderStyle = {
+  background: "var(--highlight)",
+  padding: "12px",
+  borderBottom: "1px solid var(--border)"
+};
+const cardBodyStyle = {
+  padding: "12px"
+};
+const labelStyle$2 = {
+  fontSize: "11px",
+  color: "var(--text-secondary)",
+  marginBottom: "2px"
+};
+const btnBase = {
+  padding: "6px 12px",
+  borderRadius: "4px",
+  fontSize: "12px",
+  fontWeight: 500,
+  cursor: "pointer",
+  border: "1px solid var(--border)",
+  background: "var(--panel)",
+  color: "var(--text)"
+};
+const DiagnosticsTab = ({ caseId }) => {
+  const [diagOutput, setDiagOutput] = reactExports.useState(null);
+  const [decisions, setDecisions] = reactExports.useState([]);
+  const [formulation, setFormulation] = reactExports.useState("");
+  const [expandedDiags, setExpandedDiags] = reactExports.useState(/* @__PURE__ */ new Set());
+  const [loading, setLoading] = reactExports.useState(true);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const [diagRes, decisionsRes] = await Promise.all([
+          window.psygil.diagnostician.getResult({ caseId }),
+          window.psygil.diagnosticDecisions.list({ case_id: caseId })
+        ]);
+        if (cancelled) return;
+        const savedMap = /* @__PURE__ */ new Map();
+        if (decisionsRes.status === "success" && decisionsRes.data) {
+          for (const row of decisionsRes.data) {
+            savedMap.set(row.diagnosis_key, { decision: row.decision, notes: row.clinician_notes });
+          }
+        }
+        if (diagRes.status === "success" && diagRes.data) {
+          const output = diagRes.data;
+          setDiagOutput(output);
+          const diagMap2 = output.diagnostic_evidence_map || {};
+          const initialDecisions = Object.entries(diagMap2).map(([key2, value]) => {
+            const diag = value;
+            const saved = savedMap.get(key2);
+            return {
+              diagnosisKey: key2,
+              code: String(diag.icd_code || ""),
+              name: key2.replace(/_/g, " "),
+              decision: saved?.decision || null,
+              clinicianNotes: saved?.notes || ""
+            };
+          });
+          setDecisions(initialDecisions);
+          if (initialDecisions.length > 0) {
+            setExpandedDiags(/* @__PURE__ */ new Set([initialDecisions[0].diagnosisKey]));
+          }
+        }
+      } catch (err) {
+        console.error("[DiagnosticsTab] Failed to load diagnostician result:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
+  const setDecision = (key2, decision) => {
+    setDecisions(
+      (prev) => prev.map((d) => d.diagnosisKey === key2 ? { ...d, decision } : d)
+    );
+  };
+  const setNotes = (key2, notes) => {
+    setDecisions(
+      (prev) => prev.map((d) => d.diagnosisKey === key2 ? { ...d, clinicianNotes: notes } : d)
+    );
+  };
+  const toggleExpand = (key2) => {
+    setExpandedDiags((prev) => {
+      const next = new Set(prev);
+      if (next.has(key2)) next.delete(key2);
+      else next.add(key2);
+      return next;
+    });
+  };
+  if (loading) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "20px 24px", fontSize: "13px", color: "var(--text-secondary)" }, children: "Loading diagnostics..." });
+  }
+  if (!diagOutput) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { style: { fontSize: "16px", marginBottom: "16px" }, children: "Diagnostics — Clinical Formulation" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "#f44336", color: "white", padding: "16px", borderRadius: "4px", marginBottom: "20px", border: "4px solid #d32f2f" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontWeight: 600, fontSize: "14px", margin: "0 0 8px 0" }, children: "⚠ DOCTOR ALWAYS DIAGNOSES — Never the AI" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontSize: "13px", margin: "0", lineHeight: "1.5" }, children: "All diagnostic decisions are your responsibility. The AI presents evidence — you decide." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "24px", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "4px", textAlign: "center" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "14px", color: "var(--text)", marginBottom: "8px" }, children: "No diagnostic analysis available yet." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", color: "var(--text-secondary)" }, children: "Run the Diagnostician Agent from the agent panel (right column) to generate an evidence map. The Ingestor must be run first." })
+      ] })
+    ] });
+  }
+  const diagMap = diagOutput.diagnostic_evidence_map || {};
+  const validity = diagOutput.validity_assessment || {};
+  const differentials = diagOutput.differential_comparisons || [];
+  const psycholegal = diagOutput.psycholegal_analysis;
+  const functional = diagOutput.functional_impairment_summary;
+  const MetBadge = ({ status }) => {
+    const colors = {
+      met: "#4caf50",
+      not_met: "#f44336",
+      insufficient_data: "#ff9800"
+    };
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
+      display: "inline-block",
+      padding: "1px 6px",
+      borderRadius: "3px",
+      fontSize: "10px",
+      fontWeight: 600,
+      color: "#fff",
+      background: colors[status] || "#999",
+      marginLeft: "6px"
+    }, children: status.replace(/_/g, " ") });
+  };
+  const undecided = decisions.filter((d) => d.decision === null).length;
+  const rendered = decisions.filter((d) => d.decision === "render").length;
+  const ruledOut = decisions.filter((d) => d.decision === "rule_out").length;
+  const deferred = decisions.filter((d) => d.decision === "defer").length;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px", height: "100%", overflow: "auto" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { style: { fontSize: "16px", marginBottom: "16px" }, children: "Diagnostics — Clinical Formulation" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "#f44336", color: "white", padding: "16px", borderRadius: "4px", marginBottom: "20px", border: "4px solid #d32f2f" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontWeight: 600, fontSize: "14px", margin: "0 0 8px 0" }, children: "⚠ DOCTOR ALWAYS DIAGNOSES — Never the AI" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontSize: "13px", margin: "0", lineHeight: "1.5" }, children: 'You are the clinician. All diagnostic decisions are your responsibility. The evidence map below is for reference only. You must individually review and decide each diagnosis. No "Accept All" option exists.' })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "12px", marginBottom: "20px", fontSize: "12px", flexWrap: "wrap" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { padding: "4px 10px", borderRadius: "3px", background: "var(--panel)", border: "1px solid var(--border)" }, children: [
+        decisions.length,
+        " diagnoses presented"
+      ] }),
+      undecided > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { padding: "4px 10px", borderRadius: "3px", background: "#fff3e0", color: "#e65100", fontWeight: 600 }, children: [
+        undecided,
+        " undecided"
+      ] }),
+      rendered > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { padding: "4px 10px", borderRadius: "3px", background: "#e8f5e9", color: "#2e7d32" }, children: [
+        rendered,
+        " rendered"
+      ] }),
+      ruledOut > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { padding: "4px 10px", borderRadius: "3px", background: "#ffebee", color: "#c62828" }, children: [
+        ruledOut,
+        " ruled out"
+      ] }),
+      deferred > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { padding: "4px 10px", borderRadius: "3px", background: "#e3f2fd", color: "#1565c0" }, children: [
+        deferred,
+        " deferred"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...cardStyle, borderColor: "#4caf50" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...cardHeaderStyle, background: "#e8f5e9" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "14px", fontWeight: 600, color: "#2e7d32" }, children: "Validity & Effort Assessment" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "#558b2f", marginTop: "4px" }, children: "Processed first — determines interpretability of all test data" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: cardBodyStyle, children: [
+        validity.effort_tests && Array.isArray(validity.effort_tests) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600 }, children: "Effort/Performance Validity Tests:" }),
+          validity.effort_tests.map((test, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "12px", fontSize: "12px", padding: "4px 0", borderBottom: "1px solid var(--border)" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { minWidth: "100px" }, children: String(test.test_name) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: String(test.status) === "pass" ? "#4caf50" : String(test.status) === "fail" ? "#f44336" : "#999" }, children: String(test.status).toUpperCase() }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text-secondary)" }, children: String(test.impact_on_interpretability || "") })
+          ] }, i))
+        ] }),
+        validity.mmpi3_validity && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600 }, children: "MMPI-3 Validity:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "12px", color: "var(--text)" }, children: [
+            "Overall: ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: String(validity.mmpi3_validity.overall_validity) })
+          ] }),
+          validity.mmpi3_validity.interpretation_impact && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }, children: String(validity.mmpi3_validity.interpretation_impact) })
+        ] }),
+        validity.pai_validity && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600 }, children: "PAI Validity:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", color: "var(--text)" }, children: JSON.stringify(validity.pai_validity, null, 2) })
+        ] }),
+        validity.summary && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px", background: "var(--bg)", borderRadius: "4px", fontSize: "12px", color: "var(--text)", lineHeight: "1.6" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Summary:" }),
+          " ",
+          String(validity.summary)
+        ] }),
+        !validity.effort_tests && !validity.mmpi3_validity && !validity.summary && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", color: "var(--text)", whiteSpace: "pre-wrap" }, children: JSON.stringify(validity, null, 2) })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { style: sectionHeader, children: [
+      "Diagnostic Evidence Map (",
+      Object.keys(diagMap).length,
+      " diagnoses)"
+    ] }),
+    Object.entries(diagMap).map(([diagKey, diagData]) => {
+      const diag = diagData;
+      const decision = decisions.find((d) => d.diagnosisKey === diagKey);
+      const isExpanded = expandedDiags.has(diagKey);
+      const criteria = diag.criteria_analysis;
+      let borderColor = "var(--border)";
+      if (decision?.decision === "render") borderColor = "#4caf50";
+      if (decision?.decision === "rule_out") borderColor = "#f44336";
+      if (decision?.decision === "defer") borderColor = "#2196f3";
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...cardStyle, borderColor, borderWidth: decision?.decision ? "2px" : "1px" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            style: { ...cardHeaderStyle, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" },
+            onClick: () => toggleExpand(diagKey),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "13px", fontWeight: 600, color: "var(--text)" }, children: [
+                  String(diag.icd_code || ""),
+                  " — ",
+                  diagKey.replace(/_/g, " ")
+                ] }),
+                diag.functional_impact && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }, children: String(diag.functional_impact) })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "8px", alignItems: "center" }, children: [
+                decision?.decision && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
+                  padding: "2px 8px",
+                  borderRadius: "3px",
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "#fff",
+                  background: decision.decision === "render" ? "#4caf50" : decision.decision === "rule_out" ? "#f44336" : "#2196f3"
+                }, children: decision.decision === "render" ? "RENDERED" : decision.decision === "rule_out" ? "RULED OUT" : "DEFERRED" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "16px", color: "var(--text-secondary)" }, children: isExpanded ? "▾" : "▸" })
+              ] })
+            ]
+          }
+        ),
+        isExpanded && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: cardBodyStyle, children: [
+          criteria && Object.keys(criteria).length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600, marginBottom: "8px" }, children: "DSM-5-TR Criteria Analysis:" }),
+            Object.entries(criteria).map(([critKey, critData]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "10px", paddingLeft: "12px", borderLeft: "3px solid var(--border)" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "12px", fontWeight: 600, color: "var(--text)", marginBottom: "4px" }, children: [
+                critKey.replace(/_/g, " ").toUpperCase(),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(MetBadge, { status: String(critData.met_status || "unknown") })
+              ] }),
+              critData.description && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px", fontStyle: "italic" }, children: String(critData.description) }),
+              critData.supporting_evidence && Array.isArray(critData.supporting_evidence) && critData.supporting_evidence.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "4px" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "10px", color: "#4caf50", fontWeight: 600 }, children: "Supporting:" }),
+                critData.supporting_evidence.map((ev, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "11px", color: "var(--text)", paddingLeft: "12px" }, children: [
+                  "• ",
+                  typeof ev === "object" ? String(ev.source || JSON.stringify(ev)) : String(ev),
+                  typeof ev === "object" && ev.strength && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "var(--text-secondary)", marginLeft: "4px" }, children: [
+                    "(",
+                    String(ev.strength),
+                    ")"
+                  ] })
+                ] }, i))
+              ] }),
+              critData.contradicting_evidence && Array.isArray(critData.contradicting_evidence) && critData.contradicting_evidence.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: "10px", color: "#f44336", fontWeight: 600 }, children: "Contradicting:" }),
+                critData.contradicting_evidence.map((ev, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "11px", color: "var(--text)", paddingLeft: "12px" }, children: [
+                  "• ",
+                  typeof ev === "object" ? String(ev.source || JSON.stringify(ev)) : String(ev)
+                ] }, i))
+              ] })
+            ] }, critKey))
+          ] }),
+          diag.onset_and_course && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600 }, children: "Onset & Course:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", color: "var(--text)", whiteSpace: "pre-wrap" }, children: typeof diag.onset_and_course === "object" ? Object.entries(diag.onset_and_course).map(([k, v]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "2px" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "var(--text-secondary)" }, children: [
+                k.replace(/_/g, " "),
+                ": "
+              ] }),
+              String(v)
+            ] }, k)) : String(diag.onset_and_course) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "12px", background: "var(--bg)", borderRadius: "4px", marginTop: "12px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", fontWeight: 600, color: "var(--text)", marginBottom: "8px" }, children: "Your Decision:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "8px", marginBottom: "8px", flexWrap: "wrap" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => setDecision(diagKey, decision?.decision === "render" ? null : "render"),
+                  style: {
+                    ...btnBase,
+                    background: decision?.decision === "render" ? "#4caf50" : "var(--panel)",
+                    color: decision?.decision === "render" ? "#fff" : "var(--text)",
+                    borderColor: decision?.decision === "render" ? "#4caf50" : "var(--border)"
+                  },
+                  children: decision?.decision === "render" ? "✓ Render" : "Render"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => setDecision(diagKey, decision?.decision === "rule_out" ? null : "rule_out"),
+                  style: {
+                    ...btnBase,
+                    background: decision?.decision === "rule_out" ? "#f44336" : "var(--panel)",
+                    color: decision?.decision === "rule_out" ? "#fff" : "var(--text)",
+                    borderColor: decision?.decision === "rule_out" ? "#f44336" : "var(--border)"
+                  },
+                  children: decision?.decision === "rule_out" ? "✕ Rule Out" : "Rule Out"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: () => setDecision(diagKey, decision?.decision === "defer" ? null : "defer"),
+                  style: {
+                    ...btnBase,
+                    background: decision?.decision === "defer" ? "#2196f3" : "var(--panel)",
+                    color: decision?.decision === "defer" ? "#fff" : "var(--text)",
+                    borderColor: decision?.decision === "defer" ? "#2196f3" : "var(--border)"
+                  },
+                  children: decision?.decision === "defer" ? "⏸ Defer" : "Defer"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "textarea",
+              {
+                value: decision?.clinicianNotes || "",
+                onChange: (e) => setNotes(diagKey, e.target.value),
+                placeholder: "Clinical rationale for this decision...",
+                style: {
+                  width: "100%",
+                  minHeight: "60px",
+                  padding: "8px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  background: "var(--panel)",
+                  color: "var(--text)",
+                  fontFamily: "inherit",
+                  fontSize: "12px",
+                  resize: "vertical"
+                }
+              }
+            )
+          ] })
+        ] })
+      ] }, diagKey);
+    }),
+    differentials.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: sectionHeader, children: "Differential Comparisons" }),
+      differentials.map((diff, i) => {
+        const d = diff;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: cardStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: cardHeaderStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "13px", fontWeight: 600 }, children: String(d.diagnosis_pair || `Comparison ${i + 1}`) }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: cardBodyStyle, children: [
+            d.key_distinguishing_features && Array.isArray(d.key_distinguishing_features) && d.key_distinguishing_features.map((feat, fi) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "8px", paddingBottom: "8px", borderBottom: "1px solid var(--border)" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", fontWeight: 600, color: "var(--text)", marginBottom: "4px" }, children: String(feat.feature) }),
+              feat.evidence_for_diagnosis_1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "11px", color: "var(--text-secondary)", paddingLeft: "12px" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#2196f3" }, children: "Dx 1:" }),
+                " ",
+                String(feat.evidence_for_diagnosis_1)
+              ] }),
+              feat.evidence_for_diagnosis_2 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "11px", color: "var(--text-secondary)", paddingLeft: "12px" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#ff9800" }, children: "Dx 2:" }),
+                " ",
+                String(feat.evidence_for_diagnosis_2)
+              ] })
+            ] }, fi)),
+            d.clinical_clarification && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", color: "var(--text)", fontStyle: "italic", padding: "8px", background: "var(--bg)", borderRadius: "4px" }, children: String(d.clinical_clarification) })
+          ] })
+        ] }, i);
+      })
+    ] }),
+    psycholegal && Object.keys(psycholegal).length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: sectionHeader, children: "Psycho-Legal Analysis" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: cardStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: cardBodyStyle, children: [
+        psycholegal.legal_standard && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "8px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: labelStyle$2, children: "Legal Standard: " }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { fontSize: "13px" }, children: String(psycholegal.legal_standard) }),
+          psycholegal.jurisdiction && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "var(--text-secondary)", marginLeft: "8px", fontSize: "12px" }, children: [
+            "(",
+            String(psycholegal.jurisdiction),
+            ")"
+          ] })
+        ] }),
+        psycholegal.standard_elements && Array.isArray(psycholegal.standard_elements) && psycholegal.standard_elements.map((elem, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "8px", paddingLeft: "12px", borderLeft: "3px solid #ff9800" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", fontWeight: 600, color: "var(--text)" }, children: String(elem.element) }),
+          elem.evidence_map && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }, children: Array.isArray(elem.evidence_map) ? elem.evidence_map.map((e, ei) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            "• ",
+            String(e)
+          ] }, ei)) : String(elem.evidence_map) })
+        ] }, i)),
+        psycholegal.critical_gaps && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px", background: "#fff3e0", borderRadius: "4px", fontSize: "12px", color: "#e65100", marginTop: "8px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Gaps:" }),
+          " ",
+          String(psycholegal.critical_gaps)
+        ] })
+      ] }) })
+    ] }),
+    functional && Object.keys(functional).length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: sectionHeader, children: "Functional Impairment Summary" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: cardStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: cardBodyStyle, children: Object.entries(functional).map(([domain, desc]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "8px" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", fontWeight: 600, color: "var(--text)", textTransform: "capitalize" }, children: domain.replace(/_/g, " ") }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", color: "var(--text-secondary)", paddingLeft: "12px" }, children: String(desc) })
+      ] }, domain)) }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: sectionHeader, children: "Clinical Formulation" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        value: formulation,
+        onChange: (e) => setFormulation(e.target.value),
+        placeholder: "Enter your clinical formulation and rationale for diagnostic decisions. This is the clinician's authoritative narrative.",
+        style: {
+          width: "100%",
+          minHeight: "200px",
+          padding: "12px",
+          border: "1px solid var(--border)",
+          borderRadius: "4px",
+          background: "var(--bg)",
+          color: "var(--text)",
+          fontFamily: "inherit",
+          fontSize: "13px",
+          lineHeight: "1.6",
+          resize: "vertical",
+          marginBottom: "20px"
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "12px", marginBottom: "40px" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          style: { ...btnBase, background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" },
+          onClick: async () => {
+            const toSave = decisions.filter((d) => d.decision !== null);
+            for (const d of toSave) {
+              await window.psygil.diagnosticDecisions.save({
+                case_id: caseId,
+                diagnosis_key: d.diagnosisKey,
+                icd_code: d.code,
+                diagnosis_name: d.name,
+                decision: d.decision,
+                clinician_notes: d.clinicianNotes
+              });
+            }
+            const toDelete = decisions.filter((d) => d.decision === null);
+            for (const d of toDelete) {
+              await window.psygil.diagnosticDecisions.delete({
+                case_id: caseId,
+                diagnosis_key: d.diagnosisKey
+              });
+            }
+            console.log(`[DiagnosticsTab] Saved ${toSave.length} decisions for case ${caseId}`);
+          },
+          children: "Save Diagnostic Decisions"
+        }
+      ),
+      undecided > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: "12px", color: "#e65100", alignSelf: "center" }, children: [
+        undecided,
+        " diagnosis",
+        undecided > 1 ? "es" : "",
+        " still undecided"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "10px", color: "var(--text-secondary)", borderTop: "1px solid var(--border)", paddingTop: "8px" }, children: [
+      "Diagnostician v",
+      diagOutput.version,
+      " | Generated: ",
+      diagOutput.generated_at,
+      " | Case: ",
+      diagOutput.case_id
+    ] })
+  ] });
+};
+function OnlyOfficeEditor({
+  caseId,
+  filePath,
+  readOnly = false,
+  onDocumentReady,
+  onDocumentSaved,
+  onError
+}) {
+  const containerRef = reactExports.useRef(null);
+  const editorRef = reactExports.useRef(null);
+  const [state, setState] = reactExports.useState({
+    serverUrl: null,
+    serverRunning: false,
+    loading: true,
+    error: null
+  });
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    const initialize = async () => {
+      try {
+        const urlRes = await window.psygil.onlyoffice.getUrl();
+        if (cancelled) return;
+        if (urlRes.status === "error") {
+          setState((prev) => ({
+            ...prev,
+            serverRunning: false,
+            loading: false,
+            error: "OnlyOffice server is not running"
+          }));
+          return;
+        }
+        const serverUrl = urlRes.data;
+        if (!serverUrl) {
+          setState((prev) => ({
+            ...prev,
+            serverRunning: false,
+            loading: false,
+            error: "OnlyOffice server is not available"
+          }));
+          return;
+        }
+        setState((prev) => ({
+          ...prev,
+          serverUrl,
+          serverRunning: true
+        }));
+        const docRes = await window.psygil.onlyoffice.openDocument({
+          caseId,
+          filePath,
+          readOnly
+        });
+        if (cancelled) return;
+        if (docRes.status === "error") {
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: docRes.message || "Failed to open document"
+          }));
+          onError?.(docRes.message || "Failed to open document");
+          return;
+        }
+        const { documentUrl, jwtToken } = docRes.data;
+        const script = document.createElement("script");
+        script.src = `${serverUrl}/web-apps/apps/api/documents/api.js`;
+        script.async = true;
+        script.onload = () => {
+          if (cancelled || !containerRef.current) return;
+          try {
+            const config = {
+              document: {
+                fileType: "docx",
+                key: `psygil_${caseId}_${Date.now()}`,
+                title: "Report Draft",
+                url: documentUrl,
+                permissions: {
+                  edit: !readOnly,
+                  download: true,
+                  print: true,
+                  review: !readOnly,
+                  comment: !readOnly
+                }
+              },
+              documentType: "word",
+              editorConfig: {
+                mode: readOnly ? "view" : "edit",
+                callbackUrl: docRes.data.callbackUrl || void 0,
+                customization: {
+                  autosave: true,
+                  chat: false,
+                  comments: !readOnly,
+                  compactHeader: false,
+                  compactToolbar: false,
+                  feedback: false,
+                  forcesave: true,
+                  help: false,
+                  hideRightMenu: false,
+                  toolbarNoTabs: false,
+                  macros: false,
+                  macrosMode: "disable",
+                  plugins: false
+                },
+                permissions: {
+                  fillForms: false,
+                  modifyContentControl: false,
+                  modifyFilter: false
+                },
+                user: {
+                  id: "clinician",
+                  name: "Clinician"
+                }
+              },
+              token: jwtToken,
+              type: "desktop",
+              events: {
+                onDocumentReady: () => {
+                  setState((prev) => ({ ...prev, loading: false }));
+                  onDocumentReady?.();
+                },
+                onError: (event) => {
+                  const errorMsg = event?.data?.message ?? "Unknown error";
+                  setState((prev) => ({ ...prev, error: errorMsg }));
+                  onError?.(errorMsg);
+                },
+                onDocumentStateChange: (event) => {
+                  if (event?.data?.isSaved === false) {
+                    onDocumentSaved?.();
+                  }
+                }
+              }
+            };
+            const DocsAPI = window.DocsAPI;
+            if (!DocsAPI) {
+              throw new Error("DocsAPI not available");
+            }
+            editorRef.current = new DocsAPI.DocEditor(containerRef.current.id, config);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to initialize editor";
+            setState((prev) => ({ ...prev, loading: false, error: message }));
+            onError?.(message);
+          }
+        };
+        script.onerror = () => {
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: "Failed to load OnlyOffice API"
+          }));
+          onError?.("Failed to load OnlyOffice API");
+        };
+        document.head.appendChild(script);
+        return () => {
+          document.head.removeChild(script);
+        };
+      } catch (err) {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : "Initialization error";
+        setState((prev) => ({ ...prev, loading: false, error: message }));
+        onError?.(message);
+      }
+    };
+    initialize();
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId, filePath, readOnly, onDocumentReady, onDocumentSaved, onError]);
+  reactExports.useEffect(() => {
+    return () => {
+      if (editorRef.current && typeof editorRef.current.destroyEditor === "function") {
+        try {
+          editorRef.current.destroyEditor();
+        } catch (err) {
+          console.error("[OnlyOfficeEditor] Failed to destroy editor:", err);
+        }
+      }
+    };
+  }, []);
+  if (state.loading) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          backgroundColor: "var(--bg)"
+        },
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                fontSize: "13px",
+                color: "var(--text)",
+                marginBottom: "12px"
+              },
+              children: "Loading document editor..."
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                width: "24px",
+                height: "24px",
+                margin: "0 auto",
+                border: "2px solid var(--border)",
+                borderTop: "2px solid var(--accent)",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite"
+              }
+            }
+          )
+        ] })
+      }
+    );
+  }
+  if (!state.serverRunning) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          backgroundColor: "var(--bg)",
+          padding: "20px"
+        },
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", maxWidth: "400px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                fontSize: "13px",
+                color: "var(--text)",
+                marginBottom: "12px"
+              },
+              children: "OnlyOffice Document Server is not running"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                fontSize: "12px",
+                color: "var(--text-secondary)",
+                marginBottom: "16px"
+              },
+              children: "The server needs to be started to edit documents."
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: async () => {
+                setState((prev) => ({ ...prev, loading: true }));
+                try {
+                  const res = await window.psygil.onlyoffice.start();
+                  if (res.status === "success") {
+                    window.location.reload();
+                  } else {
+                    setState((prev) => ({
+                      ...prev,
+                      loading: false,
+                      error: res.message || "Failed to start server"
+                    }));
+                  }
+                } catch (err) {
+                  setState((prev) => ({
+                    ...prev,
+                    loading: false,
+                    error: err instanceof Error ? err.message : "Failed to start server"
+                  }));
+                }
+              },
+              style: {
+                padding: "6px 16px",
+                fontSize: "12px",
+                backgroundColor: "var(--accent)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer"
+              },
+              children: "Start OnlyOffice Server"
+            }
+          )
+        ] })
+      }
+    );
+  }
+  if (state.error) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          backgroundColor: "var(--bg)",
+          padding: "20px"
+        },
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", maxWidth: "400px" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                fontSize: "13px",
+                color: "#d32f2f",
+                marginBottom: "8px"
+              },
+              children: "Error loading document"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                fontSize: "12px",
+                color: "var(--text-secondary)",
+                marginBottom: "12px",
+                whiteSpace: "pre-wrap"
+              },
+              children: state.error
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => window.location.reload(),
+              style: {
+                padding: "6px 16px",
+                fontSize: "12px",
+                backgroundColor: "var(--border)",
+                color: "var(--text)",
+                border: "1px solid var(--border)",
+                borderRadius: "4px",
+                cursor: "pointer"
+              },
+              children: "Retry"
+            }
+          )
+        ] })
+      }
+    );
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      ref: containerRef,
+      id: `onlyoffice-editor-${caseId}`,
+      style: {
+        width: "100%",
+        height: "100%",
+        overflow: "hidden"
+      }
+    }
+  );
+}
+const SEVERITY_COLORS = {
+  critical: "#d32f2f",
+  high: "#f44336",
+  medium: "#ff9800",
+  low: "#2196f3"
+};
+const SEVERITY_BG = {
+  critical: "#ffebee",
+  high: "#ffebee",
+  medium: "#fff3e0",
+  low: "#e3f2fd"
+};
+function EvalReportTab({ caseId }) {
+  const [writerOutput, setWriterOutput] = reactExports.useState(null);
+  const [editorOutput, setEditorOutput] = reactExports.useState(null);
+  const [dismissedFlags, setDismissedFlags] = reactExports.useState(/* @__PURE__ */ new Set());
+  const [activeSection, setActiveSection] = reactExports.useState(null);
+  const [loading, setLoading] = reactExports.useState(true);
+  const [toolbarTab, setToolbarTab] = reactExports.useState("Home");
+  const [mode, setMode] = reactExports.useState("preview");
+  const [docxPath, setDocxPath] = reactExports.useState(null);
+  const [docxVersion, setDocxVersion] = reactExports.useState(0);
+  const [generating, setGenerating] = reactExports.useState(false);
+  const [ooStatus, setOoStatus] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const [writerRes, editorRes] = await Promise.all([
+          window.psygil.writer.getResult({ caseId }),
+          window.psygil.editor.getResult({ caseId })
+        ]);
+        if (cancelled) return;
+        if (writerRes.status === "success" && writerRes.data) {
+          setWriterOutput(writerRes.data);
+        }
+        if (editorRes.status === "success" && editorRes.data) {
+          setEditorOutput(editorRes.data);
+        }
+      } catch (err) {
+        console.error("[EvalReportTab] Failed to load agent results:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    const checkStatus = async () => {
+      try {
+        const res = await window.psygil.onlyoffice.status();
+        if (!cancelled && res.status === "success") {
+          setOoStatus({ running: res.data.running, healthy: res.data.healthy });
+        }
+      } catch (err) {
+        console.error("[EvalReportTab] Failed to check OnlyOffice status:", err);
+      }
+    };
+    checkStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const hasWriter = !!writerOutput;
+  const canEditMode = hasWriter && ooStatus?.running && docxPath;
+  const getAnnotationsForSection = (sectionName) => {
+    if (!editorOutput) return [];
+    return editorOutput.annotations.filter(
+      (a) => a.location.section_name.toLowerCase() === sectionName.toLowerCase() && !dismissedFlags.has(a.flag_id)
+    );
+  };
+  editorOutput ? editorOutput.annotations.filter((a) => !dismissedFlags.has(a.flag_id)).length : 0;
+  if (loading) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "20px", fontSize: "13px", color: "var(--text-secondary)" }, children: "Loading report..." });
+  }
+  if (!hasWriter) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(FallbackReport, { caseId, toolbarTab, setToolbarTab });
+  }
+  writerOutput.report_summary;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", height: "100%", overflow: "hidden", flexDirection: "column" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          padding: "8px 16px",
+          background: "var(--panel)",
+          borderBottom: "1px solid var(--border)",
+          display: "flex",
+          gap: "12px",
+          alignItems: "center",
+          flexShrink: 0
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: async () => {
+                setGenerating(true);
+                try {
+                  const res = await window.psygil.onlyoffice.generateDocx({ caseId });
+                  if (res.status === "success") {
+                    setDocxPath(res.data.filePath);
+                    setDocxVersion(res.data.version);
+                    setMode("editor");
+                  } else {
+                    console.error("[EvalReportTab] Failed to generate DOCX:", res.message);
+                  }
+                } catch (err) {
+                  console.error("[EvalReportTab] Error generating DOCX:", err);
+                } finally {
+                  setGenerating(false);
+                }
+              },
+              disabled: generating,
+              style: {
+                padding: "4px 12px",
+                fontSize: "11px",
+                border: "1px solid var(--border)",
+                borderRadius: "4px",
+                backgroundColor: "var(--bg)",
+                color: "var(--text)",
+                cursor: generating ? "not-allowed" : "pointer",
+                opacity: generating ? 0.6 : 1
+              },
+              children: generating ? "Generating..." : "Generate DOCX"
+            }
+          ),
+          canEditMode && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => setMode(mode === "preview" ? "editor" : "preview"),
+                style: {
+                  padding: "4px 12px",
+                  fontSize: "11px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  backgroundColor: mode === "editor" ? "var(--accent)" : "var(--bg)",
+                  color: mode === "editor" ? "#fff" : "var(--text)",
+                  cursor: "pointer"
+                },
+                children: mode === "preview" ? "Open in Editor" : "Show Preview"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: "10px", color: "var(--text-secondary)" }, children: [
+              "v",
+              docxVersion
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1 } })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flex: 1, overflow: "hidden" }, children: mode === "editor" && canEditMode && docxPath ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+      OnlyOfficeEditor,
+      {
+        caseId,
+        filePath: docxPath,
+        readOnly: false,
+        onDocumentReady: () => {
+          console.log("[EvalReportTab] Document ready");
+        },
+        onDocumentSaved: () => {
+          console.log("[EvalReportTab] Document saved");
+        },
+        onError: (msg) => {
+          console.error("[EvalReportTab] Editor error:", msg);
+        }
+      }
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ReportPreview,
+      {
+        writerOutput,
+        editorOutput,
+        dismissedFlags,
+        setDismissedFlags,
+        activeSection,
+        setActiveSection,
+        toolbarTab,
+        setToolbarTab,
+        getAnnotationsForSection
+      }
+    ) })
+  ] });
+}
+function ReportPreview({
+  writerOutput,
+  editorOutput,
+  dismissedFlags,
+  setDismissedFlags,
+  activeSection,
+  setActiveSection,
+  toolbarTab,
+  setToolbarTab,
+  getAnnotationsForSection
+}) {
+  const summary = writerOutput.report_summary;
+  const hasEditor = !!editorOutput;
+  const activeAnnotationCount = editorOutput ? editorOutput.annotations.filter((a) => !dismissedFlags.has(a.flag_id)).length : 0;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", height: "100%", overflow: "hidden", flex: 1 }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          width: "calc(25% - 0.5px)",
+          flexShrink: 0,
+          borderLeft: "1px solid var(--border)",
+          overflowY: "auto",
+          padding: "8px 0",
+          background: "var(--bg)",
+          order: 2
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                padding: "4px 12px",
+                fontSize: "10px",
+                color: "var(--text-secondary)",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                marginBottom: "4px"
+              },
+              children: "Sections"
+            }
+          ),
+          writerOutput.sections.map((s, i) => {
+            const sectionAnnotations = getAnnotationsForSection(s.section_name);
+            const isActive = activeSection === s.section_name;
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                onClick: () => {
+                  setActiveSection(s.section_name);
+                  document.getElementById(`section-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                },
+                style: {
+                  padding: "6px 12px",
+                  fontSize: "11px",
+                  cursor: "pointer",
+                  color: isActive ? "var(--accent)" : "var(--text)",
+                  background: isActive ? "var(--highlight)" : "transparent",
+                  borderLeft: isActive ? "3px solid var(--accent)" : "3px solid transparent",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: s.section_name }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { display: "flex", gap: "4px", alignItems: "center", flexShrink: 0 }, children: [
+                    s.content_type === "draft_requiring_revision" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: "6px", height: "6px", borderRadius: "50%", background: "#ff9800" } }),
+                    sectionAnnotations.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        style: {
+                          fontSize: "9px",
+                          background: "#f44336",
+                          color: "#fff",
+                          borderRadius: "8px",
+                          padding: "0 4px",
+                          minWidth: "14px",
+                          textAlign: "center"
+                        },
+                        children: sectionAnnotations.length
+                      }
+                    )
+                  ] })
+                ]
+              },
+              i
+            );
+          }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                margin: "12px 8px",
+                padding: "8px",
+                background: "var(--panel)",
+                borderRadius: "4px",
+                fontSize: "10px"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--text-secondary)", marginBottom: "4px" }, children: "Report Summary" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "var(--text)" }, children: [
+                  summary.total_sections,
+                  " sections"
+                ] }),
+                summary.sections_requiring_revision > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "#ff9800" }, children: [
+                  summary.sections_requiring_revision,
+                  " need revision"
+                ] }),
+                hasEditor && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: activeAnnotationCount > 0 ? "#f44336" : "#4caf50" }, children: [
+                  activeAnnotationCount,
+                  " active flags"
+                ] }),
+                summary.selected_diagnoses.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "var(--text-secondary)", marginTop: "4px" }, children: [
+                  "Dx: ",
+                  summary.selected_diagnoses.join(", ")
+                ] })
+              ]
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", order: 1 }, children: [
+      hasEditor && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          style: {
+            padding: "8px 16px",
+            fontSize: "12px",
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+            borderBottom: "1px solid var(--border)",
+            flexShrink: 0,
+            background: editorOutput.review_summary.overall_assessment === "ready_for_clinician_review" ? "#e8f5e9" : "#fff3e0"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Editor Review:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: editorOutput.review_summary.overall_assessment.replace(/_/g, " ") }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text-secondary)" }, children: "|" }),
+            editorOutput.review_summary.critical_flags > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "#d32f2f", fontWeight: 600 }, children: [
+              editorOutput.review_summary.critical_flags,
+              " critical"
+            ] }),
+            editorOutput.review_summary.high_flags > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "#f44336" }, children: [
+              editorOutput.review_summary.high_flags,
+              " high"
+            ] }),
+            editorOutput.review_summary.medium_flags > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "#ff9800" }, children: [
+              editorOutput.review_summary.medium_flags,
+              " medium"
+            ] }),
+            editorOutput.review_summary.low_flags > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "#2196f3" }, children: [
+              editorOutput.review_summary.low_flags,
+              " low"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1 } }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: "10px", color: "var(--text-secondary)" }, children: [
+              "Editor v",
+              editorOutput.version
+            ] })
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(WordToolbar, { activeTab: toolbarTab, setActiveTab: setToolbarTab }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: "0" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "document-editor",
+          style: { maxWidth: 860, margin: "0 auto", padding: "24px 60px", minHeight: "100%" },
+          children: [
+            summary.evaluation_type && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "p",
+                {
+                  style: {
+                    textAlign: "center",
+                    textTransform: "uppercase",
+                    fontWeight: "bold",
+                    fontSize: 14,
+                    marginBottom: 8
+                  },
+                  children: "CONFIDENTIAL FORENSIC EVALUATION REPORT"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "p",
+                {
+                  style: {
+                    textAlign: "center",
+                    textTransform: "uppercase",
+                    fontWeight: "bold",
+                    fontSize: 14,
+                    marginBottom: 30
+                  },
+                  children: [
+                    summary.evaluation_type.toUpperCase(),
+                    " EVALUATION"
+                  ]
+                }
+              )
+            ] }),
+            writerOutput.sections.map((section, i) => {
+              const annotations = getAnnotationsForSection(section.section_name);
+              const isDraft = section.content_type === "draft_requiring_revision";
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { id: `section-${i}`, style: { marginBottom: "24px" }, children: [
+                isDraft ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      border: "2px dashed #ff9800",
+                      background: "#fff8e1",
+                      borderRadius: 4,
+                      padding: 16,
+                      position: "relative"
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "div",
+                        {
+                          style: {
+                            display: "inline-block",
+                            background: "#ff9800",
+                            color: "white",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                            padding: "2px 8px",
+                            borderRadius: 3,
+                            marginBottom: 10
+                          },
+                          children: "AI DRAFT — CLINICIAN REVIEW REQUIRED"
+                        }
+                      ),
+                      section.revision_notes && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            fontSize: "11px",
+                            color: "#e65100",
+                            marginBottom: "8px",
+                            fontStyle: "italic"
+                          },
+                          children: [
+                            "Note: ",
+                            section.revision_notes
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            color: "#333",
+                            whiteSpace: "pre-wrap",
+                            lineHeight: "1.7",
+                            fontSize: "13px"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { marginBottom: 8 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: section.section_name.toUpperCase() }) }),
+                            section.content
+                          ]
+                        }
+                      )
+                    ]
+                  }
+                ) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { whiteSpace: "pre-wrap", lineHeight: "1.7", fontSize: "13px" }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { marginBottom: 8 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: section.section_name.toUpperCase() }) }),
+                  section.content
+                ] }),
+                section.sources.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "10px", color: "var(--text-secondary)", marginTop: "4px" }, children: [
+                  "Sources: ",
+                  section.sources.join(", ")
+                ] }),
+                section.confidence < 0.8 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "10px", color: "#ff9800", marginTop: "2px" }, children: [
+                  "Confidence: ",
+                  Math.round(section.confidence * 100),
+                  "% — review carefully"
+                ] }),
+                annotations.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { marginTop: "8px" }, children: annotations.map((ann) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      padding: "8px 12px",
+                      background: SEVERITY_BG[ann.severity] || "#f5f5f5",
+                      borderLeft: `4px solid ${SEVERITY_COLORS[ann.severity] || "#999"}`,
+                      borderRadius: "0 4px 4px 0",
+                      marginBottom: "6px",
+                      fontSize: "12px"
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: "4px"
+                          },
+                          children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                                "span",
+                                {
+                                  style: {
+                                    display: "inline-block",
+                                    padding: "1px 6px",
+                                    borderRadius: "3px",
+                                    fontSize: "10px",
+                                    fontWeight: 600,
+                                    color: "#fff",
+                                    background: SEVERITY_COLORS[ann.severity] || "#999",
+                                    marginRight: "6px"
+                                  },
+                                  children: ann.severity.toUpperCase()
+                                }
+                              ),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text-secondary)", fontSize: "10px" }, children: ann.flag_type.replace(/_/g, " ") })
+                            ] }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "button",
+                              {
+                                onClick: () => setDismissedFlags((prev) => /* @__PURE__ */ new Set([...prev, ann.flag_id])),
+                                style: {
+                                  padding: "2px 8px",
+                                  fontSize: "10px",
+                                  cursor: "pointer",
+                                  background: "transparent",
+                                  border: "1px solid var(--border)",
+                                  borderRadius: "3px",
+                                  color: "var(--text-secondary)"
+                                },
+                                children: "Dismiss"
+                              }
+                            )
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--text)", marginBottom: "4px" }, children: ann.description }),
+                      ann.suggestion && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            color: "var(--text-secondary)",
+                            fontStyle: "italic",
+                            fontSize: "11px"
+                          },
+                          children: [
+                            "Suggestion: ",
+                            ann.suggestion
+                          ]
+                        }
+                      ),
+                      ann.location.sentence_or_quote && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "div",
+                        {
+                          style: {
+                            color: "var(--text-secondary)",
+                            fontSize: "10px",
+                            marginTop: "4px"
+                          },
+                          children: [
+                            '"',
+                            ann.location.sentence_or_quote,
+                            '"'
+                          ]
+                        }
+                      )
+                    ]
+                  },
+                  ann.flag_id
+                )) })
+              ] }, i);
+            }),
+            hasEditor && editorOutput.revision_priorities && editorOutput.revision_priorities.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: "32px", padding: "16px", background: "var(--bg)", borderRadius: "4px" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  style: {
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    marginBottom: "12px",
+                    color: "var(--text)"
+                  },
+                  children: "Revision Priorities"
+                }
+              ),
+              editorOutput.revision_priorities.map((rp, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  style: {
+                    marginBottom: "8px",
+                    display: "flex",
+                    gap: "8px",
+                    fontSize: "12px"
+                  },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        style: {
+                          width: "22px",
+                          height: "22px",
+                          borderRadius: "50%",
+                          background: "var(--accent)",
+                          color: "#fff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          flexShrink: 0
+                        },
+                        children: rp.priority_order
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: rp.section }),
+                      rp.key_issues.map((issue, ii) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "var(--text-secondary)", fontSize: "11px" }, children: [
+                        "• ",
+                        issue
+                      ] }, ii))
+                    ] })
+                  ]
+                },
+                i
+              ))
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  fontSize: "10px",
+                  color: "var(--text-secondary)",
+                  marginTop: "32px",
+                  borderTop: "1px solid var(--border)",
+                  paddingTop: "8px"
+                },
+                children: [
+                  "Writer v",
+                  writerOutput.version,
+                  " | Generated: ",
+                  writerOutput.generated_at,
+                  hasEditor && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                    " | Editor v",
+                    editorOutput.version
+                  ] })
+                ]
+              }
+            )
+          ]
+        }
+      ) })
+    ] })
+  ] });
+}
+function FallbackReport({
+  caseId,
+  toolbarTab,
+  setToolbarTab
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--panel)", minHeight: "100%", paddingBottom: 40, overflowY: "auto" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          maxWidth: 860,
+          margin: "0 auto",
+          height: 20,
+          background: "var(--panel)",
+          borderBottom: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "flex-end",
+          padding: "0 22px",
+          fontSize: 9,
+          color: "var(--text-secondary)",
+          fontFamily: "'JetBrains Mono', monospace"
+        },
+        children: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1, textAlign: "center" }, children: n }, n))
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(WordToolbar, { activeTab: toolbarTab, setActiveTab: setToolbarTab }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "document-editor", style: { maxWidth: 860, margin: "0 auto", padding: "24px 60px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", padding: "40px 20px", color: "var(--text-secondary)" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "14px", marginBottom: "8px", color: "var(--text)" }, children: "No Writer Agent output available." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px" }, children: "Run the Writer Agent from the agent panel to generate a draft evaluation report. The Ingestor and Diagnostician agents must be run first, and diagnostic decisions must be saved." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "11px", marginTop: "12px", color: "var(--text-secondary)" }, children: [
+        "Case ID: ",
+        caseId
+      ] })
+    ] }) })
+  ] });
+}
+function WordToolbar({
+  activeTab,
+  setActiveTab
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        background: "var(--panel)",
+        borderBottom: "1px solid var(--border)",
+        padding: "4px 8px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        flexShrink: 0
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            style: {
+              display: "flex",
+              gap: 0,
+              fontSize: 11,
+              borderBottom: "1px solid var(--border)",
+              paddingBottom: 4
+            },
+            children: ["File", "Home", "Insert", "Layout", "References", "Review", "View"].map((tab) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                onClick: () => setActiveTab(tab),
+                style: {
+                  padding: "4px 10px",
+                  cursor: "pointer",
+                  color: activeTab === tab ? "var(--accent)" : "var(--text-secondary)",
+                  borderBottom: activeTab === tab ? "2px solid var(--accent)" : "2px solid transparent",
+                  fontWeight: activeTab === tab ? 600 : 400
+                },
+                children: tab
+              },
+              tab
+            ))
+          }
+        ),
+        activeTab === "Home" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", padding: "4px 0" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              style: {
+                padding: "2px 4px",
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: 3,
+                fontSize: 11,
+                color: "var(--text)"
+              },
+              defaultValue: "Times New Roman",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Times New Roman" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Arial" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Calibri" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              style: {
+                padding: "2px 4px",
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: 3,
+                fontSize: 11,
+                color: "var(--text)"
+              },
+              defaultValue: "12",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "10" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "11" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "12" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "14" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { width: 1, height: 20, background: "var(--border)", margin: "0 4px" } }),
+          ["B", "I", "U"].map((btn) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              style: {
+                padding: "3px 6px",
+                background: "none",
+                border: "1px solid transparent",
+                borderRadius: 3,
+                cursor: "pointer",
+                fontSize: 12,
+                color: "var(--text)",
+                fontWeight: btn === "B" ? 700 : 400,
+                fontStyle: btn === "I" ? "italic" : "normal",
+                textDecoration: btn === "U" ? "underline" : "none"
+              },
+              children: btn
+            },
+            btn
+          ))
+        ] })
+      ]
+    }
+  );
+}
+const AttestationTab = ({ caseId }) => {
+  const [checklist, setChecklist] = reactExports.useState([
+    { id: "testing-complete", label: "All testing complete", completed: false, checked: false },
+    { id: "interviews-documented", label: "All interviews documented", completed: false, checked: false },
+    { id: "diagnostic-decisions", label: "Diagnostic decisions recorded", completed: false, checked: false },
+    { id: "report-reviewed", label: "Report draft reviewed", completed: false, checked: false },
+    { id: "daubert-verified", label: "Daubert compliance verified", completed: false, checked: false },
+    { id: "pii-handled", label: "All PII properly handled", completed: false, checked: false }
+  ]);
+  const [signature, setSignature] = reactExports.useState("");
+  const [attestationText, setAttestationText] = reactExports.useState(
+    "I, [Your Name], a licensed forensic psychologist, do hereby attest that I have personally conducted a comprehensive evaluation of the examinee as detailed in this report. I have reviewed all relevant records, administered standardized psychological tests, and conducted clinical interviews. My opinions are based on reliable psychological data and methods. I have followed the Daubert standard for expert testimony and maintained appropriate professional boundaries throughout the evaluation. This report represents my best professional judgment."
+  );
+  const [signatureDate, setSignatureDate] = reactExports.useState((/* @__PURE__ */ new Date()).toISOString().split("T")[0]);
+  const [isLocked, setIsLocked] = reactExports.useState(false);
+  const [integrityHash, setIntegrityHash] = reactExports.useState("");
+  const [isSubmitting, setIsSubmitting] = reactExports.useState(false);
+  const [submitError, setSubmitError] = reactExports.useState("");
+  const [submitSuccess, setSubmitSuccess] = reactExports.useState(false);
+  const [isVerifying, setIsVerifying] = reactExports.useState(false);
+  const [verifyResult, setVerifyResult] = reactExports.useState(null);
+  const [isPreparingTestimony, setIsPreparingTestimony] = reactExports.useState(false);
+  const [testimonyFiles, setTestimonyFiles] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
+  reactExports.useEffect(() => {
+    const loadReportStatus = async () => {
+      try {
+        if (!window.psygil?.report?.getStatus) {
+          console.warn("window.psygil.report.getStatus not available yet");
+          setLoading(false);
+          return;
+        }
+        const response = await window.psygil.report.getStatus({ caseId });
+        if (response.status === "success") {
+          if (response.data.finalized) {
+            setIsLocked(true);
+            setIntegrityHash(response.data.integrityHash || "");
+          }
+        } else if (response.status === "error") {
+          console.error("Failed to get report status:", response.message);
+        }
+        await validateChecklist();
+      } catch (error) {
+        console.error("Error loading report status:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadReportStatus();
+  }, [caseId]);
+  const validateChecklist = async () => {
+    try {
+      let testingComplete = false;
+      if (window.psygil?.documents?.list) {
+        const docsResponse = await window.psygil.documents.list({ case_id: caseId });
+        if (docsResponse.status === "success") {
+          testingComplete = (docsResponse.data || []).some((doc) => doc.document_type?.includes("test"));
+        }
+      }
+      let interviewsComplete = false;
+      if (window.psygil?.documents?.list) {
+        const docsResponse = await window.psygil.documents.list({ case_id: caseId });
+        if (docsResponse.status === "success") {
+          interviewsComplete = (docsResponse.data || []).some((doc) => doc.document_type?.includes("interview"));
+        }
+      }
+      let diagnosticComplete = false;
+      if (window.psygil?.diagnosticDecisions?.list) {
+        const diagResponse = await window.psygil.diagnosticDecisions.list({ case_id: caseId });
+        if (diagResponse.status === "success") {
+          diagnosticComplete = (diagResponse.data || []).length > 0;
+        }
+      }
+      let reportComplete = false;
+      if (window.psygil?.writer?.getResult) {
+        const reportResponse = await window.psygil.writer.getResult({ caseId });
+        if (reportResponse.status === "success" && reportResponse.data?.status) {
+          reportComplete = true;
+        }
+      }
+      let daubertComplete = false;
+      if (window.psygil?.editor?.getResult) {
+        const editorResponse = await window.psygil.editor.getResult({ caseId });
+        if (editorResponse.status === "success" && editorResponse.data?.status) {
+          daubertComplete = true;
+        }
+      }
+      const piiComplete = true;
+      setChecklist(
+        (prev) => prev.map((item) => {
+          switch (item.id) {
+            case "testing-complete":
+              return { ...item, completed: testingComplete };
+            case "interviews-documented":
+              return { ...item, completed: interviewsComplete };
+            case "diagnostic-decisions":
+              return { ...item, completed: diagnosticComplete };
+            case "report-reviewed":
+              return { ...item, completed: reportComplete };
+            case "daubert-verified":
+              return { ...item, completed: daubertComplete };
+            case "pii-handled":
+              return { ...item, completed: piiComplete };
+            default:
+              return item;
+          }
+        })
+      );
+    } catch (error) {
+      console.error("Error validating checklist:", error);
+    }
+  };
+  const handleToggleCheckitem = (id) => {
+    setChecklist(checklist.map((item) => item.id === id ? { ...item, checked: !item.checked } : item));
+  };
+  checklist.every((item) => item.checked);
+  const allValidated = checklist.every((item) => item.completed);
+  checklist.filter((item) => item.checked).length;
+  if (loading) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: "Review & Attestation" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          style: {
+            background: "var(--highlight)",
+            padding: "20px",
+            borderRadius: "4px",
+            textAlign: "center",
+            color: "var(--text-secondary)"
+          },
+          children: "Loading report status..."
+        }
+      )
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: "Review & Attestation" }),
+    isLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "#e3f2fd",
+          color: "#1565c0",
+          padding: "16px",
+          borderRadius: "4px",
+          marginBottom: "20px",
+          border: "1px solid #bbdefb"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontWeight: 600, fontSize: "14px", margin: "0 0 8px 0" }, children: "🔒 Report Already Finalized" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontSize: "13px", margin: "0 0 8px 0", lineHeight: "1.5" }, children: "This report has been finalized and locked. No further edits are possible. You can verify its integrity or prepare testimony." }),
+          integrityHash && /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { fontSize: "12px", margin: "8px 0 0 0", color: "#1565c0", fontFamily: "monospace" }, children: [
+            "Hash: ",
+            integrityHash.substring(0, 32),
+            "..."
+          ] })
+        ]
+      }
+    ),
+    !isLocked && !allValidated && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "#fff3cd",
+          color: "#856404",
+          padding: "16px",
+          borderRadius: "4px",
+          marginBottom: "20px",
+          border: "1px solid #ffc107"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontWeight: 600, fontSize: "14px", margin: "0 0 8px 0" }, children: "⏳ CHECKLIST INCOMPLETE" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { fontSize: "13px", margin: "0", lineHeight: "1.5" }, children: [
+            "Waiting for validation. ",
+            checklist.filter((i) => i.completed).length,
+            " of ",
+            checklist.length,
+            " checklist items verified."
+          ] })
+        ]
+      }
+    ),
+    !isLocked && allValidated && !submitSuccess && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          background: "#e8f5e9",
+          color: "#2e7d32",
+          padding: "16px",
+          borderRadius: "4px",
+          marginBottom: "20px",
+          border: "1px solid #4caf50"
+        },
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontWeight: 600, fontSize: "14px", margin: "0" }, children: "✓ ALL REQUIREMENTS MET — Ready for Attestation" })
+      }
+    ),
+    submitSuccess && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "#c8e6c9",
+          color: "#1b5e20",
+          padding: "16px",
+          borderRadius: "4px",
+          marginBottom: "20px",
+          border: "1px solid #4caf50"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontWeight: 600, fontSize: "14px", margin: "0 0 8px 0" }, children: "✓ Attestation Submitted Successfully" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { fontSize: "12px", margin: "0", fontFamily: "monospace", color: "#1b5e20" }, children: [
+            "Integrity Hash: ",
+            integrityHash
+          ] })
+        ]
+      }
+    ),
+    submitError && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "#ffebee",
+          color: "#c62828",
+          padding: "16px",
+          borderRadius: "4px",
+          marginBottom: "20px",
+          border: "1px solid #ef5350"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontWeight: 600, fontSize: "14px", margin: "0 0 8px 0" }, children: "✗ Submission Error" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontSize: "12px", margin: "0", color: "#c62828" }, children: submitError })
+        ]
+      }
+    ),
+    !isLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: { fontSize: "15px", fontWeight: 600, marginBottom: "12px", paddingBottom: "6px", borderBottom: "1px solid var(--border)" }, children: "Completion Checklist" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          style: {
+            background: "var(--highlight)",
+            border: "1px solid var(--border)",
+            borderRadius: "4px",
+            padding: "16px",
+            marginBottom: "20px"
+          },
+          children: checklist.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { marginBottom: item.id === checklist[checklist.length - 1].id ? "0" : "12px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: { display: "flex", gap: "8px", alignItems: "center", cursor: "pointer", fontSize: "13px", opacity: item.completed ? 1 : 0.6 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "checkbox",
+                checked: item.checked,
+                onChange: () => handleToggleCheckitem(item.id),
+                disabled: !item.completed,
+                style: {
+                  width: "16px",
+                  height: "16px",
+                  cursor: item.completed ? "pointer" : "not-allowed",
+                  accentColor: "var(--accent)"
+                }
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "var(--text)" }, children: [
+              item.completed ? "✓" : "○",
+              " ",
+              item.label
+            ] })
+          ] }) }, item.id))
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: { fontSize: "15px", fontWeight: 600, marginBottom: "12px", paddingBottom: "6px", borderBottom: "1px solid var(--border)" }, children: "Report Preview" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          background: "var(--bg)",
+          border: "1px solid var(--border)",
+          borderRadius: "4px",
+          padding: "16px",
+          marginBottom: "20px",
+          minHeight: "200px",
+          maxHeight: "400px",
+          overflowY: "auto",
+          fontSize: "12px",
+          lineHeight: "1.6",
+          fontFamily: "'Times New Roman', Times, serif"
+        },
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { color: "var(--text)" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "FORENSIC PSYCHOLOGICAL EVALUATION" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { margin: "12px 0" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Examinee:" }),
+            " Johnson, Marcus D. | ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "DOB:" }),
+            " 01/15/1988 | ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Age:" }),
+            " 37"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { margin: "12px 0" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Evaluation Type:" }),
+            " Competency to Stand Trial (CST) | ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Referral Source:" }),
+            " Public Defender's Office"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { margin: "12px 0" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Evaluation Dates:" }),
+            " March 8-12, 2026 | ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Report Date:" }),
+            " March 19, 2026"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "20px 0 12px 0" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "CLINICAL IMPRESSIONS" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "The examinee presents with a primary diagnosis of Schizophrenia, First Episode, Acute (DSM-5-TR: F20.9). Clinical interview, standardized psychological testing, and collateral information converge on this diagnostic impression." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "20px 0 12px 0" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "COMPETENCY-TO-STAND-TRIAL OPINION" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+            "Based on the Dusky standard (Dusky v. United States, 1960), the examinee is found to be ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "NOT COMPETENT" }),
+            " to stand trial. The examinee demonstrates significant impairment in both:"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { style: { margin: "12px 0", paddingLeft: "20px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Rational understanding of the legal proceedings" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Ability to assist counsel in his defense" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "20px 0 0 0", fontSize: "11px", color: "var(--text-secondary)" }, children: "[Full report content truncated for display. See complete report for detailed findings and recommendations.]" })
+        ] })
+      }
+    ),
+    !isLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: { fontSize: "15px", fontWeight: 600, marginBottom: "12px", paddingBottom: "6px", borderBottom: "1px solid var(--border)" }, children: "Digital Attestation" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          style: {
+            background: "var(--highlight)",
+            border: "1px solid var(--border)",
+            borderRadius: "4px",
+            padding: "16px",
+            marginBottom: "20px"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "16px", fontSize: "13px", lineHeight: "1.6", color: "var(--text)" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "6px", color: "var(--text)" }, children: "Attestation Statement" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "textarea",
+                {
+                  value: attestationText,
+                  onChange: (e) => setAttestationText(e.target.value),
+                  style: {
+                    width: "100%",
+                    minHeight: "120px",
+                    padding: "8px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "4px",
+                    background: "var(--bg)",
+                    color: "var(--text)",
+                    fontSize: "12px",
+                    fontFamily: "inherit",
+                    lineHeight: "1.6",
+                    resize: "vertical"
+                  }
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "16px" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "6px", color: "var(--text)" }, children: "Clinician Signature & Credentials" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "text",
+                  value: signature,
+                  onChange: (e) => setSignature(e.target.value),
+                  placeholder: "Dr. [Full Name], [Licensure/Credentials]",
+                  style: {
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "4px",
+                    background: "var(--bg)",
+                    color: "var(--text)",
+                    fontSize: "13px",
+                    fontFamily: "inherit"
+                  }
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }, children: "Include your full name and professional credentials (e.g., PsyD, PhD, Licensed Psychologist)" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "16px" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "6px", color: "var(--text)" }, children: "Date of Attestation" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "date",
+                  value: signatureDate,
+                  onChange: (e) => setSignatureDate(e.target.value),
+                  style: {
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "4px",
+                    background: "var(--bg)",
+                    color: "var(--text)",
+                    fontSize: "13px",
+                    fontFamily: "inherit"
+                  }
+                }
+              )
+            ] }),
+            signature && allValidated && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  padding: "12px",
+                  fontSize: "12px",
+                  lineHeight: "1.6"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { margin: "0 0 8px 0", fontWeight: 600, color: "var(--text)" }, children: [
+                    "✓ Ready to submit: ",
+                    signature
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { margin: "0", color: "var(--text-secondary)" }, children: [
+                    "Date: ",
+                    new Date(signatureDate).toLocaleDateString(),
+                    " | SHA-256 integrity hash will be generated upon submission"
+                  ] })
+                ]
+              }
+            )
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "12px", marginTop: "20px", flexWrap: "wrap" }, children: [
+      !isLocked && /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          disabled: !allValidated || !signature || isSubmitting,
+          onClick: async () => {
+            setIsSubmitting(true);
+            setSubmitError("");
+            try {
+              if (!window.psygil?.report?.submitAttestation) {
+                throw new Error("window.psygil.report.submitAttestation not available");
+              }
+              const response = await window.psygil.report.submitAttestation({
+                caseId,
+                signedBy: signature,
+                attestationStatement: attestationText,
+                signatureDate
+              });
+              if (response.status === "success") {
+                setIsLocked(true);
+                setIntegrityHash(response.data.integrityHash);
+                setSubmitSuccess(true);
+                if (window.psygil?.audit?.log) {
+                  await window.psygil.audit.log({
+                    caseId,
+                    actionType: "report_finalized",
+                    actorType: "clinician",
+                    details: `Report finalized and locked by ${signature}`
+                  });
+                }
+              } else {
+                setSubmitError(response.message || "Failed to submit attestation");
+              }
+            } catch (error) {
+              setSubmitError(error instanceof Error ? error.message : "Unknown error occurred");
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+          style: {
+            padding: "8px 16px",
+            background: allValidated && signature && !isSubmitting ? "var(--accent)" : "var(--border)",
+            color: allValidated && signature && !isSubmitting ? "white" : "var(--text-secondary)",
+            border: "none",
+            borderRadius: "4px",
+            fontSize: "13px",
+            fontWeight: 600,
+            cursor: allValidated && signature && !isSubmitting ? "pointer" : "not-allowed",
+            opacity: allValidated && signature && !isSubmitting ? 1 : 0.5
+          },
+          children: isSubmitting ? "Submitting..." : "Submit Attestation & Lock Report"
+        }
+      ) }),
+      isLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            disabled: isVerifying,
+            onClick: async () => {
+              setIsVerifying(true);
+              try {
+                if (!window.psygil?.report?.verifyIntegrity) {
+                  throw new Error("window.psygil.report.verifyIntegrity not available");
+                }
+                const response = await window.psygil.report.verifyIntegrity({ caseId });
+                if (response.status === "success") {
+                  setVerifyResult({
+                    valid: response.data.valid,
+                    message: response.data.valid ? "Integrity verified: Report has not been modified" : "Integrity check failed: Report may have been altered"
+                  });
+                } else {
+                  setVerifyResult({
+                    valid: false,
+                    message: response.message || "Failed to verify integrity"
+                  });
+                }
+              } catch (error) {
+                setVerifyResult({
+                  valid: false,
+                  message: error instanceof Error ? error.message : "Unknown error"
+                });
+              } finally {
+                setIsVerifying(false);
+              }
+            },
+            style: {
+              padding: "8px 16px",
+              background: "var(--panel)",
+              color: "var(--text)",
+              border: "1px solid var(--border)",
+              borderRadius: "4px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: isVerifying ? "not-allowed" : "pointer",
+              opacity: isVerifying ? 0.5 : 1
+            },
+            children: isVerifying ? "Verifying..." : "Verify Integrity"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            disabled: isPreparingTestimony,
+            onClick: async () => {
+              setIsPreparingTestimony(true);
+              try {
+                if (!window.psygil?.testimony?.prepare) {
+                  throw new Error("window.psygil.testimony.prepare not available");
+                }
+                const response = await window.psygil.testimony.prepare({ caseId });
+                if (response.status === "success") {
+                  setTestimonyFiles(response.data.exportedFiles);
+                } else {
+                  setSubmitError(response.message || "Failed to prepare testimony");
+                }
+              } catch (error) {
+                setSubmitError(error instanceof Error ? error.message : "Unknown error occurred");
+              } finally {
+                setIsPreparingTestimony(false);
+              }
+            },
+            style: {
+              padding: "8px 16px",
+              background: "var(--panel)",
+              color: "var(--text)",
+              border: "1px solid var(--border)",
+              borderRadius: "4px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: isPreparingTestimony ? "not-allowed" : "pointer",
+              opacity: isPreparingTestimony ? 0.5 : 1
+            },
+            children: isPreparingTestimony ? "Preparing..." : "Prepare for Testimony"
+          }
+        )
+      ] })
+    ] }),
+    verifyResult && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          marginTop: "16px",
+          padding: "12px",
+          background: verifyResult.valid ? "#c8e6c9" : "#ffcdd2",
+          color: verifyResult.valid ? "#1b5e20" : "#b71c1c",
+          border: `1px solid ${verifyResult.valid ? "#4caf50" : "#f44336"}`,
+          borderRadius: "4px",
+          fontSize: "12px"
+        },
+        children: [
+          verifyResult.valid ? "✓" : "✗",
+          " ",
+          verifyResult.message
+        ]
+      }
+    ),
+    testimonyFiles.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          marginTop: "16px",
+          padding: "12px",
+          background: "var(--highlight)",
+          border: "1px solid var(--border)",
+          borderRadius: "4px"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "0 0 8px 0", fontWeight: 600, fontSize: "12px", color: "var(--text)" }, children: "✓ Testimony files prepared:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { style: { margin: "0", paddingLeft: "20px", fontSize: "11px", color: "var(--text-secondary)" }, children: testimonyFiles.map((file, idx) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: file }, idx)) })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: "24px", padding: "12px", background: "var(--highlight)", borderRadius: "4px", fontSize: "12px", color: "var(--text-secondary)" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "0 0 8px 0", fontWeight: 600, color: "var(--text)" }, children: isLocked ? "Report Status" : "Before You Attest" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { style: { margin: "0", paddingLeft: "20px" }, children: [
+        !isLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "All checklist items must be validated (auto-checked based on case data)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Your attestation generates a SHA-256 integrity hash of the final report" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "The document is locked and cannot be edited (forensic requirement)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "An audit trail entry is created with your signature and timestamp" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "You can then export the report for delivery to the referral source" })
+        ] }),
+        isLocked && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Report is finalized and protected from modification" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: 'Use "Verify Integrity" to confirm the report has not been altered' }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: 'Use "Prepare for Testimony" to export documents for expert testimony' }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "All actions are recorded in the audit trail with full timestamps" })
+        ] })
+      ] })
+    ] })
+  ] });
+};
+const AuditTrailTab = ({ caseId }) => {
+  const [entries, setEntries] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
+  const [error, setError] = reactExports.useState("");
+  const [isExporting, setIsExporting] = reactExports.useState(null);
+  const [isVerifying, setIsVerifying] = reactExports.useState(false);
+  const [verifyResult, setVerifyResult] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    const loadAuditTrail = async () => {
+      try {
+        setError("");
+        if (!window.psygil?.audit?.getTrail) {
+          console.warn("window.psygil.audit.getTrail not available yet");
+          setLoading(false);
+          return;
+        }
+        const response = await window.psygil.audit.getTrail({ caseId });
+        if (response.status === "success") {
+          setEntries(response.data.entries);
+        } else if (response.status === "error") {
+          setError(response.message || "Failed to load audit trail");
+        }
+      } catch (err) {
+        console.error("Error loading audit trail:", err);
+        setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadAuditTrail();
+    const interval = setInterval(loadAuditTrail, 1e4);
+    return () => clearInterval(interval);
+  }, [caseId]);
+  const getStatusColor2 = (status) => {
+    switch (status) {
+      case "complete":
+        return "#4caf50";
+      case "in_progress":
+        return "#ff9800";
+      case "error":
+        return "#f44336";
+      default:
+        return "#808080";
+    }
+  };
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "complete":
+        return "Complete";
+      case "in_progress":
+        return "In Progress";
+      case "error":
+        return "Error";
+      default:
+        return "Unknown";
+    }
+  };
+  const getActorColor = (actorType) => {
+    switch (actorType) {
+      case "clinician":
+        return "var(--accent)";
+      case "agent":
+        return "#9c27b0";
+      case "system":
+        return "#9e9e9e";
+      default:
+        return "var(--text-secondary)";
+    }
+  };
+  const getActorLabel = (actorType) => {
+    switch (actorType) {
+      case "clinician":
+        return "Clinician";
+      case "agent":
+        return "AI Agent";
+      case "system":
+        return "System";
+      default:
+        return "Unknown";
+    }
+  };
+  const handleExport = async (format) => {
+    setIsExporting(format);
+    try {
+      if (!window.psygil?.audit?.export) {
+        throw new Error("window.psygil.audit.export not available");
+      }
+      const response = await window.psygil.audit.export({ caseId, format });
+      if (response.status === "success") {
+        const blob = new Blob([response.data.data], { type: response.data.mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `audit-trail-${caseId}.${format}`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else {
+        setError(response.message || `Failed to export audit trail as ${format.toUpperCase()}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setIsExporting(null);
+    }
+  };
+  const handleVerifyIntegrity = async () => {
+    setIsVerifying(true);
+    try {
+      if (!window.psygil?.report?.verifyIntegrity) {
+        throw new Error("window.psygil.report.verifyIntegrity not available");
+      }
+      const response = await window.psygil.report.verifyIntegrity({ caseId });
+      if (response.status === "success") {
+        setVerifyResult({
+          valid: response.data.valid,
+          message: response.data.valid ? "Integrity verified: Audit trail has not been modified" : "Integrity check failed: Audit trail may have been altered"
+        });
+      } else {
+        setVerifyResult({
+          valid: false,
+          message: response.message || "Failed to verify integrity"
+        });
+      }
+    } catch (err) {
+      setVerifyResult({
+        valid: false,
+        message: err instanceof Error ? err.message : "Unknown error"
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+  if (loading) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h1", { children: [
+        "Audit Trail — Case #",
+        caseId
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          style: {
+            background: "var(--highlight)",
+            padding: "20px",
+            borderRadius: "4px",
+            textAlign: "center",
+            color: "var(--text-secondary)"
+          },
+          children: "Loading audit trail..."
+        }
+      )
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("h1", { children: [
+      "Audit Trail — Case #",
+      caseId
+    ] }),
+    error && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "#ffebee",
+          color: "#c62828",
+          padding: "12px",
+          borderRadius: "4px",
+          marginBottom: "20px",
+          fontSize: "12px",
+          border: "1px solid #ef5350"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Error:" }),
+          " ",
+          error
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "var(--highlight)",
+          border: "1px solid var(--border)",
+          borderRadius: "4px",
+          padding: "12px",
+          marginBottom: "20px",
+          fontSize: "12px",
+          lineHeight: "1.6",
+          color: "var(--text-secondary)"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "0 0 8px 0", fontWeight: 600, color: "var(--text)" }, children: "Complete Evaluation History" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "0" }, children: "This audit trail captures all actions taken on this case, including clinician decisions, AI agent operations, and system events. All timestamps are recorded. All PII operations are logged with operation references for audit purposes." })
+        ]
+      }
+    ),
+    entries.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "var(--highlight)",
+          border: "1px solid var(--border)",
+          borderRadius: "4px",
+          padding: "24px",
+          textAlign: "center",
+          color: "var(--text-secondary)"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "0 0 8px 0", fontSize: "13px" }, children: "No audit entries yet for this case." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "0", fontSize: "12px" }, children: "Audit entries will appear here as the evaluation progresses through stages (Onboarding, Testing, Interview, Diagnostics, Review)." })
+        ]
+      }
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { overflowX: "auto", marginBottom: "20px" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "12px" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { style: { background: "var(--panel)", borderBottom: "1px solid var(--border)" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: { padding: "8px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", fontSize: "11px" }, children: "Timestamp" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: { padding: "8px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", fontSize: "11px" }, children: "Actor" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: { padding: "8px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", fontSize: "11px" }, children: "Action" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { style: { padding: "8px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-secondary)", fontSize: "11px" }, children: "Status" })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: entries.map((entry, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "tr",
+          {
+            style: {
+              borderBottom: "1px solid var(--border)",
+              background: idx % 2 === 0 ? "var(--bg)" : "var(--highlight)"
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { padding: "10px", color: "var(--text-secondary)", whiteSpace: "nowrap", fontSize: "11px" }, children: new Date(entry.timestamp).toLocaleString(void 0, {
+                month: "short",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit"
+              }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { padding: "10px", color: getActorColor(entry.actorType), fontWeight: 500, fontSize: "12px" }, children: entry.actorName || getActorLabel(entry.actorType) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { style: { padding: "10px", color: "var(--text)" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 500, marginBottom: "4px" }, children: entry.actionType }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", lineHeight: "1.4" }, children: entry.details })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { padding: "10px", textAlign: "center" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  style: {
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "4px 8px",
+                    background: getStatusColor2(entry.status),
+                    color: "white",
+                    borderRadius: "3px",
+                    fontSize: "11px",
+                    fontWeight: 600
+                  },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        style: {
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          background: "white"
+                        }
+                      }
+                    ),
+                    getStatusLabel(entry.status)
+                  ]
+                }
+              ) })
+            ]
+          },
+          entry.id
+        )) })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          style: {
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "12px",
+            marginBottom: "20px"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  background: "var(--highlight)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  padding: "12px",
+                  textAlign: "center"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "20px", fontWeight: 700, color: "var(--accent)" }, children: entries.length }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }, children: "Total Events" })
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  background: "var(--highlight)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  padding: "12px",
+                  textAlign: "center"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "20px", fontWeight: 700, color: "var(--accent)" }, children: entries.filter((e) => e.actorType === "clinician").length }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }, children: "Clinician Actions" })
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  background: "var(--highlight)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  padding: "12px",
+                  textAlign: "center"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "20px", fontWeight: 700, color: "#9c27b0" }, children: entries.filter((e) => e.actorType === "agent").length }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }, children: "AI Agent Operations" })
+                ]
+              }
+            )
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: "20px", display: "flex", gap: "12px", flexWrap: "wrap" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          disabled: isExporting === "csv" || entries.length === 0,
+          onClick: () => handleExport("csv"),
+          style: {
+            padding: "8px 16px",
+            background: isExporting === "csv" || entries.length === 0 ? "var(--border)" : "var(--accent)",
+            color: isExporting === "csv" || entries.length === 0 ? "var(--text-secondary)" : "white",
+            border: "none",
+            borderRadius: "4px",
+            fontSize: "12px",
+            fontWeight: 600,
+            cursor: isExporting === "csv" || entries.length === 0 ? "not-allowed" : "pointer",
+            opacity: isExporting === "csv" || entries.length === 0 ? 0.5 : 1
+          },
+          children: isExporting === "csv" ? "Exporting CSV..." : "Export Audit Trail (CSV)"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          disabled: isExporting === "json" || entries.length === 0,
+          onClick: () => handleExport("json"),
+          style: {
+            padding: "8px 16px",
+            background: "var(--panel)",
+            color: isExporting === "json" || entries.length === 0 ? "var(--text-secondary)" : "var(--text)",
+            border: "1px solid var(--border)",
+            borderRadius: "4px",
+            fontSize: "12px",
+            fontWeight: 500,
+            cursor: isExporting === "json" || entries.length === 0 ? "not-allowed" : "pointer",
+            opacity: isExporting === "json" || entries.length === 0 ? 0.5 : 1
+          },
+          children: isExporting === "json" ? "Exporting JSON..." : "Export Audit Trail (JSON)"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          disabled: isVerifying,
+          onClick: handleVerifyIntegrity,
+          style: {
+            padding: "8px 16px",
+            background: "var(--panel)",
+            color: isVerifying ? "var(--text-secondary)" : "var(--text)",
+            border: "1px solid var(--border)",
+            borderRadius: "4px",
+            fontSize: "12px",
+            fontWeight: 500,
+            cursor: isVerifying ? "not-allowed" : "pointer",
+            opacity: isVerifying ? 0.5 : 1
+          },
+          children: isVerifying ? "Verifying..." : "Verify Integrity"
+        }
+      )
+    ] }),
+    verifyResult && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          marginTop: "16px",
+          padding: "12px",
+          background: verifyResult.valid ? "#c8e6c9" : "#ffcdd2",
+          color: verifyResult.valid ? "#1b5e20" : "#b71c1c",
+          border: `1px solid ${verifyResult.valid ? "#4caf50" : "#f44336"}`,
+          borderRadius: "4px",
+          fontSize: "12px"
+        },
+        children: [
+          verifyResult.valid ? "✓" : "✗",
+          " ",
+          verifyResult.message
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          marginTop: "24px",
+          padding: "12px",
+          background: "var(--highlight)",
+          borderRadius: "4px",
+          fontSize: "12px",
+          lineHeight: "1.6",
+          color: "var(--text-secondary)"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { margin: "0 0 8px 0", fontWeight: 600, color: "var(--text)" }, children: "About This Audit Trail" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { style: { margin: "0", paddingLeft: "20px" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Forensic Compliance:" }),
+              " This audit trail satisfies forensic documentation requirements and supports discoverability in legal proceedings."
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Auto-Refresh:" }),
+              " Audit entries update automatically every 10 seconds as the evaluation progresses."
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Agent Transparency:" }),
+              " All AI agent operations are clearly marked and timestamped, with clinician actions separated for evidentiary clarity."
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Export & Verification:" }),
+              " Export the audit trail as CSV or JSON for documentation. Verify integrity to confirm no unauthorized modifications."
+            ] })
+          ] })
+        ]
+      }
+    )
+  ] });
+};
+function SettingsTab({}) {
+  const [apiKey, setApiKey] = reactExports.useState("");
+  const [apiKeyMasked, setApiKeyMasked] = reactExports.useState("••••••••••••••sk-ant");
+  const [connectionStatus, setConnectionStatus] = reactExports.useState("idle");
+  const [connectionError, setConnectionError] = reactExports.useState("");
+  const [theme, setTheme] = reactExports.useState(
+    typeof window !== "undefined" ? document.documentElement.getAttribute("data-theme") || "light" : "light"
+  );
+  const handleThemeCycle = reactExports.useCallback(() => {
+    const themes = ["light", "medium", "dark"];
+    const currentIdx = themes.indexOf(theme);
+    const nextIdx = (currentIdx + 1) % themes.length;
+    const nextTheme = themes[nextIdx];
+    setTheme(nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme);
+  }, [theme]);
+  const handleTestConnection = reactExports.useCallback(async () => {
+    setConnectionStatus("testing");
+    setConnectionError("");
+    try {
+      const result = await window.psygil.ai.testConnection({});
+      if (result.status === "success") {
+        if (result.data.connected) {
+          setConnectionStatus("connected");
+        } else {
+          setConnectionStatus("error");
+          setConnectionError(result.data.error || "Connection failed");
+        }
+      } else {
+        setConnectionStatus("error");
+        setConnectionError("Connection failed");
+      }
+    } catch (error) {
+      setConnectionStatus("error");
+      setConnectionError("Failed to test connection");
+    }
+  }, []);
+  const handleBackupDatabase = reactExports.useCallback(async () => {
+    try {
+      const folder = await window.psygil.workspace.pickFolder();
+      if (folder) {
+        alert(`Database backup would be saved to: ${folder}`);
+      }
+    } catch (error) {
+      alert("Error selecting backup location");
+    }
+  }, []);
+  const handleExportCases = reactExports.useCallback(async () => {
+    alert("Export cases functionality coming soon");
+  }, []);
+  const handleClearDemo = reactExports.useCallback(async () => {
+    if (window.confirm("Are you sure? This will delete all demo data.")) {
+      try {
+        await window.psygil.seed.demoCases();
+        alert("Demo data cleared");
+      } catch (error) {
+        alert("Error clearing demo data");
+      }
+    }
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        padding: "20px 24px",
+        fontSize: 13,
+        lineHeight: 1.6
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { style: { fontSize: 20, fontWeight: 600, marginBottom: 16 }, children: "Settings" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "h2",
+          {
+            style: {
+              fontSize: 15,
+              fontWeight: 600,
+              marginTop: 20,
+              marginBottom: 12,
+              paddingBottom: 6,
+              borderBottom: "1px solid var(--border)"
+            },
+            children: "Practice Information"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            style: {
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: 12,
+              marginBottom: 12
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 8 }, children: "Clinician Profile" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 13, color: "var(--text)", lineHeight: 1.5 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Name:" }),
+                  " Dr. Truck Irwin, Psy.D., ABPP"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "License #:" }),
+                  " PSY-12345 (Colorado)"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Practice:" }),
+                  " Irwin Forensic Psychology, PLLC"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Specialty:" }),
+                  " Forensic Psychology"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Jurisdiction:" }),
+                  " Colorado, Federal Courts"
+                ] })
+              ] })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "h2",
+          {
+            style: {
+              fontSize: 15,
+              fontWeight: 600,
+              marginTop: 20,
+              marginBottom: 12,
+              paddingBottom: 6,
+              borderBottom: "1px solid var(--border)"
+            },
+            children: "Appearance"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            style: {
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: 12,
+              marginBottom: 12
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 8 }, children: "Theme" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12, color: "var(--text-secondary)", marginBottom: 12 }, children: [
+                "Current theme: ",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: theme })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: handleThemeCycle,
+                  style: {
+                    padding: "6px 12px",
+                    background: "var(--accent)",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500
+                  },
+                  children: "Cycle Theme"
+                }
+              )
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "h2",
+          {
+            style: {
+              fontSize: 15,
+              fontWeight: 600,
+              marginTop: 20,
+              marginBottom: 12,
+              paddingBottom: 6,
+              borderBottom: "1px solid var(--border)"
+            },
+            children: "API Configuration"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            style: {
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: 12,
+              marginBottom: 12
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 8 }, children: "Claude API Key" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 12 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { display: "block", fontSize: 11, fontWeight: 500, marginBottom: 4, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.3 }, children: "API Key" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      marginBottom: 8
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "input",
+                        {
+                          type: "password",
+                          value: apiKey,
+                          onChange: (e) => setApiKey(e.currentTarget.value),
+                          placeholder: "sk-ant-...",
+                          style: {
+                            flex: 1,
+                            padding: "6px 10px",
+                            background: "var(--bg)",
+                            border: "1px solid var(--border)",
+                            borderRadius: 4,
+                            fontSize: 12,
+                            color: "var(--text)",
+                            fontFamily: "inherit",
+                            outline: "none"
+                          },
+                          onFocus: (e) => {
+                            e.currentTarget.style.borderColor = "var(--accent)";
+                          },
+                          onBlur: (e) => {
+                            e.currentTarget.style.borderColor = "var(--border)";
+                          }
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          onClick: handleTestConnection,
+                          disabled: connectionStatus === "testing",
+                          style: {
+                            padding: "6px 12px",
+                            background: connectionStatus === "connected" ? "#4caf50" : connectionStatus === "error" ? "#f44336" : "var(--accent)",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: 4,
+                            cursor: connectionStatus === "testing" ? "not-allowed" : "pointer",
+                            fontSize: 12,
+                            fontWeight: 500,
+                            opacity: connectionStatus === "testing" ? 0.6 : 1
+                          },
+                          children: connectionStatus === "testing" ? "Testing..." : connectionStatus === "connected" ? "✓ Connected" : connectionStatus === "error" ? "✕ Error" : "Test"
+                        }
+                      )
+                    ]
+                  }
+                ),
+                connectionError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "#f44336", marginBottom: 8 }, children: connectionError })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12, color: "var(--text-secondary)" }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Provider:" }),
+                  " Anthropic"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Model:" }),
+                  " Claude 3.5 Sonnet"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "PHI Redaction:" }),
+                  " ",
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#4caf50" }, children: "UNID Pipeline Active" })
+                ] })
+              ] })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "h2",
+          {
+            style: {
+              fontSize: 15,
+              fontWeight: 600,
+              marginTop: 20,
+              marginBottom: 12,
+              paddingBottom: 6,
+              borderBottom: "1px solid var(--border)"
+            },
+            children: "Data Management"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            style: {
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: 12,
+              marginBottom: 12
+            },
+            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 8 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: handleBackupDatabase,
+                  style: {
+                    padding: "6px 12px",
+                    background: "var(--accent)",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    textAlign: "left"
+                  },
+                  children: "Backup Database"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: handleExportCases,
+                  style: {
+                    padding: "6px 12px",
+                    background: "var(--panel)",
+                    color: "var(--text)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    textAlign: "left"
+                  },
+                  children: "Export Cases (CSV)"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: handleClearDemo,
+                  style: {
+                    padding: "6px 12px",
+                    background: "#f44336",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    textAlign: "left"
+                  },
+                  children: "Clear Demo Data"
+                }
+              )
+            ] })
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "h2",
+          {
+            style: {
+              fontSize: 15,
+              fontWeight: 600,
+              marginTop: 20,
+              marginBottom: 12,
+              paddingBottom: 6,
+              borderBottom: "1px solid var(--border)"
+            },
+            children: "About"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            style: {
+              background: "var(--panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: 12,
+              marginBottom: 12
+            },
+            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 13, color: "var(--text)", lineHeight: 1.5 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Version:" }),
+                " 1.0.0"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Build:" }),
+                " 2026.03.21"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Platform:" }),
+                " Electron (Chromium-based)"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Database:" }),
+                " SQLCipher 4.6 (AES-256)"
+              ] })
+            ] })
+          }
+        )
+      ]
+    }
+  );
+}
+const documentViewerTab = "_documentViewerTab_1kaym_1";
+const documentSelector = "_documentSelector_1kaym_8";
+const select = "_select_1kaym_26";
+const documentContent = "_documentContent_1kaym_44";
+const documentHeader = "_documentHeader_1kaym_52";
+const documentMeta = "_documentMeta_1kaym_63";
+const docType = "_docType_1kaym_71";
+const docDate = "_docDate_1kaym_81";
+const docDuration = "_docDuration_1kaym_86";
+const documentBody = "_documentBody_1kaym_91";
+const emptyState = "_emptyState_1kaym_105";
+const styles$1 = {
+  documentViewerTab,
+  documentSelector,
+  select,
+  documentContent,
+  documentHeader,
+  documentMeta,
+  docType,
+  docDate,
+  docDuration,
+  documentBody,
+  emptyState
+};
+const COLLATERAL_DOCS = {
+  "court-order": {
+    id: "court-order",
+    name: "Court Order for Competency Evaluation",
+    type: "Court Document",
+    date: "Feb 28, 2026",
+    content: `COURT ORDER FOR COMPETENCY EVALUATION
+
+CASE NO: 2025CR-4821
+PEOPLE OF THE STATE OF COLORADO
+v.
+MARCUS D. JOHNSON
+
+HONORABLE JUDGE PATRICIA MORALES
+Denver District Court, Division 3
+
+ORDER ISSUED: February 28, 2026
+
+The Court, having found reasonable grounds to believe that the above-named defendant may be incompetent to proceed to trial, ORDERS that:
+
+1. The defendant, Marcus D. Johnson, shall undergo a comprehensive evaluation for competency to stand trial pursuant to C.R.S. § 16-8.5-101.
+
+2. The evaluation shall address the defendant's:
+   a. Factual understanding of the charges and court proceedings
+   b. Rational understanding of the charges and proceedings
+   c. Ability to consult with counsel and assist in his defense
+
+3. The evaluator shall consider the Dusky standard (Dusky v. United States, 362 U.S. 402, 1960).
+
+4. A written report of findings shall be submitted to this Court within 30 days.
+
+5. The defendant shall be provided notification that communications during evaluation are not protected by privilege.
+
+IT IS SO ORDERED.
+
+_____________________________
+Honorable Patricia Morales
+Judge, Denver District Court`
+  },
+  "hospital-records": {
+    id: "hospital-records",
+    name: "Denver Health Medical Center Records",
+    type: "Medical Records",
+    date: "Jun 15, 2024 – Jan 10, 2025",
+    content: `DENVER HEALTH MEDICAL CENTER
+PSYCHIATRIC ADMISSION RECORDS
+
+PATIENT: Marcus D. Johnson
+DOB: June 14, 1991
+CASE NO: 2025CR-4821
+
+ADMISSION 1: June 15, 2024
+Duration: 14 days (Discharged June 29, 2024)
+
+Chief Complaint: "Patient brought in by police after found wandering near downtown mall, disoriented and speaking to unseen persons"
+
+Initial Diagnosis: Unspecified Psychotic Disorder, Rule out Schizophrenia
+
+Clinical Notes:
+Patient presented with disorganized behavior, poor hygiene, and bizarre ideation. States that "people are trying to get him through the radio." No clear precipitant for current episode. Family history unavailable. Patient denies substance abuse.
+
+Treatment: Psychiatric hospitalization, Risperidone 2mg daily initiated, supportive care
+
+Discharge Diagnosis: Unspecified Psychotic Disorder, Rule out Schizophrenia
+Discharge Medications: Risperidone 2mg daily, Benztropine 1mg daily PRN
+
+
+ADMISSION 2: September 18, 2024
+Duration: 18 days (Discharged October 6, 2024)
+
+Chief Complaint: Readmission — relapse of psychotic symptoms after medication non-compliance
+
+Clinical Notes:
+Patient stopped taking Risperidone approximately 2 weeks after discharge from first admission. Presents again with auditory hallucinations, paranoid ideation, and disorganized thinking. States that "agents are monitoring me and controlling my thoughts."
+
+Psychiatric History: First hospitalization June 2024. Medications stopped against medical advice.
+
+Treatment: Recommenced on Risperidone, increased to 3mg daily; brief psychosocial intervention
+
+Discharge Plan: Community mental health referral, medication compliance education
+
+
+ADMISSION 3: January 8, 2025
+Duration: 15 days (Discharged January 23, 2025)
+
+Chief Complaint: Admission via Denver Police Department in custody — assault incident
+
+Clinical Notes:
+Patient arrested January 15, 2025 after assault. At time of arrest, patient displaying acute psychotic symptoms. States he believed his victim was "involved in the conspiracy." Medical clearance completed; no medical contraindications to psychiatric care.
+
+Medications: Continued Risperidone 3mg daily; added Lorazepam PRN for agitation`
+  },
+  "police-report": {
+    id: "police-report",
+    name: "Police Report — Incident #2025-DPD-48721",
+    type: "Law Enforcement",
+    date: "Jan 15, 2026",
+    content: `DENVER POLICE DEPARTMENT
+INCIDENT REPORT
+
+CASE: 2025-DPD-48721
+REPORTING OFFICER: Officer Jennifer Martinez, Badge #4721
+DATE OF INCIDENT: January 15, 2026
+TIME: 14:32 hours
+
+OFFENSE: Assault in the First Degree (F3), Criminal Mischief (M1)
+
+PARTIES INVOLVED:
+Suspect: Marcus D. Johnson, age 34, DOB 06/14/1991
+Victim: Timothy R. Walsh, age 38
+
+NARRATIVE:
+Officers responded to report of assault in progress at 16th Street and Larimer Street. Upon arrival, found suspect Johnson on the ground being restrained by bystanders. Victim Walsh was bleeding from facial injuries.
+
+Witness Accounts:
+Witness 1 (Sarah Chen) reported seeing Johnson approach Walsh without apparent provocation and strike him repeatedly with a hammer. Victim fell to ground. Johnson continued striking victim until bystanders intervened.
+
+Johnson's Statements:
+During arrest, Johnson appeared disoriented and confused. Repeatedly stated "He was part of it" and "I had to stop him." Officer observed Johnson speaking to himself incoherently. Johnson appeared to have poor understanding of the seriousness of his actions.
+
+Scene Evidence:
+- Hammer recovered at scene (20 oz claw hammer, belonging to nearby construction site)
+- Blood splatter on Johnson's clothing
+- Multiple witnesses present (approx. 15 people)
+
+Officer Observations:
+Suspect appeared mentally unstable. Recommended emergency psychiatric evaluation. Denver Police noted Johnson's behavioral disorganization and seemed unaware of circumstances.
+
+DISPOSITION: Arrested and transported to Denver County Jail. Medical clearance completed at Denver Health. Remains in custody pending court appearance.`
+  },
+  "jail-medical": {
+    id: "jail-medical",
+    name: "Denver County Jail Medical Records",
+    type: "Custodial Medical",
+    date: "Feb 1 – Mar 15, 2026",
+    content: `DENVER COUNTY JAIL
+MEDICAL RECORD
+
+INMATE: Marcus D. Johnson
+INMATE #: J-87624
+DATE ADMITTED: January 15, 2026
+
+MEDICAL HISTORY:
+Psychiatric disorder — previously diagnosed psychotic disorder
+
+MEDICATIONS:
+Risperidone 4mg daily (increased from 3mg due to breakthrough symptoms)
+Benztropine 1mg daily
+Lorazepam 2mg daily (recently reduced due to stability)
+
+PROGRESS NOTES:
+
+Feb 3, 2026: Inmate presenting with auditory hallucinations. Reports "hearing voices telling me I'm being watched." Affect constricted. Speech tangential. Denies current suicidality. Medication compliance good. Will continue current regimen.
+
+Feb 15, 2026: Inmate appears stabilized on current medications. However, continues to endorse paranoid ideation regarding other inmates and jail staff. States "Some of the guards are in on it too." Insight into illness minimal. Risk of future non-compliance if released.
+
+Mar 1, 2026: Mental status exam shows continued mild thought disorganization. Symptoms partially responsive to medication. Remains paranoid but more reality-oriented than on admission. Denies auditory hallucinations today (though reported them 2 days ago). Continues medication.
+
+Mar 12, 2026: Evaluation by Dr. Irwin for competency assessment. Inmate cooperative. Reviewed prior medical records and medications.`
+  }
+};
+const INTERVIEW_SESSIONS = {
+  "session-1": {
+    id: "session-1",
+    name: "Session 1 — Initial Interview",
+    type: "Clinical Interview",
+    date: "Mar 8, 2026",
+    duration: "2.5 hours",
+    content: `CLINICAL INTERVIEW SESSION 1
+Marcus D. Johnson — CST Evaluation
+Date: March 8, 2026
+Time: 10:00 AM – 12:30 PM
+Duration: 2.5 hours
+Evaluator: Truck Irwin, Psy.D.
+
+PRESENTING COMPLAINT:
+Johnson is a 34-year-old African American male currently incarcerated at Denver County Jail awaiting trial on charges of Assault 1st Degree and Criminal Mischief. He was referred for competency to stand trial evaluation by Court Order dated February 28, 2026.
+
+BEHAVIORAL OBSERVATIONS:
+Johnson presented as a thin, African American male appearing his stated age. Dressed in jail clothing, somewhat disheveled. Speech normal in rate but occasionally pressured. Affect constricted with limited emotional range. Eye contact poor. Displayed some suspiciousness during interview. Overall presentation consistent with chronic mental illness.
+
+MENTAL STATUS EXAMINATION:
+Orientation: Alert and oriented to person, place, time, and situation
+Memory: Intact for immediate and recent events
+Cognition: Able to follow commands; some difficulty with complex reasoning
+Thought Process: Linear but interrupted by preoccupation with paranoid themes
+Thought Content: Endorses auditory hallucinations ("hearing voices telling me people are against me") and persecutory delusions (belief that people are conspiring against him, using technology to monitor him)
+Mood/Affect: Stated mood "worried"; affect constricted and somewhat flat
+Insight/Judgment: Limited insight into mental illness; attributes symptoms to external persecution rather than internal mental processes
+
+CHIEF COMPLAINT REGARDING CHARGES:
+When asked about the incident on January 15, 2026, Johnson states: "I did what I had to do. He was part of it. They're all part of the conspiracy." When pressed for details, Johnson becomes tangential, returning repeatedly to his beliefs about persecution.
+
+UNDERSTANDING OF LEGAL PROCEEDINGS:
+Johnson correctly names his charges (Assault and Criminal Mischief) but cannot articulate what these charges mean. Does not distinguish between felonies and misdemeanors. Knows names of his attorney (Public Defender Marcus Washington) and judge (Judge Morales) but has limited understanding of their roles. States: "I don't know if my lawyer is helping me or if he's in on it too."
+
+INTERVIEW ENDING:
+Johnson agreed to continue with testing. Signed consent form after notification of non-therapeutic nature of evaluation and lack of privilege.`
+  },
+  "session-2": {
+    id: "session-2",
+    name: "Session 2 — Psychological Testing",
+    type: "Clinical Interview",
+    date: "Mar 10, 2026",
+    duration: "2.0 hours",
+    content: `CLINICAL INTERVIEW SESSION 2
+Marcus D. Johnson — Psychological Testing Session
+Date: March 10, 2026
+Time: 1:00 PM – 3:00 PM
+Duration: 2.0 hours
+Evaluator: Truck Irwin, Psy.D.
+Psychometrist: J. Torres
+
+OVERVIEW:
+Patient completed MMPI-3 and PAI testing during this session. Testing was conducted in interview room at Denver County Jail. Patient was alert and cooperative throughout.
+
+BEHAVIORAL OBSERVATIONS DURING TESTING:
+Johnson remained seated and focused on test materials. Occasionally fidgeted or looked around suspiciously. Did not attempt to read examiner's face or ask for feedback. Testing was completed without interruption.
+
+EFFORT AND COOPERATION:
+Patient appeared to put forth genuine effort on both instruments. Did not appear to be malingering or minimizing symptoms. Validity scales on both MMPI-3 and PAI were within acceptable limits.
+
+RESPONSE TO TESTING:
+When asked if he understood the instructions, Johnson stated: "Yeah, I understand. I'm just answering honestly about how I feel." Agreed that the tests were fair and unbiased.
+
+CLINICAL OBSERVATIONS:
+During break, Johnson spontaneously mentioned hearing "voices in the background" and expressed concern that "people here might be listening." Made reference to previous statement about attorney potentially being "in on the conspiracy."
+
+INTERVIEW NOTES:
+When asked directly about his ability to work with his attorney, Johnson expressed hesitation: "I want to work with him, but I don't know if I can trust him. How do I know what he's telling me is true?"
+
+ENDING:
+Session concluded at 3:00 PM. Patient scheduled for cognitive testing (WAIS-V) on March 11, 2026.`
+  },
+  "session-3": {
+    id: "session-3",
+    name: "Session 3 — Cognitive Testing",
+    type: "Clinical Interview",
+    date: "Mar 12, 2026",
+    duration: "2.0 hours",
+    content: `CLINICAL INTERVIEW SESSION 3
+Marcus D. Johnson — Cognitive Testing & Effort Assessment
+Date: March 12, 2026
+Time: 1:00 PM – 3:00 PM
+Duration: 2.0 hours
+Evaluator: Truck Irwin, Psy.D.
+Psychometrist: J. Torres
+
+OVERVIEW:
+Patient completed WAIS-V cognitive testing and effort/validity measures (TOMM and SIRS-2) during this session.
+
+BEHAVIORAL OBSERVATIONS:
+Johnson was alert and cooperative. Appeared somewhat fatigued but maintained effort throughout. Made occasional comments about other inmates or guards, but remained focused on tasks.
+
+COGNITIVE TESTING (WAIS-V):
+Patient worked through verbal and visual tasks systematically. Performance on verbal tasks appeared lower than visual tasks (observation confirmed by scores: VCI=78 vs. VSI=88). Patient occasionally made comments like "This is hard" or "I don't know" when uncertain.
+
+EFFORT TESTING (TOMM):
+Patient understood instructions easily. Trial 1: 42/50. Trial 2: 48/50 (PASS — well above cut score of 45). This performance indicates genuine memory functioning and adequate effort on testing.
+
+SYMPTOM VALIDITY (SIRS-2):
+Patient endorsed various symptoms when asked structured questions. All eight primary SIRS-2 scales fell within "Honest" classification range, indicating genuine reported symptoms rather than fabrication.
+
+CLINICAL OBSERVATIONS:
+When asked directly about his understanding of the legal case, Johnson stated: "I know I'm here because of what happened. But I don't think I did anything wrong. That guy was part of the conspiracy."
+
+When asked if he could discuss his case with his attorney, Johnson hesitated: "I could talk to him, but I don't think he understands how serious this is. Or maybe he's part of it."
+
+INTERVIEWER IMPRESSIONS:
+Johnson demonstrates:
+- Genuine psychotic symptoms (endorsement of auditory hallucinations, paranoid delusions)
+- Poor insight into illness
+- Genuine effort on cognitive and validity testing (TOMM PASS, SIRS-2 honest responding)
+- Cognitive impairment at low-average level
+- Apparent distrust of legal counsel driven by paranoid ideation
+
+CLOSING:
+Session concluded at 3:00 PM. Patient informed that evaluation was complete and that a written report would be submitted to the court. Johnson asked: "Does this mean I can get out?" Explained that report findings would be presented to court, which would make decisions about his case.`
+  }
+};
+const DocumentViewerTab = ({
+  caseId,
+  documentType,
+  documentId
+}) => {
+  let docs = {};
+  let docList = [];
+  if (documentType === "collateral") {
+    docs = COLLATERAL_DOCS;
+    docList = ["court-order", "hospital-records", "police-report", "jail-medical"];
+  } else if (documentType === "interview") {
+    docs = INTERVIEW_SESSIONS;
+    docList = ["session-1", "session-2", "session-3"];
+  }
+  const [selectedDocId, setSelectedDocId] = reactExports.useState(
+    documentId || docList[0] || ""
+  );
+  const selectedDoc = docs[selectedDocId];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.documentViewerTab, children: [
+    docList.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.documentSelector, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { htmlFor: "doc-select", children: "Select Document:" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "select",
+        {
+          id: "doc-select",
+          value: selectedDocId,
+          onChange: (e) => setSelectedDocId(e.target.value),
+          className: styles$1.select,
+          children: docList.map((docId) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: docId, children: docs[docId]?.name || docId }, docId))
+        }
+      )
+    ] }),
+    selectedDoc ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.documentContent, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.documentHeader, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: selectedDoc.name }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles$1.documentMeta, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.docType, children: selectedDoc.type }),
+          selectedDoc.date && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.docDate, children: selectedDoc.date }),
+          selectedDoc.duration && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles$1.docDuration, children: selectedDoc.duration })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.documentBody, children: selectedDoc.content.split("\n\n").map((paragraph, idx) => /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: paragraph }, idx)) })
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles$1.emptyState, children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "No documents available for this case." }) })
+  ] });
+};
+const evidenceMapTab = "_evidenceMapTab_z8fay_1";
+const placeholder = "_placeholder_z8fay_15";
+const diagnosisSection = "_diagnosisSection_z8fay_29";
+const diagnosisHeader = "_diagnosisHeader_z8fay_36";
+const primary = "_primary_z8fay_52";
+const secondary = "_secondary_z8fay_57";
+const ruled_out = "_ruled_out_z8fay_61";
+const headerText = "_headerText_z8fay_66";
+const toggle = "_toggle_z8fay_70";
+const evidenceTable = "_evidenceTable_z8fay_77";
+const criterion = "_criterion_z8fay_103";
+const testData = "_testData_z8fay_109";
+const collateral = "_collateral_z8fay_123";
+const coherenceSection = "_coherenceSection_z8fay_135";
+const coherenceCard = "_coherenceCard_z8fay_148";
+const coherenceRow = "_coherenceRow_z8fay_158";
+const coherenceLabel = "_coherenceLabel_z8fay_164";
+const coherenceValue = "_coherenceValue_z8fay_172";
+const confidenceSection = "_confidenceSection_z8fay_179";
+const confidenceGrid = "_confidenceGrid_z8fay_191";
+const confidenceCard = "_confidenceCard_z8fay_197";
+const confidenceMetric = "_confidenceMetric_z8fay_204";
+const metricLabel = "_metricLabel_z8fay_210";
+const metricValue = "_metricValue_z8fay_216";
+const confidenceBar = "_confidenceBar_z8fay_222";
+const fill = "_fill_z8fay_229";
+const styles = {
+  evidenceMapTab,
+  placeholder,
+  diagnosisSection,
+  diagnosisHeader,
+  primary,
+  secondary,
+  ruled_out,
+  headerText,
+  toggle,
+  evidenceTable,
+  criterion,
+  testData,
+  collateral,
+  coherenceSection,
+  coherenceCard,
+  coherenceRow,
+  coherenceLabel,
+  coherenceValue,
+  confidenceSection,
+  confidenceGrid,
+  confidenceCard,
+  confidenceMetric,
+  metricLabel,
+  metricValue,
+  confidenceBar,
+  fill
+};
+const JOHNSON_EVIDENCE_MAP = [
+  {
+    diagnosis: "Schizophrenia (Primary Diagnosis)",
+    status: "primary",
+    evidence: [
+      {
+        criterion: "Auditory Hallucinations",
+        mmpi3: "RC8=78T",
+        pai: "SCZ=72T",
+        interview: "✓ Endorsed",
+        medicalRecords: "✓ Documented",
+        hospitalNotes: "✓ Noted in 3 admissions"
+      },
+      {
+        criterion: "Persecutory Delusions",
+        mmpi3: "RC6=72T",
+        pai: "PAR=68T",
+        interview: "✓ Endorsed",
+        medicalRecords: "✓ Documented",
+        hospitalNotes: "✓ Prominent in recent admission"
+      },
+      {
+        criterion: "Disorganized Thinking",
+        mmpi3: "THD=75T",
+        pai: "SCZ=72T",
+        interview: "✓ Observed (tangential)",
+        medicalRecords: "✓ Noted",
+        hospitalNotes: "✓ Documented"
+      },
+      {
+        criterion: "Lack of Insight",
+        interview: "✓ Absent insight into illness",
+        medicalRecords: "✓ Noted",
+        hospitalNotes: "✓ Prominent"
+      },
+      {
+        criterion: "Functional Impairment",
+        mmpi3: "EID=65T",
+        pai: "Multiple elevations",
+        interview: "✓ Significant impairment",
+        medicalRecords: "✓ Multiple hospitalizations",
+        hospitalNotes: "✓ Cannot maintain stability"
+      }
+    ]
+  },
+  {
+    diagnosis: "Major Depressive Disorder (Ruled Out)",
+    status: "ruled_out",
+    evidence: [
+      {
+        criterion: "Depressed Mood",
+        pai: "DEP=60T (mild)",
+        interview: "Not primary complaint",
+        medicalRecords: "Minimal"
+      },
+      {
+        criterion: "Anhedonia",
+        mmpi3: "RC2=55T (mildly reduced)",
+        interview: "Not prominent",
+        medicalRecords: "Minimal"
+      },
+      {
+        criterion: "Guilt/Worthlessness",
+        interview: "Not endorsed",
+        medicalRecords: "Absent"
+      },
+      {
+        criterion: "Primary Presentation",
+        interview: "Psychotic symptoms predominate",
+        medicalRecords: "Depression secondary if present"
+      }
+    ]
+  }
+];
+const EvidenceMapTab = ({ caseId }) => {
+  const [expandedDiagnosis, setExpandedDiagnosis] = reactExports.useState(
+    "Schizophrenia (Primary Diagnosis)"
+  );
+  const isJohnson = caseId === 1 || caseId === 0;
+  if (!isJohnson) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.placeholder, children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Evidence map will be generated after initial testing and interviews are complete." }) });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.evidenceMapTab, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: "Evidence Map — Diagnosis × Source" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { color: "var(--text-secondary)", fontSize: "12px", marginBottom: "24px" }, children: "Visual convergence of test instruments, clinical interviews, and collateral records toward diagnostic impressions." }),
+    JOHNSON_EVIDENCE_MAP.map((diagnosisGroup) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.diagnosisSection, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: `${styles.diagnosisHeader} ${styles[diagnosisGroup.status]}`,
+          onClick: () => setExpandedDiagnosis(
+            expandedDiagnosis === diagnosisGroup.diagnosis ? null : diagnosisGroup.diagnosis
+          ),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: styles.headerText, children: [
+              diagnosisGroup.status === "primary" && "⊕ ",
+              diagnosisGroup.status === "ruled_out" && "⊘ ",
+              diagnosisGroup.diagnosis
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.toggle, children: expandedDiagnosis === diagnosisGroup.diagnosis ? "▼" : "▶" })
+          ]
+        }
+      ),
+      expandedDiagnosis === diagnosisGroup.diagnosis && /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: styles.evidenceTable, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Criterion/Symptom" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Test Instruments" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Clinical Interview" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Collateral Records" })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: diagnosisGroup.evidence.map((row, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: styles.criterion, children: row.criterion }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: styles.testData, children: [
+            row.mmpi3 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: row.mmpi3 }),
+            row.pai && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: row.pai })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: row.interview || "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: styles.collateral, children: [
+            row.medicalRecords && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: row.medicalRecords }),
+            row.hospitalNotes && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: row.hospitalNotes })
+          ] })
+        ] }, idx)) })
+      ] })
+    ] }, diagnosisGroup.diagnosis)),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.coherenceSection, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Cross-Test Coherence" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.coherenceCard, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.coherenceRow, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceLabel, children: "Test Pattern Consistency:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceValue, children: "MMPI-3 (THD=75T, RC6=72T, RC8=78T) ↔ PAI (SCZ=72T, PAR=68T) — Both indicate schizophrenia spectrum" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.coherenceRow, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceLabel, children: "Clinical Interview Match:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceValue, children: "Endorsed auditory hallucinations and persecutory ideation align with elevated MMPI-3/PAI psychotic scales" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.coherenceRow, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceLabel, children: "Collateral Corroboration:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceValue, children: "Hospital records document 3 psychiatric admissions with psychotic presentations; jail medical notes confirm ongoing symptoms" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.coherenceRow, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceLabel, children: "Diagnostic Convergence:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceValue, children: "All evidence sources (psychological tests, clinical interview, medical records, hospital documentation) converge on Schizophrenia as primary diagnosis" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.coherenceRow, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceLabel, children: "Contradictions:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.coherenceValue, children: "No evidence contradicts the formulation. Alternative diagnoses adequately ruled out." })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.confidenceSection, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Diagnostic Confidence Summary" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.confidenceGrid, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.confidenceCard, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.confidenceMetric, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.metricLabel, children: "Test Evidence Strength" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.metricValue, children: "Very High" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.confidenceBar, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.fill, style: { width: "95%" } }) })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.confidenceCard, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.confidenceMetric, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.metricLabel, children: "Clinical Consistency" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.metricValue, children: "Very High" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.confidenceBar, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.fill, style: { width: "90%" } }) })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.confidenceCard, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.confidenceMetric, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.metricLabel, children: "Collateral Corroboration" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.metricValue, children: "Excellent" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.confidenceBar, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.fill, style: { width: "92%" } }) })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.confidenceCard, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: styles.confidenceMetric, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.metricLabel, children: "Overall Diagnostic Confidence" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: styles.metricValue, children: "Very High" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.confidenceBar, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: styles.fill, style: { width: "94%" } }) })
+        ] }) })
+      ] })
+    ] })
+  ] });
+};
+const DATA_CATEGORIES = [
+  { id: "demographics", label: "Demographics", required: true },
+  { id: "referral_questions", label: "Referral Questions", required: true },
+  { id: "test_administrations", label: "Test Administrations", required: false },
+  { id: "behavioral_observations", label: "Behavioral Observations", required: false },
+  { id: "timeline_events", label: "Timeline Events", required: false },
+  { id: "collateral_summary", label: "Collateral Records", required: false }
+];
+const STATUS_COLORS = {
+  unreviewed: "#9e9e9e",
+  confirmed: "#4caf50",
+  corrected: "#ff9800",
+  flagged: "#f44336"
+};
+const STATUS_LABELS = {
+  unreviewed: "Unreviewed",
+  confirmed: "Confirmed",
+  corrected: "Corrected",
+  flagged: "Needs Attention"
+};
+function getStorageKey(caseId) {
+  return `psygil-data-confirmation-${caseId}`;
+}
+function loadConfirmationState(caseId) {
+  try {
+    const raw = localStorage.getItem(getStorageKey(caseId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function saveConfirmationState(caseId, state) {
+  try {
+    localStorage.setItem(getStorageKey(caseId), JSON.stringify(state));
+  } catch {
+  }
+}
+function DataConfirmationTab({
+  caseId
+}) {
+  const [ingestorData, setIngestorData] = reactExports.useState(null);
+  const [loading, setLoading] = reactExports.useState(true);
+  const [documents, setDocuments] = reactExports.useState([]);
+  const [selectedDocId, setSelectedDocId] = reactExports.useState(null);
+  const [categoryStates, setCategoryStates] = reactExports.useState(() => {
+    const saved = loadConfirmationState(caseId);
+    if (saved) return saved;
+    const initial = {};
+    for (const cat of DATA_CATEGORIES) {
+      initial[cat.id] = { status: "unreviewed", notes: "", corrections: {} };
+    }
+    return initial;
+  });
+  const [activeCategory, setActiveCategory] = reactExports.useState(DATA_CATEGORIES[0].id);
+  const [manualObservations, setManualObservations] = reactExports.useState("");
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    void (async () => {
+      const [ingestorResp, docsResp, confirmationResp] = await Promise.all([
+        window.psygil.ingestor.getResult({ caseId }),
+        window.psygil.documents.list({ case_id: caseId }),
+        window.psygil.dataConfirmation.get({ caseId })
+      ]);
+      if (cancelled) return;
+      if (ingestorResp.status === "success") {
+        setIngestorData(ingestorResp.data);
+      }
+      if (docsResp.status === "success") {
+        const docs = docsResp.data.filter((d) => d.indexed_content);
+        setDocuments(docs);
+        if (docs.length > 0) setSelectedDocId(docs[0].document_id);
+      }
+      if (confirmationResp.status === "success" && confirmationResp.data.data.length > 0) {
+        const ipcStates = {};
+        for (const row of confirmationResp.data.data) {
+          ipcStates[row.category_id] = {
+            status: row.status,
+            notes: row.notes,
+            corrections: {}
+          };
+        }
+        const merged = {};
+        for (const cat of DATA_CATEGORIES) {
+          merged[cat.id] = ipcStates[cat.id] ?? { status: "unreviewed", notes: "", corrections: {} };
+        }
+        setCategoryStates(merged);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
+  reactExports.useEffect(() => {
+    saveConfirmationState(caseId, categoryStates);
+    void (async () => {
+      for (const [categoryId, state] of Object.entries(categoryStates)) {
+        await window.psygil.dataConfirmation.save({
+          caseId,
+          categoryId,
+          status: state.status,
+          notes: state.notes
+        });
+      }
+    })();
+  }, [caseId, categoryStates]);
+  const updateCategoryStatus = reactExports.useCallback((catId, status) => {
+    setCategoryStates((prev) => ({
+      ...prev,
+      [catId]: { ...prev[catId], status }
+    }));
+  }, []);
+  const updateCategoryNotes = reactExports.useCallback((catId, notes) => {
+    setCategoryStates((prev) => ({
+      ...prev,
+      [catId]: { ...prev[catId], notes }
+    }));
+  }, []);
+  const selectedDoc = documents.find((d) => d.document_id === selectedDocId);
+  const requiredCategories = DATA_CATEGORIES.filter((c) => c.required);
+  const allRequiredConfirmed = requiredCategories.every(
+    (c) => categoryStates[c.id]?.status === "confirmed" || categoryStates[c.id]?.status === "corrected"
+  );
+  const reviewedCount = DATA_CATEGORIES.filter(
+    (c) => categoryStates[c.id]?.status !== "unreviewed"
+  ).length;
+  const activeCategoryData = ingestorData ? ingestorData[activeCategory] : null;
+  if (loading) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-secondary)", fontSize: 13 }, children: "Loading confirmation data..." });
+  }
+  if (!ingestorData) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%", flexDirection: "column", gap: 12 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, color: "var(--text)" }, children: "No Ingestor data available" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)" }, children: "Run the Ingestor Agent first to extract case data, then return here to confirm it." })
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", height: "100%", overflow: "hidden" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: "40%", display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+        padding: "8px 12px",
+        borderBottom: "1px solid var(--border)",
+        background: "var(--panel)",
+        flexShrink: 0
+      }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }, children: "Source Documents" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "select",
+          {
+            value: selectedDocId ?? "",
+            onChange: (e) => setSelectedDocId(parseInt(e.currentTarget.value, 10)),
+            style: {
+              width: "100%",
+              padding: "6px 8px",
+              fontSize: 12,
+              background: "var(--bg)",
+              color: "var(--text)",
+              border: "1px solid var(--border)",
+              borderRadius: 3
+            },
+            children: documents.map((d) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: d.document_id, children: d.original_filename }, d.document_id))
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: 12 }, children: selectedDoc?.indexed_content ? /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { style: {
+        fontSize: 12,
+        lineHeight: 1.6,
+        color: "var(--text)",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+        fontFamily: "monospace",
+        margin: 0
+      }, children: selectedDoc.indexed_content }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }, children: "No text content available for this document." }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, display: "flex", flexDirection: "column" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+        padding: "10px 16px",
+        borderBottom: "1px solid var(--border)",
+        background: allRequiredConfirmed ? "rgba(76,175,80,0.08)" : "var(--panel)",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexShrink: 0
+      }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" }, children: [
+          "Data Confirmation — ",
+          reviewedCount,
+          "/",
+          DATA_CATEGORIES.length,
+          " reviewed"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+          padding: "3px 10px",
+          borderRadius: 4,
+          fontSize: 11,
+          fontWeight: 600,
+          background: allRequiredConfirmed ? "#4caf50" : "var(--border)",
+          color: allRequiredConfirmed ? "#fff" : "var(--text-secondary)"
+        }, children: allRequiredConfirmed ? "Ready to Advance" : "Review Required" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+        display: "flex",
+        borderBottom: "1px solid var(--border)",
+        overflowX: "auto",
+        flexShrink: 0
+      }, children: DATA_CATEGORIES.map((cat) => {
+        const state = categoryStates[cat.id];
+        const isActive = activeCategory === cat.id;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: () => setActiveCategory(cat.id),
+            style: {
+              padding: "8px 14px",
+              fontSize: 12,
+              fontWeight: isActive ? 600 : 400,
+              color: isActive ? "var(--accent)" : "var(--text-secondary)",
+              background: "transparent",
+              border: "none",
+              borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              whiteSpace: "nowrap"
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: STATUS_COLORS[state?.status ?? "unreviewed"],
+                flexShrink: 0
+              } }),
+              cat.label,
+              cat.required && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 9, color: "#f44336" }, children: "*" })
+            ]
+          },
+          cat.id
+        );
+      }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: 16 }, children: activeCategory === "behavioral_observations" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        BehavioralObservationsPane,
+        {
+          extractedData: activeCategoryData,
+          manualObservations,
+          onSetManualObservations: setManualObservations,
+          status: categoryStates[activeCategory]?.status ?? "unreviewed",
+          notes: categoryStates[activeCategory]?.notes ?? "",
+          onSetStatus: (s) => updateCategoryStatus(activeCategory, s),
+          onSetNotes: (n) => updateCategoryNotes(activeCategory, n)
+        }
+      ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+        GenericCategoryPane,
+        {
+          categoryId: activeCategory,
+          data: activeCategoryData,
+          status: categoryStates[activeCategory]?.status ?? "unreviewed",
+          notes: categoryStates[activeCategory]?.notes ?? "",
+          onSetStatus: (s) => updateCategoryStatus(activeCategory, s),
+          onSetNotes: (n) => updateCategoryNotes(activeCategory, n)
+        }
+      ) })
+    ] })
+  ] });
+}
+function GenericCategoryPane({
+  categoryId,
+  data,
+  status,
+  notes,
+  onSetStatus,
+  onSetNotes
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 16 }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }, children: "Extracted Data" }),
+      data != null ? /* @__PURE__ */ jsxRuntimeExports.jsx(ExtractedDataDisplay, { data }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic", padding: "12px 0" }, children: "No data extracted for this category. If this is expected, mark as Confirmed. If data should exist, mark as Needs Attention." })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ConfirmationControls,
+      {
+        status,
+        notes,
+        onSetStatus,
+        onSetNotes
+      }
+    )
+  ] });
+}
+function BehavioralObservationsPane({
+  extractedData,
+  manualObservations,
+  onSetManualObservations,
+  status,
+  notes,
+  onSetStatus,
+  onSetNotes
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 16 }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }, children: "AI-Extracted Behavioral Observations (from transcripts)" }),
+      extractedData != null ? /* @__PURE__ */ jsxRuntimeExports.jsx(ExtractedDataDisplay, { data: extractedData }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic", padding: "8px 0" }, children: "No behavioral observations extracted from transcripts." })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }, children: "Clinician Direct Observations" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontSize: 12, color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.5 }, children: "Record your own behavioral observations from the evaluation sessions. These are clinician-authored and distinct from AI-extracted transcript observations." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          value: manualObservations,
+          onChange: (e) => onSetManualObservations(e.currentTarget.value),
+          placeholder: "Describe the examinee's appearance, demeanor, cooperation, affect, speech patterns, motor activity, and any notable behaviors observed during evaluation sessions...",
+          rows: 8,
+          style: {
+            width: "100%",
+            padding: "10px 12px",
+            fontSize: 13,
+            lineHeight: 1.6,
+            background: "var(--bg)",
+            color: "var(--text)",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            resize: "vertical",
+            fontFamily: "inherit"
+          }
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ConfirmationControls,
+      {
+        status,
+        notes,
+        onSetStatus,
+        onSetNotes
+      }
+    )
+  ] });
+}
+function ConfirmationControls({
+  status,
+  notes,
+  onSetStatus,
+  onSetNotes
+}) {
+  const statuses = ["confirmed", "corrected", "flagged"];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+    padding: "12px 16px",
+    background: "var(--panel)",
+    border: "1px solid var(--border)",
+    borderRadius: 6
+  }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }, children: "Clinician Review" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8, marginBottom: 12 }, children: statuses.map((s) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        onClick: () => onSetStatus(s),
+        style: {
+          flex: 1,
+          padding: "8px 12px",
+          fontSize: 12,
+          fontWeight: status === s ? 600 : 400,
+          border: `2px solid ${status === s ? STATUS_COLORS[s] : "var(--border)"}`,
+          borderRadius: 4,
+          background: status === s ? `${STATUS_COLORS[s]}18` : "var(--bg)",
+          color: status === s ? STATUS_COLORS[s] : "var(--text-secondary)",
+          cursor: "pointer",
+          transition: "all 0.15s"
+        },
+        children: STATUS_LABELS[s]
+      },
+      s
+    )) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        value: notes,
+        onChange: (e) => onSetNotes(e.currentTarget.value),
+        placeholder: "Optional: notes about corrections, missing data, or concerns...",
+        rows: 2,
+        style: {
+          width: "100%",
+          padding: "8px 10px",
+          fontSize: 12,
+          lineHeight: 1.5,
+          background: "var(--bg)",
+          color: "var(--text)",
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+          resize: "vertical",
+          fontFamily: "inherit"
+        }
+      }
+    )
+  ] });
+}
+function ExtractedDataDisplay({ data }) {
+  if (data == null) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }, children: "No data" });
+  }
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }, children: "Empty — no items extracted" });
+    }
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 8 }, children: data.map((item, idx) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          padding: "10px 12px",
+          background: "var(--bg)",
+          border: "1px solid var(--border)",
+          borderRadius: 4
+        },
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(ExtractedDataDisplay, { data: item })
+      },
+      idx
+    )) });
+  }
+  if (typeof data === "object") {
+    const entries = Object.entries(data);
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 4 }, children: entries.map(([key2, value]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8, fontSize: 12, lineHeight: 1.5 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: {
+        color: "var(--text-secondary)",
+        fontWeight: 500,
+        minWidth: 140,
+        flexShrink: 0
+      }, children: [
+        key2.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        ":"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text)" }, children: typeof value === "object" && value !== null ? JSON.stringify(value, null, 2) : String(value ?? "—") })
+    ] }, key2)) });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text)" }, children: String(data) });
+}
+const STAGE_COLORS$1 = {
+  onboarding: "#2196f3",
+  testing: "#9c27b0",
+  interview: "#e91e63",
+  diagnostics: "#ff9800",
+  review: "#ff5722",
+  complete: "#4caf50"
+};
+const STAGE_IDX = {
+  onboarding: 0,
+  testing: 1,
+  interview: 2,
+  diagnostics: 3,
+  review: 4,
+  complete: 5
+};
+const STAGES = ["Onboarding", "Testing", "Interview", "Diagnostics", "Review", "Complete"];
+const STAGE_KEYS = ["onboarding", "testing", "interview", "diagnostics", "review", "complete"];
+const PipelinePanel = ({
+  currentStage,
+  caseId,
+  onStageAdvanced
+}) => {
+  const normalizedStage = currentStage?.toLowerCase() || null;
+  const currentStageIdx = normalizedStage ? STAGE_IDX[normalizedStage] ?? -1 : -1;
+  const nextStageIdx = currentStageIdx + 1;
+  const nextStageLabel = nextStageIdx < STAGES.length ? STAGES[nextStageIdx] : null;
+  const isComplete = normalizedStage === "complete";
+  const [advancing, setAdvancing] = reactExports.useState(false);
+  const [advanceError, setAdvanceError] = reactExports.useState(null);
+  const [showConfirm, setShowConfirm] = reactExports.useState(false);
+  const handleAdvanceClick = reactExports.useCallback(async () => {
+    if (caseId == null) return;
+    setAdvanceError(null);
+    try {
+      const checkResp = await window.psygil.pipeline.check({ caseId });
+      if (checkResp.status === "error") {
+        setAdvanceError(checkResp.message);
+        return;
+      }
+      if (!checkResp.data.canAdvance) {
+        setAdvanceError(checkResp.data.reason);
+        return;
+      }
+      setShowConfirm(true);
+    } catch {
+      setAdvanceError("Failed to check pipeline conditions");
+    }
+  }, [caseId]);
+  const handleConfirmAdvance = reactExports.useCallback(async () => {
+    if (caseId == null) return;
+    setShowConfirm(false);
+    setAdvancing(true);
+    setAdvanceError(null);
+    try {
+      const resp = await window.psygil.pipeline.advance({ caseId });
+      if (resp.status === "error") {
+        setAdvanceError(resp.message);
+      } else {
+        onStageAdvanced?.();
+      }
+    } catch {
+      setAdvanceError("Failed to advance pipeline");
+    } finally {
+      setAdvancing(false);
+    }
+  }, [caseId, onStageAdvanced]);
+  const handleCancelAdvance = reactExports.useCallback(() => {
+    setShowConfirm(false);
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      style: {
+        height: "80px",
+        flexShrink: 0,
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg)",
+        borderTop: "1px solid var(--border)"
+      },
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            style: {
+              height: "32px",
+              padding: "0 12px",
+              background: "var(--panel)",
+              borderBottom: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: "11px",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              color: "var(--text-secondary)",
+              userSelect: "none",
+              flexShrink: 0
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "EVALUATION PIPELINE" }),
+              advanceError && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "span",
+                {
+                  style: {
+                    fontSize: 10,
+                    fontWeight: 400,
+                    textTransform: "none",
+                    letterSpacing: 0,
+                    color: "#f44336",
+                    maxWidth: 300,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap"
+                  },
+                  title: advanceError,
+                  children: advanceError
+                }
+              )
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            style: {
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "0 12px",
+              overflow: "auto"
+            },
+            children: [
+              STAGES.map((stageLabel, i) => {
+                const stageKey = STAGE_KEYS[i];
+                const color = STAGE_COLORS$1[stageKey];
+                if (i < currentStageIdx) {
+                  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "span",
+                    {
+                      style: {
+                        opacity: 0.5,
+                        fontSize: "11px",
+                        padding: "2px 8px",
+                        borderRadius: "3px",
+                        background: color,
+                        color: "#fff",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0
+                      },
+                      children: [
+                        "✓ ",
+                        stageLabel
+                      ]
+                    },
+                    stageKey
+                  );
+                } else if (i === currentStageIdx) {
+                  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "span",
+                    {
+                      style: {
+                        fontSize: "11px",
+                        padding: "2px 8px",
+                        borderRadius: "3px",
+                        background: color,
+                        color: "#fff",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        flexShrink: 0
+                      },
+                      children: [
+                        "● ",
+                        stageLabel
+                      ]
+                    },
+                    stageKey
+                  );
+                } else {
+                  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "span",
+                    {
+                      style: {
+                        fontSize: "11px",
+                        padding: "2px 8px",
+                        borderRadius: "3px",
+                        border: "1px solid var(--border)",
+                        color: "var(--text-secondary)",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0
+                      },
+                      children: [
+                        "○ ",
+                        stageLabel
+                      ]
+                    },
+                    stageKey
+                  );
+                }
+              }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 } }),
+              caseId != null && !isComplete && nextStageLabel != null && (showConfirm ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 11, color: "var(--text)", whiteSpace: "nowrap" }, children: [
+                  "Advance to ",
+                  nextStageLabel,
+                  "?"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    onClick: handleConfirmAdvance,
+                    disabled: advancing,
+                    style: {
+                      padding: "2px 10px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      border: "none",
+                      borderRadius: 3,
+                      background: "#4caf50",
+                      color: "#fff",
+                      cursor: advancing ? "wait" : "pointer",
+                      whiteSpace: "nowrap"
+                    },
+                    children: advancing ? "Advancing…" : "Confirm"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    onClick: handleCancelAdvance,
+                    style: {
+                      padding: "2px 10px",
+                      fontSize: 11,
+                      fontWeight: 500,
+                      border: "1px solid var(--border)",
+                      borderRadius: 3,
+                      background: "var(--panel)",
+                      color: "var(--text)",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap"
+                    },
+                    children: "Cancel"
+                  }
+                )
+              ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  onClick: handleAdvanceClick,
+                  disabled: advancing,
+                  style: {
+                    padding: "2px 10px",
+                    fontSize: 11,
+                    fontWeight: 500,
+                    border: "1px solid var(--border)",
+                    borderRadius: 3,
+                    background: "var(--accent)",
+                    color: "#fff",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    transition: "all 0.2s"
+                  },
+                  children: [
+                    "Advance to ",
+                    nextStageLabel,
+                    " →"
+                  ]
+                }
+              ))
+            ]
+          }
+        )
+      ]
+    }
+  );
+};
 const PIPELINE_STAGE_LIST = [
   { key: "onboarding", label: "Onboarding", color: "#2196f3" },
   { key: "testing", label: "Testing", color: "#9c27b0" },
@@ -13199,7 +22489,6 @@ const PIPELINE_STAGE_LIST = [
   { key: "review", label: "Review", color: "#ff5722" },
   { key: "complete", label: "Complete", color: "#4caf50" }
 ];
-const PIPELINE_STAGES = PIPELINE_STAGE_LIST;
 const STAGE_COLORS = {
   onboarding: "#2196f3",
   testing: "#9c27b0",
@@ -13508,23 +22797,39 @@ function getReportSections(evalType) {
   return [...base, "Diagnostic Impressions", "Summary & Recommendations"];
 }
 const ALL_SUB_TABS = [
-  { id: "intake", label: "Intake", minStageIndex: 0 },
-  { id: "referral", label: "Referral", minStageIndex: 0 },
-  { id: "collateral", label: "Collateral", minStageIndex: 1 },
-  { id: "testing", label: "Testing", minStageIndex: 1 },
-  { id: "validity", label: "Validity", minStageIndex: 2 },
-  { id: "interviews", label: "Interviews", minStageIndex: 2 },
-  { id: "diagnostics", label: "Diagnostics", minStageIndex: 3 },
-  { id: "report", label: "Report", minStageIndex: 4 }
+  { id: "intake", label: "Intake", doneAtStage: 1 },
+  // done when past onboarding
+  { id: "referral", label: "Referral", doneAtStage: 1 },
+  // done when past onboarding
+  { id: "collateral", label: "Documents", doneAtStage: 2 },
+  // done when past testing
+  { id: "testing", label: "Testing", doneAtStage: 2 },
+  // done when past testing
+  { id: "interviews", label: "Interviews", doneAtStage: 3 },
+  // done when past interview
+  { id: "diagnostics", label: "Diagnostics", doneAtStage: 4 },
+  // done when past diagnostics
+  { id: "report", label: "Reports", doneAtStage: 5 },
+  // done when complete
+  { id: "archive", label: "Archive", doneAtStage: 5 }
+  // done when complete
 ];
 function CenterColumn({
   tabs,
   activeTabId,
   onCloseTab,
   onSetActiveTab,
-  onEditIntake
+  onEditIntake,
+  onOpenTab,
+  cases,
+  onRefreshCases,
+  onUploadDocuments,
+  onImportScores
 }) {
   const activeTab = tabs.find((t) => t.id === activeTabId);
+  const activeCaseId = activeTab?.caseId ?? null;
+  const activeCase = activeCaseId != null ? cases.find((c) => c.case_id === activeCaseId) ?? null : null;
+  const activeCaseStage = activeCase?.workflow_current_stage ?? null;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -13574,20 +22879,37 @@ function CenterColumn({
             ))
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, position: "relative", overflow: "hidden" }, children: activeTab == null ? /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeContent, {}) : activeTab.type === "clinical-overview" ? /* @__PURE__ */ jsxRuntimeExports.jsx(ClinicalOverviewContent, { tab: activeTab, onEditIntake }) : /* @__PURE__ */ jsxRuntimeExports.jsx(DocumentContent, { tab: activeTab }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, position: "relative", overflow: "hidden" }, children: activeTab == null ? /* @__PURE__ */ jsxRuntimeExports.jsx(WelcomeContent, {}) : activeTab.type === "clinical-overview" ? /* @__PURE__ */ jsxRuntimeExports.jsx(ClinicalOverviewContent, { tab: activeTab, onEditIntake, onUploadDocuments, onImportScores, onOpenTab }) : activeTab.type === "dashboard" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          DashboardTab,
           {
-            style: {
-              height: 80,
-              flexShrink: 0,
-              borderTop: "1px solid var(--border)",
-              background: "var(--panel)"
+            cases,
+            onCaseClick: (caseId) => {
+              const c = cases.find((r) => r.case_id === caseId);
+              if (c) {
+                onOpenTab({
+                  id: `overview:${c.case_id}`,
+                  title: `${c.examinee_last_name}, ${c.examinee_first_name}`,
+                  type: "clinical-overview",
+                  caseId: c.case_id
+                });
+              }
             },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", style: { borderBottom: "none" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Evaluation Pipeline" }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 4, padding: "8px 12px", flexWrap: "wrap" }, children: PIPELINE_STAGES.map((stage) => /* @__PURE__ */ jsxRuntimeExports.jsx(PipelinePill, { label: stage.label, color: stage.color }, stage.label)) })
-            ]
+            onRefresh: onRefreshCases
+          }
+        ) : activeTab.type === "tests" ? /* @__PURE__ */ jsxRuntimeExports.jsx(TestResultsTab, { caseId: activeTab.caseId }) : activeTab.type === "diagnostics" ? /* @__PURE__ */ jsxRuntimeExports.jsx(DiagnosticsTab, { caseId: activeTab.caseId }) : activeTab.type === "report" ? /* @__PURE__ */ jsxRuntimeExports.jsx(EvalReportTab, { caseId: activeTab.caseId }) : activeTab.type === "attestation" ? /* @__PURE__ */ jsxRuntimeExports.jsx(AttestationTab, { caseId: activeTab.caseId }) : activeTab.type === "audit" ? /* @__PURE__ */ jsxRuntimeExports.jsx(AuditTrailTab, { caseId: activeTab.caseId }) : activeTab.type === "settings" ? /* @__PURE__ */ jsxRuntimeExports.jsx(SettingsTab, {}) : activeTab.type === "document-viewer" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          DocumentViewerTab,
+          {
+            caseId: activeTab.caseId,
+            documentType: activeTab.documentType ?? "collateral",
+            documentId: activeTab.documentId
+          }
+        ) : activeTab.type === "evidence-map" ? /* @__PURE__ */ jsxRuntimeExports.jsx(EvidenceMapTab, { caseId: activeTab.caseId }) : activeTab.type === "data-confirmation" ? /* @__PURE__ */ jsxRuntimeExports.jsx(DataConfirmationTab, { caseId: activeTab.caseId }) : /* @__PURE__ */ jsxRuntimeExports.jsx(DocumentContent, { tab: activeTab }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          PipelinePanel,
+          {
+            currentStage: activeCaseStage,
+            caseId: activeCaseId,
+            onStageAdvanced: onRefreshCases
           }
         )
       ]
@@ -13602,7 +22924,8 @@ function TabButton({
 }) {
   const [hovered, setHovered] = reactExports.useState(false);
   const [closeHovered, setCloseHovered] = reactExports.useState(false);
-  const showClose = isActive || hovered;
+  const isPinned = tab.type === "dashboard";
+  const showClose = !isPinned && (isActive || hovered);
   const handleClose = reactExports.useCallback(
     (e) => {
       e.stopPropagation();
@@ -13675,7 +22998,10 @@ function WelcomeContent() {
 }
 function ClinicalOverviewContent({
   tab,
-  onEditIntake
+  onEditIntake,
+  onUploadDocuments,
+  onImportScores,
+  onOpenTab
 }) {
   const [caseRow, setCaseRow] = reactExports.useState(null);
   const [intakeRow, setIntakeRow] = reactExports.useState(null);
@@ -13739,7 +23065,7 @@ function ClinicalOverviewContent({
   const stageColor = getStageColor(stage);
   const stageLabel = getStageLabel(stage);
   const fullName = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`;
-  const visibleTabs = ALL_SUB_TABS.filter((t) => stageIndex >= t.minStageIndex);
+  const visibleTabs = ALL_SUB_TABS;
   const effectiveSubTab = visibleTabs.some((t) => t.id === activeSubTab) ? activeSubTab : "intake";
   const deadline = intakeRow?.report_deadline ?? null;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }, children: [
@@ -13747,13 +23073,17 @@ function ClinicalOverviewContent({
       "div",
       {
         style: {
-          padding: "14px 24px",
+          padding: "10px 24px",
           borderBottom: "1px solid var(--border)",
-          background: "var(--panel)",
-          flexShrink: 0
+          background: "#fff",
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12
         },
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "baseline", gap: 10 }, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 20, fontWeight: 700, color: "var(--text)" }, children: fullName }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "span",
@@ -13761,10 +23091,10 @@ function ClinicalOverviewContent({
                 style: {
                   background: stageColor,
                   color: "#fff",
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: 700,
-                  borderRadius: 4,
-                  padding: "3px 10px",
+                  borderRadius: 3,
+                  padding: "2px 8px",
                   letterSpacing: 0.5,
                   textTransform: "uppercase",
                   flexShrink: 0
@@ -13773,110 +23103,121 @@ function ClinicalOverviewContent({
               }
             )
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 6, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }, children: PIPELINE_STAGE_LIST.map((s, idx) => {
-            const isDone = idx < stageIndex;
-            const isCurrent = idx === stageIndex;
-            const stColor = s.color;
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "div",
-              {
-                style: {
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4
-                },
-                children: [
-                  idx > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "div",
-                    {
-                      style: {
-                        width: 16,
-                        height: 1,
-                        background: isDone || isCurrent ? stColor : "var(--border)",
-                        flexShrink: 0
-                      }
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "div",
-                    {
-                      style: {
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                        padding: "2px 8px",
-                        borderRadius: 10,
-                        border: `1.5px solid ${isDone || isCurrent ? stColor : "var(--border)"}`,
-                        background: isCurrent ? stColor : isDone ? `${stColor}22` : "transparent",
-                        fontSize: 11,
-                        fontWeight: isCurrent ? 700 : isDone ? 600 : 400,
-                        color: isCurrent ? "#fff" : isDone ? stColor : "var(--text-secondary)",
-                        whiteSpace: "nowrap"
-                      },
-                      children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10 }, children: isDone ? "✓" : isCurrent ? "●" : "○" }),
-                        s.label
-                      ]
-                    }
-                  )
-                ]
-              },
-              s.key
-            );
-          }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
-            {
-              style: {
-                display: "flex",
-                gap: 20,
-                fontSize: 12,
-                color: "var(--text-secondary)",
-                flexWrap: "wrap"
-              },
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Case #", value: caseRow.case_number }),
-                caseRow.evaluation_type != null && caseRow.evaluation_type !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Eval Type", value: caseRow.evaluation_type }),
-                caseRow.referral_source != null && caseRow.referral_source !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Referral", value: caseRow.referral_source }),
-                deadline != null && deadline !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Deadline", value: new Date(deadline).toLocaleDateString() }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Opened", value: new Date(caseRow.created_at).toLocaleDateString() })
-              ]
-            }
-          )
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "var(--text-secondary)", flexShrink: 0 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Case #", value: caseRow.case_number }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Opened", value: new Date(caseRow.created_at).toLocaleDateString() }),
+            deadline != null && deadline !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx(MetaChip, { label: "Due", value: new Date(deadline).toLocaleDateString() })
+          ] })
         ]
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
         style: {
           display: "flex",
+          alignItems: "center",
           borderBottom: "1px solid var(--border)",
           background: "var(--panel)",
-          flexShrink: 0,
-          overflowX: "auto"
+          flexShrink: 0
         },
-        children: visibleTabs.map(({ id, label }) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            onClick: () => setActiveSubTab(id),
-            style: {
-              padding: "7px 16px",
-              fontSize: 12,
-              fontWeight: effectiveSubTab === id ? 600 : 400,
-              color: effectiveSubTab === id ? "var(--accent)" : "var(--text-secondary)",
-              background: "transparent",
-              border: "none",
-              borderBottom: effectiveSubTab === id ? "2px solid var(--accent)" : "2px solid transparent",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              whiteSpace: "nowrap",
-              flexShrink: 0
-            },
-            children: label
-          },
-          id
-        ))
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", overflowX: "auto", flex: 1, minWidth: 0 }, children: visibleTabs.map(({ id, label, doneAtStage }) => {
+            const isDone = stageIndex >= doneAtStage;
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                onClick: () => setActiveSubTab(id),
+                style: {
+                  padding: "7px 16px",
+                  fontSize: 12,
+                  fontWeight: effectiveSubTab === id ? 600 : 400,
+                  color: effectiveSubTab === id ? "var(--accent)" : isDone ? "#2e7d32" : "var(--text-secondary)",
+                  background: effectiveSubTab === id ? "#fff" : "transparent",
+                  border: "none",
+                  borderBottom: effectiveSubTab === id ? "2px solid var(--accent)" : "2px solid transparent",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: isDone ? { backgroundColor: "#c8e6c9", borderRadius: 3, padding: "1px 4px" } : void 0, children: label }),
+                  isDone && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#2e7d32", marginLeft: 5, fontSize: 12, fontWeight: 700 }, children: "✓" })
+                ]
+              },
+              id
+            );
+          }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 6, padding: "0 16px", flexShrink: 0 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => tab.caseId != null && onUploadDocuments?.(tab.caseId),
+                style: {
+                  padding: "3px 10px",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
+                  background: "var(--panel)",
+                  color: "var(--text)",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  fontFamily: "inherit"
+                },
+                children: "Upload Documents"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => {
+                  if (tab.caseId != null && onOpenTab) {
+                    onOpenTab({
+                      id: `data-confirm:${tab.caseId}`,
+                      title: "Data Confirmation",
+                      type: "data-confirmation",
+                      caseId: tab.caseId
+                    });
+                  }
+                },
+                style: {
+                  padding: "3px 10px",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  border: "1px solid var(--accent)",
+                  borderRadius: 4,
+                  background: "var(--accent)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  fontFamily: "inherit"
+                },
+                children: "Review Data"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => tab.caseId != null && onImportScores?.(tab.caseId),
+                style: {
+                  padding: "3px 10px",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
+                  background: "var(--panel)",
+                  color: "var(--text)",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  fontFamily: "inherit"
+                },
+                children: "Import Scores"
+              }
+            )
+          ] })
+        ]
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, overflowY: "auto", padding: "20px 24px" }, children: [
@@ -13884,10 +23225,10 @@ function ClinicalOverviewContent({
       effectiveSubTab === "referral" && /* @__PURE__ */ jsxRuntimeExports.jsx(ReferralSubTab, { caseRow, intakeRow }),
       effectiveSubTab === "collateral" && /* @__PURE__ */ jsxRuntimeExports.jsx(CollateralSubTab, { caseRow, stageIndex }),
       effectiveSubTab === "testing" && /* @__PURE__ */ jsxRuntimeExports.jsx(TestingSubTab, { caseRow, stageIndex }),
-      effectiveSubTab === "validity" && /* @__PURE__ */ jsxRuntimeExports.jsx(ValiditySubTab, { caseRow }),
       effectiveSubTab === "interviews" && /* @__PURE__ */ jsxRuntimeExports.jsx(InterviewsSubTab, { caseRow }),
       effectiveSubTab === "diagnostics" && /* @__PURE__ */ jsxRuntimeExports.jsx(DiagnosticsSubTab, { stageIndex }),
-      effectiveSubTab === "report" && /* @__PURE__ */ jsxRuntimeExports.jsx(ReportSubTab, { caseRow, stageIndex })
+      effectiveSubTab === "report" && /* @__PURE__ */ jsxRuntimeExports.jsx(ReportSubTab, { caseRow, stageIndex }),
+      effectiveSubTab === "archive" && /* @__PURE__ */ jsxRuntimeExports.jsx(ArchiveSubTab, { caseRow })
     ] })
   ] });
 }
@@ -14135,7 +23476,7 @@ function TestingSubTab({
   stageIndex
 }) {
   const instruments = getInstrumentsForEvalType(caseRow.evaluation_type);
-  const hasValidityInstruments = instruments.some((key) => INSTRUMENT_INFO[key]?.isValidity);
+  const hasValidityInstruments = instruments.some((key2) => INSTRUMENT_INFO[key2]?.isValidity);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Test Battery" }),
     hasValidityInstruments && /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -14168,8 +23509,8 @@ function TestingSubTab({
           borderRadius: 6,
           overflow: "hidden"
         },
-        children: instruments.map((key, idx) => {
-          const info = INSTRUMENT_INFO[key];
+        children: instruments.map((key2, idx) => {
+          const info = INSTRUMENT_INFO[key2];
           const isScored = stageIndex >= 2;
           if (info == null) return null;
           return /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -14198,7 +23539,7 @@ function TestingSubTab({
                       },
                       children: [
                         info.isValidity && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#ff9800", fontSize: 12 }, children: "⚠" }),
-                        key,
+                        key2,
                         " — ",
                         info.fullName
                       ]
@@ -14237,122 +23578,9 @@ function TestingSubTab({
                 )
               ]
             },
-            key
+            key2
           );
         })
-      }
-    )
-  ] });
-}
-function ValiditySubTab({ caseRow }) {
-  const instruments = getInstrumentsForEvalType(caseRow.evaluation_type);
-  const validityInstruments = instruments.filter((key) => INSTRUMENT_INFO[key]?.isValidity);
-  validityInstruments.length === 0 || true;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Validity & Effort Assessment" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          padding: "14px 18px",
-          background: "#e8f5e9",
-          border: `1px solid ${"#4caf50"}`,
-          borderRadius: 6,
-          marginBottom: 16
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 24 }, children: "✅" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                style: {
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: "#2e7d32"
-                },
-                children: "PASS — Results Considered Valid"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "#388e3c", marginTop: 2 }, children: "Effort indicators within acceptable limits. Clinical results interpretable." })
-          ] })
-        ]
-      }
-    ),
-    validityInstruments.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(EmptyState, { message: "No standalone validity instruments in this battery. Review embedded validity scales within clinical instruments." }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        style: {
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          overflow: "hidden"
-        },
-        children: validityInstruments.map((key, idx) => {
-          const info = INSTRUMENT_INFO[key];
-          if (info == null) return null;
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
-            {
-              style: {
-                padding: "10px 16px",
-                borderBottom: idx < validityInstruments.length - 1 ? "1px solid var(--border)" : "none",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12
-              },
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" }, children: [
-                    key,
-                    " — ",
-                    info.fullName
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }, children: [
-                    info.category,
-                    " · ",
-                    info.duration
-                  ] })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "span",
-                  {
-                    style: {
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: "#4caf50",
-                      whiteSpace: "nowrap"
-                    },
-                    children: "✓ Pass"
-                  }
-                )
-              ]
-            },
-            key
-          );
-        })
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          marginTop: 14,
-          padding: "10px 14px",
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          fontSize: 12,
-          color: "var(--text-secondary)"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: "Note on Embedded Scales:" }),
-          " Clinical instruments (MMPI-3, PAI, MCMI-IV) include internal validity indicators (e.g., F, Fp, FBS, NIM, MAL). Review these scales in the full test report."
-        ]
       }
     )
   ] });
@@ -14778,36 +24006,41 @@ function DocumentContent({ tab }) {
     /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontSize: 13, color: "var(--text-secondary)", marginTop: 16 }, children: "Document viewer will render file content in a later sprint." })
   ] });
 }
-function PipelinePill({
-  label,
-  color
-}) {
-  const [hovered, setHovered] = reactExports.useState(false);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "span",
-    {
-      style: {
-        padding: "4px 12px",
-        borderRadius: 4,
-        fontSize: 12,
-        fontWeight: 500,
-        border: `1px solid ${hovered ? color : "var(--border)"}`,
-        color: hovered ? "#ffffff" : "var(--text-secondary)",
-        background: hovered ? color : "var(--panel)",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        transition: "all 0.15s"
-      },
-      onMouseEnter: () => setHovered(true),
-      onMouseLeave: () => setHovered(false),
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10 }, children: "○" }),
-        label
-      ]
-    }
-  );
+function ArchiveSubTab({ caseRow }) {
+  const isComplete = (caseRow.workflow_current_stage ?? "").toLowerCase() === "complete";
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Archive" }),
+    isComplete ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          overflow: "hidden"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Status", value: "✓ Case Complete" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Completed", value: caseRow.last_modified?.split("T")[0] ?? "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Evaluation Type", value: caseRow.evaluation_type ?? "—" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Case Number", value: caseRow.case_number ?? "—" })
+        ]
+      }
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          padding: 16,
+          color: "var(--text-secondary)",
+          fontSize: 13
+        },
+        children: "Case is still active. Materials will be archived once the evaluation reaches the Complete stage."
+      }
+    )
+  ] });
 }
 const editButtonStyle = {
   background: "var(--panel)",
@@ -14868,14 +24101,155 @@ function HSplitter({ onResize, onResizeEnd }) {
     }
   );
 }
-function RightColumn() {
+const AGENT_PREREQUISITES = {
+  ingestor: [],
+  diagnostician: ["ingestor"],
+  writer: ["ingestor", "diagnostician"],
+  editor: ["ingestor", "diagnostician", "writer"]
+};
+function RightColumn({
+  activeCaseId,
+  onOpenTab
+}) {
   const [contextHeight, setContextHeight] = reactExports.useState(null);
+  const [chatMessages, setChatMessages] = reactExports.useState([{ type: "assistant", text: "How can I help with your evaluation? I can draft sections, suggest language, check citations, or review for Daubert compliance." }]);
+  const [chatInput, setChatInput] = reactExports.useState("");
+  const [agentStatuses, setAgentStatuses] = reactExports.useState({
+    ingestor: { operationId: null, agentType: null, caseId: null, status: "idle", elapsedMs: 0 },
+    diagnostician: { operationId: null, agentType: null, caseId: null, status: "idle", elapsedMs: 0 },
+    writer: { operationId: null, agentType: null, caseId: null, status: "idle", elapsedMs: 0 },
+    editor: { operationId: null, agentType: null, caseId: null, status: "idle", elapsedMs: 0 }
+  });
+  const [agentResults, setAgentResults] = reactExports.useState({
+    ingestor: false,
+    diagnostician: false,
+    writer: false,
+    editor: false
+  });
+  const [runningAgent, setRunningAgent] = reactExports.useState(null);
+  const refreshAgentResults = reactExports.useCallback(async () => {
+    if (activeCaseId === null) {
+      setAgentResults({ ingestor: false, diagnostician: false, writer: false, editor: false });
+      return;
+    }
+    try {
+      const [ing, diag, wrt, edt] = await Promise.all([
+        window.psygil.ingestor.getResult({ caseId: activeCaseId }),
+        window.psygil.diagnostician.getResult({ caseId: activeCaseId }),
+        window.psygil.writer.getResult({ caseId: activeCaseId }),
+        window.psygil.editor.getResult({ caseId: activeCaseId })
+      ]);
+      setAgentResults({
+        ingestor: ing.status === "success",
+        diagnostician: diag.status === "success",
+        writer: wrt.status === "success",
+        editor: edt.status === "success"
+      });
+    } catch {
+    }
+  }, [activeCaseId]);
+  reactExports.useEffect(() => {
+    refreshAgentResults();
+  }, [refreshAgentResults]);
   const handleResize = reactExports.useCallback((delta) => {
     setContextHeight((prev) => {
       const current = prev ?? 280;
       return Math.max(100, current + delta);
     });
   }, []);
+  const handleClearChat = reactExports.useCallback(() => {
+    setChatMessages([
+      {
+        type: "assistant",
+        text: "How can I help with your evaluation? I can draft sections, suggest language, check citations, or review for Daubert compliance."
+      }
+    ]);
+  }, []);
+  const handleSendChat = reactExports.useCallback(async () => {
+    if (!chatInput.trim()) return;
+    const userMessage = chatInput.trim();
+    setChatInput("");
+    setChatMessages((prev) => [...prev, { type: "user", text: userMessage }]);
+    try {
+      const response = await window.psygil.ai.complete({
+        systemPrompt: "You are a writing assistant for forensic psychology evaluation reports. Help draft sections, check citations, suggest language, and review for Daubert compliance. Provide concise, professional responses.",
+        userMessage
+      });
+      if (response.status === "success") {
+        setChatMessages((prev) => [...prev, { type: "assistant", text: response.data.content }]);
+      } else {
+        setChatMessages((prev) => [
+          ...prev,
+          { type: "assistant", text: `Error: ${response.message}` }
+        ]);
+      }
+    } catch {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          type: "assistant",
+          text: "Error communicating with AI. Check your API key configuration in Settings."
+        }
+      ]);
+    }
+  }, [chatInput]);
+  reactExports.useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const resp = await window.psygil.agent.status();
+        if (resp.status === "success") {
+          const s = resp.data;
+          if (s.agentType) {
+            setAgentStatuses((prev) => ({ ...prev, [s.agentType]: s }));
+          }
+          if (s.status === "done" || s.status === "error") {
+            setRunningAgent(null);
+            refreshAgentResults();
+          } else if (s.status === "running" || s.status === "queued") {
+            setRunningAgent(s.agentType ?? null);
+          } else {
+            setRunningAgent(null);
+          }
+        }
+      } catch {
+      }
+    }, 2e3);
+    return () => clearInterval(pollInterval);
+  }, [refreshAgentResults]);
+  const handleRunAgent = reactExports.useCallback(async (agent) => {
+    if (activeCaseId === null) return;
+    const prereqs = AGENT_PREREQUISITES[agent];
+    for (const prereq of prereqs) {
+      if (!agentResults[prereq]) {
+        console.warn(`Cannot run ${agent}: prerequisite ${prereq} has no results`);
+        return;
+      }
+    }
+    setRunningAgent(agent);
+    try {
+      let response;
+      switch (agent) {
+        case "ingestor":
+          response = await window.psygil.ingestor.run({ caseId: activeCaseId });
+          break;
+        case "diagnostician":
+          response = await window.psygil.diagnostician.run({ caseId: activeCaseId });
+          break;
+        case "writer":
+          response = await window.psygil.writer.run({ caseId: activeCaseId });
+          break;
+        case "editor":
+          response = await window.psygil.editor.run({ caseId: activeCaseId });
+          break;
+      }
+      if (response.status === "error") {
+        console.error(`${agent} run failed:`, response.message);
+      }
+    } catch (error) {
+      console.error(`Failed to run ${agent}:`, error);
+      setRunningAgent(null);
+    }
+  }, [activeCaseId, agentResults]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -14898,20 +24272,52 @@ function RightColumn() {
               overflow: "hidden"
             },
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Context" }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, overflowY: "auto", padding: 12 }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(ContextSection, { title: "Case Notes", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }, children: "No case selected" }) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs(ContextSection, { title: "AI Agent Status", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(AgentStatus, { name: "Documenter", status: "Idle", color: "#4caf50" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(AgentStatus, { name: "Diagnostician", status: "Idle", color: "#4caf50" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(AgentStatus, { name: "Editor", status: "Idle", color: "#4caf50" }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(AgentStatus, { name: "Legal", status: "Idle", color: "#4caf50" })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(ContextSection, { title: "Deadlines", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }, children: "No active deadlines" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "panel-header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "CONTEXT" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, overflowY: "auto", padding: 0 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(ContextSection, { title: "Case Notes", children: activeCaseId !== null ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12, color: "var(--text)", lineHeight: 1.5 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 6, fontSize: 12 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Session 1 (Mar 8):" }),
+                    " Initial interview, 2.5 hrs. Patient reported persecutory concerns, mild disorganization."
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 6, fontSize: 12 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Session 2 (Mar 10):" }),
+                    " Psychological testing (MMPI-3, PAI). Patient cooperative."
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 6, fontSize: 12 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Session 3 (Mar 12):" }),
+                    " Cognitive testing (WAIS-V, TOMM, SIRS-2). Effort adequate."
+                  ] })
+                ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }, children: "No case selected" }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(ContextSection, { title: "AI Agent Status", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  AgentStatusPanel,
+                  {
+                    agentStatuses,
+                    agentResults,
+                    runningAgent,
+                    activeCaseId,
+                    onRunAgent: handleRunAgent
+                  }
+                ) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(ContextSection, { title: "Deadlines", children: activeCaseId !== null ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12, color: "var(--text)", lineHeight: 1.5 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 6, fontSize: 12 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Court Deadline:" }),
+                    " Apr 15, 2026 (26 days)"
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 6, fontSize: 12 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Next Action:" }),
+                    " Complete Diagnostics — clinical formulation"
+                  ] })
+                ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }, children: "No active deadlines" }) }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx(ContextSection, { title: "Quick Actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "button",
                     {
+                      onClick: () => onOpenTab({
+                        id: `report:${activeCaseId ?? 0}`,
+                        title: "Evaluation Report",
+                        type: "report",
+                        caseId: activeCaseId ?? void 0
+                      }),
                       style: {
                         padding: "6px 12px",
                         fontSize: 12,
@@ -14928,6 +24334,12 @@ function RightColumn() {
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "button",
                     {
+                      onClick: () => onOpenTab({
+                        id: `diagnostics:${activeCaseId ?? 0}`,
+                        title: "Diagnostics",
+                        type: "diagnostics",
+                        caseId: activeCaseId ?? void 0
+                      }),
                       style: {
                         padding: "6px 12px",
                         fontSize: 12,
@@ -14951,17 +24363,49 @@ function RightColumn() {
           "div",
           {
             style: {
-              height: 280,
-              flexShrink: 0,
+              flex: "0 0 280px",
               display: "flex",
               flexDirection: "column",
               overflow: "hidden"
             },
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-header", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "panel-header-title", children: "Writing Assistant" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "panel-hdr-btn", "aria-label": "Clear chat", children: "✕" })
-              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  className: "panel-header",
+                  style: {
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "WRITING ASSISTANT" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "button",
+                      {
+                        onClick: handleClearChat,
+                        className: "panel-hdr-btn",
+                        "aria-label": "Clear chat",
+                        style: {
+                          width: 20,
+                          height: 20,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: 3,
+                          cursor: "pointer",
+                          fontSize: 13,
+                          color: "var(--text-secondary)",
+                          border: "none",
+                          background: "none",
+                          transition: "background 0.15s, color 0.15s"
+                        },
+                        children: "✕"
+                      }
+                    )
+                  ]
+                }
+              ),
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "div",
                 {
@@ -14973,22 +24417,33 @@ function RightColumn() {
                     flexDirection: "column",
                     gap: 8
                   },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  children: chatMessages.map((msg, idx) => /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "div",
                     {
                       style: {
-                        alignSelf: "flex-start",
-                        maxWidth: "88%",
-                        padding: "8px 10px",
-                        fontSize: 12,
-                        lineHeight: 1.5,
-                        background: "var(--panel)",
-                        color: "var(--text)",
-                        borderRadius: "8px 8px 8px 2px"
+                        display: "flex",
+                        justifyContent: msg.type === "user" ? "flex-end" : "flex-start"
                       },
-                      children: "How can I help you draft sections, check citations, or review for compliance?"
-                    }
-                  )
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "div",
+                        {
+                          style: {
+                            maxWidth: "88%",
+                            padding: "8px 10px",
+                            fontSize: 12,
+                            lineHeight: 1.5,
+                            borderRadius: "8px",
+                            background: msg.type === "assistant" ? "var(--panel)" : "var(--accent)",
+                            color: msg.type === "assistant" ? "var(--text)" : "#ffffff",
+                            borderBottomLeftRadius: msg.type === "user" ? "8px" : "2px",
+                            borderBottomRightRadius: msg.type === "assistant" ? "8px" : "2px"
+                          },
+                          children: msg.text
+                        }
+                      )
+                    },
+                    idx
+                  ))
                 }
               ),
               /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -14997,7 +24452,8 @@ function RightColumn() {
                   style: {
                     padding: "8px 10px",
                     borderTop: "1px solid var(--border)",
-                    background: "var(--panel)"
+                    background: "var(--panel)",
+                    flexShrink: 0
                   },
                   children: [
                     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -15016,30 +24472,40 @@ function RightColumn() {
                               fontSize: 10,
                               textTransform: "uppercase",
                               color: "var(--text-secondary)",
-                              letterSpacing: 0.5
+                              letterSpacing: 0.5,
+                              fontWeight: 600
                             },
                             children: "Writing Assistant"
                           }
                         )
                       }
                     ),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 6 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 6, alignItems: "flex-end" }, children: [
                       /* @__PURE__ */ jsxRuntimeExports.jsx(
                         "textarea",
                         {
+                          value: chatInput,
+                          onChange: (e) => setChatInput(e.currentTarget.value),
+                          onKeyDown: (e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendChat();
+                            }
+                          },
+                          placeholder: "Ask the writing assistant...",
                           rows: 3,
-                          placeholder: "Ask about drafting, citations, or compliance...",
                           style: {
                             flex: 1,
                             background: "var(--bg)",
                             border: "1px solid var(--border)",
                             borderRadius: 4,
-                            padding: "6px 8px",
+                            padding: "6px 10px",
                             fontSize: 12,
                             color: "var(--text)",
                             resize: "none",
                             fontFamily: "inherit",
-                            outline: "none"
+                            outline: "none",
+                            lineHeight: 1.5
                           },
                           onFocus: (e) => {
                             e.currentTarget.style.borderColor = "var(--accent)";
@@ -15052,6 +24518,7 @@ function RightColumn() {
                       /* @__PURE__ */ jsxRuntimeExports.jsx(
                         "button",
                         {
+                          onClick: handleSendChat,
                           "aria-label": "Send",
                           style: {
                             width: 32,
@@ -15063,9 +24530,11 @@ function RightColumn() {
                             cursor: "pointer",
                             fontSize: 14,
                             flexShrink: 0,
-                            alignSelf: "flex-end"
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
                           },
-                          children: "▶"
+                          children: "➤"
                         }
                       )
                     ] })
@@ -15083,30 +24552,96 @@ function ContextSection({
   title,
   children
 }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { borderBottom: "1px solid var(--border)", paddingBottom: 12, marginBottom: 12 }, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        style: {
-          fontSize: 11,
-          textTransform: "uppercase",
-          fontWeight: 600,
-          color: "var(--text-secondary)",
-          letterSpacing: 0.3,
-          marginBottom: 8
-        },
-        children: title
-      }
-    ),
-    children
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "context-section", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "context-title", children: title }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "context-content", children })
   ] });
 }
-function AgentStatus({
-  name,
-  status,
-  color
+function getStatusColor(status) {
+  switch (status) {
+    case "idle":
+    case "done":
+      return "#4caf50";
+    case "queued":
+      return "#9e9e9e";
+    case "running":
+      return "#ff9800";
+    case "error":
+      return "#f44336";
+    default:
+      return "#9e9e9e";
+  }
+}
+function formatElapsedTime(elapsedMs) {
+  const seconds = Math.floor(elapsedMs / 1e3);
+  return `${seconds}s`;
+}
+const AGENT_LABELS = {
+  ingestor: "Ingestor",
+  diagnostician: "Diagnostician",
+  writer: "Writer",
+  editor: "Editor"
+};
+const AGENT_ORDER = ["ingestor", "diagnostician", "writer", "editor"];
+function AgentStatusPanel({
+  agentStatuses,
+  agentResults,
+  runningAgent,
+  activeCaseId,
+  onRunAgent
 }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginBottom: 4 }, children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: AGENT_ORDER.map((agent) => {
+    const prereqs = AGENT_PREREQUISITES[agent];
+    const prereqsMet = prereqs.every((p) => agentResults[p]);
+    const hasResult = agentResults[agent];
+    const isThisRunning = runningAgent === agent;
+    const anyRunning = runningAgent !== null;
+    const canRun = activeCaseId !== null && prereqsMet && !anyRunning;
+    const status = agentStatuses[agent];
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 2 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        AgentStatusRow,
+        {
+          name: AGENT_LABELS[agent],
+          agentStatus: status,
+          hasResult
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => onRunAgent(agent),
+          disabled: !canRun,
+          title: activeCaseId === null ? "Select a case first" : anyRunning ? `Waiting for ${AGENT_LABELS[runningAgent]} to finish` : !prereqsMet ? `Requires: ${prereqs.map((p) => AGENT_LABELS[p]).join(", ")}` : hasResult ? `Re-run ${AGENT_LABELS[agent]}` : `Run ${AGENT_LABELS[agent]}`,
+          style: {
+            padding: "4px 10px",
+            fontSize: 11,
+            fontWeight: 500,
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            background: canRun ? "var(--accent)" : "var(--panel)",
+            color: canRun ? "#ffffff" : "var(--text-secondary)",
+            cursor: canRun ? "pointer" : "not-allowed",
+            opacity: canRun ? 1 : 0.5,
+            transition: "all 0.2s",
+            marginLeft: 14
+          },
+          children: isThisRunning ? "Running…" : hasResult ? `Re-run ${AGENT_LABELS[agent]}` : `Run ${AGENT_LABELS[agent]}`
+        }
+      )
+    ] }, agent);
+  }) });
+}
+function AgentStatusRow({
+  name,
+  agentStatus,
+  hasResult
+}) {
+  const effectiveStatus = hasResult && agentStatus.status === "idle" ? "done" : agentStatus.status;
+  const color = getStatusColor(effectiveStatus);
+  const statusText = effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1);
+  const elapsedTime = formatElapsedTime(agentStatus.elapsedMs);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginBottom: 2 }, children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "span",
       {
@@ -15115,12 +24650,23 @@ function AgentStatus({
           height: 8,
           borderRadius: "50%",
           background: color,
-          display: "inline-block"
+          display: "inline-block",
+          flexShrink: 0
         }
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text)" }, children: name }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text-secondary)", marginLeft: "auto" }, children: status })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text)", flex: 1, minWidth: 0 }, children: name }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-secondary)" }, children: [
+      agentStatus.status === "running" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: elapsedTime }),
+      agentStatus.status === "done" && agentStatus.tokenUsage && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+        agentStatus.tokenUsage.input,
+        "↓ ",
+        agentStatus.tokenUsage.output,
+        "↑"
+      ] }),
+      agentStatus.status === "error" && agentStatus.operationId && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#f44336" }, title: "Error", children: "Error" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: statusText })
+    ] })
   ] });
 }
 function VSplitter({ onResize, onResizeEnd }) {
@@ -15152,20 +24698,26 @@ function VSplitter({ onResize, onResizeEnd }) {
       className: "v-splitter",
       onMouseDown: handleMouseDown,
       style: {
-        width: 2,
-        minWidth: 2,
-        maxWidth: 2,
+        width: 6,
+        minWidth: 6,
+        maxWidth: 6,
         cursor: "col-resize",
-        background: "var(--border)",
-        transition: "background 0.15s",
-        flexShrink: 0
+        flexShrink: 0,
+        /* Visual line is 2px centered inside the 6px hit area */
+        background: "transparent",
+        borderLeft: "2px solid transparent",
+        borderRight: "2px solid transparent",
+        boxSizing: "border-box",
+        backgroundClip: "content-box",
+        backgroundColor: "var(--border)",
+        transition: "background-color 0.15s"
       },
       onMouseEnter: (e) => {
-        e.currentTarget.style.background = "var(--accent)";
+        e.currentTarget.style.backgroundColor = "var(--accent)";
       },
       onMouseLeave: (e) => {
         if (!document.body.classList.contains("col-resizing")) {
-          e.currentTarget.style.background = "var(--border)";
+          e.currentTarget.style.backgroundColor = "var(--border)";
         }
       }
     }
@@ -16800,7 +26352,7 @@ function FieldRow({
 }
 function ModeButton({
   label,
-  active,
+  active: active2,
   onClick
 }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -16808,9 +26360,9 @@ function ModeButton({
     {
       onClick,
       style: {
-        background: active ? "var(--accent)" : "var(--panel)",
-        color: active ? "#ffffff" : "var(--text-secondary)",
-        border: active ? "1px solid var(--accent)" : "1px solid var(--border)",
+        background: active2 ? "var(--accent)" : "var(--panel)",
+        color: active2 ? "#ffffff" : "var(--text-secondary)",
+        border: active2 ? "1px solid var(--accent)" : "1px solid var(--border)",
         borderRadius: 4,
         padding: "4px 12px",
         fontSize: 11,
@@ -17071,7 +26623,7 @@ function SetupModal({ isOpen, onClose, onWorkspaceSet }) {
         setStatus({ kind: "success", message: "Workspace updated." });
         onWorkspaceSet();
       } else {
-        setStatus({ kind: "error", message: setResp?.error?.message ?? "Failed to set workspace." });
+        setStatus({ kind: "error", message: (setResp?.status === "error" ? setResp.message : null) ?? "Failed to set workspace." });
       }
     } catch (e) {
       setStatus({ kind: "error", message: e instanceof Error ? e.message : "Unknown error" });
@@ -17095,7 +26647,7 @@ function SetupModal({ isOpen, onClose, onWorkspaceSet }) {
         setStatus({ kind: "success", message: "Workspace set to default." });
         onWorkspaceSet();
       } else {
-        setStatus({ kind: "error", message: setResp?.error?.message ?? "Failed to set workspace." });
+        setStatus({ kind: "error", message: (setResp?.status === "error" ? setResp.message : null) ?? "Failed to set workspace." });
       }
     } catch (e) {
       setStatus({ kind: "error", message: e instanceof Error ? e.message : "Unknown error" });
@@ -17288,6 +26840,1070 @@ function SetupModal({ isOpen, onClose, onWorkspaceSet }) {
     }
   );
 }
+const SUBFOLDERS = [
+  { value: "_Inbox", label: "Inbox (Unsorted)" },
+  { value: "Collateral", label: "Collateral Records" },
+  { value: "Testing", label: "Testing / Score Reports" },
+  { value: "Interviews", label: "Interview Notes" },
+  { value: "Diagnostics", label: "Diagnostics" },
+  { value: "Reports", label: "Reports" },
+  { value: "Archive", label: "Archive" }
+];
+const ACCEPTED_EXTENSIONS$1 = [".pdf", ".docx", ".doc", ".txt", ".csv", ".rtf", ".vtt", ".json"];
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+let nextId = 0;
+function DocumentUploadModal({
+  caseId,
+  defaultSubfolder = "_Inbox",
+  onClose,
+  onUploadComplete
+}) {
+  const [queue, setQueue] = reactExports.useState([]);
+  const [subfolder, setSubfolder] = reactExports.useState(defaultSubfolder);
+  const [isDragOver, setIsDragOver] = reactExports.useState(false);
+  const [isUploading, setIsUploading] = reactExports.useState(false);
+  const dropRef = reactExports.useRef(null);
+  const addFiles = reactExports.useCallback((paths, names, sizes) => {
+    const newFiles = paths.map((path, i) => ({
+      id: `file-${++nextId}`,
+      name: names[i] ?? path.split("/").pop() ?? "unknown",
+      path,
+      size: sizes[i] ?? 0,
+      subfolder,
+      status: "pending"
+    }));
+    setQueue((prev) => [...prev, ...newFiles]);
+  }, [subfolder]);
+  const handleDrop = reactExports.useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+    const paths = [];
+    const names = [];
+    const sizes = [];
+    for (const file of files) {
+      const ext = "." + file.name.split(".").pop()?.toLowerCase();
+      if (!ACCEPTED_EXTENSIONS$1.includes(ext)) continue;
+      const filePath = window.psygil.documents.getDroppedFilePath(file);
+      if (!filePath) continue;
+      paths.push(filePath);
+      names.push(file.name);
+      sizes.push(file.size);
+    }
+    if (paths.length > 0) {
+      addFiles(paths, names, sizes);
+    }
+  }, [addFiles]);
+  const handleDragOver = reactExports.useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+  const handleDragLeave = reactExports.useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (dropRef.current && !dropRef.current.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
+  }, []);
+  const handlePickFiles = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil.documents.pickFiles();
+      if (resp.status === "success" && resp.data.filePaths.length > 0) {
+        const paths = resp.data.filePaths;
+        const names = paths.map((p) => p.split("/").pop() ?? "unknown");
+        const sizes = paths.map(() => 0);
+        addFiles(paths, names, sizes);
+      }
+    } catch {
+    }
+  }, [addFiles]);
+  const removeFile = reactExports.useCallback((fileId) => {
+    setQueue((prev) => prev.filter((f) => f.id !== fileId));
+  }, []);
+  const changeFileSubfolder = reactExports.useCallback((fileId, newSubfolder) => {
+    setQueue(
+      (prev) => prev.map((f) => f.id === fileId ? { ...f, subfolder: newSubfolder } : f)
+    );
+  }, []);
+  const handleUploadAll = reactExports.useCallback(async () => {
+    const pending = queue.filter((f) => f.status === "pending");
+    if (pending.length === 0) return;
+    setIsUploading(true);
+    for (const file of pending) {
+      setQueue(
+        (prev) => prev.map((f) => f.id === file.id ? { ...f, status: "uploading" } : f)
+      );
+      try {
+        const resp = await window.psygil.documents.ingest({
+          case_id: caseId,
+          file_path: file.path,
+          subfolder: file.subfolder
+        });
+        if (resp.status === "success") {
+          setQueue(
+            (prev) => prev.map(
+              (f) => f.id === file.id ? { ...f, status: "done", result: resp.data } : f
+            )
+          );
+        } else {
+          setQueue(
+            (prev) => prev.map(
+              (f) => f.id === file.id ? { ...f, status: "error", error: resp.message ?? "Upload failed" } : f
+            )
+          );
+        }
+      } catch (err) {
+        setQueue(
+          (prev) => prev.map(
+            (f) => f.id === file.id ? { ...f, status: "error", error: err instanceof Error ? err.message : "Upload failed" } : f
+          )
+        );
+      }
+    }
+    setIsUploading(false);
+    onUploadComplete?.();
+  }, [queue, caseId, onUploadComplete]);
+  const pendingCount = queue.filter((f) => f.status === "pending").length;
+  const doneCount = queue.filter((f) => f.status === "done").length;
+  const errorCount = queue.filter((f) => f.status === "error").length;
+  const uploadingCount = queue.filter((f) => f.status === "uploading").length;
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      style: {
+        position: "fixed",
+        inset: 0,
+        zIndex: 1e3,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.5)"
+      },
+      onClick: (e) => {
+        if (e.target === e.currentTarget && !isUploading) onClose();
+      },
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          style: {
+            width: 600,
+            maxHeight: "80vh",
+            background: "var(--bg)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  padding: "16px 20px",
+                  borderBottom: "1px solid var(--border)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: { margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text)" }, children: "Upload Documents" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: onClose,
+                      disabled: isUploading,
+                      style: {
+                        background: "none",
+                        border: "none",
+                        fontSize: 18,
+                        color: "var(--text-secondary)",
+                        cursor: isUploading ? "not-allowed" : "pointer"
+                      },
+                      children: "✕"
+                    }
+                  )
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, overflowY: "auto", padding: 20 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 16 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "label",
+                  {
+                    style: {
+                      display: "block",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--text-secondary)",
+                      marginBottom: 6,
+                      textTransform: "uppercase",
+                      letterSpacing: 0.5
+                    },
+                    children: "Default Destination Folder"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "select",
+                  {
+                    value: subfolder,
+                    onChange: (e) => setSubfolder(e.currentTarget.value),
+                    style: {
+                      width: "100%",
+                      padding: "8px 10px",
+                      fontSize: 13,
+                      background: "var(--panel)",
+                      color: "var(--text)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 4
+                    },
+                    children: SUBFOLDERS.map((s) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: s.value, children: s.label }, s.value))
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  ref: dropRef,
+                  onDrop: handleDrop,
+                  onDragOver: handleDragOver,
+                  onDragLeave: handleDragLeave,
+                  style: {
+                    border: `2px dashed ${isDragOver ? "var(--accent)" : "var(--border)"}`,
+                    borderRadius: 8,
+                    padding: "32px 20px",
+                    textAlign: "center",
+                    background: isDragOver ? "rgba(33,150,243,0.08)" : "var(--panel)",
+                    transition: "all 0.2s",
+                    cursor: "pointer",
+                    marginBottom: 16
+                  },
+                  onClick: handlePickFiles,
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 8, opacity: 0.5 }, children: isDragOver ? "⬇" : "📄" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, color: "var(--text)", fontWeight: 500, marginBottom: 4 }, children: isDragOver ? "Drop files here" : "Drag & drop files here" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)" }, children: "or click to browse — PDF, DOCX, TXT, CSV, RTF" })
+                  ]
+                }
+              ),
+              queue.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--text-secondary)",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.5,
+                      marginBottom: 4
+                    },
+                    children: [
+                      "Files (",
+                      queue.length,
+                      ")"
+                    ]
+                  }
+                ),
+                queue.map((file) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    style: {
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      background: "var(--panel)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 4,
+                      borderLeftWidth: 3,
+                      borderLeftColor: file.status === "done" ? "#4caf50" : file.status === "error" ? "#f44336" : file.status === "uploading" ? "#ff9800" : "var(--border)"
+                    },
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14, flexShrink: 0, width: 18, textAlign: "center" }, children: file.status === "done" ? "✓" : file.status === "error" ? "✗" : file.status === "uploading" ? "↻" : "○" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "div",
+                          {
+                            style: {
+                              fontSize: 13,
+                              color: "var(--text)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap"
+                            },
+                            children: file.name
+                          }
+                        ),
+                        file.error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "#f44336", marginTop: 2 }, children: file.error })
+                      ] }),
+                      file.status === "pending" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "select",
+                        {
+                          value: file.subfolder,
+                          onChange: (e) => changeFileSubfolder(file.id, e.currentTarget.value),
+                          onClick: (e) => e.stopPropagation(),
+                          style: {
+                            padding: "2px 6px",
+                            fontSize: 11,
+                            background: "var(--bg)",
+                            color: "var(--text)",
+                            border: "1px solid var(--border)",
+                            borderRadius: 3,
+                            flexShrink: 0
+                          },
+                          children: SUBFOLDERS.map((s) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: s.value, children: s.label }, s.value))
+                        }
+                      ),
+                      file.size > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, color: "var(--text-secondary)", flexShrink: 0 }, children: formatBytes(file.size) }),
+                      file.status === "pending" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          onClick: () => removeFile(file.id),
+                          style: {
+                            background: "none",
+                            border: "none",
+                            color: "var(--text-secondary)",
+                            cursor: "pointer",
+                            fontSize: 14,
+                            padding: "0 2px",
+                            flexShrink: 0
+                          },
+                          children: "✕"
+                        }
+                      )
+                    ]
+                  },
+                  file.id
+                ))
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  padding: "12px 20px",
+                  borderTop: "1px solid var(--border)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  background: "var(--panel)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)" }, children: isUploading ? `Uploading… ${uploadingCount} in progress` : queue.length > 0 ? `${pendingCount} pending, ${doneCount} done${errorCount > 0 ? `, ${errorCount} failed` : ""}` : "No files selected" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "button",
+                      {
+                        onClick: onClose,
+                        disabled: isUploading,
+                        style: {
+                          padding: "8px 16px",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          border: "1px solid var(--border)",
+                          borderRadius: 4,
+                          background: "var(--panel)",
+                          color: "var(--text)",
+                          cursor: isUploading ? "not-allowed" : "pointer"
+                        },
+                        children: doneCount > 0 && pendingCount === 0 ? "Done" : "Cancel"
+                      }
+                    ),
+                    pendingCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "button",
+                      {
+                        onClick: handleUploadAll,
+                        disabled: isUploading,
+                        style: {
+                          padding: "8px 16px",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          border: "none",
+                          borderRadius: 4,
+                          background: "var(--accent)",
+                          color: "#ffffff",
+                          cursor: isUploading ? "wait" : "pointer"
+                        },
+                        children: isUploading ? "Uploading…" : `Upload ${pendingCount} File${pendingCount > 1 ? "s" : ""}`
+                      }
+                    )
+                  ] })
+                ]
+              }
+            )
+          ]
+        }
+      )
+    }
+  );
+}
+const INSTRUMENTS = [
+  { id: "mmpi3", name: "MMPI-3", publisher: "Pearson (Q-Global)", scoringMethod: "publisher" },
+  { id: "pai", name: "PAI", publisher: "PAR (PARiConnect)", scoringMethod: "publisher" },
+  { id: "waisv", name: "WAIS-V", publisher: "Pearson", scoringMethod: "manual" },
+  { id: "tomm", name: "TOMM", publisher: "PAR", scoringMethod: "manual" },
+  { id: "sirs2", name: "SIRS-2", publisher: "PAR", scoringMethod: "manual" },
+  { id: "mcmi4", name: "MCMI-IV", publisher: "Pearson", scoringMethod: "publisher" },
+  { id: "pcl5", name: "PCL-5", publisher: "NCS Pearson", scoringMethod: "manual" },
+  { id: "caps5", name: "CAPS-5", publisher: "NCS Pearson", scoringMethod: "manual" },
+  { id: "other", name: "Other Instrument", publisher: "", scoringMethod: "manual" }
+];
+const ACCEPTED_EXTENSIONS = [".pdf"];
+function ScoreImportModal({
+  caseId,
+  onClose,
+  onImportComplete
+}) {
+  const [pathway, setPathway] = reactExports.useState("publisher");
+  const [selectedFile, setSelectedFile] = reactExports.useState(null);
+  const [selectedFileName, setSelectedFileName] = reactExports.useState("");
+  const [isUploading, setIsUploading] = reactExports.useState(false);
+  const [uploadResult, setUploadResult] = reactExports.useState(null);
+  const [uploadError, setUploadError] = reactExports.useState(null);
+  const [selectedInstrument, setSelectedInstrument] = reactExports.useState(INSTRUMENTS[0].id);
+  const [customInstrumentName, setCustomInstrumentName] = reactExports.useState("");
+  const [administrationDate, setAdministrationDate] = reactExports.useState(
+    (/* @__PURE__ */ new Date()).toISOString().split("T")[0]
+  );
+  const [scores, setScores] = reactExports.useState([
+    { scaleName: "", rawScore: "", tScore: "", percentile: "", classification: "" }
+  ]);
+  const [validityScores, setValidityScores] = reactExports.useState([
+    { scaleName: "", rawScore: "", tScore: "", percentile: "", classification: "" }
+  ]);
+  const [notes, setNotes] = reactExports.useState("");
+  const [isSaving, setIsSaving] = reactExports.useState(false);
+  const [saveError, setSaveError] = reactExports.useState(null);
+  const handlePickFile = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil.documents.pickFile();
+      if (resp.status === "success" && resp.data != null) {
+        const path = resp.data;
+        const name = path.split("/").pop() ?? "unknown.pdf";
+        const ext = "." + name.split(".").pop()?.toLowerCase();
+        if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+          setUploadError("Only PDF files are supported for publisher score import");
+          return;
+        }
+        setSelectedFile(path);
+        setSelectedFileName(name);
+        setUploadError(null);
+      }
+    } catch {
+      setUploadError("Failed to pick file");
+    }
+  }, []);
+  const handlePublisherImport = reactExports.useCallback(async () => {
+    if (selectedFile == null) return;
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const resp = await window.psygil.documents.ingest({
+        case_id: caseId,
+        file_path: selectedFile,
+        subfolder: "Testing"
+      });
+      if (resp.status === "success") {
+        setUploadResult(resp.data);
+        onImportComplete?.();
+      } else {
+        setUploadError(resp.message ?? "Import failed");
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setIsUploading(false);
+    }
+  }, [selectedFile, caseId, onImportComplete]);
+  const updateScore = reactExports.useCallback(
+    (index2, field, value, isValidity) => {
+      const setter = isValidity ? setValidityScores : setScores;
+      setter(
+        (prev) => prev.map((s, i) => i === index2 ? { ...s, [field]: value } : s)
+      );
+    },
+    []
+  );
+  const addScoreRow = reactExports.useCallback((isValidity) => {
+    const setter = isValidity ? setValidityScores : setScores;
+    setter((prev) => [
+      ...prev,
+      { scaleName: "", rawScore: "", tScore: "", percentile: "", classification: "" }
+    ]);
+  }, []);
+  const removeScoreRow = reactExports.useCallback((index2, isValidity) => {
+    const setter = isValidity ? setValidityScores : setScores;
+    setter((prev) => prev.filter((_, i) => i !== index2));
+  }, []);
+  const handleManualSave = reactExports.useCallback(async () => {
+    const instrument = INSTRUMENTS.find((i) => i.id === selectedInstrument);
+    const instrumentName = selectedInstrument === "other" ? customInstrumentName || "Unknown Instrument" : instrument?.name ?? selectedInstrument;
+    const clinicalScales = {};
+    for (const s of scores) {
+      if (!s.scaleName.trim()) continue;
+      clinicalScales[s.scaleName.trim()] = {
+        rawScore: s.rawScore ? parseFloat(s.rawScore) : 0,
+        tScore: s.tScore ? parseFloat(s.tScore) : 0,
+        percentile: s.percentile ? parseInt(s.percentile, 10) : 0,
+        classification: s.classification
+      };
+    }
+    const validityIndicators = {};
+    for (const s of validityScores) {
+      if (!s.scaleName.trim()) continue;
+      validityIndicators[s.scaleName.trim()] = {
+        rawScore: s.rawScore ? parseFloat(s.rawScore) : 0,
+        tScore: s.tScore ? parseFloat(s.tScore) : 0,
+        percentile: s.percentile ? parseInt(s.percentile, 10) : 0,
+        interpretation: s.classification
+      };
+    }
+    const scoreData = {
+      instrumentId: selectedInstrument,
+      instrumentName,
+      publisher: instrument?.publisher ?? "",
+      administrationDate,
+      importDate: (/* @__PURE__ */ new Date()).toISOString(),
+      importMethod: "manual",
+      clinicalScales,
+      validityIndicators,
+      notes,
+      status: "Scored",
+      clinicianReviewStatus: "NotReviewed",
+      completeness: Object.keys(clinicalScales).length > 0 ? "complete" : "partial",
+      flagsForReview: []
+    };
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const jsonBlob = JSON.stringify(scoreData, null, 2);
+      const fileName = `${selectedInstrument}_scores_${administrationDate}.json`;
+      const resp = await window.psygil.documents.ingest({
+        case_id: caseId,
+        file_path: `__manual_score__:${fileName}:${btoa(jsonBlob)}`,
+        subfolder: "Testing"
+      });
+      if (resp.status === "success") {
+        onImportComplete?.();
+        onClose();
+      } else {
+        setSaveError(resp.message ?? "Save failed");
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    caseId,
+    selectedInstrument,
+    customInstrumentName,
+    administrationDate,
+    scores,
+    validityScores,
+    notes,
+    onImportComplete,
+    onClose
+  ]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      style: {
+        position: "fixed",
+        inset: 0,
+        zIndex: 1e3,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.5)"
+      },
+      onClick: (e) => {
+        if (e.target === e.currentTarget && !isUploading && !isSaving) onClose();
+      },
+      children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          style: {
+            width: 680,
+            maxHeight: "85vh",
+            background: "var(--bg)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  padding: "16px 20px",
+                  borderBottom: "1px solid var(--border)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: { margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text)" }, children: "Import Test Scores" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: onClose,
+                      disabled: isUploading || isSaving,
+                      style: {
+                        background: "none",
+                        border: "none",
+                        fontSize: 18,
+                        color: "var(--text-secondary)",
+                        cursor: "pointer"
+                      },
+                      children: "✕"
+                    }
+                  )
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  borderBottom: "1px solid var(--border)",
+                  background: "var(--panel)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: () => setPathway("publisher"),
+                      style: {
+                        flex: 1,
+                        padding: "10px 16px",
+                        fontSize: 13,
+                        fontWeight: pathway === "publisher" ? 600 : 400,
+                        color: pathway === "publisher" ? "var(--accent)" : "var(--text-secondary)",
+                        background: "transparent",
+                        border: "none",
+                        borderBottom: pathway === "publisher" ? "2px solid var(--accent)" : "2px solid transparent",
+                        cursor: "pointer"
+                      },
+                      children: "From Publisher PDF"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      onClick: () => setPathway("manual"),
+                      style: {
+                        flex: 1,
+                        padding: "10px 16px",
+                        fontSize: 13,
+                        fontWeight: pathway === "manual" ? 600 : 400,
+                        color: pathway === "manual" ? "var(--accent)" : "var(--text-secondary)",
+                        background: "transparent",
+                        border: "none",
+                        borderBottom: pathway === "manual" ? "2px solid var(--accent)" : "2px solid transparent",
+                        cursor: "pointer"
+                      },
+                      children: "Manual Entry"
+                    }
+                  )
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", padding: 20 }, children: pathway === "publisher" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+              PublisherPathway,
+              {
+                selectedFile,
+                selectedFileName,
+                isUploading,
+                uploadResult,
+                uploadError,
+                onPickFile: handlePickFile,
+                onImport: handlePublisherImport
+              }
+            ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+              ManualPathway,
+              {
+                selectedInstrument,
+                onSelectInstrument: setSelectedInstrument,
+                customInstrumentName,
+                onSetCustomName: setCustomInstrumentName,
+                administrationDate,
+                onSetDate: setAdministrationDate,
+                scores,
+                validityScores,
+                onUpdateScore: updateScore,
+                onAddRow: addScoreRow,
+                onRemoveRow: removeScoreRow,
+                notes,
+                onSetNotes: setNotes,
+                isSaving,
+                saveError,
+                onSave: handleManualSave
+              }
+            ) })
+          ]
+        }
+      )
+    }
+  );
+}
+function PublisherPathway({
+  selectedFile,
+  selectedFileName,
+  isUploading,
+  uploadResult,
+  uploadError,
+  onPickFile,
+  onImport
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { style: { fontSize: 13, color: "var(--text)", marginBottom: 16, lineHeight: 1.5 }, children: "Import a score report PDF from your publisher platform (Q-Global, PARiConnect, CNS Vital Signs, etc.). The file will be ingested into the Testing folder and the Ingestor Agent will extract scores automatically." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        onClick: onPickFile,
+        style: {
+          border: "2px dashed var(--border)",
+          borderRadius: 8,
+          padding: "24px 20px",
+          textAlign: "center",
+          background: "var(--panel)",
+          cursor: "pointer",
+          marginBottom: 16
+        },
+        children: selectedFile == null ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 24, marginBottom: 8, opacity: 0.5 }, children: "📄" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", fontWeight: 500 }, children: "Click to select publisher score report PDF" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }, children: "Supports Q-Global, PARiConnect, and other publisher exports" })
+        ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, color: "var(--text)", fontWeight: 500 }, children: selectedFileName }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }, children: "Click to change file" })
+        ] })
+      }
+    ),
+    uploadResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          padding: "10px 14px",
+          background: "rgba(76,175,80,0.1)",
+          border: "1px solid #4caf50",
+          borderRadius: 4,
+          fontSize: 13,
+          color: "#4caf50",
+          marginBottom: 16
+        },
+        children: "Score report imported successfully. Run the Ingestor Agent to extract scores."
+      }
+    ),
+    uploadError && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          padding: "10px 14px",
+          background: "rgba(244,67,54,0.1)",
+          border: "1px solid #f44336",
+          borderRadius: 4,
+          fontSize: 13,
+          color: "#f44336",
+          marginBottom: 16
+        },
+        children: uploadError
+      }
+    ),
+    selectedFile != null && !uploadResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        onClick: onImport,
+        disabled: isUploading,
+        style: {
+          padding: "10px 20px",
+          fontSize: 13,
+          fontWeight: 600,
+          border: "none",
+          borderRadius: 4,
+          background: "var(--accent)",
+          color: "#ffffff",
+          cursor: isUploading ? "wait" : "pointer",
+          width: "100%"
+        },
+        children: isUploading ? "Importing…" : "Import Score Report"
+      }
+    )
+  ] });
+}
+function ManualPathway({
+  selectedInstrument,
+  onSelectInstrument,
+  customInstrumentName,
+  onSetCustomName,
+  administrationDate,
+  onSetDate,
+  scores,
+  validityScores,
+  onUpdateScore,
+  onAddRow,
+  onRemoveRow,
+  notes,
+  onSetNotes,
+  isSaving,
+  saveError,
+  onSave
+}) {
+  const inputStyle2 = {
+    padding: "6px 8px",
+    fontSize: 12,
+    background: "var(--bg)",
+    color: "var(--text)",
+    border: "1px solid var(--border)",
+    borderRadius: 3
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 12, marginBottom: 16 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }, children: "Instrument" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "select",
+          {
+            value: selectedInstrument,
+            onChange: (e) => onSelectInstrument(e.currentTarget.value),
+            style: { ...inputStyle2, width: "100%" },
+            children: INSTRUMENTS.map((inst) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: inst.id, children: inst.name }, inst.id))
+          }
+        )
+      ] }),
+      selectedInstrument === "other" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }, children: "Instrument Name" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "text",
+            value: customInstrumentName,
+            onChange: (e) => onSetCustomName(e.currentTarget.value),
+            placeholder: "Enter instrument name",
+            style: { ...inputStyle2, width: "100%" }
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { width: 150 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }, children: "Admin Date" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "date",
+            value: administrationDate,
+            onChange: (e) => onSetDate(e.currentTarget.value),
+            style: { ...inputStyle2, width: "100%" }
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ScoreTable,
+      {
+        title: "Clinical Scales",
+        scores,
+        isValidity: false,
+        onUpdate: onUpdateScore,
+        onAddRow,
+        onRemoveRow
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ScoreTable,
+      {
+        title: "Validity Indicators",
+        scores: validityScores,
+        isValidity: true,
+        onUpdate: onUpdateScore,
+        onAddRow,
+        onRemoveRow
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 16 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }, children: "Notes" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          value: notes,
+          onChange: (e) => onSetNotes(e.currentTarget.value),
+          placeholder: "Administration notes, behavioral observations during testing...",
+          rows: 3,
+          style: {
+            ...inputStyle2,
+            width: "100%",
+            resize: "vertical",
+            fontFamily: "inherit"
+          }
+        }
+      )
+    ] }),
+    saveError && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        style: {
+          padding: "8px 12px",
+          background: "rgba(244,67,54,0.1)",
+          border: "1px solid #f44336",
+          borderRadius: 4,
+          fontSize: 12,
+          color: "#f44336",
+          marginBottom: 12
+        },
+        children: saveError
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        onClick: onSave,
+        disabled: isSaving,
+        style: {
+          padding: "10px 20px",
+          fontSize: 13,
+          fontWeight: 600,
+          border: "none",
+          borderRadius: 4,
+          background: "var(--accent)",
+          color: "#ffffff",
+          cursor: isSaving ? "wait" : "pointer",
+          width: "100%"
+        },
+        children: isSaving ? "Saving…" : "Save Scores"
+      }
+    )
+  ] });
+}
+function ScoreTable({
+  title,
+  scores,
+  isValidity,
+  onUpdate,
+  onAddRow,
+  onRemoveRow
+}) {
+  const cellStyle = {
+    padding: "4px 6px",
+    fontSize: 12,
+    background: "var(--bg)",
+    color: "var(--text)",
+    border: "1px solid var(--border)",
+    borderRadius: 2,
+    width: "100%"
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 16 }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5 }, children: title }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => onAddRow(isValidity),
+          style: {
+            padding: "2px 8px",
+            fontSize: 11,
+            border: "1px solid var(--border)",
+            borderRadius: 3,
+            background: "var(--panel)",
+            color: "var(--text)",
+            cursor: "pointer"
+          },
+          children: "+ Add Row"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 4, marginBottom: 4, fontSize: 10, color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 120 }, children: "Scale" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 60 }, children: "Raw" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 60 }, children: "T-Score" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 60 }, children: "%ile" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1 }, children: isValidity ? "Interpretation" : "Classification" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 24 } })
+    ] }),
+    scores.map((score, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 4, marginBottom: 4, alignItems: "center" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          type: "text",
+          value: score.scaleName,
+          onChange: (e) => onUpdate(idx, "scaleName", e.currentTarget.value, isValidity),
+          placeholder: "Scale",
+          style: { ...cellStyle, width: 120 }
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          type: "text",
+          value: score.rawScore,
+          onChange: (e) => onUpdate(idx, "rawScore", e.currentTarget.value, isValidity),
+          placeholder: "—",
+          style: { ...cellStyle, width: 60, textAlign: "center" }
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          type: "text",
+          value: score.tScore,
+          onChange: (e) => onUpdate(idx, "tScore", e.currentTarget.value, isValidity),
+          placeholder: "—",
+          style: { ...cellStyle, width: 60, textAlign: "center" }
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          type: "text",
+          value: score.percentile,
+          onChange: (e) => onUpdate(idx, "percentile", e.currentTarget.value, isValidity),
+          placeholder: "—",
+          style: { ...cellStyle, width: 60, textAlign: "center" }
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          type: "text",
+          value: score.classification,
+          onChange: (e) => onUpdate(idx, "classification", e.currentTarget.value, isValidity),
+          placeholder: isValidity ? "Valid/Invalid" : "Average/Elevated/etc.",
+          style: { ...cellStyle, flex: 1 }
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => onRemoveRow(idx, isValidity),
+          style: {
+            width: 24,
+            height: 24,
+            background: "none",
+            border: "none",
+            color: "var(--text-secondary)",
+            cursor: "pointer",
+            fontSize: 13,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          },
+          children: "✕"
+        }
+      )
+    ] }, idx))
+  ] });
+}
 const THEMES = ["light", "medium", "dark"];
 const STORAGE_KEY_THEME = "psygil-theme";
 const STORAGE_KEY_LEFT_W = "psygil-left-width";
@@ -17300,8 +27916,8 @@ function loadTheme() {
   if (stored === "light" || stored === "medium" || stored === "dark") return stored;
   return "light";
 }
-function loadWidth(key, fallback) {
-  const stored = localStorage.getItem(key);
+function loadWidth(key2, fallback) {
+  const stored = localStorage.getItem(key2);
   if (stored != null) {
     const n = parseInt(stored, 10);
     if (!Number.isNaN(n) && n >= MIN_COL) return n;
@@ -17315,9 +27931,43 @@ function App() {
   const [showIntake, setShowIntake] = reactExports.useState(false);
   const [showOnboarding, setShowOnboarding] = reactExports.useState(false);
   const [showSetup, setShowSetup] = reactExports.useState(false);
+  const [showDocUpload, setShowDocUpload] = reactExports.useState(false);
+  const [docUploadCaseId, setDocUploadCaseId] = reactExports.useState(null);
+  const [showScoreImport, setShowScoreImport] = reactExports.useState(false);
+  const [scoreImportCaseId, setScoreImportCaseId] = reactExports.useState(null);
   const [intakeEditCaseId, setIntakeEditCaseId] = reactExports.useState(void 0);
-  const [tabState, setTabState] = reactExports.useState({ tabs: [], activeId: null });
+  const DASHBOARD_TAB = { id: "dashboard", title: "Dashboard", type: "dashboard" };
+  const [tabState, setTabState] = reactExports.useState({
+    tabs: [DASHBOARD_TAB],
+    activeId: "dashboard"
+  });
   const refreshCasesRef = reactExports.useRef(null);
+  const [cases, setCases] = reactExports.useState([]);
+  const loadCases = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil.cases.list();
+      if (resp.status === "success") {
+        setCases(resp.data.cases);
+      }
+    } catch {
+    }
+  }, []);
+  reactExports.useEffect(() => {
+    void loadCases();
+  }, [loadCases]);
+  reactExports.useEffect(() => {
+    const handler = () => {
+      void loadCases();
+    };
+    const wrapped = window.psygil?.workspace?.onFileChanged?.(handler);
+    return () => {
+      window.psygil?.workspace?.offFileChanged?.(wrapped);
+    };
+  }, [loadCases]);
+  const activeCaseId = reactExports.useMemo(() => {
+    const activeTab = tabState.tabs.find((t) => t.id === tabState.activeId);
+    return activeTab?.caseId ?? null;
+  }, [tabState]);
   const openTab = reactExports.useCallback((tab) => {
     setTabState((prev) => {
       if (prev.tabs.some((t) => t.id === tab.id)) {
@@ -17327,6 +27977,7 @@ function App() {
     });
   }, []);
   const closeTab = reactExports.useCallback((id) => {
+    if (id === "dashboard") return;
     setTabState((prev) => {
       const idx = prev.tabs.findIndex((t) => t.id === id);
       if (idx === -1) return prev;
@@ -17373,12 +28024,21 @@ function App() {
     setIntakeEditCaseId(void 0);
     setShowIntake(true);
   }, []);
+  const handleUploadDocuments = reactExports.useCallback((caseId) => {
+    setDocUploadCaseId(caseId);
+    setShowDocUpload(true);
+  }, []);
+  const handleImportScores = reactExports.useCallback((caseId) => {
+    setScoreImportCaseId(caseId);
+    setShowScoreImport(true);
+  }, []);
   const handleEditIntake = reactExports.useCallback((caseId) => {
     setIntakeEditCaseId(caseId);
     setShowIntake(true);
   }, []);
   const handleCaseSaved = reactExports.useCallback((caseRow) => {
     refreshCasesRef.current?.();
+    void loadCases();
     const title = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`;
     openTab({
       id: `overview:${caseRow.case_id}`,
@@ -17432,7 +28092,6 @@ function App() {
                     {
                       onOpenTab: openTab,
                       onNewCase: handleNewCase,
-                      onEditIntake: handleEditIntake,
                       refreshRef: refreshCasesRef
                     }
                   )
@@ -17455,7 +28114,12 @@ function App() {
                       activeTabId: tabState.activeId,
                       onCloseTab: closeTab,
                       onSetActiveTab: setActiveTab,
-                      onEditIntake: handleEditIntake
+                      onEditIntake: handleEditIntake,
+                      onOpenTab: openTab,
+                      cases,
+                      onRefreshCases: loadCases,
+                      onUploadDocuments: handleUploadDocuments,
+                      onImportScores: handleImportScores
                     }
                   )
                 }
@@ -17471,7 +28135,7 @@ function App() {
                     flexShrink: 0,
                     overflow: "hidden"
                   },
-                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(RightColumn, {})
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(RightColumn, { activeCaseId, onOpenTab: openTab })
                 }
               )
             ]
@@ -17494,6 +28158,26 @@ function App() {
             isOpen: showSetup,
             onClose: () => setShowSetup(false),
             onWorkspaceSet: () => {
+              refreshCasesRef.current?.();
+            }
+          }
+        ),
+        showDocUpload && docUploadCaseId != null && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          DocumentUploadModal,
+          {
+            caseId: docUploadCaseId,
+            onClose: () => setShowDocUpload(false),
+            onUploadComplete: () => {
+              refreshCasesRef.current?.();
+            }
+          }
+        ),
+        showScoreImport && scoreImportCaseId != null && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ScoreImportModal,
+          {
+            caseId: scoreImportCaseId,
+            onClose: () => setShowScoreImport(false),
+            onImportComplete: () => {
               refreshCasesRef.current?.();
             }
           }

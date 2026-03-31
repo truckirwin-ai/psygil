@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import type { Tab } from '../../types/tabs'
-import type { CaseRow, PatientIntakeRow } from '../../../../shared/types/ipc'
+import type { CaseRow, PatientIntakeRow, PatientOnboardingRow } from '../../../../shared/types/ipc'
 
 // New standalone tab components
 import DashboardTab from '../tabs/DashboardTab'
@@ -12,6 +12,7 @@ import { AuditTrailTab } from '../tabs/AuditTrailTab'
 import SettingsTab from '../tabs/SettingsTab'
 import DocumentViewerTab from '../tabs/DocumentViewerTab'
 import EvidenceMapTab from '../tabs/EvidenceMapTab'
+import DataConfirmationTab from '../tabs/DataConfirmationTab'
 import PipelinePanel from '../tabs/PipelinePanel'
 
 // ---------------------------------------------------------------------------
@@ -369,26 +370,30 @@ type OverviewSubTab =
   | 'referral'
   | 'collateral'
   | 'testing'
-  | 'validity'
   | 'interviews'
   | 'diagnostics'
   | 'report'
+  | 'archive'
 
 interface SubTabDef {
   readonly id: OverviewSubTab
   readonly label: string
-  readonly minStageIndex: number
+  /** Stage index at which this workflow step is considered complete.
+   *  Stages: onboarding=0, testing=1, interview=2, diagnostics=3, review=4, complete=5 */
+  readonly doneAtStage: number
 }
 
+// Full clinical workflow — all tabs always visible.
+// This is the actual sequence a forensic psychologist works through.
 const ALL_SUB_TABS: SubTabDef[] = [
-  { id: 'intake', label: 'Intake', minStageIndex: 0 },
-  { id: 'referral', label: 'Referral', minStageIndex: 0 },
-  { id: 'collateral', label: 'Collateral', minStageIndex: 1 },
-  { id: 'testing', label: 'Testing', minStageIndex: 1 },
-  { id: 'validity', label: 'Validity', minStageIndex: 2 },
-  { id: 'interviews', label: 'Interviews', minStageIndex: 2 },
-  { id: 'diagnostics', label: 'Diagnostics', minStageIndex: 3 },
-  { id: 'report', label: 'Report', minStageIndex: 4 },
+  { id: 'intake', label: 'Intake', doneAtStage: 1 },        // done when past onboarding
+  { id: 'referral', label: 'Referral', doneAtStage: 1 },     // done when past onboarding
+  { id: 'collateral', label: 'Documents', doneAtStage: 2 },  // done when past testing
+  { id: 'testing', label: 'Testing', doneAtStage: 2 },       // done when past testing
+  { id: 'interviews', label: 'Interviews', doneAtStage: 3 }, // done when past interview
+  { id: 'diagnostics', label: 'Diagnostics', doneAtStage: 4 }, // done when past diagnostics
+  { id: 'report', label: 'Reports', doneAtStage: 5 },        // done when complete
+  { id: 'archive', label: 'Archive', doneAtStage: 5 },       // done when complete
 ]
 
 // ---------------------------------------------------------------------------
@@ -403,6 +408,9 @@ interface CenterColumnProps {
   readonly onEditIntake: (caseId: number) => void
   readonly onOpenTab: (tab: Tab) => void
   readonly cases: readonly CaseRow[]
+  readonly onRefreshCases?: () => void
+  readonly onUploadDocuments?: (caseId: number) => void
+  readonly onImportScores?: (caseId: number) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -417,6 +425,9 @@ export default function CenterColumn({
   onEditIntake,
   onOpenTab,
   cases,
+  onRefreshCases,
+  onUploadDocuments,
+  onImportScores,
 }: CenterColumnProps): React.JSX.Element {
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
@@ -481,7 +492,7 @@ export default function CenterColumn({
         {activeTab == null ? (
           <WelcomeContent />
         ) : activeTab.type === 'clinical-overview' ? (
-          <ClinicalOverviewContent tab={activeTab} onEditIntake={onEditIntake} />
+          <ClinicalOverviewContent tab={activeTab} onEditIntake={onEditIntake} onUploadDocuments={onUploadDocuments} onImportScores={onImportScores} onOpenTab={onOpenTab} />
         ) : activeTab.type === 'dashboard' ? (
           <DashboardTab
             cases={cases as CaseRow[]}
@@ -496,6 +507,7 @@ export default function CenterColumn({
                 })
               }
             }}
+            onRefresh={onRefreshCases}
           />
         ) : activeTab.type === 'tests' ? (
           <TestResultsTab caseId={activeTab.caseId!} />
@@ -517,13 +529,19 @@ export default function CenterColumn({
           />
         ) : activeTab.type === 'evidence-map' ? (
           <EvidenceMapTab caseId={activeTab.caseId!} />
+        ) : activeTab.type === 'data-confirmation' ? (
+          <DataConfirmationTab caseId={activeTab.caseId!} />
         ) : (
           <DocumentContent tab={activeTab} />
         )}
       </div>
 
       {/* Pipeline bar — 80px */}
-      <PipelinePanel currentStage={activeCaseStage} />
+      <PipelinePanel
+        currentStage={activeCaseStage}
+        caseId={activeCaseId}
+        onStageAdvanced={onRefreshCases}
+      />
     </div>
   )
 }
@@ -633,12 +651,19 @@ function WelcomeContent(): React.JSX.Element {
 function ClinicalOverviewContent({
   tab,
   onEditIntake,
+  onUploadDocuments,
+  onImportScores,
+  onOpenTab,
 }: {
   readonly tab: Tab
   readonly onEditIntake: (caseId: number) => void
+  readonly onUploadDocuments?: (caseId: number) => void
+  readonly onImportScores?: (caseId: number) => void
+  readonly onOpenTab?: (tab: Tab) => void
 }): React.JSX.Element {
   const [caseRow, setCaseRow] = useState<CaseRow | null>(null)
   const [intakeRow, setIntakeRow] = useState<PatientIntakeRow | null>(null)
+  const [onboardingSections, setOnboardingSections] = useState<readonly PatientOnboardingRow[]>([])
   const [loading, setLoading] = useState(true)
   const [activeSubTab, setActiveSubTab] = useState<OverviewSubTab>('intake')
 
@@ -648,16 +673,28 @@ function ClinicalOverviewContent({
     setLoading(true)
 
     void (async () => {
-      const [caseResp, intakeResp] = await Promise.all([
-        window.psygil.cases.get({ case_id: tab.caseId as number }),
-        window.psygil.intake.get({ case_id: tab.caseId as number }),
-      ])
+      try {
+        const [caseResp, intakeResp] = await Promise.all([
+          window.psygil.cases.get({ case_id: tab.caseId as number }),
+          window.psygil.intake.get({ case_id: tab.caseId as number }),
+        ])
 
-      if (cancelled) return
+        if (cancelled) return
 
-      if (caseResp.status === 'success') setCaseRow(caseResp.data)
-      if (intakeResp.status === 'success') setIntakeRow(intakeResp.data)
-      setLoading(false)
+        if (caseResp.status === 'success') setCaseRow(caseResp.data)
+        if (intakeResp.status === 'success') setIntakeRow(intakeResp.data)
+
+        // Fetch onboarding separately so a failure doesn't block case/intake
+        try {
+          const obResp = await window.psygil.onboarding.get({ case_id: tab.caseId as number })
+          if (!cancelled && obResp.status === 'success') setOnboardingSections(obResp.data)
+        } catch (obErr) {
+          console.warn('[ClinicalOverview] Onboarding fetch failed (non-fatal):', obErr)
+        }
+      } catch (err) {
+        console.error('[ClinicalOverview] Failed to load case data:', err)
+      }
+      if (!cancelled) setLoading(false)
     })()
 
     return () => {
@@ -709,10 +746,9 @@ function ClinicalOverviewContent({
   const stageLabel = getStageLabel(stage)
   const fullName = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`
 
-  // Visible sub-tabs based on current stage
-  const visibleTabs = ALL_SUB_TABS.filter((t) => stageIndex >= t.minStageIndex)
+  // All workflow tabs always visible
+  const visibleTabs = ALL_SUB_TABS
 
-  // If current sub-tab not visible at this stage, reset to intake
   const effectiveSubTab = visibleTabs.some((t) => t.id === activeSubTab)
     ? activeSubTab
     : 'intake'
@@ -721,26 +757,29 @@ function ClinicalOverviewContent({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* ── Case header ── */}
+      {/* ── Case header — name (left), metadata (right) ── */}
       <div
         style={{
-          padding: '14px 24px',
+          padding: '10px 24px',
           borderBottom: '1px solid var(--border)',
-          background: 'var(--panel)',
+          background: '#fff',
           flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
         }}
       >
-        {/* Row 1: name + stage pill */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>{fullName}</div>
           <span
             style={{
               background: stageColor,
               color: '#fff',
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: 700,
-              borderRadius: 4,
-              padding: '3px 10px',
+              borderRadius: 3,
+              padding: '2px 8px',
               letterSpacing: 0.5,
               textTransform: 'uppercase',
               flexShrink: 0,
@@ -749,122 +788,126 @@ function ClinicalOverviewContent({
             {stageLabel}
           </span>
         </div>
-
-        {/* Row 2: pipeline stages progress */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-          {PIPELINE_STAGE_LIST.map((s, idx) => {
-            const isDone = idx < stageIndex
-            const isCurrent = idx === stageIndex
-            const stColor = s.color
-            return (
-              <div
-                key={s.key}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                {idx > 0 && (
-                  <div
-                    style={{
-                      width: 16,
-                      height: 1,
-                      background: isDone || isCurrent ? stColor : 'var(--border)',
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '2px 8px',
-                    borderRadius: 10,
-                    border: `1.5px solid ${isDone || isCurrent ? stColor : 'var(--border)'}`,
-                    background: isCurrent ? stColor : isDone ? `${stColor}22` : 'transparent',
-                    fontSize: 11,
-                    fontWeight: isCurrent ? 700 : isDone ? 600 : 400,
-                    color: isCurrent ? '#fff' : isDone ? stColor : 'var(--text-secondary)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <span style={{ fontSize: 10 }}>
-                    {isDone ? '✓' : isCurrent ? '●' : '○'}
-                  </span>
-                  {s.label}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Row 3: case metadata */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 20,
-            fontSize: 12,
-            color: 'var(--text-secondary)',
-            flexWrap: 'wrap',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>
           <MetaChip label="Case #" value={caseRow.case_number} />
-          {caseRow.evaluation_type != null && caseRow.evaluation_type !== '' && (
-            <MetaChip label="Eval Type" value={caseRow.evaluation_type} />
-          )}
-          {caseRow.referral_source != null && caseRow.referral_source !== '' && (
-            <MetaChip label="Referral" value={caseRow.referral_source} />
-          )}
-          {deadline != null && deadline !== '' && (
-            <MetaChip label="Deadline" value={new Date(deadline).toLocaleDateString()} />
-          )}
           <MetaChip label="Opened" value={new Date(caseRow.created_at).toLocaleDateString()} />
+          {deadline != null && deadline !== '' && (
+            <MetaChip label="Due" value={new Date(deadline).toLocaleDateString()} />
+          )}
         </div>
       </div>
 
-      {/* ── Sub-tab bar ── */}
+      {/* ── Sub-tab bar — tabs (left), action buttons (right) ── */}
       <div
         style={{
           display: 'flex',
+          alignItems: 'center',
           borderBottom: '1px solid var(--border)',
           background: 'var(--panel)',
           flexShrink: 0,
-          overflowX: 'auto',
         }}
       >
-        {visibleTabs.map(({ id, label }) => (
+        <div style={{ display: 'flex', overflowX: 'auto', flex: 1, minWidth: 0 }}>
+          {visibleTabs.map(({ id, label, doneAtStage }) => {
+            const isDone = stageIndex >= doneAtStage
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveSubTab(id)}
+                style={{
+                  padding: '7px 16px',
+                  fontSize: 12,
+                  fontWeight: effectiveSubTab === id ? 600 : 400,
+                  color:
+                    effectiveSubTab === id ? 'var(--accent)' : (isDone ? '#2e7d32' : 'var(--text-secondary)'),
+                  background: effectiveSubTab === id ? '#fff' : 'transparent',
+                  border: 'none',
+                  borderBottom:
+                    effectiveSubTab === id
+                      ? '2px solid var(--accent)'
+                      : '2px solid transparent',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                <span style={isDone ? { backgroundColor: '#c8e6c9', borderRadius: 3, padding: '1px 4px' } : undefined}>
+                  {label}
+                </span>
+                {isDone && <span style={{ color: '#2e7d32', marginLeft: 5, fontSize: 12, fontWeight: 700 }}>✓</span>}
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', flexShrink: 0 }}>
           <button
-            key={id}
-            onClick={() => setActiveSubTab(id)}
+            onClick={() => tab.caseId != null && onUploadDocuments?.(tab.caseId)}
             style={{
-              padding: '7px 16px',
-              fontSize: 12,
-              fontWeight: effectiveSubTab === id ? 600 : 400,
-              color:
-                effectiveSubTab === id ? 'var(--accent)' : 'var(--text-secondary)',
-              background: 'transparent',
-              border: 'none',
-              borderBottom:
-                effectiveSubTab === id
-                  ? '2px solid var(--accent)'
-                  : '2px solid transparent',
+              padding: '3px 10px',
+              fontSize: 11,
+              fontWeight: 500,
+              border: '1px solid var(--border)',
+              borderRadius: 4,
+              background: 'var(--panel)',
+              color: 'var(--text)',
               cursor: 'pointer',
-              fontFamily: 'inherit',
               whiteSpace: 'nowrap',
-              flexShrink: 0,
+              fontFamily: 'inherit',
             }}
           >
-            {label}
+            Upload Documents
           </button>
-        ))}
+          <button
+            onClick={() => {
+              if (tab.caseId != null && onOpenTab) {
+                onOpenTab({
+                  id: `data-confirm:${tab.caseId}`,
+                  title: 'Data Confirmation',
+                  type: 'data-confirmation',
+                  caseId: tab.caseId,
+                })
+              }
+            }}
+            style={{
+              padding: '3px 10px',
+              fontSize: 11,
+              fontWeight: 500,
+              border: '1px solid var(--accent)',
+              borderRadius: 4,
+              background: 'var(--accent)',
+              color: '#fff',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
+            }}
+          >
+            Review Data
+          </button>
+          <button
+            onClick={() => tab.caseId != null && onImportScores?.(tab.caseId)}
+            style={{
+              padding: '3px 10px',
+              fontSize: 11,
+              fontWeight: 500,
+              border: '1px solid var(--border)',
+              borderRadius: 4,
+              background: 'var(--panel)',
+              color: 'var(--text)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
+            }}
+          >
+            Import Scores
+          </button>
+        </div>
       </div>
 
       {/* ── Sub-tab content ── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
         {effectiveSubTab === 'intake' && (
-          <IntakeSubTab caseRow={caseRow} intakeRow={intakeRow} onEdit={handleEditIntake} />
+          <IntakeSubTab caseRow={caseRow} intakeRow={intakeRow} onboardingSections={onboardingSections} onEdit={handleEditIntake} />
         )}
         {effectiveSubTab === 'referral' && (
           <ReferralSubTab caseRow={caseRow} intakeRow={intakeRow} />
@@ -875,9 +918,6 @@ function ClinicalOverviewContent({
         {effectiveSubTab === 'testing' && (
           <TestingSubTab caseRow={caseRow} stageIndex={stageIndex} />
         )}
-        {effectiveSubTab === 'validity' && (
-          <ValiditySubTab caseRow={caseRow} />
-        )}
         {effectiveSubTab === 'interviews' && (
           <InterviewsSubTab caseRow={caseRow} />
         )}
@@ -886,6 +926,9 @@ function ClinicalOverviewContent({
         )}
         {effectiveSubTab === 'report' && (
           <ReportSubTab caseRow={caseRow} stageIndex={stageIndex} />
+        )}
+        {effectiveSubTab === 'archive' && (
+          <ArchiveSubTab caseRow={caseRow} />
         )}
       </div>
     </div>
@@ -914,15 +957,86 @@ function MetaChip({
 // IntakeSubTab
 // ---------------------------------------------------------------------------
 
+/** Human-readable labels for onboarding sections */
+const ONBOARDING_SECTION_LABELS: Record<string, string> = {
+  contact: 'Contact & Demographics',
+  complaints: 'Presenting Complaints',
+  family: 'Family History',
+  education: 'Education & Employment',
+  health: 'Medical / Physical Health',
+  mental: 'Mental Health History',
+  substance: 'Substance Use History',
+  legal: 'Legal History',
+  recent: 'Recent Events & Circumstances',
+}
+
+/** Human-readable labels for content field keys */
+const FIELD_LABELS: Record<string, string> = {
+  marital_status: 'Marital Status',
+  dependents: 'Dependents',
+  living_situation: 'Living Situation',
+  primary_language: 'Primary Language',
+  primary_complaint: 'Primary Complaint',
+  secondary_concerns: 'Secondary Concerns',
+  onset_timeline: 'Onset / Timeline',
+  family_of_origin: 'Family of Origin',
+  family_mental_health: 'Family Mental Health',
+  family_medical_history: 'Family Medical History',
+  current_family_relationships: 'Current Family Relationships',
+  highest_education: 'Highest Education',
+  schools_attended: 'Schools Attended',
+  academic_experience: 'Academic Experience',
+  employment_status: 'Employment Status',
+  current_employer: 'Current Employer',
+  work_history: 'Work History',
+  military_service: 'Military Service',
+  medical_conditions: 'Medical Conditions',
+  current_medications: 'Current Medications',
+  surgeries_hospitalizations: 'Surgeries / Hospitalizations',
+  head_injuries: 'Head Injuries',
+  sleep_quality: 'Sleep Quality',
+  appetite_weight: 'Appetite & Weight',
+  previous_treatment: 'Previous Treatment',
+  previous_diagnoses: 'Previous Diagnoses',
+  psych_medications: 'Psychiatric Medications',
+  self_harm_history: 'Self-Harm History',
+  violence_history: 'Violence History',
+  alcohol_use: 'Alcohol Use',
+  drug_use: 'Drug Use',
+  substance_treatment: 'Substance Treatment',
+  arrests_convictions: 'Arrests / Convictions',
+  incarceration_history: 'Incarceration History',
+  probation_parole: 'Probation / Parole',
+  protective_orders: 'Protective Orders',
+  events_circumstances: 'Events & Circumstances',
+  current_stressors: 'Current Stressors',
+  goals_evaluation: 'Goals for Evaluation',
+}
+
 function IntakeSubTab({
   caseRow,
   intakeRow,
+  onboardingSections,
   onEdit,
 }: {
   readonly caseRow: CaseRow
   readonly intakeRow: PatientIntakeRow | null
+  readonly onboardingSections: readonly PatientOnboardingRow[]
   readonly onEdit: () => void
 }): React.JSX.Element {
+  // Parse onboarding section content (stored as JSON strings)
+  const parsedSections = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {}
+    for (const row of onboardingSections) {
+      try {
+        map[row.section] = JSON.parse(row.content) as Record<string, string>
+      } catch {
+        // skip malformed
+      }
+    }
+    return map
+  }, [onboardingSections])
+
   return (
     <div>
       <SectionHeader title="Intake Summary" onEdit={onEdit} />
@@ -1007,6 +1121,52 @@ function IntakeSubTab({
               {intakeRow.status === 'complete' ? '✓ Complete' : '⏳ Draft'}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* ── Onboarding Sections ── */}
+      {onboardingSections.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <SectionHeader title="Onboarding — Patient History" />
+          {Object.entries(ONBOARDING_SECTION_LABELS).map(([sectionKey, sectionLabel]) => {
+            const data = parsedSections[sectionKey]
+            if (!data) return null
+            return (
+              <div
+                key={sectionKey}
+                style={{
+                  background: 'var(--panel)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                  marginBottom: 10,
+                }}
+              >
+                <div
+                  style={{
+                    padding: '8px 16px',
+                    background: 'var(--bg)',
+                    borderBottom: '1px solid var(--border)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: 'var(--text)',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {sectionLabel}
+                </div>
+                {Object.entries(data).map(([fieldKey, fieldValue]) => (
+                  <IntakeField
+                    key={fieldKey}
+                    label={FIELD_LABELS[fieldKey] ?? fieldKey.replace(/_/g, ' ')}
+                    value={fieldValue || '—'}
+                    wrap
+                  />
+                ))}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -1696,9 +1856,11 @@ function ReportSubTab({
 function IntakeField({
   label,
   value,
+  wrap,
 }: {
   readonly label: string
   readonly value: string
+  readonly wrap?: boolean
 }): React.JSX.Element {
   return (
     <div
@@ -1722,7 +1884,7 @@ function IntakeField({
       >
         {label}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text)', flex: 1 }}>{value}</div>
+      <div style={{ fontSize: 13, color: 'var(--text)', flex: 1, lineHeight: wrap ? 1.6 : undefined }}>{value}</div>
     </div>
   )
 }
@@ -1860,6 +2022,49 @@ function PipelinePill({
       <span style={{ fontSize: 10 }}>&#9675;</span>
       {label}
     </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// ArchiveSubTab
+// ---------------------------------------------------------------------------
+
+function ArchiveSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX.Element {
+  const isComplete = (caseRow.workflow_current_stage ?? '').toLowerCase() === 'complete'
+
+  return (
+    <div>
+      <SectionHeader title="Archive" />
+
+      {isComplete ? (
+        <div
+          style={{
+            background: 'var(--panel)',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            overflow: 'hidden',
+          }}
+        >
+          <IntakeField label="Status" value="✓ Case Complete" />
+          <IntakeField label="Completed" value={caseRow.last_modified?.split('T')[0] ?? '—'} />
+          <IntakeField label="Evaluation Type" value={caseRow.evaluation_type ?? '—'} />
+          <IntakeField label="Case Number" value={caseRow.case_number ?? '—'} />
+        </div>
+      ) : (
+        <div
+          style={{
+            background: 'var(--panel)',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: 16,
+            color: 'var(--text-secondary)',
+            fontSize: 13,
+          }}
+        >
+          Case is still active. Materials will be archived once the evaluation reaches the Complete stage.
+        </div>
+      )}
+    </div>
   )
 }
 

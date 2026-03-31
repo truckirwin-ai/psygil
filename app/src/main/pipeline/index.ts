@@ -13,6 +13,7 @@
 import { getSqlite } from '../db/connection'
 import { getCaseById, getIntake } from '../cases'
 import { listDocuments } from '../documents'
+import { isDataConfirmationComplete } from '../data-confirmation'
 import type { PipelineStage, CaseRow } from '../../shared/types'
 
 // ---------------------------------------------------------------------------
@@ -46,7 +47,7 @@ const ADVANCEMENT_CONDITIONS: Record<
   (caseRow: CaseRow) => { canAdvance: boolean; reason: string }
 > = {
   onboarding: (caseRow: CaseRow) => {
-    // Onboarding → Testing: Intake form complete AND at least 1 document uploaded
+    // Onboarding → Testing: Intake form complete AND at least 1 document uploaded AND data confirmation complete
     const sqlite = getSqlite()
     const intake = getIntake(caseRow.case_id)
 
@@ -59,7 +60,12 @@ const ADVANCEMENT_CONDITIONS: Record<
       return { canAdvance: false, reason: 'No documents uploaded yet' }
     }
 
-    return { canAdvance: true, reason: 'Intake complete and documents uploaded' }
+    // Data confirmation gate: required categories must be confirmed/corrected
+    if (!isDataConfirmationComplete(caseRow.case_id)) {
+      return { canAdvance: false, reason: 'Data confirmation incomplete — review extracted data before advancing' }
+    }
+
+    return { canAdvance: true, reason: 'Intake complete, documents uploaded, and data confirmed' }
   },
 
   testing: (caseRow: CaseRow) => {
@@ -163,15 +169,14 @@ const ADVANCEMENT_CONDITIONS: Record<
       return { canAdvance: false, reason: 'Editor agent has not been run yet' }
     }
 
-    // Check if attestation has been recorded
-    // (Would be in an attestation table — for MVP, we'll require this to be explicitly set)
+    // Check if attestation has been recorded (via audit_log with action_type='report_signed')
     const attestationExists = sqlite
       .prepare(
-        `SELECT attestation_id FROM case_audit_log
-         WHERE case_id = ? AND action = 'attestation_completed'
+        `SELECT audit_log_id FROM audit_log
+         WHERE case_id = ? AND action_type = 'report_signed'
          LIMIT 1`,
       )
-      .get(caseRow.case_id) as { attestation_id?: number } | undefined
+      .get(caseRow.case_id) as { audit_log_id?: number } | undefined
 
     if (!attestationExists) {
       return { canAdvance: false, reason: 'Attestation has not been recorded' }
@@ -354,6 +359,7 @@ export function getStageConditions(stage: PipelineStage): readonly string[] {
     onboarding: [
       'Intake form must be marked complete',
       'At least one document must be uploaded',
+      'Extracted data must be reviewed and confirmed',
     ],
     testing: ['At least one test result document must be uploaded'],
     interview: [

@@ -125,6 +125,16 @@ const MIGRATIONS: readonly Migration[] = [
     description: 'Update synced prototype cases with correct stages, eval types, and metadata',
     sql: 'SELECT 1', // placeholder — real logic runs in runMigrations below
   },
+  {
+    id: '007_six_stage_pipeline',
+    description: 'Migrate workflow_current_stage from gate system to 6-stage pipeline',
+    sql: 'SELECT 1', // placeholder — real logic runs in runMigrations below
+  },
+  {
+    id: '008_expand_intake_referral_types',
+    description: 'Add insurance and physician referral types to patient_intake',
+    sql: 'SELECT 1', // placeholder — recreates table with expanded CHECK
+  },
 ]
 
 /**
@@ -151,7 +161,111 @@ export function runMigrations(sqlite: InstanceType<typeof Database>): void {
 
     console.log(`[migrations] Applying: ${migration.id} — ${migration.description}`)
     const tx = sqlite.transaction(() => {
-      if (migration.id === '006_update_prototype_case_stages') {
+      if (migration.id === '007_six_stage_pipeline') {
+        // SQLite doesn't support ALTER COLUMN, so we recreate the table with updated CHECK.
+        // NOTE: We cannot UPDATE the old table first because the old CHECK constraint
+        // rejects the new stage names. Instead we map values inline during INSERT.
+
+        // Step 0: Drop ALL views that reference the cases table.
+        // POST_MIGRATION_SQL in migrate.ts will recreate them after migrations complete.
+        sqlite.exec(`
+          DROP VIEW IF EXISTS v_active_cases;
+          DROP VIEW IF EXISTS v_case_progress;
+          DROP VIEW IF EXISTS v_diagnostic_queue;
+          DROP VIEW IF EXISTS v_finalization_queue;
+          DROP VIEW IF EXISTS v_user_case_assignments;
+          DROP VIEW IF EXISTS v_active_file_locks;
+          DROP VIEW IF EXISTS v_case_sync_status;
+        `)
+
+        // Step 1: Get current column list
+        const cols = (sqlite.pragma('table_info(cases)') as Array<{ name: string; type: string; notnull: number; dflt_value: string | null; pk: number }>)
+        const colNames = cols.map(c => c.name)
+
+        // Clean up any leftover from a previously failed attempt
+        try { sqlite.exec('DROP TABLE IF EXISTS cases_new;') } catch { /* ignore */ }
+
+        // Step 2: Create new table with 6-stage CHECK constraint
+        sqlite.exec(`
+          CREATE TABLE IF NOT EXISTS cases_new (
+            case_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_number TEXT NOT NULL UNIQUE,
+            primary_clinician_user_id INTEGER NOT NULL REFERENCES users(user_id),
+            examinee_first_name TEXT NOT NULL,
+            examinee_last_name TEXT NOT NULL,
+            examinee_dob TEXT,
+            examinee_gender TEXT,
+            cultural_context TEXT,
+            linguistic_context TEXT,
+            evaluation_type TEXT,
+            practice_profile_id INTEGER REFERENCES practice_profiles(profile_id),
+            referral_source TEXT,
+            evaluation_questions TEXT,
+            case_status TEXT NOT NULL DEFAULT 'intake'
+              CHECK (case_status IN ('intake', 'in_progress', 'completed', 'archived')),
+            workflow_current_stage TEXT DEFAULT 'onboarding'
+              CHECK (workflow_current_stage IN ('onboarding', 'testing', 'interview', 'diagnostics', 'review', 'complete')),
+            created_at TEXT NOT NULL DEFAULT (date('now')),
+            last_modified TEXT DEFAULT (date('now')),
+            completed_at TEXT,
+            notes TEXT,
+            folder_path TEXT,
+            deleted_at TEXT,
+            practice_id INTEGER REFERENCES practice_config(practice_id)
+          );
+        `)
+
+        // Step 3: Copy data with inline stage mapping (old CHECK → new CHECK)
+        const newCols = (sqlite.pragma('table_info(cases_new)') as Array<{ name: string }>).map(c => c.name)
+        const sharedCols = colNames.filter(c => newCols.includes(c))
+
+        // Build SELECT list: map workflow_current_stage inline, pass other columns through
+        const selectExprs = sharedCols.map(col => {
+          if (col === 'workflow_current_stage') {
+            return `CASE workflow_current_stage
+              WHEN 'gate_1' THEN 'onboarding'
+              WHEN 'gate_2' THEN 'interview'
+              WHEN 'gate_3' THEN 'review'
+              WHEN 'finalized' THEN 'complete'
+              ELSE COALESCE(workflow_current_stage, 'onboarding')
+            END AS workflow_current_stage`
+          }
+          return col
+        })
+
+        const insertCols = sharedCols.join(', ')
+        const selectList = selectExprs.join(', ')
+
+        sqlite.exec(`INSERT INTO cases_new (${insertCols}) SELECT ${selectList} FROM cases;`)
+        sqlite.exec(`DROP TABLE cases;`)
+        sqlite.exec(`ALTER TABLE cases_new RENAME TO cases;`)
+
+        // Recreate indexes
+        sqlite.exec(`
+          CREATE INDEX IF NOT EXISTS idx_cases_primary_clinician_user_id ON cases(primary_clinician_user_id);
+          CREATE INDEX IF NOT EXISTS idx_cases_case_status ON cases(case_status);
+          CREATE INDEX IF NOT EXISTS idx_cases_workflow_current_stage ON cases(workflow_current_stage);
+          CREATE INDEX IF NOT EXISTS idx_cases_created_at ON cases(created_at);
+          CREATE INDEX IF NOT EXISTS idx_cases_case_number ON cases(case_number);
+        `)
+
+        // Step 4: Ensure data_confirmation table exists (was previously created at
+        // runtime by ensureTable() but the seeder needs it during DB init)
+        sqlite.exec(`
+          CREATE TABLE IF NOT EXISTS data_confirmation (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_id INTEGER NOT NULL REFERENCES cases(case_id),
+            category_id TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('unreviewed', 'confirmed', 'corrected', 'flagged')),
+            notes TEXT DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(case_id, category_id)
+          );
+          CREATE INDEX IF NOT EXISTS idx_data_confirmation_case_id ON data_confirmation(case_id);
+        `)
+
+        console.log('[migrations] Migrated workflow_current_stage to 6-stage pipeline')
+      } else if (migration.id === '006_update_prototype_case_stages') {
         // Update each prototype case with correct stage, eval_type, referral_source, and charges
         const cols = (sqlite.pragma('table_info(cases)') as Array<{ name: string }>).map((c) => c.name)
         const hasCharges = cols.includes('charges')
@@ -169,6 +283,39 @@ export function runMigrations(sqlite: InstanceType<typeof Database>): void {
           sql += ` WHERE case_number = ?`
           params.push(c.num)
           sqlite.prepare(sql).run(...params)
+        }
+      } else if (migration.id === '008_expand_intake_referral_types') {
+        // Recreate patient_intake with expanded referral_type CHECK
+        // to include 'insurance' and 'physician'
+        const intakeCols = (sqlite.pragma('table_info(patient_intake)') as Array<{ name: string }>).map(c => c.name)
+        if (intakeCols.length > 0) {
+          try { sqlite.exec('DROP TABLE IF EXISTS patient_intake_new;') } catch { /* ignore */ }
+          sqlite.exec(`
+            CREATE TABLE IF NOT EXISTS patient_intake_new (
+              intake_id INTEGER PRIMARY KEY AUTOINCREMENT,
+              case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
+              referral_type TEXT NOT NULL DEFAULT 'court'
+                CHECK (referral_type IN ('court', 'attorney', 'self', 'walk-in', 'insurance', 'physician')),
+              referral_source TEXT,
+              eval_type TEXT,
+              presenting_complaint TEXT,
+              jurisdiction TEXT,
+              charges TEXT,
+              attorney_name TEXT,
+              report_deadline TEXT,
+              status TEXT NOT NULL DEFAULT 'draft'
+                CHECK (status IN ('draft', 'complete')),
+              created_at TEXT NOT NULL DEFAULT (datetime('now')),
+              updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+              UNIQUE (case_id)
+            );
+            INSERT INTO patient_intake_new SELECT * FROM patient_intake;
+            DROP TABLE patient_intake;
+            ALTER TABLE patient_intake_new RENAME TO patient_intake;
+            CREATE INDEX IF NOT EXISTS idx_patient_intake_case_id ON patient_intake(case_id);
+            CREATE INDEX IF NOT EXISTS idx_patient_intake_status ON patient_intake(status);
+          `)
+          console.log('[migrations] Expanded patient_intake referral types')
         }
       } else {
         sqlite.exec(migration.sql)
