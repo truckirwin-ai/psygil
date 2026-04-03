@@ -13,6 +13,7 @@ import { join } from 'path'
 import { app } from 'electron'
 import { getSqlite } from './db/connection'
 import { loadWorkspacePath, getDefaultWorkspacePath, createFolderStructure, CASE_SUBFOLDERS } from './workspace'
+import { seedResources } from './seed-resources'
 
 const TRIGGER = join(app.getPath('userData'), 'seed-demo.trigger')
 
@@ -806,6 +807,13 @@ export function seedDemoCases(): void {
 
   seedTransaction()
   console.log(`[seed] Inserted ${inserted}/${CASES.length} demo cases with full supporting data`)
+
+  // Seed _Resources folders (writing samples, templates, documentation)
+  try {
+    seedResources(wsPath)
+  } catch (e) {
+    console.error('[seed] Resources seed failed:', e)
+  }
 
   // Remove trigger so this only runs once
   try { unlinkSync(TRIGGER) } catch { /* ignore */ }

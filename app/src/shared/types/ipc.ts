@@ -98,6 +98,19 @@ export type CasesCreateParams = CreateCaseParams
 
 export type CasesCreateResult = CaseRow
 
+// cases.update — partial update of mutable case fields
+export interface CasesUpdateParams {
+  readonly case_id: number
+  readonly evaluation_type?: string | null
+  readonly workflow_current_stage?: string | null
+  readonly case_status?: string
+  readonly referral_source?: string | null
+  readonly evaluation_questions?: string | null
+  readonly notes?: string | null
+}
+
+export type CasesUpdateResult = CaseRow
+
 // cases.archive
 export interface CasesArchiveParams {
   readonly case_id: number
@@ -160,6 +173,11 @@ export type OnboardingSection =
   | 'substance'
   | 'legal'
   | 'recent'
+  | 'diagnostic_notes'
+  | 'referral_notes'
+  | 'documents_notes'
+  | 'testing_notes'
+  | 'interview_notes'
 
 export interface PatientOnboardingRow {
   readonly onboarding_id: number
@@ -833,6 +851,46 @@ export interface TestimonyPrepareResult {
 }
 
 // ---------------------------------------------------------------------------
+// Resources (writing samples, templates, documentation)
+// ---------------------------------------------------------------------------
+
+export type ResourceCategory = 'writing-samples' | 'templates' | 'documentation'
+
+export interface ResourceUploadParams {
+  readonly category: ResourceCategory
+  readonly filePaths: readonly string[]
+}
+
+export interface ResourceUploadResult {
+  readonly imported: readonly ResourceItem[]
+  readonly phiStripped: number
+}
+
+export interface ResourceItem {
+  readonly id: string
+  readonly category: ResourceCategory
+  readonly originalFilename: string
+  readonly storedPath: string
+  readonly fileSize: number
+  readonly mimeType: string
+  readonly uploadedAt: string
+  readonly phiStripped: boolean
+}
+
+export interface ResourceListParams {
+  readonly category?: ResourceCategory
+}
+
+export interface ResourceDeleteParams {
+  readonly id: string
+  readonly storedPath: string
+}
+
+export interface ResourceOpenParams {
+  readonly storedPath: string
+}
+
+// ---------------------------------------------------------------------------
 // Preload API shape — exposed as window.psygil
 // ---------------------------------------------------------------------------
 
@@ -842,6 +900,7 @@ export interface PsygilApi {
     readonly list: (params?: CasesListParams) => Promise<IpcResponse<CasesListResult>>
     readonly get: (params: CasesGetParams) => Promise<IpcResponse<CasesGetResult>>
     readonly create: (params: CasesCreateParams) => Promise<IpcResponse<CasesCreateResult>>
+    readonly update: (params: CasesUpdateParams) => Promise<IpcResponse<CasesUpdateResult>>
     readonly archive: (params: CasesArchiveParams) => Promise<IpcResponse<CasesArchiveResult>>
   }
   readonly intake: {
@@ -871,6 +930,7 @@ export interface PsygilApi {
     readonly delete: (params: DocumentsDeleteParams) => Promise<IpcResponse<void>>
     readonly pickFile: () => Promise<IpcResponse<string | null>>
     readonly pickFiles: () => Promise<IpcResponse<PickFilesResult>>
+    readonly pickFilesFrom: (params: { defaultPath?: string; title?: string; extensions?: string[] }) => Promise<IpcResponse<PickFilesResult>>
     readonly getDroppedFilePath: (file: File) => string
   }
   readonly pii: {
@@ -955,6 +1015,8 @@ export interface PsygilApi {
     readonly getStatus: (args: ReportStatusParams) => Promise<IpcResponse<ReportStatusResult>>
     readonly submitAttestation: (args: SubmitAttestationParams) => Promise<IpcResponse<SubmitAttestationResult>>
     readonly verifyIntegrity: (args: VerifyIntegrityParams) => Promise<IpcResponse<VerifyIntegrityResult>>
+    readonly exportAndOpen: (args: { caseId: number; fullName: string; evalType: string; sections: { title: string; body: string }[] }) => Promise<IpcResponse<{ filePath: string }>>
+    readonly loadTemplate: () => Promise<IpcResponse<{ sections: { title: string; body: string }[] }>>
   }
   readonly audit: {
     readonly log: (args: AuditLogParams) => Promise<IpcResponse<AuditLogResult>>
@@ -963,6 +1025,34 @@ export interface PsygilApi {
   }
   readonly testimony: {
     readonly prepare: (args: TestimonyPrepareParams) => Promise<IpcResponse<TestimonyPrepareResult>>
+  }
+
+  readonly referral: {
+    readonly parseDoc: () => Promise<IpcResponse<Record<string, string>>>
+  }
+
+  readonly resources: {
+    readonly upload: (args: ResourceUploadParams) => Promise<IpcResponse<ResourceUploadResult>>
+    readonly list: (args: ResourceListParams) => Promise<IpcResponse<readonly ResourceItem[]>>
+    readonly delete: (args: ResourceDeleteParams) => Promise<IpcResponse<void>>
+    readonly open: (args: ResourceOpenParams) => Promise<IpcResponse<void>>
+    readonly read: (args: ResourceOpenParams) => Promise<IpcResponse<{ content: string; redacted: string; encoding: 'text' | 'html' | 'pdf-base64' | 'base64'; mimeType: string; phiCount: number }>>
+  }
+  readonly whisper: {
+    /** Save an audio blob (base64-encoded) to the case's Interviews folder */
+    readonly saveAudio: (args: { caseId: number; audioBase64: string; filename: string; mimeType: string }) => Promise<IpcResponse<{ filePath: string; sizeBytes: number }>>
+    /** Batch-transcribe a complete audio file */
+    readonly transcribe: (args: { filePath: string; language?: string }) => Promise<IpcResponse<{ text: string; segments: readonly { start: number; end: number; text: string }[]; duration: number }>>
+    /** Check transcription engine availability */
+    readonly status: () => Promise<IpcResponse<{ available: boolean; model: string | null; version: string | null; sidecarReady: boolean }>>
+    /** Start live streaming transcription session */
+    readonly streamStart: (args: { sessionId: string }) => Promise<IpcResponse<{ started: boolean }>>
+    /** Send an audio chunk during live streaming (fire-and-forget) */
+    readonly streamAudio: (args: { sessionId: string; audioBase64: string }) => void
+    /** Stop live streaming session */
+    readonly streamStop: (args: { sessionId: string }) => Promise<IpcResponse<{ stopped: boolean }>>
+    /** Listen for live transcription text (partial chunks + final) */
+    readonly onLiveText: (callback: (data: { sessionId: string; text: string; type: 'partial' | 'final' | 'error' }) => void) => () => void
   }
 }
 

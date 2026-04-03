@@ -7,6 +7,7 @@ import type {
   PiiRedactParams,
   PiiRehydrateParams,
   PiiDestroyParams,
+  CasesUpdateParams,
   IntakeSaveParams,
   IntakeGetParams,
   OnboardingSaveParams,
@@ -41,6 +42,7 @@ const CH = {
   CASES_LIST: 'cases:list',
   CASES_GET: 'cases:get',
   CASES_CREATE: 'cases:create',
+  CASES_UPDATE: 'cases:update',
   CASES_ARCHIVE: 'cases:archive',
   INTAKE_SAVE: 'intake:save',
   INTAKE_GET: 'intake:get',
@@ -58,6 +60,7 @@ const CH = {
   DOCS_DELETE: 'documents:delete',
   DOCS_PICK_FILE: 'documents:pickFile',
   DOCS_PICK_FILES: 'documents:pickFiles',
+  DOCS_PICK_FILES_FROM: 'documents:pickFilesFrom',
   PII_REDACT: 'pii:redact',
   PII_REHYDRATE: 'pii:rehydrate',
   PII_DESTROY: 'pii:destroy',
@@ -90,6 +93,7 @@ const api: PsygilApi = {
     list: (params) => ipcRenderer.invoke(CH.CASES_LIST, params),
     get: (params) => ipcRenderer.invoke(CH.CASES_GET, params),
     create: (params) => ipcRenderer.invoke(CH.CASES_CREATE, params),
+    update: (params: CasesUpdateParams) => ipcRenderer.invoke(CH.CASES_UPDATE, params),
     archive: (params) => ipcRenderer.invoke(CH.CASES_ARCHIVE, params)
   },
 
@@ -125,6 +129,8 @@ const api: PsygilApi = {
     delete: (params: DocumentsDeleteParams) => ipcRenderer.invoke(CH.DOCS_DELETE, params),
     pickFile: () => ipcRenderer.invoke(CH.DOCS_PICK_FILE),
     pickFiles: () => ipcRenderer.invoke(CH.DOCS_PICK_FILES),
+    pickFilesFrom: (params: { defaultPath?: string; title?: string; extensions?: string[] }) =>
+      ipcRenderer.invoke(CH.DOCS_PICK_FILES_FROM, params),
     getDroppedFilePath: (file: File) => webUtils.getPathForFile(file),
   },
 
@@ -238,6 +244,8 @@ const api: PsygilApi = {
     getStatus: (args: { caseId: number }) => ipcRenderer.invoke('report:getStatus', args),
     submitAttestation: (args: { caseId: number; signedBy: string; attestationStatement: string; signatureDate: string }) => ipcRenderer.invoke('report:submitAttestation', args),
     verifyIntegrity: (args: { caseId: number }) => ipcRenderer.invoke('report:verifyIntegrity', args),
+    exportAndOpen: (args: { caseId: number; fullName: string; evalType: string; sections: { title: string; body: string }[] }) => ipcRenderer.invoke('report:exportAndOpen', args),
+    loadTemplate: () => ipcRenderer.invoke('report:loadTemplate'),
   },
 
   audit: {
@@ -248,6 +256,39 @@ const api: PsygilApi = {
 
   testimony: {
     prepare: (args: { caseId: number }) => ipcRenderer.invoke('testimony:prepare', args),
+  },
+
+  referral: {
+    parseDoc: () => ipcRenderer.invoke('referral:parse-doc'),
+  },
+
+  resources: {
+    upload: (args: { category: string; filePaths?: string[] }) => ipcRenderer.invoke('resources:upload', args),
+    list: (args: { category?: string }) => ipcRenderer.invoke('resources:list', args),
+    delete: (args: { id: string; storedPath: string }) => ipcRenderer.invoke('resources:delete', args),
+    open: (args: { storedPath: string }) => ipcRenderer.invoke('resources:open', args),
+    read: (args: { storedPath: string }) => ipcRenderer.invoke('resources:read', args),
+  },
+
+  whisper: {
+    saveAudio: (args: { caseId: number; audioBase64: string; filename: string; mimeType: string }) =>
+      ipcRenderer.invoke('whisper:saveAudio', args),
+    transcribe: (args: { filePath: string; language?: string }) =>
+      ipcRenderer.invoke('whisper:transcribe', args),
+    status: () => ipcRenderer.invoke('whisper:status'),
+    // Live streaming
+    streamStart: (args: { sessionId: string }) =>
+      ipcRenderer.invoke('whisper:stream:start', args),
+    streamAudio: (args: { sessionId: string; audioBase64: string }) => {
+      ipcRenderer.send('whisper:stream:audio', args)
+    },
+    streamStop: (args: { sessionId: string }) =>
+      ipcRenderer.invoke('whisper:stream:stop', args),
+    onLiveText: (callback: (data: { sessionId: string; text: string; type: 'partial' | 'final' | 'error' }) => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, data: any): void => { callback(data) }
+      ipcRenderer.on('whisper:liveText', wrapped)
+      return () => { ipcRenderer.removeListener('whisper:liveText', wrapped) }
+    },
   },
 }
 

@@ -3,7 +3,6 @@ type ElectronCSS = React.CSSProperties & Record<string, unknown>
 interface TitlebarProps {
   readonly onCycleTheme: () => void
   readonly onOpenIntake: () => void
-  readonly onOpenOnboarding: () => void
   readonly onSetup: () => void
 }
 
@@ -20,11 +19,10 @@ const LOGO_SVG = (
   </svg>
 )
 
-export default function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding, onSetup }: TitlebarProps): React.JSX.Element {
+export default function Titlebar({ onCycleTheme, onOpenIntake, onSetup }: TitlebarProps): React.JSX.Element {
   const navActions: Record<string, (() => void) | undefined> = {
     Setup: onSetup,
-    Intake: onOpenIntake,
-    Onboarding: onOpenOnboarding,
+    'New Case': onOpenIntake,
   }
   return (
     <div
@@ -76,7 +74,7 @@ export default function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding,
           height: '100%',
         }}
       >
-        {['Setup', 'Intake', 'Onboarding', 'Docs'].map((label) => (
+        {['Setup', 'New Case', 'Docs'].map((label) => (
           <span
             key={label}
             role="button"

@@ -4,6 +4,7 @@ const CH = {
   CASES_LIST: "cases:list",
   CASES_GET: "cases:get",
   CASES_CREATE: "cases:create",
+  CASES_UPDATE: "cases:update",
   CASES_ARCHIVE: "cases:archive",
   INTAKE_SAVE: "intake:save",
   INTAKE_GET: "intake:get",
@@ -21,6 +22,7 @@ const CH = {
   DOCS_DELETE: "documents:delete",
   DOCS_PICK_FILE: "documents:pickFile",
   DOCS_PICK_FILES: "documents:pickFiles",
+  DOCS_PICK_FILES_FROM: "documents:pickFilesFrom",
   PII_REDACT: "pii:redact",
   PII_REHYDRATE: "pii:rehydrate",
   PII_DESTROY: "pii:destroy",
@@ -48,6 +50,7 @@ const api = {
     list: (params) => electron.ipcRenderer.invoke(CH.CASES_LIST, params),
     get: (params) => electron.ipcRenderer.invoke(CH.CASES_GET, params),
     create: (params) => electron.ipcRenderer.invoke(CH.CASES_CREATE, params),
+    update: (params) => electron.ipcRenderer.invoke(CH.CASES_UPDATE, params),
     archive: (params) => electron.ipcRenderer.invoke(CH.CASES_ARCHIVE, params)
   },
   intake: {
@@ -77,6 +80,7 @@ const api = {
     delete: (params) => electron.ipcRenderer.invoke(CH.DOCS_DELETE, params),
     pickFile: () => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILE),
     pickFiles: () => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILES),
+    pickFilesFrom: (params) => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILES_FROM, params),
     getDroppedFilePath: (file) => electron.webUtils.getPathForFile(file)
   },
   pii: {
@@ -176,7 +180,9 @@ const api = {
   report: {
     getStatus: (args) => electron.ipcRenderer.invoke("report:getStatus", args),
     submitAttestation: (args) => electron.ipcRenderer.invoke("report:submitAttestation", args),
-    verifyIntegrity: (args) => electron.ipcRenderer.invoke("report:verifyIntegrity", args)
+    verifyIntegrity: (args) => electron.ipcRenderer.invoke("report:verifyIntegrity", args),
+    exportAndOpen: (args) => electron.ipcRenderer.invoke("report:exportAndOpen", args),
+    loadTemplate: () => electron.ipcRenderer.invoke("report:loadTemplate")
   },
   audit: {
     log: (args) => electron.ipcRenderer.invoke("audit:log", args),
@@ -185,6 +191,36 @@ const api = {
   },
   testimony: {
     prepare: (args) => electron.ipcRenderer.invoke("testimony:prepare", args)
+  },
+  referral: {
+    parseDoc: () => electron.ipcRenderer.invoke("referral:parse-doc")
+  },
+  resources: {
+    upload: (args) => electron.ipcRenderer.invoke("resources:upload", args),
+    list: (args) => electron.ipcRenderer.invoke("resources:list", args),
+    delete: (args) => electron.ipcRenderer.invoke("resources:delete", args),
+    open: (args) => electron.ipcRenderer.invoke("resources:open", args),
+    read: (args) => electron.ipcRenderer.invoke("resources:read", args)
+  },
+  whisper: {
+    saveAudio: (args) => electron.ipcRenderer.invoke("whisper:saveAudio", args),
+    transcribe: (args) => electron.ipcRenderer.invoke("whisper:transcribe", args),
+    status: () => electron.ipcRenderer.invoke("whisper:status"),
+    // Live streaming
+    streamStart: (args) => electron.ipcRenderer.invoke("whisper:stream:start", args),
+    streamAudio: (args) => {
+      electron.ipcRenderer.send("whisper:stream:audio", args);
+    },
+    streamStop: (args) => electron.ipcRenderer.invoke("whisper:stream:stop", args),
+    onLiveText: (callback) => {
+      const wrapped = (_event, data) => {
+        callback(data);
+      };
+      electron.ipcRenderer.on("whisper:liveText", wrapped);
+      return () => {
+        electron.ipcRenderer.removeListener("whisper:liveText", wrapped);
+      };
+    }
   }
 };
 electron.contextBridge.exposeInMainWorld("psygil", api);

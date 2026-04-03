@@ -14,6 +14,7 @@ import { loadWorkspacePath, scaffoldCaseSubfolders } from '../workspace'
 import type {
   CaseRow,
   CreateCaseParams,
+  CasesUpdateParams,
   PatientIntakeRow,
   PatientOnboardingRow,
   OnboardingSection,
@@ -73,6 +74,60 @@ export function createCase(params: CreateCaseParams): CaseRow {
 }
 
 /**
+ * Update mutable fields on an existing case.
+ * Only non-undefined params are applied (partial update).
+ */
+export function updateCase(params: CasesUpdateParams): CaseRow {
+  const sqlite = getSqlite()
+  const existing = getCaseById(params.case_id)
+  if (existing === null) {
+    throw new Error(`Case ${params.case_id} not found`)
+  }
+
+  // Build SET clauses dynamically for provided fields
+  const setClauses: string[] = []
+  const values: Record<string, unknown> = { case_id: params.case_id }
+
+  if (params.evaluation_type !== undefined) {
+    setClauses.push('evaluation_type = @evaluation_type')
+    values.evaluation_type = params.evaluation_type
+  }
+  if (params.workflow_current_stage !== undefined) {
+    setClauses.push('workflow_current_stage = @workflow_current_stage')
+    values.workflow_current_stage = params.workflow_current_stage
+  }
+  if (params.case_status !== undefined) {
+    setClauses.push('case_status = @case_status')
+    values.case_status = params.case_status
+  }
+  if (params.referral_source !== undefined) {
+    setClauses.push('referral_source = @referral_source')
+    values.referral_source = params.referral_source
+  }
+  if (params.evaluation_questions !== undefined) {
+    setClauses.push('evaluation_questions = @evaluation_questions')
+    values.evaluation_questions = params.evaluation_questions
+  }
+  if (params.notes !== undefined) {
+    setClauses.push('notes = @notes')
+    values.notes = params.notes
+  }
+
+  if (setClauses.length === 0) {
+    return existing // Nothing to update
+  }
+
+  // Always bump last_modified
+  setClauses.push("last_modified = datetime('now')")
+
+  const sql = `UPDATE cases SET ${setClauses.join(', ')} WHERE case_id = @case_id`
+  sqlite.prepare(sql).run(values)
+
+  console.log(`[cases] Updated case ${params.case_id}: ${setClauses.join(', ')}`)
+  return getCaseById(params.case_id)!
+}
+
+/**
  * List all active (non-archived) cases.
  */
 export function listCases(): readonly CaseRow[] {
@@ -80,9 +135,26 @@ export function listCases(): readonly CaseRow[] {
   // Check if deleted_at column exists (added in a later migration)
   const cols = (sqlite.pragma('table_info(cases)') as Array<{ name: string }>).map(c => c.name)
   const hasDeletedAt = cols.includes('deleted_at')
-  const query = hasDeletedAt
-    ? 'SELECT * FROM cases WHERE deleted_at IS NULL AND case_status != ? ORDER BY created_at DESC'
-    : 'SELECT * FROM cases WHERE case_status != ? ORDER BY created_at DESC'
+
+  // Check if patient_intake table exists for eval_type fallback
+  const tables = (sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='patient_intake'").all() as Array<{ name: string }>)
+  const hasIntakeTable = tables.length > 0
+
+  let query: string
+  if (hasIntakeTable) {
+    // Coalesce evaluation_type from patient_intake.eval_type when cases.evaluation_type is NULL
+    const whereClause = hasDeletedAt
+      ? 'WHERE c.deleted_at IS NULL AND c.case_status != ?'
+      : 'WHERE c.case_status != ?'
+    query = `SELECT c.*, COALESCE(c.evaluation_type, pi.eval_type) AS evaluation_type
+             FROM cases c LEFT JOIN patient_intake pi ON pi.case_id = c.case_id
+             ${whereClause} ORDER BY c.created_at DESC`
+  } else {
+    query = hasDeletedAt
+      ? 'SELECT * FROM cases WHERE deleted_at IS NULL AND case_status != ? ORDER BY created_at DESC'
+      : 'SELECT * FROM cases WHERE case_status != ? ORDER BY created_at DESC'
+  }
+
   const rows = sqlite.prepare(query).all('archived') as CaseRow[]
   return rows
 }
@@ -92,9 +164,17 @@ export function listCases(): readonly CaseRow[] {
  */
 export function getCaseById(caseId: number): CaseRow | null {
   const sqlite = getSqlite()
-  const row = sqlite
-    .prepare('SELECT * FROM cases WHERE case_id = ?')
-    .get(caseId) as CaseRow | undefined
+  // Check if patient_intake table exists for eval_type fallback
+  const tables = (sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='patient_intake'").all() as Array<{ name: string }>)
+  const hasIntakeTable = tables.length > 0
+
+  const query = hasIntakeTable
+    ? `SELECT c.*, COALESCE(c.evaluation_type, pi.eval_type) AS evaluation_type
+       FROM cases c LEFT JOIN patient_intake pi ON pi.case_id = c.case_id
+       WHERE c.case_id = ?`
+    : 'SELECT * FROM cases WHERE case_id = ?'
+
+  const row = sqlite.prepare(query).get(caseId) as CaseRow | undefined
   return row ?? null
 }
 
@@ -195,6 +275,14 @@ export function saveIntake(caseId: number, data: Omit<PatientIntakeRow, 'intake_
     report_deadline: data.report_deadline ?? null,
     status: data.status ?? 'draft',
   })
+
+  // Keep cases.evaluation_type in sync with patient_intake.eval_type
+  if (data.eval_type) {
+    sqlite.prepare(
+      "UPDATE cases SET evaluation_type = ?, last_modified = datetime('now') WHERE case_id = ?"
+    ).run(data.eval_type, caseId)
+    console.log(`[cases] Synced evaluation_type to '${data.eval_type}' for case ${caseId}`)
+  }
 
   return getIntake(caseId)!
 }

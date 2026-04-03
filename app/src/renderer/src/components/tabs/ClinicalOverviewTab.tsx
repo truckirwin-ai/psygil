@@ -1,5 +1,12 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { CaseRow, PatientIntakeRow } from '../../../../shared/types/ipc'
+
+const EVAL_TYPE_OPTIONS = [
+  'CST', 'Custody', 'Risk Assessment', 'Fitness for Duty',
+  'PTSD Dx', 'ADHD Dx', 'Malingering', 'Capacity',
+  'Disability', 'Immigration', 'Personal Injury',
+  'Diagnostic Assessment', 'Juvenile', 'Mitigation',
+] as const
 
 /**
  * ClinicalOverviewTab — Sprint 7.1
@@ -127,6 +134,24 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
   const [ingestorData, setIngestorData] = useState<IngestorOutput | null>(null)
   const [activeTab, setActiveTab] = useState<string>('intake')
   const [loading, setLoading] = useState(true)
+  const [editingEvalType, setEditingEvalType] = useState(false)
+  const evalTypeRef = useRef<HTMLSelectElement>(null)
+
+  const handleEvalTypeChange = useCallback(async (newType: string) => {
+    if (!caseData || newType === (caseData.evaluation_type || '')) return
+    try {
+      const resp = await window.psygil.cases.update({
+        case_id: caseData.case_id,
+        evaluation_type: newType || null,
+      })
+      if (resp?.status === 'success') {
+        setCaseData(resp.data)
+      }
+    } catch (err) {
+      console.error('[overview] Failed to update eval type:', err)
+    }
+    setEditingEvalType(false)
+  }, [caseData])
 
   // Load case, intake, and ingestor data
   useEffect(() => {
@@ -789,7 +814,40 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
       {/* Metadata Row */}
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
         <span>Case <strong style={{ color: 'var(--text)' }}>#{caseData.case_number}</strong></span>
-        <span>Type <strong style={{ color: 'var(--text)' }}>{caseData.evaluation_type || 'Unknown'}</strong></span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          Type{' '}
+          {editingEvalType ? (
+            <select
+              ref={evalTypeRef}
+              defaultValue={caseData.evaluation_type || ''}
+              onChange={(e) => handleEvalTypeChange(e.target.value)}
+              onBlur={() => setEditingEvalType(false)}
+              autoFocus
+              style={{
+                fontSize: '12px', fontWeight: 600, padding: '1px 4px',
+                border: '1px solid var(--accent)', borderRadius: '3px',
+                background: 'var(--bg)', color: 'var(--text)',
+                outline: 'none', cursor: 'pointer',
+              }}
+            >
+              <option value="">— Select —</option>
+              {EVAL_TYPE_OPTIONS.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          ) : (
+            <strong
+              onClick={() => setEditingEvalType(true)}
+              title="Click to change evaluation type"
+              style={{
+                color: 'var(--text)', cursor: 'pointer',
+                borderBottom: '1px dashed var(--text-secondary)',
+              }}
+            >
+              {caseData.evaluation_type || 'Unknown'}
+            </strong>
+          )}
+        </span>
         <span>
           Status{' '}
           {renderPill(

@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
+import { ipcMain, BrowserWindow, dialog, shell, app } from 'electron'
 import type {
   IpcResponse,
   CasesListParams,
@@ -9,6 +9,8 @@ import type {
   CasesCreateResult,
   CasesArchiveParams,
   CasesArchiveResult,
+  CasesUpdateParams,
+  CasesUpdateResult,
   IntakeSaveParams,
   IntakeGetParams,
   PatientIntakeRow,
@@ -67,6 +69,7 @@ import {
 import { detect, batchDetect, redact, rehydrate, destroyMap } from '../pii'
 import {
   createCase,
+  updateCase,
   listCases,
   getCaseById,
   archiveCase,
@@ -91,6 +94,7 @@ import { registerAiHandlers } from '../ai/ai-handlers'
 import { registerAgentHandlers } from '../agents'
 import { registerPipelineHandlers } from '../pipeline/pipeline-handlers'
 import { registerDecisionHandlers } from '../decisions/decision-handlers'
+import { registerWhisperHandlers } from '../whisper'
 import { saveDataConfirmation, getDataConfirmation } from '../data-confirmation'
 import {
   startDocumentServer,
@@ -110,6 +114,7 @@ import {
 } from '../reports'
 import { logAuditEntry, getAuditTrail, exportAuditTrail } from '../audit'
 import { prepareTestimonyPackage } from '../testimony'
+import { seedResources } from '../seed-resources'
 
 // ---------------------------------------------------------------------------
 // Stub helper — returns a typed success envelope
@@ -181,6 +186,19 @@ function registerCasesHandlers(): void {
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to archive case'
         return fail('CASES_ARCHIVE_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'cases:update',
+    (_event, params: CasesUpdateParams): IpcResponse<CasesUpdateResult> => {
+      try {
+        const row = updateCase(params)
+        return ok(row)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to update case'
+        return fail('CASES_UPDATE_FAILED', message)
       }
     }
   )
@@ -530,6 +548,31 @@ function registerDocumentHandlers(): void {
         properties: ['openFile', 'multiSelections'],
         filters: [
           { name: 'Documents', extensions: ['pdf', 'docx', 'doc', 'txt', 'csv', 'rtf'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      })
+      if (result.canceled || result.filePaths.length === 0) {
+        return ok({ filePaths: [] })
+      }
+      return ok({ filePaths: result.filePaths })
+    }
+  )
+
+  ipcMain.handle(
+    'documents:pickFilesFrom',
+    async (event, params: { defaultPath?: string; title?: string; extensions?: string[] }): Promise<IpcResponse<any>> => {
+      const parentWindow = BrowserWindow.fromWebContents(event.sender)
+      const defaultDir = params.defaultPath === '$DOWNLOADS'
+        ? app.getPath('downloads')
+        : params.defaultPath ?? undefined
+
+      const exts = params.extensions ?? ['pdf', 'docx', 'doc', 'txt', 'csv', 'rtf', 'vtt', 'json']
+      const result = await dialog.showOpenDialog(parentWindow!, {
+        title: params.title ?? 'Select Files to Upload',
+        defaultPath: defaultDir,
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          { name: 'Documents', extensions: exts },
           { name: 'All Files', extensions: ['*'] },
         ],
       })
@@ -1024,6 +1067,233 @@ function registerReportHandlers(): void {
       }
     }
   )
+
+  // ------------------------------------------------------------------
+  // report:exportAndOpen — Generate .docx from section content, open in Word
+  // ------------------------------------------------------------------
+  ipcMain.handle(
+    'report:exportAndOpen',
+    async (
+      _event,
+      params: {
+        caseId: number
+        fullName: string
+        evalType: string
+        sections: { title: string; body: string }[]
+      }
+    ): Promise<IpcResponse<{ filePath: string }>> => {
+      try {
+        // Dynamic require for docx (same pattern as docx-generator)
+        const docxMod = require('docx') as typeof import('docx')
+        const { Document: Doc, Packer: Pkr, Paragraph: Para, HeadingLevel: HL, TextRun: TR } = docxMod
+        const { writeFileSync, mkdirSync: mkDir } = require('fs')
+        const { join: joinPath } = require('path')
+
+        // Build output directory
+        const wsPath = loadWorkspacePath()
+        if (!wsPath) {
+          return fail('NO_WORKSPACE', 'Workspace not configured')
+        }
+        const draftsDir = joinPath(wsPath, `case_${params.caseId}`, 'report', 'drafts')
+        mkDir(draftsDir, { recursive: true })
+
+        // Find next version number
+        const fs = require('fs')
+        let version = 1
+        try {
+          const existing = fs.readdirSync(draftsDir) as string[]
+          const versions = existing
+            .filter((f: string) => f.match(/^draft_v\d+\.docx$/))
+            .map((f: string) => {
+              const m = f.match(/draft_v(\d+)/)
+              return m ? parseInt(m[1], 10) : 0
+            })
+          if (versions.length > 0) {
+            version = Math.max(...versions) + 1
+          }
+        } catch { /* empty dir */ }
+
+        const fileName = `draft_v${version}.docx`
+        const filePath = joinPath(draftsDir, fileName)
+
+        // Build document
+        const children: any[] = []
+
+        // Title
+        children.push(
+          new Para({
+            children: [new TR({ text: 'CONFIDENTIAL FORENSIC EVALUATION REPORT', bold: true, size: 28 })],
+            alignment: 'center' as any,
+            spacing: { after: 100 },
+          })
+        )
+        children.push(
+          new Para({
+            children: [new TR({ text: params.evalType, color: '666666', size: 22 })],
+            alignment: 'center' as any,
+            spacing: { after: 300 },
+          })
+        )
+        children.push(
+          new Para({
+            children: [
+              new TR({ text: 'Examinee: ', bold: true, size: 22 }),
+              new TR({ text: params.fullName, size: 22 }),
+            ],
+            spacing: { after: 80 },
+          })
+        )
+        children.push(
+          new Para({
+            children: [
+              new TR({ text: 'Date: ', bold: true, size: 22 }),
+              new TR({ text: new Date().toLocaleDateString(), size: 22 }),
+            ],
+            spacing: { after: 300 },
+          })
+        )
+
+        // Sections
+        for (const sec of params.sections) {
+          children.push(
+            new Para({
+              text: sec.title,
+              heading: HL.HEADING_2,
+              spacing: { before: 240, after: 120 },
+            })
+          )
+          // Split body by newlines into paragraphs
+          const bodyLines = sec.body.split('\n')
+          for (const line of bodyLines) {
+            children.push(
+              new Para({
+                children: [new TR({ text: line, size: 22 })],
+                spacing: { after: 60 },
+              })
+            )
+          }
+        }
+
+        // Signature block
+        children.push(new Para({ text: '', spacing: { before: 600 } }))
+        children.push(new Para({
+          children: [new TR({ text: '________________________________________', size: 22 })],
+          spacing: { after: 40 },
+        }))
+        children.push(new Para({
+          children: [new TR({ text: '[Clinician Name, Credentials]', size: 22 })],
+          spacing: { after: 20 },
+        }))
+        children.push(new Para({
+          children: [new TR({ text: 'Licensed Psychologist', color: '666666', size: 20 })],
+          spacing: { after: 20 },
+        }))
+        children.push(new Para({
+          children: [new TR({ text: 'Date: _______________', color: '666666', size: 20 })],
+        }))
+
+        const doc = new Doc({
+          sections: [{ children }],
+        })
+
+        const buffer = await Pkr.toBuffer(doc)
+        writeFileSync(filePath, buffer)
+        console.log('[report:exportAndOpen] Saved:', filePath)
+
+        // Open in default application (MS Word)
+        void shell.openPath(filePath)
+
+        return ok({ filePath })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to export report'
+        console.error('[report:exportAndOpen]', message)
+        return fail('REPORT_EXPORT_FAILED', message)
+      }
+    }
+  )
+
+  // ------------------------------------------------------------------
+  // report:loadTemplate — Pick a .docx template, extract text, strip PHI
+  // ------------------------------------------------------------------
+  ipcMain.handle(
+    'report:loadTemplate',
+    async (event): Promise<IpcResponse<{ sections: { title: string; body: string }[] }>> => {
+      try {
+        const parentWindow = BrowserWindow.fromWebContents(event.sender)
+        const result = await dialog.showOpenDialog(parentWindow!, {
+          title: 'Select Report Template (.docx)',
+          filters: [
+            { name: 'Word Documents', extensions: ['docx', 'doc'] },
+            { name: 'All Files', extensions: ['*'] },
+          ],
+          properties: ['openFile'],
+        })
+
+        if (result.canceled || result.filePaths.length === 0) {
+          return fail('USER_CANCELLED', 'No file selected')
+        }
+
+        const filePath = result.filePaths[0]
+        const fs = require('fs')
+        const fileBuffer = fs.readFileSync(filePath)
+
+        // Use mammoth to extract text from docx
+        const mammoth = require('mammoth')
+        const extracted = await mammoth.extractRawText({ buffer: fileBuffer })
+        const rawText: string = extracted.value ?? ''
+
+        // Strip common PHI patterns
+        let cleaned = rawText
+        // SSN patterns
+        cleaned = cleaned.replace(/\b\d{3}[-.]?\d{2}[-.]?\d{4}\b/g, '[SSN REMOVED]')
+        // Dates of birth (MM/DD/YYYY, MM-DD-YYYY)
+        cleaned = cleaned.replace(/\b(0?[1-9]|1[0-2])[/\-](0?[1-9]|[12]\d|3[01])[/\-](19|20)\d{2}\b/g, '[DOB REMOVED]')
+        // Phone numbers
+        cleaned = cleaned.replace(/\b(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})\b/g, '[PHONE REMOVED]')
+        // Email addresses
+        cleaned = cleaned.replace(/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL REMOVED]')
+        // Addresses (simple pattern: number + street)
+        cleaned = cleaned.replace(/\b\d{1,5}\s+[A-Z][a-z]+\s+(St|Ave|Blvd|Dr|Ln|Rd|Ct|Way|Pl|Circle|Terrace|Drive|Lane|Road|Court|Boulevard|Avenue|Street)\b\.?/gi, '[ADDRESS REMOVED]')
+
+        // Split into sections by headings (lines that are all-caps or short + bold-like)
+        const lines = cleaned.split('\n').filter((l: string) => l.trim().length > 0)
+        const sections: { title: string; body: string }[] = []
+        let currentTitle = 'Imported Section'
+        let currentBody: string[] = []
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          // Heuristic: a heading is a short line (<80 chars) that's mostly uppercase
+          const isHeading = trimmed.length < 80 && trimmed.length > 2 &&
+            (trimmed === trimmed.toUpperCase() || /^[A-Z][A-Z\s&:—\-–,]+$/.test(trimmed))
+
+          if (isHeading) {
+            if (currentBody.length > 0) {
+              sections.push({ title: currentTitle, body: currentBody.join('\n') })
+            }
+            currentTitle = trimmed
+            currentBody = []
+          } else {
+            currentBody.push(trimmed)
+          }
+        }
+        if (currentBody.length > 0) {
+          sections.push({ title: currentTitle, body: currentBody.join('\n') })
+        }
+
+        // If no sections found, put everything in one
+        if (sections.length === 0) {
+          sections.push({ title: 'Imported Template', body: cleaned })
+        }
+
+        return ok({ sections })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to load template'
+        console.error('[report:loadTemplate]', message)
+        return fail('TEMPLATE_LOAD_FAILED', message)
+      }
+    }
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -1168,6 +1438,587 @@ function registerTestimonyHandlers(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Resources handlers — writing samples, templates, documentation
+// ---------------------------------------------------------------------------
+// Referral document parsing — open a file picker, extract text from
+// .docx or .pdf, then heuristically extract referral form fields.
+// ---------------------------------------------------------------------------
+
+function registerReferralParseHandlers(): void {
+  const fs = require('fs')
+  const pathMod = require('path')
+  const mammoth = require('mammoth')
+  const pdfParse = require('pdf-parse')
+
+  ipcMain.handle('referral:parse-doc', async (_event): Promise<IpcResponse<Record<string, string>>> => {
+    try {
+      const parentWindow = BrowserWindow.getFocusedWindow()
+      if (!parentWindow) return { status: 'error', error: 'No active window' }
+
+      const result = await dialog.showOpenDialog(parentWindow, {
+        title: 'Select Referral Document',
+        filters: [
+          { name: 'Documents', extensions: ['docx', 'doc', 'pdf', 'txt', 'rtf'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      })
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { status: 'error', error: 'cancelled' }
+      }
+
+      const filePath = result.filePaths[0]
+      const ext = pathMod.extname(filePath).toLowerCase()
+      const buffer = fs.readFileSync(filePath)
+
+      // ── Extract text ────────────────────────────────────────────────
+      let rawText = ''
+      if (ext === '.docx' || ext === '.doc') {
+        const extracted = await mammoth.extractRawText({ buffer })
+        rawText = extracted.value ?? ''
+      } else if (ext === '.pdf') {
+        const parsed = await pdfParse(buffer)
+        rawText = parsed.text ?? ''
+      } else {
+        rawText = buffer.toString('utf-8')
+      }
+
+      if (!rawText.trim()) {
+        return { status: 'error', error: 'Could not extract text from document' }
+      }
+
+      // ── Heuristic field extraction ─────────────────────────────────
+      const fields: Record<string, string> = { _rawText: rawText }
+      const text = rawText
+
+      // Helper: find value after a label pattern (case-insensitive)
+      const extract = (patterns: RegExp[]): string => {
+        for (const pat of patterns) {
+          const m = text.match(pat)
+          if (m && m[1]?.trim()) return m[1].trim()
+        }
+        return ''
+      }
+
+      // Case / Docket number
+      fields.caseNumber = extract([
+        /(?:case|docket|cause)\s*(?:no\.?|number|#)\s*[:\-]?\s*(.+)/i,
+        /(?:case|docket)\s*[:\-]\s*(.+)/i,
+        /\b(\d{2,4}[-\s]?[A-Z]{1,3}[-\s]?\d{3,8})\b/,
+      ])
+
+      // Judge / Court
+      fields.judgeAssignedCourt = extract([
+        /(?:judge|hon\.?|honorable)\s*[:\-]?\s*(.+)/i,
+        /(?:assigned\s+court|court)\s*[:\-]?\s*(.+)/i,
+        /(?:division|department|dept\.?)\s*[:\-]?\s*(.+)/i,
+      ])
+
+      // Defense counsel
+      fields.defenseCounselName = extract([
+        /(?:defense\s+(?:counsel|attorney|lawyer))\s*[:\-]?\s*(.+)/i,
+        /(?:public\s+defender)\s*[:\-]?\s*(.+)/i,
+      ])
+
+      // Prosecution / Referring attorney
+      fields.prosecutionAttorney = extract([
+        /(?:prosecut(?:or|ing|ion)\s*(?:attorney)?)\s*[:\-]?\s*(.+)/i,
+        /(?:district\s+attorney|da|ada)\s*[:\-]?\s*(.+)/i,
+        /(?:referring\s+attorney)\s*[:\-]?\s*(.+)/i,
+      ])
+
+      // Referring party
+      fields.referringPartyName = extract([
+        /(?:referr(?:ed|ing)\s+(?:by|party|source))\s*[:\-]?\s*(.+)/i,
+        /(?:referral\s+source)\s*[:\-]?\s*(.+)/i,
+        /(?:ordered\s+by)\s*[:\-]?\s*(.+)/i,
+      ])
+
+      // Referring party type
+      const rpTypeStr = extract([
+        /(?:referral\s+type|referring\s+party\s+type)\s*[:\-]?\s*(.+)/i,
+      ])
+      if (rpTypeStr) {
+        const lower = rpTypeStr.toLowerCase()
+        if (lower.includes('court')) fields.referringPartyType = 'Court'
+        else if (lower.includes('attorney') || lower.includes('counsel')) fields.referringPartyType = 'Attorney'
+        else if (lower.includes('physician') || lower.includes('doctor')) fields.referringPartyType = 'Physician'
+        else if (lower.includes('agency')) fields.referringPartyType = 'Agency'
+        else if (lower.includes('insurance')) fields.referringPartyType = 'Insurance'
+      }
+      // Infer from content if not explicitly stated
+      if (!fields.referringPartyType) {
+        const lower = text.toLowerCase()
+        if (/\bcourt\s+order/i.test(lower) || /\bordered\s+by\s+the\s+court/i.test(lower)) {
+          fields.referringPartyType = 'Court'
+        } else if (/\battorney|counsel/i.test(fields.referringPartyName)) {
+          fields.referringPartyType = 'Attorney'
+        }
+      }
+
+      // Evaluation type
+      const evalStr = extract([
+        /(?:evaluation|eval|assessment)\s*(?:type|requested)?\s*[:\-]?\s*(.+)/i,
+        /(?:type\s+of\s+evaluation)\s*[:\-]?\s*(.+)/i,
+        /(?:requesting|request\s+for)\s*[:\-]?\s*(.+)/i,
+      ])
+      if (evalStr) {
+        const lower = evalStr.toLowerCase()
+        const evalTypes: [RegExp, string][] = [
+          [/competenc|cst/i, 'CST'],
+          [/custod/i, 'Custody'],
+          [/risk\s+assess/i, 'Risk Assessment'],
+          [/fitness/i, 'Fitness for Duty'],
+          [/ptsd/i, 'PTSD Dx'],
+          [/adhd|attention/i, 'ADHD Dx'],
+          [/malinger|feign/i, 'Malingering'],
+          [/capacit/i, 'Capacity'],
+          [/disabilit/i, 'Disability'],
+          [/immigra|hardship/i, 'Immigration'],
+          [/personal\s+injur/i, 'Personal Injury'],
+          [/diagnostic/i, 'Diagnostic Assessment'],
+          [/juvenile|minor/i, 'Juvenile'],
+          [/mitigat/i, 'Mitigation'],
+        ]
+        for (const [pat, val] of evalTypes) {
+          if (pat.test(lower) || pat.test(text)) {
+            fields.evalType = val
+            break
+          }
+        }
+        if (!fields.evalType) fields.evalType = evalStr.substring(0, 60)
+      }
+
+      // Charges
+      fields.charges = extract([
+        /(?:charge[sd]?|offense[sd]?|allegation[sd]?)\s*[:\-]?\s*(.+)/i,
+        /(?:charged\s+with)\s*[:\-]?\s*(.+)/i,
+      ])
+
+      // Reason for referral
+      fields.reasonForReferral = extract([
+        /(?:reason\s+for\s+referral)\s*[:\-]?\s*([\s\S]{10,300}?)(?:\n\n|\n[A-Z])/i,
+        /(?:referral\s+question|purpose\s+of\s+evaluation)\s*[:\-]?\s*([\s\S]{10,300}?)(?:\n\n|\n[A-Z])/i,
+        /(?:evaluation\s+requested\s+(?:to|for))\s*[:\-]?\s*([\s\S]{10,300}?)(?:\n\n|\n[A-Z])/i,
+      ])
+
+      // Deadline
+      fields.courtDeadline = extract([
+        /(?:deadline|due\s+date|report\s+due|completion\s+date)\s*[:\-]?\s*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i,
+        /(?:deadline|due\s+date|report\s+due)\s*[:\-]?\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})/i,
+      ])
+      // Normalize date to YYYY-MM-DD if we got something
+      if (fields.courtDeadline) {
+        const d = new Date(fields.courtDeadline)
+        if (!isNaN(d.getTime())) {
+          fields.courtDeadline = d.toISOString().split('T')[0]
+        }
+      }
+
+      // Phone numbers (grab the first few found)
+      const phones = text.match(/\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/g) ?? []
+      if (phones.length > 0 && !fields.referringPartyPhone) {
+        fields.referringPartyPhone = phones[0]
+      }
+
+      // Filename as context
+      fields._fileName = pathMod.basename(filePath)
+
+      // Strip _rawText for brevity — keep only the first 3000 chars for reference
+      if (fields._rawText.length > 3000) {
+        fields._rawText = fields._rawText.substring(0, 3000) + '\n\n[... truncated ...]'
+      }
+
+      return { status: 'success', data: fields }
+    } catch (err: any) {
+      console.error('[referral:parse-doc]', err)
+      return { status: 'error', error: err?.message ?? 'Failed to parse referral document' }
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Maps directly to filesystem folders inside the workspace:
+//   _Resources/Writing Samples/
+//   _Resources/Templates/
+//   _Resources/Documentation/
+// No metadata sidecars — the panel reads actual filenames from actual folders.
+// ---------------------------------------------------------------------------
+
+function registerResourcesHandlers(): void {
+  const fs = require('fs')
+  const pathMod = require('path')
+  const mammoth = require('mammoth')
+  const pdfParse = require('pdf-parse')
+
+  // ── Eager seed at registration time ──────────────────────────────────────
+  // Ensures demo resource files exist on disk before any IPC call
+  try {
+    const wsPath = loadWorkspacePath() || getDefaultWorkspacePath()
+    const seeded = seedResources(wsPath)
+    if (seeded > 0) {
+      console.log(`[resources] Eagerly seeded ${seeded} resource files at startup`)
+    }
+  } catch (e) {
+    console.error('[resources] Eager seed failed:', e)
+  }
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    'writing-samples': 'Writing Samples',
+    'templates': 'Templates',
+    'documentation': 'Documentation',
+  }
+
+  // Reverse map: folder name → category key
+  const LABEL_TO_CATEGORY: Record<string, string> = {}
+  for (const [key, label] of Object.entries(CATEGORY_LABELS)) {
+    LABEL_TO_CATEGORY[label] = key
+  }
+
+  /** Resolve workspace root, falling back to default */
+  function resolveWorkspace(): string {
+    return loadWorkspacePath() || getDefaultWorkspacePath()
+  }
+
+  function getResourcesRoot(): string {
+    return pathMod.join(resolveWorkspace(), '_Resources')
+  }
+
+  function getCategoryDir(category: string): string {
+    const label = CATEGORY_LABELS[category] || category
+    return pathMod.join(getResourcesRoot(), label)
+  }
+
+  function ensureCategoryDirs(): void {
+    const root = getResourcesRoot()
+    if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true })
+    for (const label of Object.values(CATEGORY_LABELS)) {
+      const dir = pathMod.join(root, label)
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    }
+  }
+
+  /** File extensions we recognise as documents (not hidden/system files) */
+  const DOC_EXTS = new Set(['.txt', '.pdf', '.doc', '.docx', '.csv', '.rtf', '.md', '.xlsx', '.xls'])
+
+  function mimeForExt(ext: string): string {
+    switch (ext) {
+      case '.pdf': return 'application/pdf'
+      case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      case '.doc': return 'application/msword'
+      case '.txt': case '.md': return 'text/plain'
+      case '.csv': return 'text/csv'
+      case '.rtf': return 'application/rtf'
+      case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      default: return 'application/octet-stream'
+    }
+  }
+
+  /** Strip PHI from raw text — same patterns as report:loadTemplate */
+  function stripPhi(text: string): { cleaned: string; strippedCount: number } {
+    let count = 0
+    let cleaned = text
+    cleaned = cleaned.replace(/\b\d{3}[-.]?\d{2}[-.]?\d{4}\b/g, () => { count++; return '[SSN REMOVED]' })
+    cleaned = cleaned.replace(/\b(0?[1-9]|1[0-2])[/\-](0?[1-9]|[12]\d|3[01])[/\-](19|20)\d{2}\b/g, () => { count++; return '[DOB REMOVED]' })
+    cleaned = cleaned.replace(/\b(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})\b/g, () => { count++; return '[PHONE REMOVED]' })
+    cleaned = cleaned.replace(/\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Z|a-z]{2,}\b/g, () => { count++; return '[EMAIL REMOVED]' })
+    cleaned = cleaned.replace(/\b\d{1,5}\s+[A-Z][a-z]+\s+(St|Ave|Blvd|Dr|Ln|Rd|Ct|Way|Pl|Circle|Terrace|Drive|Lane|Road|Court|Boulevard|Avenue|Street)\b\.?/gi, () => { count++; return '[ADDRESS REMOVED]' })
+    return { cleaned, strippedCount: count }
+  }
+
+  /** Extract text from a file for PHI stripping */
+  async function extractText(filePath: string): Promise<string> {
+    const ext = pathMod.extname(filePath).toLowerCase()
+    if (ext === '.txt' || ext === '.csv' || ext === '.rtf' || ext === '.md') {
+      return fs.readFileSync(filePath, 'utf-8')
+    }
+    if (ext === '.docx' || ext === '.doc') {
+      const buffer = fs.readFileSync(filePath)
+      const result = await mammoth.extractRawText({ buffer })
+      return result.value ?? ''
+    }
+    return ''
+  }
+
+  // ── resources:upload ─────────────────────────────────────────────────────
+  // Opens file picker, strips PHI, copies with ORIGINAL filename into the
+  // category folder. Also writes a _cleaned/ version for AI consumption.
+  ipcMain.handle(
+    'resources:upload',
+    async (event, params: { category: string; filePaths?: string[] }): Promise<
+      IpcResponse<{ imported: { id: string; category: string; originalFilename: string; storedPath: string; fileSize: number; mimeType: string; uploadedAt: string; phiStripped: boolean }[]; phiStripped: number }>
+    > => {
+      try {
+        ensureCategoryDirs()
+        let filePaths = params.filePaths || []
+
+        if (filePaths.length === 0) {
+          const parentWindow = BrowserWindow.fromWebContents(event.sender)
+          const result = await dialog.showOpenDialog(parentWindow!, {
+            title: `Upload ${CATEGORY_LABELS[params.category] || params.category}`,
+            filters: [
+              { name: 'Documents', extensions: ['docx', 'doc', 'pdf', 'txt', 'csv', 'rtf', 'md'] },
+              { name: 'All Files', extensions: ['*'] },
+            ],
+            properties: ['openFile', 'multiSelections'],
+          })
+          if (result.canceled || result.filePaths.length === 0) {
+            return fail('USER_CANCELLED', 'No files selected')
+          }
+          filePaths = result.filePaths
+        }
+
+        const categoryDir = getCategoryDir(params.category)
+        const imported: { id: string; category: string; originalFilename: string; storedPath: string; fileSize: number; mimeType: string; uploadedAt: string; phiStripped: boolean }[] = []
+        let totalPhiStripped = 0
+
+        for (const srcPath of filePaths) {
+          const originalFilename = pathMod.basename(srcPath)
+          const ext = pathMod.extname(originalFilename).toLowerCase()
+
+          // Destination keeps original filename. Deduplicate if exists.
+          let destFilename = originalFilename
+          let destPath = pathMod.join(categoryDir, destFilename)
+          let counter = 1
+          while (fs.existsSync(destPath)) {
+            const base = pathMod.basename(originalFilename, ext)
+            destFilename = `${base} (${counter})${ext}`
+            destPath = pathMod.join(categoryDir, destFilename)
+            counter++
+          }
+
+          // Copy file with original name
+          fs.copyFileSync(srcPath, destPath)
+
+          // PHI strip for AI consumption → _cleaned/ subfolder
+          let phiWasStripped = false
+          const rawText = await extractText(srcPath)
+          if (rawText && rawText.length > 0) {
+            const { cleaned, strippedCount } = stripPhi(rawText)
+            totalPhiStripped += strippedCount
+            phiWasStripped = strippedCount > 0
+            const cleanedDir = pathMod.join(categoryDir, '_cleaned')
+            if (!fs.existsSync(cleanedDir)) fs.mkdirSync(cleanedDir, { recursive: true })
+            const cleanedBase = pathMod.basename(destFilename, ext) + '.txt'
+            fs.writeFileSync(pathMod.join(cleanedDir, cleanedBase), cleaned, 'utf-8')
+          }
+
+          const stat = fs.statSync(destPath)
+          imported.push({
+            id: destFilename, // use filename as ID — it's unique within the folder
+            category: params.category,
+            originalFilename: destFilename,
+            storedPath: destPath,
+            fileSize: stat.size,
+            mimeType: mimeForExt(ext),
+            uploadedAt: stat.mtime.toISOString(),
+            phiStripped: phiWasStripped,
+          })
+        }
+
+        console.log(`[resources:upload] Imported ${imported.length} files to ${params.category}, stripped ${totalPhiStripped} PHI instances`)
+        return ok({ imported, phiStripped: totalPhiStripped })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Resource upload failed'
+        console.error('[resources:upload]', message)
+        return fail('RESOURCE_UPLOAD_FAILED', message)
+      }
+    }
+  )
+
+  // ── resources:list ───────────────────────────────────────────────────────
+  // Scans actual files in the category folders. No metadata files needed.
+  // On first call, if folders are empty, auto-seeds demo resources.
+  let resourcesAutoSeeded = false
+  ipcMain.handle(
+    'resources:list',
+    async (_event, params: { category?: string }): Promise<
+      IpcResponse<readonly { id: string; category: string; originalFilename: string; storedPath: string; fileSize: number; mimeType: string; uploadedAt: string; phiStripped: boolean }[]>
+    > => {
+      try {
+        ensureCategoryDirs()
+
+        // Auto-seed resources on every list call until files exist
+        if (!resourcesAutoSeeded) {
+          const wsPath = resolveWorkspace()
+          console.log('[resources:list] Workspace path:', wsPath)
+          try {
+            const seeded = seedResources(wsPath)
+            if (seeded > 0) {
+              console.log(`[resources:list] Auto-seeded ${seeded} resource files`)
+            }
+            resourcesAutoSeeded = true
+          } catch (seedErr) {
+            console.error('[resources:list] Auto-seed failed:', seedErr)
+          }
+        }
+        const results: { id: string; category: string; originalFilename: string; storedPath: string; fileSize: number; mimeType: string; uploadedAt: string; phiStripped: boolean }[] = []
+
+        const categories = params.category ? [params.category] : Object.keys(CATEGORY_LABELS)
+        for (const cat of categories) {
+          const dir = getCategoryDir(cat)
+          if (!fs.existsSync(dir)) continue
+          const entries: string[] = fs.readdirSync(dir)
+          for (const filename of entries) {
+            // Skip hidden files, system files, and the _cleaned subfolder
+            if (filename.startsWith('.') || filename.startsWith('_')) continue
+            const ext = pathMod.extname(filename).toLowerCase()
+            if (!DOC_EXTS.has(ext)) continue
+
+            const fullPath = pathMod.join(dir, filename)
+            const stat = fs.statSync(fullPath)
+            if (!stat.isFile()) continue
+
+            // Check if a cleaned version exists
+            const cleanedPath = pathMod.join(dir, '_cleaned', pathMod.basename(filename, ext) + '.txt')
+            const hasCleanedVersion = fs.existsSync(cleanedPath)
+
+            results.push({
+              id: filename,
+              category: cat,
+              originalFilename: filename,
+              storedPath: fullPath,
+              fileSize: stat.size,
+              mimeType: mimeForExt(ext),
+              uploadedAt: stat.mtime.toISOString(),
+              phiStripped: hasCleanedVersion,
+            })
+          }
+        }
+
+        // Sort by filename ascending within each category
+        results.sort((a, b) => a.originalFilename.localeCompare(b.originalFilename))
+        return ok(results)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Resource list failed'
+        return fail('RESOURCE_LIST_FAILED', message)
+      }
+    }
+  )
+
+  // ── resources:delete ─────────────────────────────────────────────────────
+  ipcMain.handle(
+    'resources:delete',
+    async (_event, params: { id: string; storedPath: string }): Promise<IpcResponse<void>> => {
+      try {
+        // Remove the actual file
+        if (fs.existsSync(params.storedPath)) fs.unlinkSync(params.storedPath)
+        // Remove cleaned version if it exists
+        const dir = pathMod.dirname(params.storedPath)
+        const ext = pathMod.extname(params.storedPath)
+        const cleanedPath = pathMod.join(dir, '_cleaned', pathMod.basename(params.storedPath, ext) + '.txt')
+        if (fs.existsSync(cleanedPath)) fs.unlinkSync(cleanedPath)
+        return ok(undefined)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Resource delete failed'
+        return fail('RESOURCE_DELETE_FAILED', message)
+      }
+    }
+  )
+
+  // ── resources:open ───────────────────────────────────────────────────────
+  ipcMain.handle(
+    'resources:open',
+    async (_event, params: { storedPath: string }): Promise<IpcResponse<void>> => {
+      try {
+        await shell.openPath(params.storedPath)
+        return ok(undefined)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Resource open failed'
+        return fail('RESOURCE_OPEN_FAILED', message)
+      }
+    }
+  )
+
+  // ── resources:read ────────────────────────────────────────────────────────
+  // Read file content for in-app viewing.
+  //   .txt/.md/.csv/.rtf  → { encoding:'text', content: raw UTF-8 }
+  //   .docx               → { encoding:'html', content: converted HTML }
+  //   .pdf                → { encoding:'pdf-base64', content: base64 PDF }
+  //   other binary        → { encoding:'base64', content: base64 }
+  // Also returns a PHI-redacted version (`redacted`) for safe viewing.
+  ipcMain.handle(
+    'resources:read',
+    async (_event, params: { storedPath: string }): Promise<IpcResponse<{
+      content: string
+      redacted: string
+      encoding: 'text' | 'html' | 'pdf-base64' | 'base64'
+      mimeType: string
+      phiCount: number
+    }>> => {
+      try {
+        const filePath = params.storedPath
+        if (!fs.existsSync(filePath)) {
+          return fail('RESOURCE_NOT_FOUND', `File not found: ${filePath}`)
+        }
+        const ext = pathMod.extname(filePath).toLowerCase()
+        const mime = mimeForExt(ext)
+
+        // Text-based formats — read as UTF-8, strip PHI for redacted version
+        if (['.txt', '.md', '.csv', '.rtf'].includes(ext)) {
+          const content = fs.readFileSync(filePath, 'utf-8')
+          const { cleaned, strippedCount } = stripPhi(content)
+          return ok({ content, redacted: cleaned, encoding: 'text' as const, mimeType: mime, phiCount: strippedCount })
+        }
+
+        // .docx — convert to HTML via mammoth for rich preview
+        if (ext === '.docx' || ext === '.doc') {
+          try {
+            const buffer = fs.readFileSync(filePath)
+            const htmlResult = await mammoth.convertToHtml({ buffer })
+            const html = htmlResult.value ?? ''
+            const { cleaned, strippedCount } = stripPhi(html)
+            return ok({ content: html, redacted: cleaned, encoding: 'html' as const, mimeType: 'text/html', phiCount: strippedCount })
+          } catch {
+            // Fall back to raw text extraction
+            try {
+              const buffer = fs.readFileSync(filePath)
+              const textResult = await mammoth.extractRawText({ buffer })
+              const text = textResult.value ?? ''
+              const { cleaned, strippedCount } = stripPhi(text)
+              return ok({ content: text, redacted: cleaned, encoding: 'text' as const, mimeType: 'text/plain', phiCount: strippedCount })
+            } catch {
+              const content = fs.readFileSync(filePath).toString('base64')
+              return ok({ content, redacted: content, encoding: 'base64' as const, mimeType: mime, phiCount: 0 })
+            }
+          }
+        }
+
+        // .pdf — return base64 for iframe embedding + extract text for redacted view
+        if (ext === '.pdf') {
+          const pdfBuffer = fs.readFileSync(filePath)
+          const base64 = pdfBuffer.toString('base64')
+          // Extract text for redacted view
+          let redactedHtml = ''
+          let phiCount = 0
+          try {
+            const pdfData = await pdfParse(pdfBuffer)
+            const text = pdfData.text ?? ''
+            const { cleaned, strippedCount } = stripPhi(text)
+            phiCount = strippedCount
+            // Wrap extracted text in basic HTML for readable redacted view
+            redactedHtml = cleaned.split('\n').map((line: string) =>
+              line.trim() ? `<p>${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` : ''
+            ).filter(Boolean).join('\n')
+          } catch {
+            redactedHtml = '<p><em>Could not extract text for PHI redaction.</em></p>'
+          }
+          return ok({ content: base64, redacted: redactedHtml, encoding: 'pdf-base64' as const, mimeType: mime, phiCount })
+        }
+
+        // Other binary — base64
+        const content = fs.readFileSync(filePath).toString('base64')
+        return ok({ content, redacted: content, encoding: 'base64' as const, mimeType: mime, phiCount: 0 })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Resource read failed'
+        return fail('RESOURCE_READ_FAILED', message)
+      }
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Public: register all IPC handlers
 // ---------------------------------------------------------------------------
 
@@ -1193,4 +2044,7 @@ export function registerAllHandlers(): void {
   registerReportHandlers()
   registerAuditHandlers()
   registerTestimonyHandlers()
+  registerReferralParseHandlers()
+  registerResourcesHandlers()
+  registerWhisperHandlers()
 }

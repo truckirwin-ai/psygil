@@ -14,6 +14,7 @@ export type TabType =
   | 'document-viewer'
   | 'evidence-map'
   | 'data-confirmation'
+  | 'resource'
 
 export interface Tab {
   readonly id: string

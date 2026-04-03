@@ -11,6 +11,8 @@ export type {
   CasesGetResult,
   CasesCreateParams,
   CasesCreateResult,
+  CasesUpdateParams,
+  CasesUpdateResult,
   CasesArchiveParams,
   CasesArchiveResult,
   ReferralType,
@@ -90,5 +92,12 @@ export type {
   DiagnosticDecisionRow,
   DiagnosticDecisionListParams,
   DiagnosticDecisionDeleteParams,
+  ResourceCategory,
+  ResourceUploadParams,
+  ResourceUploadResult,
+  ResourceItem,
+  ResourceListParams,
+  ResourceDeleteParams,
+  ResourceOpenParams,
   PsygilApi
 } from './ipc'

@@ -12450,11 +12450,10 @@ const LOGO_SVG = /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "22", he
   /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "40", cy: "42", r: "2", fill: "#ffffff" }),
   /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "60", cy: "42", r: "2", fill: "#ffffff" })
 ] });
-function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding, onSetup }) {
+function Titlebar({ onCycleTheme, onOpenIntake, onSetup }) {
   const navActions = {
     Setup: onSetup,
-    Intake: onOpenIntake,
-    Onboarding: onOpenOnboarding
+    "New Case": onOpenIntake
   };
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
@@ -12511,7 +12510,7 @@ function Titlebar({ onCycleTheme, onOpenIntake, onOpenOnboarding, onSetup }) {
               borderRight: "1px solid var(--border)",
               height: "100%"
             },
-            children: ["Setup", "Intake", "Onboarding", "Docs"].map((label) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            children: ["Setup", "New Case", "Docs"].map((label) => /* @__PURE__ */ jsxRuntimeExports.jsx(
               "span",
               {
                 role: "button",
@@ -12975,6 +12974,21 @@ function LeftColumn({
   const [typeFilter, setTypeFilter] = reactExports.useState("all");
   const [showFilterMenu, setShowFilterMenu] = reactExports.useState(false);
   const filterRef = reactExports.useRef(null);
+  const SPLIT_STORAGE_KEY = "psygil:left-column-split";
+  const DEFAULT_SPLIT = 0.6;
+  const [splitRatio, setSplitRatio] = reactExports.useState(() => {
+    try {
+      const stored = globalThis.sessionStorage?.getItem?.(SPLIT_STORAGE_KEY) ?? globalThis.localStorage?.getItem?.(SPLIT_STORAGE_KEY);
+      if (stored) {
+        const val = parseFloat(stored);
+        if (!isNaN(val) && val >= 0.2 && val <= 0.85) return val;
+      }
+    } catch {
+    }
+    return DEFAULT_SPLIT;
+  });
+  const [isDraggingSplit, setIsDraggingSplit] = reactExports.useState(false);
+  const columnRef = reactExports.useRef(null);
   reactExports.useEffect(() => {
     if (!showFilterMenu) return;
     const handler = (e) => {
@@ -12985,6 +12999,38 @@ function LeftColumn({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showFilterMenu]);
+  reactExports.useEffect(() => {
+    if (!isDraggingSplit) return;
+    const onMove = (e) => {
+      const col = columnRef.current;
+      if (!col) return;
+      const rect = col.getBoundingClientRect();
+      const headerHeight = 32;
+      const available = rect.height - headerHeight;
+      const y = e.clientY - rect.top - headerHeight;
+      const ratio = Math.min(0.85, Math.max(0.2, y / available));
+      setSplitRatio(ratio);
+    };
+    const onUp = () => {
+      setIsDraggingSplit(false);
+      try {
+        const val = splitRatio.toFixed(4);
+        globalThis.sessionStorage?.setItem?.(SPLIT_STORAGE_KEY, val);
+        globalThis.localStorage?.setItem?.(SPLIT_STORAGE_KEY, val);
+      } catch {
+      }
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "row-resize";
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+  }, [isDraggingSplit, splitRatio]);
   const loadData = reactExports.useCallback(async () => {
     setLoading(true);
     try {
@@ -13099,6 +13145,7 @@ function LeftColumn({
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
+      ref: columnRef,
       style: {
         display: "flex",
         flexDirection: "column",
@@ -13297,139 +13344,354 @@ function LeftColumn({
             ]
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            style: {
-              flex: 1,
-              overflowY: "auto",
-              padding: "4px 0"
-            },
-            children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                style: {
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100%",
-                  color: "var(--text-secondary)",
-                  fontSize: 13
-                },
-                children: "Loading…"
-              }
-            ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: treeData.map((node) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-              TreeNodeComponent,
-              {
-                node,
-                depth: 0,
-                onOpenTab,
-                activeNodeId,
-                onSetActive: setActiveNodeId,
-                onNodeClick: handleNodeClick
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                flex: `0 0 ${splitRatio * 100}%`,
+                overflowY: "auto",
+                padding: "4px 0",
+                minHeight: 0
               },
-              node.id
-            )) })
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            style: {
-              borderTop: "1px solid var(--border)",
-              flexShrink: 0
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
+              children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "div",
                 {
-                  className: "panel-header",
                   style: {
                     display: "flex",
                     alignItems: "center",
-                    height: 32,
-                    padding: "0 12px",
-                    background: "var(--panel)",
-                    borderBottom: "1px solid var(--border)",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
+                    justifyContent: "center",
+                    height: "100%",
                     color: "var(--text-secondary)",
-                    userSelect: "none"
+                    fontSize: 13
                   },
-                  children: "RESOURCES"
+                  children: "Loading…"
                 }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "div",
+              ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: treeData.map((node) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                TreeNodeComponent,
                 {
-                  style: {
-                    padding: "8px 12px",
-                    fontSize: 12,
-                    color: "var(--text-secondary)"
-                  },
-                  children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "div",
-                      {
-                        style: {
-                          cursor: "pointer",
-                          padding: "4px 0",
-                          transition: "color 0.15s"
-                        },
-                        onMouseEnter: (e) => {
-                          e.currentTarget.style.color = "var(--accent)";
-                        },
-                        onMouseLeave: (e) => {
-                          e.currentTarget.style.color = "var(--text-secondary)";
-                        },
-                        children: "DSM-5-TR Reference"
-                      }
-                    ),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "div",
-                      {
-                        style: {
-                          cursor: "pointer",
-                          padding: "4px 0",
-                          transition: "color 0.15s"
-                        },
-                        onMouseEnter: (e) => {
-                          e.currentTarget.style.color = "var(--accent)";
-                        },
-                        onMouseLeave: (e) => {
-                          e.currentTarget.style.color = "var(--text-secondary)";
-                        },
-                        children: "Colorado CST Statute"
-                      }
-                    ),
-                    /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      "div",
-                      {
-                        style: {
-                          cursor: "pointer",
-                          padding: "4px 0",
-                          transition: "color 0.15s"
-                        },
-                        onMouseEnter: (e) => {
-                          e.currentTarget.style.color = "var(--accent)";
-                        },
-                        onMouseLeave: (e) => {
-                          e.currentTarget.style.color = "var(--text-secondary)";
-                        },
-                        children: "Dusky Standard"
-                      }
-                    )
-                  ]
-                }
-              )
-            ]
-          }
-        )
+                  node,
+                  depth: 0,
+                  onOpenTab,
+                  activeNodeId,
+                  onSetActive: setActiveNodeId,
+                  onNodeClick: handleNodeClick
+                },
+                node.id
+              )) })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              onMouseDown: (e) => {
+                e.preventDefault();
+                setIsDraggingSplit(true);
+              },
+              style: {
+                flexShrink: 0,
+                height: 5,
+                cursor: "row-resize",
+                background: isDraggingSplit ? "var(--accent)" : "var(--border)",
+                transition: isDraggingSplit ? "none" : "background 0.15s",
+                position: "relative",
+                zIndex: 10
+              },
+              onMouseEnter: (e) => {
+                if (!isDraggingSplit) e.currentTarget.style.background = "var(--accent)";
+              },
+              onMouseLeave: (e) => {
+                if (!isDraggingSplit) e.currentTarget.style.background = "var(--border)";
+              }
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, minHeight: 0, overflow: "hidden" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(ResourcesPanel, { onOpenTab }) })
+        ] })
       ]
     }
   );
+}
+const RESOURCE_CATEGORIES = [
+  { key: "writing-samples", label: "Writing Samples", icon: "✍", desc: "Your own writing for voice & style analysis" },
+  { key: "templates", label: "Templates", icon: "📋", desc: "Report templates, court reports, company docs" },
+  { key: "documentation", label: "Documentation", icon: "📚", desc: "DSM, state guidelines, testing manuals" }
+];
+function ResourcesPanel({ onOpenTab }) {
+  const [resources, setResources] = reactExports.useState([]);
+  const [showUploadMenu, setShowUploadMenu] = reactExports.useState(false);
+  const [expandedCategory, setExpandedCategory] = reactExports.useState(null);
+  const [uploading, setUploading] = reactExports.useState(false);
+  const uploadMenuRef = reactExports.useRef(null);
+  const loadResources = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil?.resources?.list?.({});
+      if (resp?.status === "success") {
+        setResources(resp.data);
+      }
+    } catch (err) {
+      console.error("[ResourcesPanel] Failed to load resources:", err);
+    }
+  }, []);
+  reactExports.useEffect(() => {
+    loadResources();
+  }, [loadResources]);
+  reactExports.useEffect(() => {
+    if (!showUploadMenu) return;
+    const handler = (e) => {
+      if (uploadMenuRef.current && !uploadMenuRef.current.contains(e.target)) {
+        setShowUploadMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showUploadMenu]);
+  const handleUpload = reactExports.useCallback(async (category) => {
+    setShowUploadMenu(false);
+    setUploading(true);
+    try {
+      const resp = await window.psygil?.resources?.upload?.({ category });
+      if (resp?.status === "success") {
+        const { imported, phiStripped } = resp.data;
+        if (imported.length > 0) {
+          console.log(`[Resources] Uploaded ${imported.length} files to ${category}, stripped ${phiStripped} PHI instances`);
+          setExpandedCategory(category);
+          await loadResources();
+        }
+      }
+    } catch (err) {
+      console.error("[Resources] Upload failed:", err);
+    } finally {
+      setUploading(false);
+    }
+  }, [loadResources]);
+  const handleDelete = reactExports.useCallback(async (item) => {
+    try {
+      await window.psygil?.resources?.delete?.({ id: item.id, storedPath: item.storedPath });
+      await loadResources();
+    } catch (err) {
+      console.error("[Resources] Delete failed:", err);
+    }
+  }, [loadResources]);
+  const handleOpen = reactExports.useCallback((item) => {
+    const tabId = `resource:${item.storedPath}`;
+    onOpenTab({
+      id: tabId,
+      title: item.originalFilename,
+      type: "resource",
+      filePath: item.storedPath
+    });
+  }, [onOpenTab]);
+  const grouped = reactExports.useMemo(() => {
+    const map = { "writing-samples": [], "templates": [], "documentation": [] };
+    for (const r of resources) {
+      if (map[r.category]) map[r.category].push(r);
+    }
+    return map;
+  }, [resources]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "panel-header",
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          height: 32,
+          padding: "0 12px",
+          background: "var(--panel)",
+          borderBottom: "1px solid var(--border)",
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+          color: "var(--text-secondary)",
+          userSelect: "none"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "RESOURCES" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { ref: uploadMenuRef, style: { position: "relative" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => setShowUploadMenu(!showUploadMenu),
+                disabled: uploading,
+                style: {
+                  background: "none",
+                  border: "none",
+                  color: uploading ? "var(--text-tertiary)" : "var(--text-secondary)",
+                  cursor: uploading ? "wait" : "pointer",
+                  fontSize: 14,
+                  lineHeight: 1,
+                  padding: "2px 4px",
+                  borderRadius: 3,
+                  transition: "color 0.15s, background 0.15s"
+                },
+                onMouseEnter: (e) => {
+                  if (!uploading) {
+                    e.currentTarget.style.color = "var(--accent)";
+                    e.currentTarget.style.background = "var(--hover)";
+                  }
+                },
+                onMouseLeave: (e) => {
+                  e.currentTarget.style.color = "var(--text-secondary)";
+                  e.currentTarget.style.background = "none";
+                },
+                title: "Upload resource document",
+                children: uploading ? "↻" : "+"
+              }
+            ),
+            showUploadMenu && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                style: {
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: 4,
+                  width: 260,
+                  background: "var(--panel)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                  zIndex: 1e3,
+                  overflow: "hidden"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 11, color: "var(--text-secondary)", textTransform: "none", fontWeight: 500, letterSpacing: 0 }, children: "Upload as..." }),
+                  RESOURCE_CATEGORIES.map((cat) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "div",
+                    {
+                      onClick: () => handleUpload(cat.key),
+                      style: {
+                        padding: "8px 12px",
+                        cursor: "pointer",
+                        transition: "background 0.15s",
+                        borderBottom: "1px solid var(--border)"
+                      },
+                      onMouseEnter: (e) => {
+                        e.currentTarget.style.background = "var(--hover)";
+                      },
+                      onMouseLeave: (e) => {
+                        e.currentTarget.style.background = "transparent";
+                      },
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12, fontWeight: 600, color: "var(--text-primary)", textTransform: "none", letterSpacing: 0 }, children: [
+                          cat.icon,
+                          " ",
+                          cat.label
+                        ] }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 10, color: "var(--text-tertiary)", marginTop: 2, textTransform: "none", letterSpacing: 0 }, children: cat.desc })
+                      ]
+                    },
+                    cat.key
+                  )),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "6px 12px", fontSize: 10, color: "var(--text-tertiary)", textTransform: "none", letterSpacing: 0, fontStyle: "italic" }, children: "PHI is automatically stripped before AI processing" })
+                ]
+              }
+            )
+          ] })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflowY: "auto", fontSize: 12, minHeight: 0 }, children: RESOURCE_CATEGORIES.map((cat) => {
+      const items = grouped[cat.key] || [];
+      const isExpanded = expandedCategory === cat.key;
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            onClick: () => setExpandedCategory(isExpanded ? null : cat.key),
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "5px 12px",
+              cursor: "pointer",
+              color: "var(--text-secondary)",
+              transition: "color 0.15s, background 0.15s",
+              userSelect: "none",
+              borderBottom: "1px solid var(--border)"
+            },
+            onMouseEnter: (e) => {
+              e.currentTarget.style.background = "var(--hover)";
+              e.currentTarget.style.color = "var(--text-primary)";
+            },
+            onMouseLeave: (e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--text-secondary)";
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10, fontFamily: "monospace", width: 12, textAlign: "center" }, children: isExpanded ? "▾" : "▸" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: cat.icon }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1, fontWeight: 500 }, children: cat.label }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10, color: "var(--text-tertiary)", minWidth: 16, textAlign: "right" }, children: items.length > 0 ? items.length : "" })
+            ]
+          }
+        ),
+        isExpanded && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { background: "var(--surface-1, var(--bg))" }, children: items.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "8px 12px 8px 36px", color: "var(--text-tertiary)", fontSize: 11, fontStyle: "italic" }, children: "No files uploaded" }) : items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 8px 4px 36px",
+              fontSize: 11,
+              color: "var(--text-secondary)",
+              transition: "background 0.15s",
+              cursor: "pointer"
+            },
+            onMouseEnter: (e) => {
+              e.currentTarget.style.background = "var(--hover)";
+            },
+            onMouseLeave: (e) => {
+              e.currentTarget.style.background = "transparent";
+            },
+            onClick: () => handleOpen(item),
+            title: `${item.originalFilename}
+${item.phiStripped ? "⚕ PHI stripped" : ""}
+Click to open`,
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11 }, children: item.originalFilename.endsWith(".pdf") ? "📕" : item.originalFilename.endsWith(".docx") || item.originalFilename.endsWith(".doc") ? "📄" : item.originalFilename.endsWith(".txt") ? "📝" : "📎" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: item.originalFilename }),
+              item.phiStripped && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { title: "PHI was stripped", style: { fontSize: 9, color: "#4caf50" }, children: "⚕" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    handleDelete(item);
+                  },
+                  style: {
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-tertiary)",
+                    cursor: "pointer",
+                    fontSize: 11,
+                    padding: "0 2px",
+                    opacity: 0.5,
+                    transition: "opacity 0.15s, color 0.15s"
+                  },
+                  onMouseEnter: (e) => {
+                    e.currentTarget.style.opacity = "1";
+                    e.currentTarget.style.color = "#ef5350";
+                  },
+                  onMouseLeave: (e) => {
+                    e.currentTarget.style.opacity = "0.5";
+                    e.currentTarget.style.color = "var(--text-tertiary)";
+                  },
+                  title: "Remove",
+                  children: "✕"
+                }
+              )
+            ]
+          },
+          item.id
+        )) })
+      ] }, cat.key);
+    }) })
+  ] });
 }
 const canUseDOM = typeof window !== "undefined" && typeof window.document !== "undefined" && typeof window.document.createElement !== "undefined";
 function isWindow(element) {
@@ -17745,7 +18007,7 @@ const active = "_active_lm4qg_43";
 const pane = "_pane_lm4qg_50";
 const table = "_table_lm4qg_84";
 const elevatedRow = "_elevatedRow_lm4qg_108";
-const card = "_card_lm4qg_114";
+const card$1 = "_card_lm4qg_114";
 const placeholder$1 = "_placeholder_lm4qg_128";
 const valid = "_valid_lm4qg_142";
 const styles$2 = {
@@ -17756,7 +18018,7 @@ const styles$2 = {
   pane,
   table,
   elevatedRow,
-  card,
+  card: card$1,
   placeholder: placeholder$1,
   valid
 };
@@ -18023,21 +18285,21 @@ const InstrumentPane = ({ data }) => {
       data.date
     ] }),
     data.scores.map((section, sectionIdx) => {
-      let sectionTitle = "";
+      let sectionTitle2 = "";
       if (data.name === "MMPI-3") {
-        if (sectionIdx === 0) sectionTitle = "Validity Scales";
-        else if (sectionIdx === 1) sectionTitle = "Higher-Order Scales";
-        else if (sectionIdx === 2) sectionTitle = "Restructured Clinical Scales (RC)";
+        if (sectionIdx === 0) sectionTitle2 = "Validity Scales";
+        else if (sectionIdx === 1) sectionTitle2 = "Higher-Order Scales";
+        else if (sectionIdx === 2) sectionTitle2 = "Restructured Clinical Scales (RC)";
       } else if (data.name === "PAI") {
-        if (sectionIdx === 0) sectionTitle = "Validity Scales";
-        else if (sectionIdx === 1) sectionTitle = "Clinical Scales";
-        else if (sectionIdx === 2) sectionTitle = "Treatment Scales";
+        if (sectionIdx === 0) sectionTitle2 = "Validity Scales";
+        else if (sectionIdx === 1) sectionTitle2 = "Clinical Scales";
+        else if (sectionIdx === 2) sectionTitle2 = "Treatment Scales";
       } else if (data.name === "WAIS-V") {
-        if (sectionIdx === 0) sectionTitle = "Composite Scores";
-        else if (sectionIdx === 1) sectionTitle = "Primary Subtests (Scaled Scores)";
+        if (sectionIdx === 0) sectionTitle2 = "Composite Scores";
+        else if (sectionIdx === 1) sectionTitle2 = "Primary Subtests (Scaled Scores)";
       }
       return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-        sectionTitle && /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: sectionTitle }),
+        sectionTitle2 && /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: sectionTitle2 }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: styles$2.table, children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Scale" }),
@@ -18084,7 +18346,7 @@ const cardHeaderStyle = {
 const cardBodyStyle = {
   padding: "12px"
 };
-const labelStyle$2 = {
+const labelStyle$1 = {
   fontSize: "11px",
   color: "var(--text-secondary)",
   marginBottom: "2px"
@@ -18246,7 +18508,7 @@ const DiagnosticsTab = ({ caseId }) => {
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: cardBodyStyle, children: [
         validity.effort_tests && Array.isArray(validity.effort_tests) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600 }, children: "Effort/Performance Validity Tests:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$1, fontWeight: 600 }, children: "Effort/Performance Validity Tests:" }),
           validity.effort_tests.map((test, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: "12px", fontSize: "12px", padding: "4px 0", borderBottom: "1px solid var(--border)" }, children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { minWidth: "100px" }, children: String(test.test_name) }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: String(test.status) === "pass" ? "#4caf50" : String(test.status) === "fail" ? "#f44336" : "#999" }, children: String(test.status).toUpperCase() }),
@@ -18254,7 +18516,7 @@ const DiagnosticsTab = ({ caseId }) => {
           ] }, i))
         ] }),
         validity.mmpi3_validity && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600 }, children: "MMPI-3 Validity:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$1, fontWeight: 600 }, children: "MMPI-3 Validity:" }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "12px", color: "var(--text)" }, children: [
             "Overall: ",
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: String(validity.mmpi3_validity.overall_validity) })
@@ -18262,7 +18524,7 @@ const DiagnosticsTab = ({ caseId }) => {
           validity.mmpi3_validity.interpretation_impact && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }, children: String(validity.mmpi3_validity.interpretation_impact) })
         ] }),
         validity.pai_validity && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600 }, children: "PAI Validity:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$1, fontWeight: 600 }, children: "PAI Validity:" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", color: "var(--text)" }, children: JSON.stringify(validity.pai_validity, null, 2) })
         ] }),
         validity.summary && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px", background: "var(--bg)", borderRadius: "4px", fontSize: "12px", color: "var(--text)", lineHeight: "1.6" }, children: [
@@ -18318,7 +18580,7 @@ const DiagnosticsTab = ({ caseId }) => {
         ),
         isExpanded && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: cardBodyStyle, children: [
           criteria && Object.keys(criteria).length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600, marginBottom: "8px" }, children: "DSM-5-TR Criteria Analysis:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$1, fontWeight: 600, marginBottom: "8px" }, children: "DSM-5-TR Criteria Analysis:" }),
             Object.entries(criteria).map(([critKey, critData]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "10px", paddingLeft: "12px", borderLeft: "3px solid var(--border)" }, children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: "12px", fontWeight: 600, color: "var(--text)", marginBottom: "4px" }, children: [
                 critKey.replace(/_/g, " ").toUpperCase(),
@@ -18347,7 +18609,7 @@ const DiagnosticsTab = ({ caseId }) => {
             ] }, critKey))
           ] }),
           diag.onset_and_course && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "12px" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$2, fontWeight: 600 }, children: "Onset & Course:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...labelStyle$1, fontWeight: 600 }, children: "Onset & Course:" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "12px", color: "var(--text)", whiteSpace: "pre-wrap" }, children: typeof diag.onset_and_course === "object" ? Object.entries(diag.onset_and_course).map(([k, v]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "2px" }, children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "var(--text-secondary)" }, children: [
                 k.replace(/_/g, " "),
@@ -18452,7 +18714,7 @@ const DiagnosticsTab = ({ caseId }) => {
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { style: sectionHeader, children: "Psycho-Legal Analysis" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: cardStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: cardBodyStyle, children: [
         psycholegal.legal_standard && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: "8px" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: labelStyle$2, children: "Legal Standard: " }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: labelStyle$1, children: "Legal Standard: " }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { fontSize: "13px" }, children: String(psycholegal.legal_standard) }),
           psycholegal.jurisdiction && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "var(--text-secondary)", marginLeft: "8px", fontSize: "12px" }, children: [
             "(",
@@ -20780,412 +21042,957 @@ const AuditTrailTab = ({ caseId }) => {
     )
   ] });
 };
-function SettingsTab({}) {
+const SECTIONS = [
+  { id: "writing-samples", label: "Writing Samples", icon: "✍" },
+  { id: "style-guide", label: "Style Guide", icon: "📐" },
+  { id: "templates", label: "Templates", icon: "📋" },
+  { id: "documentation", label: "Documentation", icon: "📖" },
+  { id: "appearance", label: "Appearance", icon: "🎨" },
+  { id: "ai-models", label: "AI & Models", icon: "🤖" },
+  { id: "practice", label: "Practice", icon: "🏥" },
+  { id: "data-storage", label: "Data & Storage", icon: "💾" },
+  { id: "about", label: "About", icon: "ℹ" }
+];
+const card = {
+  background: "var(--panel)",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  padding: "16px 18px",
+  marginBottom: 14
+};
+const sectionTitle = {
+  fontSize: 17,
+  fontWeight: 700,
+  color: "var(--text)",
+  marginBottom: 4
+};
+const sectionDesc = {
+  fontSize: 12,
+  color: "var(--text-secondary)",
+  marginBottom: 18,
+  lineHeight: 1.5
+};
+const fieldLabel = {
+  display: "block",
+  fontSize: 11,
+  fontWeight: 600,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+  marginBottom: 5
+};
+const textInput = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "7px 10px",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  fontSize: 12.5,
+  color: "var(--text)",
+  fontFamily: "inherit",
+  outline: "none"
+};
+const btnPrimary = {
+  padding: "7px 14px",
+  background: "var(--accent)",
+  color: "#fff",
+  border: "none",
+  borderRadius: 4,
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 600,
+  fontFamily: "inherit"
+};
+const btnSecondary = {
+  padding: "7px 14px",
+  background: "var(--panel)",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 500,
+  fontFamily: "inherit"
+};
+const btnDanger = {
+  padding: "7px 14px",
+  background: "#e5404015",
+  color: "#e54040",
+  border: "1px solid #e5404040",
+  borderRadius: 4,
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 600,
+  fontFamily: "inherit"
+};
+function formatBytes$1(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+function ResourceListPanel({
+  category,
+  title,
+  description,
+  emptyMessage,
+  uploadLabel
+}) {
+  const [files, setFiles] = reactExports.useState([]);
+  const [loading, setLoading] = reactExports.useState(true);
+  const [uploading, setUploading] = reactExports.useState(false);
+  const loadFiles = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil.resources.list({ category });
+      if (resp.status === "success") {
+        setFiles(resp.data);
+      }
+    } catch (err) {
+      console.error(`[Settings] Failed to load ${category}:`, err);
+    } finally {
+      setLoading(false);
+    }
+  }, [category]);
+  reactExports.useEffect(() => {
+    void loadFiles();
+  }, [loadFiles]);
+  const handleUpload = reactExports.useCallback(async () => {
+    setUploading(true);
+    try {
+      const resp = await window.psygil.resources.upload({ category });
+      if (resp.status === "success") {
+        void loadFiles();
+      }
+    } catch (err) {
+      console.error(`[Settings] Upload failed:`, err);
+    } finally {
+      setUploading(false);
+    }
+  }, [category, loadFiles]);
+  const handleDelete = reactExports.useCallback(async (file) => {
+    if (!window.confirm(`Delete "${file.originalFilename}"? This cannot be undone.`)) return;
+    try {
+      await window.psygil.resources.delete({ id: file.id, storedPath: file.storedPath });
+      void loadFiles();
+    } catch (err) {
+      console.error(`[Settings] Delete failed:`, err);
+    }
+  }, [loadFiles]);
+  const handleOpen = reactExports.useCallback(async (file) => {
+    try {
+      await window.psygil.resources.open({ storedPath: file.storedPath });
+    } catch (err) {
+      console.error(`[Settings] Open failed:`, err);
+    }
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionTitle, children: title }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionDesc, children: description }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }, children: [
+          files.length,
+          " file",
+          files.length !== 1 ? "s" : ""
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleUpload, disabled: uploading, style: { ...btnPrimary, opacity: uploading ? 0.6 : 1 }, children: uploading ? "Importing…" : uploadLabel })
+      ] }),
+      loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", padding: "12px 0" }, children: "Loading…" }) : files.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", padding: "20px 0", textAlign: "center", lineHeight: 1.6 }, children: emptyMessage }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 1 }, children: files.map((f) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 10px",
+            borderRadius: 4,
+            background: "var(--bg)",
+            border: "1px solid var(--border)",
+            marginBottom: 4
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  style: { fontSize: 12.5, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" },
+                  onClick: () => void handleOpen(f),
+                  title: "Open file",
+                  children: f.originalFilename
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 10.5, color: "var(--text-secondary)", marginTop: 2 }, children: [
+                formatBytes$1(f.fileSize),
+                f.phiStripped && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { marginLeft: 8, color: "#4caf50", fontWeight: 600 }, children: "PHI stripped" })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => void handleOpen(f),
+                style: { ...btnSecondary, padding: "4px 8px", fontSize: 11 },
+                title: "Open",
+                children: "Open"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => void handleDelete(f),
+                style: { ...btnDanger, padding: "4px 8px", fontSize: 11, background: "transparent" },
+                title: "Delete",
+                children: "✕"
+              }
+            )
+          ]
+        },
+        f.id
+      )) })
+    ] })
+  ] });
+}
+function SettingsTab() {
+  const [activeSection, setActiveSection] = reactExports.useState("writing-samples");
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", height: "100%", overflow: "hidden" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "nav",
+      {
+        style: {
+          width: 200,
+          minWidth: 200,
+          borderRight: "1px solid var(--border)",
+          background: "var(--panel)",
+          padding: "12px 0",
+          display: "flex",
+          flexDirection: "column",
+          gap: 1,
+          overflowY: "auto"
+        },
+        children: SECTIONS.map((s) => {
+          const active2 = s.id === activeSection;
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              onClick: () => setActiveSection(s.id),
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: 0,
+                background: active2 ? "var(--highlight)" : "transparent",
+                color: active2 ? "var(--accent)" : "var(--text)",
+                fontWeight: active2 ? 600 : 400,
+                fontSize: 12.5,
+                fontFamily: "inherit",
+                cursor: "pointer",
+                textAlign: "left",
+                width: "100%",
+                borderLeft: active2 ? "3px solid var(--accent)" : "3px solid transparent"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14, width: 20, textAlign: "center", flexShrink: 0 }, children: s.icon }),
+                s.label
+              ]
+            },
+            s.id
+          );
+        })
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, overflowY: "auto", padding: "20px 28px" }, children: [
+      activeSection === "writing-samples" && /* @__PURE__ */ jsxRuntimeExports.jsx(WritingSamplesSection, {}),
+      activeSection === "style-guide" && /* @__PURE__ */ jsxRuntimeExports.jsx(StyleGuideSection, {}),
+      activeSection === "templates" && /* @__PURE__ */ jsxRuntimeExports.jsx(TemplatesSection, {}),
+      activeSection === "documentation" && /* @__PURE__ */ jsxRuntimeExports.jsx(DocumentationSection, {}),
+      activeSection === "appearance" && /* @__PURE__ */ jsxRuntimeExports.jsx(AppearanceSection, {}),
+      activeSection === "ai-models" && /* @__PURE__ */ jsxRuntimeExports.jsx(AiModelsSection, {}),
+      activeSection === "practice" && /* @__PURE__ */ jsxRuntimeExports.jsx(PracticeSection, {}),
+      activeSection === "data-storage" && /* @__PURE__ */ jsxRuntimeExports.jsx(DataStorageSection, {}),
+      activeSection === "about" && /* @__PURE__ */ jsxRuntimeExports.jsx(AboutSection, {})
+    ] })
+  ] });
+}
+function WritingSamplesSection() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    ResourceListPanel,
+    {
+      category: "writing-samples",
+      title: "Writing Samples",
+      description: "Upload examples of your report writing. The AI agents will analyze these to learn your clinical voice, terminology preferences, and report structure. More samples = better style matching.",
+      emptyMessage: "No writing samples uploaded yet. Add your best forensic reports, clinical letters, or court declarations to help the AI match your writing style.",
+      uploadLabel: "+ Upload Samples"
+    }
+  );
+}
+function StyleGuideSection() {
+  const [styleRules, setStyleRules] = reactExports.useState({
+    personReference: "third-person",
+    // 'first-person' | 'third-person'
+    tensePreference: "past",
+    // 'past' | 'present' | 'mixed'
+    formalityLevel: "formal-clinical",
+    // 'formal-clinical' | 'clinical-conversational'
+    citationStyle: "apa-7",
+    // 'apa-7' | 'none' | 'footnote'
+    diagnosticTerminology: "dsm-5-tr",
+    // 'dsm-5-tr' | 'icd-10'
+    headerNumbering: true,
+    includePageNumbers: true,
+    signatureBlock: true
+  });
+  const [customRules, setCustomRules] = reactExports.useState("");
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionTitle, children: "Style Guide" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionDesc, children: "Configure report writing conventions. These rules are applied by the Writer and Editor agents when generating report prose. They will also be refined automatically as you upload more writing samples." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 14 }, children: "Writing Conventions" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: fieldLabel, children: "Person Reference" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              value: styleRules.personReference,
+              onChange: (e) => setStyleRules((p) => ({ ...p, personReference: e.target.value })),
+              style: { ...textInput, cursor: "pointer" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "third-person", children: 'Third person ("The evaluee reported…")' }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "first-person", children: 'First person ("I administered…")' })
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: fieldLabel, children: "Verb Tense" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              value: styleRules.tensePreference,
+              onChange: (e) => setStyleRules((p) => ({ ...p, tensePreference: e.target.value })),
+              style: { ...textInput, cursor: "pointer" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "past", children: 'Past tense ("was administered")' }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "present", children: 'Present tense ("is administered")' }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "mixed", children: "Mixed (present for findings, past for history)" })
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: fieldLabel, children: "Formality Level" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              value: styleRules.formalityLevel,
+              onChange: (e) => setStyleRules((p) => ({ ...p, formalityLevel: e.target.value })),
+              style: { ...textInput, cursor: "pointer" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "formal-clinical", children: "Formal clinical (court-ready)" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "clinical-conversational", children: "Clinical conversational" })
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: fieldLabel, children: "Citation Style" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              value: styleRules.citationStyle,
+              onChange: (e) => setStyleRules((p) => ({ ...p, citationStyle: e.target.value })),
+              style: { ...textInput, cursor: "pointer" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "apa-7", children: "APA 7th Edition" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "none", children: "No citations" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "footnote", children: "Footnotes" })
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: fieldLabel, children: "Diagnostic Terminology" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "select",
+            {
+              value: styleRules.diagnosticTerminology,
+              onChange: (e) => setStyleRules((p) => ({ ...p, diagnosticTerminology: e.target.value })),
+              style: { ...textInput, cursor: "pointer" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "dsm-5-tr", children: "DSM-5-TR" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "icd-10", children: "ICD-10-CM" })
+              ]
+            }
+          )
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 14 }, children: "Report Formatting" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 10 }, children: [
+        ["headerNumbering", "Number section headers (I, II, III…)"],
+        ["includePageNumbers", "Include page numbers in generated reports"],
+        ["signatureBlock", "Include signature block with credentials"]
+      ].map(([key2, label]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: { display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--text)", cursor: "pointer" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "checkbox",
+            checked: styleRules[key2],
+            onChange: (e) => setStyleRules((p) => ({ ...p, [key2]: e.target.checked })),
+            style: { accentColor: "var(--accent)" }
+          }
+        ),
+        label
+      ] }, key2)) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }, children: "Custom Style Rules" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11.5, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.5 }, children: "Free-text instructions for the Writer agent. These are injected into the agent's system prompt." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          value: customRules,
+          onChange: (e) => setCustomRules(e.target.value),
+          placeholder: 'Example rules:\n- Always refer to test results using the full instrument name on first mention\n- Use "evaluee" not "patient" or "client"\n- Begin the Impressions section with a diagnostic summary paragraph\n- Avoid passive voice where possible',
+          style: {
+            ...textInput,
+            minHeight: 120,
+            resize: "vertical",
+            lineHeight: 1.6
+          }
+        }
+      )
+    ] })
+  ] });
+}
+function TemplatesSection() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    ResourceListPanel,
+    {
+      category: "templates",
+      title: "Report Templates",
+      description: "Upload report templates and section outlines. These define the structure the Writer agent uses when generating report sections. Upload .docx or .txt files with your preferred section headings and ordering.",
+      emptyMessage: "No templates uploaded. Add your standard forensic report templates to define the section structure the AI should follow when generating reports.",
+      uploadLabel: "+ Upload Template"
+    }
+  );
+}
+function DocumentationSection() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    ResourceListPanel,
+    {
+      category: "documentation",
+      title: "Reference Documentation",
+      description: "Upload reference materials — scoring manuals, legal guidelines, state statutes, clinical practice standards, or court requirements. These documents are used by the agents as reference context during report generation.",
+      emptyMessage: "No reference documentation uploaded. Add scoring manuals, legal guidelines, or clinical standards that should inform report generation.",
+      uploadLabel: "+ Upload Documentation"
+    }
+  );
+}
+function AppearanceSection() {
+  const [theme, setTheme] = reactExports.useState(
+    document.documentElement.getAttribute("data-theme") || "light"
+  );
+  const [fontSize, setFontSize] = reactExports.useState(
+    parseInt(localStorage.getItem("psygil-font-size") || "13", 10)
+  );
+  const [sidebarCollapsed, setSidebarCollapsed] = reactExports.useState(
+    localStorage.getItem("psygil-sidebar-collapsed") === "true"
+  );
+  const themes = [
+    { id: "light", label: "Light", preview: { bg: "#ffffff", panel: "#f3f3f3", accent: "#0078d4", text: "#1e1e1e" } },
+    { id: "medium", label: "Warm", preview: { bg: "#faf8f4", panel: "#e6ddd0", accent: "#8b5e3c", text: "#2c2418" } },
+    { id: "dark", label: "Dark", preview: { bg: "#0d1117", panel: "#161b22", accent: "#58a6ff", text: "#c9d1d9" } }
+  ];
+  const applyTheme = reactExports.useCallback((id) => {
+    setTheme(id);
+    document.documentElement.setAttribute("data-theme", id);
+    localStorage.setItem("psygil-theme", id);
+  }, []);
+  const applyFontSize = reactExports.useCallback((size) => {
+    setFontSize(size);
+    document.documentElement.style.fontSize = `${size}px`;
+    localStorage.setItem("psygil-font-size", String(size));
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionTitle, children: "Appearance" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionDesc, children: "Customize the visual theme, font size, and layout density." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 14 }, children: "Theme" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 12 }, children: themes.map((t) => {
+        const active2 = theme === t.id;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: () => applyTheme(t.id),
+            style: {
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+              padding: 12,
+              border: active2 ? `2px solid var(--accent)` : "2px solid var(--border)",
+              borderRadius: 8,
+              background: "transparent",
+              cursor: "pointer",
+              minWidth: 100,
+              fontFamily: "inherit"
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  style: {
+                    width: 80,
+                    height: 50,
+                    borderRadius: 4,
+                    background: t.preview.bg,
+                    border: `1px solid ${t.preview.panel}`,
+                    position: "relative",
+                    overflow: "hidden"
+                  },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: 0, left: 0, width: 22, height: "100%", background: t.preview.panel } }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: 6, left: 28, width: 30, height: 3, borderRadius: 1, background: t.preview.accent } }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: 14, left: 28, width: 44, height: 2, borderRadius: 1, background: t.preview.text, opacity: 0.3 } }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: 20, left: 28, width: 38, height: 2, borderRadius: 1, background: t.preview.text, opacity: 0.2 } }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { position: "absolute", top: 26, left: 28, width: 42, height: 2, borderRadius: 1, background: t.preview.text, opacity: 0.15 } })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11.5, fontWeight: active2 ? 700 : 500, color: active2 ? "var(--accent)" : "var(--text)" }, children: t.label })
+            ]
+          },
+          t.id
+        );
+      }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 14 }, children: "Interface Font Size" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 14 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "range",
+            min: 11,
+            max: 16,
+            step: 1,
+            value: fontSize,
+            onChange: (e) => applyFontSize(parseInt(e.target.value, 10)),
+            style: { flex: 1, accentColor: "var(--accent)" }
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 12, fontWeight: 600, color: "var(--text)", minWidth: 36, textAlign: "center" }, children: [
+          fontSize,
+          "px"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-secondary)", marginTop: 4 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Compact" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Default" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Large" })
+      ] })
+    ] })
+  ] });
+}
+function AiModelsSection() {
   const [apiKey, setApiKey] = reactExports.useState("");
-  const [apiKeyMasked, setApiKeyMasked] = reactExports.useState("••••••••••••••sk-ant");
+  const [hasKey, setHasKey] = reactExports.useState(false);
   const [connectionStatus, setConnectionStatus] = reactExports.useState("idle");
   const [connectionError, setConnectionError] = reactExports.useState("");
-  const [theme, setTheme] = reactExports.useState(
-    typeof window !== "undefined" ? document.documentElement.getAttribute("data-theme") || "light" : "light"
-  );
-  const handleThemeCycle = reactExports.useCallback(() => {
-    const themes = ["light", "medium", "dark"];
-    const currentIdx = themes.indexOf(theme);
-    const nextIdx = (currentIdx + 1) % themes.length;
-    const nextTheme = themes[nextIdx];
-    setTheme(nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-  }, [theme]);
+  const [connectedModel, setConnectedModel] = reactExports.useState("");
+  const [saving, setSaving] = reactExports.useState(false);
+  const [selectedModel, setSelectedModel] = reactExports.useState("claude-sonnet-4-20250514");
+  const [whisperStatus, setWhisperStatus] = reactExports.useState(null);
+  const [transcriptionLang, setTranscriptionLang] = reactExports.useState("en");
+  reactExports.useEffect(() => {
+    void (async () => {
+      try {
+        const hasResp = await window.psygil.apiKey.has();
+        if (hasResp.status === "success") setHasKey(hasResp.data);
+      } catch {
+      }
+      try {
+        const whisperResp = await window.psygil.whisper.status();
+        if (whisperResp.status === "success") setWhisperStatus(whisperResp.data);
+      } catch {
+      }
+    })();
+  }, []);
+  const handleSaveKey = reactExports.useCallback(async () => {
+    if (!apiKey.trim()) return;
+    setSaving(true);
+    try {
+      const resp = await window.psygil.apiKey.store({ key: apiKey.trim() });
+      if (resp.status === "success") {
+        setHasKey(true);
+        setApiKey("");
+        setConnectionStatus("idle");
+      }
+    } catch (err) {
+      console.error("[Settings] Failed to save API key:", err);
+    } finally {
+      setSaving(false);
+    }
+  }, [apiKey]);
+  const handleDeleteKey = reactExports.useCallback(async () => {
+    if (!window.confirm("Remove your Claude API key? AI features will stop working.")) return;
+    try {
+      await window.psygil.apiKey.delete();
+      setHasKey(false);
+      setConnectionStatus("idle");
+      setConnectedModel("");
+    } catch (err) {
+      console.error("[Settings] Failed to delete API key:", err);
+    }
+  }, []);
   const handleTestConnection = reactExports.useCallback(async () => {
     setConnectionStatus("testing");
     setConnectionError("");
     try {
       const result = await window.psygil.ai.testConnection({});
-      if (result.status === "success") {
-        if (result.data.connected) {
-          setConnectionStatus("connected");
-        } else {
-          setConnectionStatus("error");
-          setConnectionError(result.data.error || "Connection failed");
-        }
+      if (result.status === "success" && result.data.connected) {
+        setConnectionStatus("connected");
+        setConnectedModel(result.data.model || "");
       } else {
         setConnectionStatus("error");
-        setConnectionError("Connection failed");
+        setConnectionError(result.data?.error || "Connection failed");
       }
-    } catch (error) {
+    } catch {
       setConnectionStatus("error");
-      setConnectionError("Failed to test connection");
+      setConnectionError("Failed to reach API");
     }
   }, []);
-  const handleBackupDatabase = reactExports.useCallback(async () => {
-    try {
-      const folder = await window.psygil.workspace.pickFolder();
-      if (folder) {
-        alert(`Database backup would be saved to: ${folder}`);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionTitle, children: "AI & Models" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionDesc, children: "Configure the Claude API connection, model selection, and local transcription engine. These settings will eventually be bundled into your Psygil subscription." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }, children: "Claude API Key" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11.5, color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.5 }, children: "Your API key is encrypted using your operating system's secure keychain (macOS Keychain / Windows DPAPI). It never leaves this machine." }),
+      hasKey ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+          flex: 1,
+          padding: "7px 10px",
+          background: "var(--bg)",
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+          fontSize: 12.5,
+          color: "var(--text-secondary)",
+          fontFamily: "monospace"
+        }, children: "sk-ant-••••••••••••••••" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: handleTestConnection,
+            disabled: connectionStatus === "testing",
+            style: {
+              ...btnPrimary,
+              background: connectionStatus === "connected" ? "#4caf50" : connectionStatus === "error" ? "#e54040" : void 0,
+              opacity: connectionStatus === "testing" ? 0.6 : 1
+            },
+            children: connectionStatus === "testing" ? "Testing…" : connectionStatus === "connected" ? "✓ Connected" : connectionStatus === "error" ? "✕ Failed" : "Test Connection"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleDeleteKey, style: { ...btnDanger, background: "transparent" }, children: "Remove" })
+      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "password",
+            value: apiKey,
+            onChange: (e) => setApiKey(e.target.value),
+            placeholder: "sk-ant-api03-…",
+            style: { ...textInput, flex: 1, fontFamily: "monospace" },
+            onKeyDown: (e) => e.key === "Enter" && void handleSaveKey()
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSaveKey, disabled: saving || !apiKey.trim(), style: { ...btnPrimary, opacity: saving || !apiKey.trim() ? 0.5 : 1 }, children: saving ? "Saving…" : "Save Key" })
+      ] }),
+      connectionStatus === "connected" && connectedModel && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 11, color: "#4caf50", marginTop: 4 }, children: [
+        "Connected to ",
+        connectedModel
+      ] }),
+      connectionError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "#e54040", marginTop: 4 }, children: connectionError })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }, children: "AI Model" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11.5, color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.5 }, children: "Select the Claude model used for all AI operations — report writing, diagnostics mapping, document ingestion, and interview summaries." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "select",
+        {
+          value: selectedModel,
+          onChange: (e) => setSelectedModel(e.target.value),
+          style: { ...textInput, cursor: "pointer", maxWidth: 360 },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "claude-sonnet-4-20250514", children: "Claude Sonnet 4 (Recommended — fast, accurate)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "claude-opus-4-20250514", children: "Claude Opus 4 (Highest quality — slower, higher cost)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "claude-haiku-4-20250514", children: "Claude Haiku 4 (Fastest — lower cost, lighter analysis)" })
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" }, children: "PHI Redaction Pipeline" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 3, background: "#4caf5018", color: "#4caf50" }, children: "ALWAYS ON" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }, children: "All patient data is redacted to anonymous UNIDs before being sent to the Claude API. PHI is rehydrated only after the response is received and stored locally. This pipeline cannot be disabled — it is a core HIPAA safeguard." })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }, children: "Transcription Engine" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11.5, color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.5 }, children: "Live interview transcription runs entirely on this machine using faster-whisper. Audio never leaves your device." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12, color: "var(--text)" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { ...fieldLabel, marginBottom: 2 }, children: "Status" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, color: whisperStatus?.sidecarReady ? "#4caf50" : "#e54040" }, children: whisperStatus?.sidecarReady ? "Running" : "Not available" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { ...fieldLabel, marginBottom: 2 }, children: "Model" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: whisperStatus?.model || "base.en" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 14 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: fieldLabel, children: "Default Language" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            value: transcriptionLang,
+            onChange: (e) => setTranscriptionLang(e.target.value),
+            style: { ...textInput, cursor: "pointer", maxWidth: 240 },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "en", children: "English" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "es", children: "Spanish" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "fr", children: "French" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "de", children: "German" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "pt", children: "Portuguese" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "zh", children: "Chinese" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "ja", children: "Japanese" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "ko", children: "Korean" })
+            ]
+          }
+        )
+      ] })
+    ] })
+  ] });
+}
+function PracticeSection() {
+  const [profile, setProfile] = reactExports.useState({
+    clinicianName: "",
+    credentials: "",
+    licenseNumber: "",
+    licenseState: "",
+    practiceName: "",
+    specialty: "Forensic Psychology",
+    jurisdictions: "",
+    address: "",
+    phone: "",
+    email: "",
+    npi: ""
+  });
+  const [saved, setSaved] = reactExports.useState(false);
+  const updateField = reactExports.useCallback((field, value) => {
+    setProfile((p) => ({ ...p, [field]: value }));
+    setSaved(false);
+  }, []);
+  const handleSave = reactExports.useCallback(() => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2e3);
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionTitle, children: "Practice Information" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionDesc, children: "Your clinician profile appears on generated reports, attestation pages, and expert declarations. This information is stored locally in the encrypted database." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 14 }, children: "Clinician Profile" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 18px" }, children: [
+        ["clinicianName", "Full Name", "Dr. Jane Smith, Psy.D., ABPP"],
+        ["credentials", "Credentials", "Psy.D., ABPP (Forensic)"],
+        ["licenseNumber", "License Number", "PSY-12345"],
+        ["licenseState", "License State", "Colorado"],
+        ["practiceName", "Practice Name", "Smith Forensic Psychology, PLLC"],
+        ["specialty", "Specialty", "Forensic Psychology"],
+        ["jurisdictions", "Jurisdictions", "Colorado, Federal Courts"],
+        ["npi", "NPI Number", "1234567890"],
+        ["phone", "Phone", "(303) 555-0100"],
+        ["email", "Email", "dr.smith@example.com"]
+      ].map(([key2, label, placeholder2]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: fieldLabel, children: label }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "text",
+            value: profile[key2],
+            onChange: (e) => updateField(key2, e.target.value),
+            placeholder: placeholder2,
+            style: textInput
+          }
+        )
+      ] }, key2)) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 12 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: fieldLabel, children: "Office Address" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            value: profile.address,
+            onChange: (e) => updateField("address", e.target.value),
+            placeholder: "123 Professional Plaza, Suite 400\nDenver, CO 80203",
+            style: { ...textInput, minHeight: 56, resize: "vertical" }
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 14, display: "flex", alignItems: "center", gap: 10 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleSave, style: btnPrimary, children: "Save Profile" }),
+        saved && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, color: "#4caf50", fontWeight: 600 }, children: "Saved" })
+      ] })
+    ] })
+  ] });
+}
+function DataStorageSection() {
+  const [workspacePath, setWorkspacePath] = reactExports.useState("");
+  const [dbHealth, setDbHealth] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    void (async () => {
+      try {
+        const pathResp = await window.psygil.workspace.getPath();
+        if (pathResp.status === "success" && pathResp.data) setWorkspacePath(pathResp.data);
+      } catch {
       }
-    } catch (error) {
-      alert("Error selecting backup location");
+      try {
+        const healthResp = await window.psygil.db.health();
+        if (healthResp.status === "success") setDbHealth(healthResp.data);
+      } catch {
+      }
+    })();
+  }, []);
+  const handleChangeWorkspace = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil.workspace.pickFolder();
+      if (resp.status === "success" && resp.data) {
+        await window.psygil.workspace.setPath(resp.data);
+        setWorkspacePath(resp.data);
+      }
+    } catch (err) {
+      console.error("[Settings] Failed to change workspace:", err);
+    }
+  }, []);
+  const handleBackup = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil.workspace.pickFolder();
+      if (resp.status === "success" && resp.data) {
+        alert(`Database backup would be saved to: ${resp.data}`);
+      }
+    } catch {
     }
   }, []);
   const handleExportCases = reactExports.useCallback(async () => {
-    alert("Export cases functionality coming soon");
-  }, []);
-  const handleClearDemo = reactExports.useCallback(async () => {
-    if (window.confirm("Are you sure? This will delete all demo data.")) {
-      try {
-        await window.psygil.seed.demoCases();
-        alert("Demo data cleared");
-      } catch (error) {
-        alert("Error clearing demo data");
+    try {
+      const resp = await window.psygil.audit.export({ format: "csv" });
+      if (resp.status === "success") {
+        alert("Audit trail exported successfully.");
       }
+    } catch {
+      alert("Export not yet implemented.");
     }
   }, []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      style: {
-        padding: "20px 24px",
-        fontSize: 13,
-        lineHeight: 1.6
-      },
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { style: { fontSize: 20, fontWeight: 600, marginBottom: 16 }, children: "Settings" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "h2",
-          {
-            style: {
-              fontSize: 15,
-              fontWeight: 600,
-              marginTop: 20,
-              marginBottom: 12,
-              paddingBottom: 6,
-              borderBottom: "1px solid var(--border)"
-            },
-            children: "Practice Information"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            style: {
-              background: "var(--panel)",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              padding: 12,
-              marginBottom: 12
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 8 }, children: "Clinician Profile" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 13, color: "var(--text)", lineHeight: 1.5 }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Name:" }),
-                  " Dr. Truck Irwin, Psy.D., ABPP"
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "License #:" }),
-                  " PSY-12345 (Colorado)"
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Practice:" }),
-                  " Irwin Forensic Psychology, PLLC"
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Specialty:" }),
-                  " Forensic Psychology"
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Jurisdiction:" }),
-                  " Colorado, Federal Courts"
-                ] })
-              ] })
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "h2",
-          {
-            style: {
-              fontSize: 15,
-              fontWeight: 600,
-              marginTop: 20,
-              marginBottom: 12,
-              paddingBottom: 6,
-              borderBottom: "1px solid var(--border)"
-            },
-            children: "Appearance"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            style: {
-              background: "var(--panel)",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              padding: 12,
-              marginBottom: 12
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 8 }, children: "Theme" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12, color: "var(--text-secondary)", marginBottom: 12 }, children: [
-                "Current theme: ",
-                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: theme })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  onClick: handleThemeCycle,
-                  style: {
-                    padding: "6px 12px",
-                    background: "var(--accent)",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontWeight: 500
-                  },
-                  children: "Cycle Theme"
-                }
-              )
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "h2",
-          {
-            style: {
-              fontSize: 15,
-              fontWeight: 600,
-              marginTop: 20,
-              marginBottom: 12,
-              paddingBottom: 6,
-              borderBottom: "1px solid var(--border)"
-            },
-            children: "API Configuration"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            style: {
-              background: "var(--panel)",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              padding: 12,
-              marginBottom: 12
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 8 }, children: "Claude API Key" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 12 }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { display: "block", fontSize: 11, fontWeight: 500, marginBottom: 4, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.3 }, children: "API Key" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                  "div",
-                  {
-                    style: {
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "center",
-                      marginBottom: 8
-                    },
-                    children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "input",
-                        {
-                          type: "password",
-                          value: apiKey,
-                          onChange: (e) => setApiKey(e.currentTarget.value),
-                          placeholder: "sk-ant-...",
-                          style: {
-                            flex: 1,
-                            padding: "6px 10px",
-                            background: "var(--bg)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 4,
-                            fontSize: 12,
-                            color: "var(--text)",
-                            fontFamily: "inherit",
-                            outline: "none"
-                          },
-                          onFocus: (e) => {
-                            e.currentTarget.style.borderColor = "var(--accent)";
-                          },
-                          onBlur: (e) => {
-                            e.currentTarget.style.borderColor = "var(--border)";
-                          }
-                        }
-                      ),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "button",
-                        {
-                          onClick: handleTestConnection,
-                          disabled: connectionStatus === "testing",
-                          style: {
-                            padding: "6px 12px",
-                            background: connectionStatus === "connected" ? "#4caf50" : connectionStatus === "error" ? "#f44336" : "var(--accent)",
-                            color: "#ffffff",
-                            border: "none",
-                            borderRadius: 4,
-                            cursor: connectionStatus === "testing" ? "not-allowed" : "pointer",
-                            fontSize: 12,
-                            fontWeight: 500,
-                            opacity: connectionStatus === "testing" ? 0.6 : 1
-                          },
-                          children: connectionStatus === "testing" ? "Testing..." : connectionStatus === "connected" ? "✓ Connected" : connectionStatus === "error" ? "✕ Error" : "Test"
-                        }
-                      )
-                    ]
-                  }
-                ),
-                connectionError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "#f44336", marginBottom: 8 }, children: connectionError })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12, color: "var(--text-secondary)" }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Provider:" }),
-                  " Anthropic"
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Model:" }),
-                  " Claude 3.5 Sonnet"
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "PHI Redaction:" }),
-                  " ",
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#4caf50" }, children: "UNID Pipeline Active" })
-                ] })
-              ] })
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "h2",
-          {
-            style: {
-              fontSize: 15,
-              fontWeight: 600,
-              marginTop: 20,
-              marginBottom: 12,
-              paddingBottom: 6,
-              borderBottom: "1px solid var(--border)"
-            },
-            children: "Data Management"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            style: {
-              background: "var(--panel)",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              padding: 12,
-              marginBottom: 12
-            },
-            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 8 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  onClick: handleBackupDatabase,
-                  style: {
-                    padding: "6px 12px",
-                    background: "var(--accent)",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    textAlign: "left"
-                  },
-                  children: "Backup Database"
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  onClick: handleExportCases,
-                  style: {
-                    padding: "6px 12px",
-                    background: "var(--panel)",
-                    color: "var(--text)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    textAlign: "left"
-                  },
-                  children: "Export Cases (CSV)"
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  onClick: handleClearDemo,
-                  style: {
-                    padding: "6px 12px",
-                    background: "#f44336",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    textAlign: "left"
-                  },
-                  children: "Clear Demo Data"
-                }
-              )
-            ] })
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "h2",
-          {
-            style: {
-              fontSize: 15,
-              fontWeight: 600,
-              marginTop: 20,
-              marginBottom: 12,
-              paddingBottom: 6,
-              borderBottom: "1px solid var(--border)"
-            },
-            children: "About"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            style: {
-              background: "var(--panel)",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              padding: 12,
-              marginBottom: 12
-            },
-            children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 13, color: "var(--text)", lineHeight: 1.5 }, children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Version:" }),
-                " 1.0.0"
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Build:" }),
-                " 2026.03.21"
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 4 }, children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Platform:" }),
-                " Electron (Chromium-based)"
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Database:" }),
-                " SQLCipher 4.6 (AES-256)"
-              ] })
-            ] })
-          }
-        )
-      ]
-    }
-  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionTitle, children: "Data & Storage" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionDesc, children: "Manage your workspace location, database, and data exports. All case data is stored in an AES-256 encrypted SQLCipher database." }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }, children: "Workspace Folder" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11.5, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.5 }, children: "This is where case folders, audio files, and uploaded documents are stored. The folder structure is the source of truth for case files." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+          flex: 1,
+          padding: "7px 10px",
+          background: "var(--bg)",
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+          fontSize: 12,
+          color: "var(--text)",
+          fontFamily: "monospace",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        }, children: workspacePath || "Not set" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleChangeWorkspace, style: btnSecondary, children: "Change" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 14 }, children: "Database" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, fontSize: 12 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { ...fieldLabel, marginBottom: 2 }, children: "Encryption" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, color: dbHealth?.encrypted ? "#4caf50" : "#e54040" }, children: dbHealth?.encrypted ? "AES-256 (SQLCipher)" : "Unknown" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { ...fieldLabel, marginBottom: 2 }, children: "Version" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: dbHealth?.version || "—" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { ...fieldLabel, marginBottom: 2 }, children: "Size" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: dbHealth ? formatBytes$1(dbHealth.sizeBytes) : "—" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 14, display: "flex", gap: 8 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleBackup, style: btnPrimary, children: "Backup Database" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleExportCases, style: btnSecondary, children: "Export Audit Trail" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...card, borderColor: "#e5404040" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "#e54040", marginBottom: 6 }, children: "Danger Zone" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11.5, color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.5 }, children: "These actions are destructive and cannot be undone." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => {
+            if (window.confirm("This will reset the demo database. All case data will be replaced with demo data. Are you sure?")) {
+              void window.psygil.seed.demoCases();
+            }
+          },
+          style: btnDanger,
+          children: "Reset to Demo Data"
+        }
+      )
+    ] })
+  ] });
+}
+function AboutSection() {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionTitle, children: "About Psygil" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionDesc, children: "Forensic Psychology IDE by Foundry SMB" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: card, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "grid", gridTemplateColumns: "140px 1fr", gap: "8px 0", fontSize: 12.5, lineHeight: 1.6 }, children: [
+      ["Version", "1.0.0-alpha"],
+      ["Build", "2026.04.03"],
+      ["Platform", `Electron 33 (${window.psygil?.platform || "unknown"})`],
+      ["Runtime", "Chromium + Node.js"],
+      ["Database", "SQLCipher 4.6 (AES-256)"],
+      ["AI Provider", "Anthropic Claude API"],
+      ["Transcription", "faster-whisper (local, offline)"],
+      ["PHI Protection", "UNID redaction pipeline"]
+    ].map(([label, value]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "contents" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, color: "var(--text-secondary)" }, children: label }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "var(--text)" }, children: value })
+    ] }, label)) }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: card, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }, children: "Core Principles" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12.5, color: "var(--text)", lineHeight: 1.7 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 6 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "DOCTOR ALWAYS DIAGNOSES" }),
+          " — The AI never makes diagnostic conclusions. Every clinical decision is made by the licensed clinician and recorded in the audit trail."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { marginBottom: 6 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "PHI Never Leaves This Machine" }),
+          " — Patient data is redacted before any API call. Audio transcription runs locally. The encrypted database stays on your device."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Audit Everything" }),
+          " — Every action, decision, and AI interaction is logged with timestamps and attribution for expert testimony defensibility."
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "var(--text-secondary)", marginTop: 16, textAlign: "center" }, children: "© 2026 Foundry SMB. All rights reserved." })
+  ] });
 }
 const documentViewerTab = "_documentViewerTab_1kaym_1";
 const documentSelector = "_documentSelector_1kaym_8";
@@ -22695,42 +23502,6 @@ function getInstrumentsForEvalType(evalType) {
   }
   return ["MMPI-3", "PAI", "TOMM"];
 }
-function getCollateralDocs(evalType) {
-  const et = (evalType ?? "").toLowerCase();
-  if (et.includes("cst") || et.includes("fitness") || et.includes("competency")) {
-    return [
-      "Court Order",
-      "Police Report",
-      "Jail Medical Records",
-      "Prior Mental Health Records",
-      "Informed Consent"
-    ];
-  }
-  if (et.includes("custody")) {
-    return ["Family Court Filing", "Prior Custody Evaluations", "CPS Records", "Informed Consent"];
-  }
-  if (et.includes("risk")) {
-    return ["Prior Offense History", "Victim Impact Statements", "Informed Consent"];
-  }
-  if (et.includes("ptsd")) {
-    return ["Medical Records-Treating Provider", "Employment Records", "Informed Consent"];
-  }
-  if (et.includes("capacity")) {
-    return [
-      "Medical Records-Primary Care",
-      "Neurology Consultation",
-      "Financial Records",
-      "Informed Consent"
-    ];
-  }
-  if (et.includes("malingering")) {
-    return ["Prior Psychological Evaluations", "Insurance Claim File", "Informed Consent"];
-  }
-  if (et.includes("adhd")) {
-    return ["School Records/Transcripts", "Prior Neuropsych Testing", "Informed Consent"];
-  }
-  return ["Referral Documentation", "Informed Consent"];
-}
 function getSessionTitles(evalType) {
   const et = (evalType ?? "").toLowerCase();
   if (et.includes("cst") || et.includes("fitness") || et.includes("competency")) {
@@ -22766,43 +23537,9 @@ function getSessionTitles(evalType) {
   }
   return ["Clinical Interview — History & Presenting Concerns", "Follow-up Interview"];
 }
-function getReportSections(evalType) {
-  const et = (evalType ?? "").toLowerCase();
-  const base = [
-    "Identifying Information & Referral Question",
-    "Informed Consent & Evaluation Procedures",
-    "Background Information",
-    "Behavioral Observations",
-    "Test Results & Validity",
-    "Clinical Interview Findings"
-  ];
-  if (et.includes("cst") || et.includes("fitness") || et.includes("competency")) {
-    return [...base, "Competency Analysis — Dusky Criteria", "Diagnostic Impressions", "Opinions & Recommendations"];
-  }
-  if (et.includes("custody")) {
-    return [...base, "Parenting Capacity Analysis", "Best Interest Assessment", "Recommendations"];
-  }
-  if (et.includes("risk")) {
-    return [...base, "Risk Factor Analysis", "Dynamic Risk Factors", "Risk Level Opinion", "Risk Management Recommendations"];
-  }
-  if (et.includes("ptsd")) {
-    return [...base, "Trauma History & PTSD Criteria", "Diagnostic Impressions", "Treatment Recommendations"];
-  }
-  if (et.includes("malingering")) {
-    return [...base, "Validity & Effort Analysis", "Symptom Validity Conclusions", "Diagnostic Impressions"];
-  }
-  if (et.includes("capacity")) {
-    return [...base, "Cognitive & Functional Assessment", "Capacity Opinion", "Recommendations"];
-  }
-  return [...base, "Diagnostic Impressions", "Summary & Recommendations"];
-}
 const ALL_SUB_TABS = [
   { id: "intake", label: "Intake", doneAtStage: 1 },
-  // done when past onboarding
-  { id: "referral", label: "Referral", doneAtStage: 1 },
-  // done when past onboarding
-  { id: "collateral", label: "Documents", doneAtStage: 2 },
-  // done when past testing
+  // done when past onboarding (Referral is inner tab)
   { id: "testing", label: "Testing", doneAtStage: 2 },
   // done when past testing
   { id: "interviews", label: "Interviews", doneAtStage: 3 },
@@ -22811,6 +23548,8 @@ const ALL_SUB_TABS = [
   // done when past diagnostics
   { id: "report", label: "Reports", doneAtStage: 5 },
   // done when complete
+  { id: "collateral", label: "Documents", doneAtStage: 5 },
+  // after reports — file browser
   { id: "archive", label: "Archive", doneAtStage: 5 }
   // done when complete
 ];
@@ -22903,7 +23642,7 @@ function CenterColumn({
             documentType: activeTab.documentType ?? "collateral",
             documentId: activeTab.documentId
           }
-        ) : activeTab.type === "evidence-map" ? /* @__PURE__ */ jsxRuntimeExports.jsx(EvidenceMapTab, { caseId: activeTab.caseId }) : activeTab.type === "data-confirmation" ? /* @__PURE__ */ jsxRuntimeExports.jsx(DataConfirmationTab, { caseId: activeTab.caseId }) : /* @__PURE__ */ jsxRuntimeExports.jsx(DocumentContent, { tab: activeTab }) }),
+        ) : activeTab.type === "evidence-map" ? /* @__PURE__ */ jsxRuntimeExports.jsx(EvidenceMapTab, { caseId: activeTab.caseId }) : activeTab.type === "data-confirmation" ? /* @__PURE__ */ jsxRuntimeExports.jsx(DataConfirmationTab, { caseId: activeTab.caseId }) : activeTab.type === "resource" ? /* @__PURE__ */ jsxRuntimeExports.jsx(ResourceViewerTab, { filePath: activeTab.filePath, title: activeTab.title }) : /* @__PURE__ */ jsxRuntimeExports.jsx(DocumentContent, { tab: activeTab }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           PipelinePanel,
           {
@@ -23005,21 +23744,33 @@ function ClinicalOverviewContent({
 }) {
   const [caseRow, setCaseRow] = reactExports.useState(null);
   const [intakeRow, setIntakeRow] = reactExports.useState(null);
+  const [onboardingSections, setOnboardingSections] = reactExports.useState([]);
   const [loading, setLoading] = reactExports.useState(true);
   const [activeSubTab, setActiveSubTab] = reactExports.useState("intake");
+  const [diagnosticFormulation, setDiagnosticFormulation] = reactExports.useState(null);
   reactExports.useEffect(() => {
     if (tab.caseId == null) return;
     let cancelled = false;
     setLoading(true);
     void (async () => {
-      const [caseResp, intakeResp] = await Promise.all([
-        window.psygil.cases.get({ case_id: tab.caseId }),
-        window.psygil.intake.get({ case_id: tab.caseId })
-      ]);
-      if (cancelled) return;
-      if (caseResp.status === "success") setCaseRow(caseResp.data);
-      if (intakeResp.status === "success") setIntakeRow(intakeResp.data);
-      setLoading(false);
+      try {
+        const [caseResp, intakeResp] = await Promise.all([
+          window.psygil.cases.get({ case_id: tab.caseId }),
+          window.psygil.intake.get({ case_id: tab.caseId })
+        ]);
+        if (cancelled) return;
+        if (caseResp.status === "success") setCaseRow(caseResp.data);
+        if (intakeResp.status === "success") setIntakeRow(intakeResp.data);
+        try {
+          const obResp = await window.psygil.onboarding.get({ case_id: tab.caseId });
+          if (!cancelled && obResp.status === "success") setOnboardingSections(obResp.data);
+        } catch (obErr) {
+          console.warn("[ClinicalOverview] Onboarding fetch failed (non-fatal):", obErr);
+        }
+      } catch (err) {
+        console.error("[ClinicalOverview] Failed to load case data:", err);
+      }
+      if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -23028,6 +23779,10 @@ function ClinicalOverviewContent({
   const handleEditIntake = reactExports.useCallback(() => {
     if (tab.caseId != null) onEditIntake(tab.caseId);
   }, [tab.caseId, onEditIntake]);
+  const handleBuildReport = reactExports.useCallback((formulation) => {
+    setDiagnosticFormulation(formulation);
+    setActiveSubTab("report");
+  }, []);
   if (loading) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
@@ -23111,7 +23866,7 @@ function ClinicalOverviewContent({
         ]
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
         style: {
@@ -23121,113 +23876,38 @@ function ClinicalOverviewContent({
           background: "var(--panel)",
           flexShrink: 0
         },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", overflowX: "auto", flex: 1, minWidth: 0 }, children: visibleTabs.map(({ id, label, doneAtStage }) => {
-            const isDone = stageIndex >= doneAtStage;
-            return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "button",
-              {
-                onClick: () => setActiveSubTab(id),
-                style: {
-                  padding: "7px 16px",
-                  fontSize: 12,
-                  fontWeight: effectiveSubTab === id ? 600 : 400,
-                  color: effectiveSubTab === id ? "var(--accent)" : isDone ? "#2e7d32" : "var(--text-secondary)",
-                  background: effectiveSubTab === id ? "#fff" : "transparent",
-                  border: "none",
-                  borderBottom: effectiveSubTab === id ? "2px solid var(--accent)" : "2px solid transparent",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0
-                },
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: isDone ? { backgroundColor: "#c8e6c9", borderRadius: 3, padding: "1px 4px" } : void 0, children: label }),
-                  isDone && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#2e7d32", marginLeft: 5, fontSize: 12, fontWeight: 700 }, children: "✓" })
-                ]
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", overflowX: "auto", flex: 1, minWidth: 0 }, children: visibleTabs.map(({ id, label, doneAtStage }) => {
+          return /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setActiveSubTab(id),
+              style: {
+                padding: "7px 16px",
+                fontSize: 12,
+                fontWeight: effectiveSubTab === id ? 600 : 400,
+                color: effectiveSubTab === id ? "var(--accent)" : "var(--text-secondary)",
+                background: effectiveSubTab === id ? "#fff" : "transparent",
+                border: "none",
+                borderBottom: effectiveSubTab === id ? "2px solid var(--accent)" : "2px solid transparent",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                whiteSpace: "nowrap",
+                flexShrink: 0
               },
-              id
-            );
-          }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 6, padding: "0 16px", flexShrink: 0 }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "button",
-              {
-                onClick: () => tab.caseId != null && onUploadDocuments?.(tab.caseId),
-                style: {
-                  padding: "3px 10px",
-                  fontSize: 11,
-                  fontWeight: 500,
-                  border: "1px solid var(--border)",
-                  borderRadius: 4,
-                  background: "var(--panel)",
-                  color: "var(--text)",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  fontFamily: "inherit"
-                },
-                children: "Upload Documents"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "button",
-              {
-                onClick: () => {
-                  if (tab.caseId != null && onOpenTab) {
-                    onOpenTab({
-                      id: `data-confirm:${tab.caseId}`,
-                      title: "Data Confirmation",
-                      type: "data-confirmation",
-                      caseId: tab.caseId
-                    });
-                  }
-                },
-                style: {
-                  padding: "3px 10px",
-                  fontSize: 11,
-                  fontWeight: 500,
-                  border: "1px solid var(--accent)",
-                  borderRadius: 4,
-                  background: "var(--accent)",
-                  color: "#fff",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  fontFamily: "inherit"
-                },
-                children: "Review Data"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "button",
-              {
-                onClick: () => tab.caseId != null && onImportScores?.(tab.caseId),
-                style: {
-                  padding: "3px 10px",
-                  fontSize: 11,
-                  fontWeight: 500,
-                  border: "1px solid var(--border)",
-                  borderRadius: 4,
-                  background: "var(--panel)",
-                  color: "var(--text)",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  fontFamily: "inherit"
-                },
-                children: "Import Scores"
-              }
-            )
-          ] })
-        ]
+              children: label
+            },
+            id
+          );
+        }) })
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, overflowY: "auto", padding: "20px 24px" }, children: [
-      effectiveSubTab === "intake" && /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeSubTab, { caseRow, intakeRow, onEdit: handleEditIntake }),
-      effectiveSubTab === "referral" && /* @__PURE__ */ jsxRuntimeExports.jsx(ReferralSubTab, { caseRow, intakeRow }),
-      effectiveSubTab === "collateral" && /* @__PURE__ */ jsxRuntimeExports.jsx(CollateralSubTab, { caseRow, stageIndex }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, overflowY: "auto", padding: effectiveSubTab === "report" ? 0 : "20px 24px" }, children: [
+      effectiveSubTab === "intake" && /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeSubTab, { caseRow, intakeRow, onboardingSections, onEdit: handleEditIntake }),
+      effectiveSubTab === "collateral" && /* @__PURE__ */ jsxRuntimeExports.jsx(DocumentsSubTab, { caseRow, intakeRow, stageIndex, onEdit: handleEditIntake }),
       effectiveSubTab === "testing" && /* @__PURE__ */ jsxRuntimeExports.jsx(TestingSubTab, { caseRow, stageIndex }),
       effectiveSubTab === "interviews" && /* @__PURE__ */ jsxRuntimeExports.jsx(InterviewsSubTab, { caseRow }),
-      effectiveSubTab === "diagnostics" && /* @__PURE__ */ jsxRuntimeExports.jsx(DiagnosticsSubTab, { stageIndex }),
-      effectiveSubTab === "report" && /* @__PURE__ */ jsxRuntimeExports.jsx(ReportSubTab, { caseRow, stageIndex }),
+      effectiveSubTab === "diagnostics" && /* @__PURE__ */ jsxRuntimeExports.jsx(DiagnosticsSubTab, { caseRow, intakeRow, onboardingSections, stageIndex, onBuildReport: handleBuildReport }),
+      effectiveSubTab === "report" && /* @__PURE__ */ jsxRuntimeExports.jsx(ReportSubTab, { caseRow, intakeRow, onboardingSections, stageIndex, diagnosticFormulation }),
       effectiveSubTab === "archive" && /* @__PURE__ */ jsxRuntimeExports.jsx(ArchiveSubTab, { caseRow })
     ] })
   ] });
@@ -23245,656 +23925,4281 @@ function MetaChip({
     value
   ] });
 }
-function IntakeSubTab({
-  caseRow,
-  intakeRow,
-  onEdit
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Intake Summary", onEdit }),
-    intakeRow == null ? /* @__PURE__ */ jsxRuntimeExports.jsx(EmptyState, { message: "No intake data yet. Click Edit to add intake information." }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          overflow: "hidden"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
-            {
-              label: "Examinee",
-              value: `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`
-            }
-          ),
-          caseRow.examinee_dob != null && /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Date of Birth", value: caseRow.examinee_dob }),
-          caseRow.examinee_gender != null && /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Gender", value: caseRow.examinee_gender }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
-            {
-              label: "Eval Type",
-              value: intakeRow.eval_type ?? caseRow.evaluation_type ?? "—"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Referral Type", value: intakeRow.referral_type }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Referral Source", value: intakeRow.referral_source ?? "—" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Jurisdiction", value: intakeRow.jurisdiction ?? "—" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Charges", value: intakeRow.charges ?? "—" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Attorney", value: intakeRow.attorney_name ?? "—" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
-            {
-              label: "Report Deadline",
-              value: intakeRow.report_deadline != null ? new Date(intakeRow.report_deadline).toLocaleDateString() : "—"
-            }
-          ),
-          intakeRow.presenting_complaint != null && intakeRow.presenting_complaint !== "" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
-            {
-              style: {
-                padding: "10px 16px",
-                borderTop: "1px solid var(--border)"
-              },
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "div",
-                  {
-                    style: {
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: "var(--text-secondary)",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                      marginBottom: 4
-                    },
-                    children: "Evaluation Purpose / Presenting Concern"
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", lineHeight: 1.6 }, children: intakeRow.presenting_complaint })
-              ]
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              style: {
-                padding: "6px 16px",
-                borderTop: "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "flex-end"
-              },
-              children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "span",
-                {
-                  style: {
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: intakeRow.status === "complete" ? "#4caf50" : "#ff9800"
-                  },
-                  children: intakeRow.status === "complete" ? "✓ Complete" : "⏳ Draft"
-                }
-              )
-            }
-          )
-        ]
-      }
-    )
-  ] });
-}
-function ReferralSubTab({
-  caseRow,
-  intakeRow
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Referral Information" }),
+const INTAKE_INNER_TABS = [
+  { id: "overview", label: "Background" },
+  { id: "referral", label: "Referral" },
+  { id: "medical", label: "Medical History" },
+  { id: "clinical", label: "Clinical History" }
+];
+function DataRow({ label, value, fullText }) {
+  const v = value?.trim();
+  const full = fullText?.trim();
+  const hasTip = !!(full && v && full !== v && full.length > (v?.length ?? 0));
+  const [hover, setHover] = reactExports.useState(false);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: dataLabelTd, children: label }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
+      "td",
       {
-        style: {
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          overflow: "hidden"
-        },
+        style: { ...v ? dataValueTd : dataValueEmptyTd, position: "relative", ...hasTip ? { cursor: "help", borderBottom: "1px dotted rgba(255,255,255,0.25)" } : {} },
+        onMouseEnter: hasTip ? () => setHover(true) : void 0,
+        onMouseLeave: hasTip ? () => setHover(false) : void 0,
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
-            {
-              label: "Referral Source Type",
-              value: intakeRow?.referral_type ?? "—"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
-            {
-              label: "Referring Party",
-              value: intakeRow?.referral_source ?? caseRow.referral_source ?? "—"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Jurisdiction", value: intakeRow?.jurisdiction ?? "—" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Charges", value: intakeRow?.charges ?? "—" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Attorney / Counsel", value: intakeRow?.attorney_name ?? "—" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
-            {
-              label: "Report Deadline",
-              value: intakeRow?.report_deadline != null ? new Date(intakeRow.report_deadline).toLocaleDateString() : "—"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
-            {
-              label: "Date Authorized",
-              value: new Date(caseRow.created_at).toLocaleDateString()
-            }
-          ),
-          caseRow.evaluation_questions != null && caseRow.evaluation_questions !== "" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "10px 16px", borderTop: "1px solid var(--border)" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                style: {
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                  marginBottom: 4
-                },
-                children: "Evaluation Questions / Referral Questions"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", lineHeight: 1.6 }, children: caseRow.evaluation_questions })
+          v || " ",
+          hasTip && hover && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+            position: "absolute",
+            left: 0,
+            bottom: "100%",
+            zIndex: 9999,
+            maxWidth: 420,
+            padding: "8px 10px",
+            marginBottom: 4,
+            background: "#dce8f5",
+            border: "1px solid #a8c4e0",
+            borderRadius: 4,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+            fontSize: 12,
+            lineHeight: "1.45",
+            color: "#1a2332",
+            whiteSpace: "pre-wrap",
+            pointerEvents: "none"
+          }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, fontSize: 10, textTransform: "uppercase", color: "#4a6a8a", marginBottom: 3, letterSpacing: "0.04em" }, children: "Full Intake Text" }),
+            full
           ] })
         ]
       }
     )
   ] });
 }
-function CollateralSubTab({
+function SectionHead({ title }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 2, style: sectionHeadTd, children: title }) });
+}
+function NarrativeBlock({ label, value }) {
+  const v = value?.trim();
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 8 }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: narrativeLabelStyle, children: label }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: v ? narrativeValueStyle : narrativeValueEmptyStyle, children: v || " " })
+  ] });
+}
+function summaryNote(text) {
+  if (!text?.trim()) return void 0;
+  const t = text.trim();
+  const cleaned = t.replace(/^(the )?(examinee|patient|client|individual) (reports?|reported|endorses?|endorsed|denies|denied|describes?|described|states?|stated|indicates?|indicated) (that |a history of |having |experiencing )?/i, "").replace(/^(history of |hx of |h\/o )/i, "").trim();
+  const sentences = cleaned.split(/[.;]\s/);
+  const joined = sentences.slice(0, 2).join(". ").replace(/\.\s*$/, "");
+  if (joined.length <= 120) return joined + (sentences.length > 2 ? "…" : "");
+  const cut = joined.slice(0, 120).replace(/\s\S*$/, "");
+  return cut + "…";
+}
+function shortNote(text) {
+  if (!text?.trim()) return void 0;
+  const t = text.trim();
+  const cleaned = t.replace(/^(the )?(examinee|patient|client|individual) (reports?|reported|endorses?|endorsed|denies|denied|describes?|described|states?|stated|indicates?|indicated) (that |a history of |having |experiencing )?/i, "").replace(/^(history of |hx of |h\/o )/i, "").trim();
+  const chunk = cleaned.split(/[.;]\s/)[0];
+  if (chunk.length <= 50) return chunk;
+  const cut = chunk.slice(0, 50).replace(/\s\S*$/, "");
+  return cut + "…";
+}
+function IntakeSubTab({
   caseRow,
-  stageIndex
+  intakeRow,
+  onboardingSections,
+  onEdit
 }) {
-  const docs = getCollateralDocs(caseRow.evaluation_type);
-  const alwaysReceived = /* @__PURE__ */ new Set(["Court Order", "Informed Consent"]);
+  const [activeInner, setActiveInner] = reactExports.useState("overview");
+  const parsedSections = reactExports.useMemo(() => {
+    const map = {};
+    for (const row of onboardingSections) {
+      try {
+        map[row.section] = JSON.parse(row.content);
+      } catch {
+      }
+    }
+    return map;
+  }, [onboardingSections]);
+  const demo = parsedSections.contact;
+  const fam = parsedSections.family;
+  const edu = parsedSections.education ?? parsedSections.family;
+  const complaints = parsedSections.complaints;
+  const health = parsedSections.health;
+  const mental = parsedSections.mental;
+  const substance = parsedSections.substance;
+  const recent = parsedSections.recent;
+  const innerTabBarStyle = {
+    display: "flex",
+    gap: 0,
+    borderBottom: "1px solid var(--border)",
+    marginBottom: 0,
+    overflowX: "auto"
+  };
+  const innerTabStyle = (active2) => ({
+    padding: "6px 14px",
+    fontSize: 11,
+    fontWeight: active2 ? 600 : 400,
+    color: active2 ? "var(--accent)" : "var(--text-secondary)",
+    background: "transparent",
+    border: "none",
+    borderBottom: active2 ? "2px solid var(--accent)" : "2px solid transparent",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    whiteSpace: "nowrap",
+    flexShrink: 0
+  });
+  const [clinNotes, setClinNotes] = reactExports.useState({});
+  const notesLoaded = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    if (notesLoaded.current) return;
+    const loaded = {};
+    for (const row of onboardingSections) {
+      if (row.clinician_notes) loaded[row.section] = row.clinician_notes;
+    }
+    setClinNotes(loaded);
+    notesLoaded.current = true;
+  }, [onboardingSections]);
+  const updateNote = reactExports.useCallback((key2, value) => {
+    setClinNotes((prev) => ({ ...prev, [key2]: value }));
+  }, []);
+  const saveNote = reactExports.useCallback(async (noteKey) => {
+    const sectionMap = {
+      demographics: "contact",
+      identity: "contact",
+      education: "family",
+      family: "family",
+      recent: "recent",
+      complaints: "complaints",
+      medical: "health",
+      medications: "health",
+      mental: "mental",
+      risk: "mental",
+      substance: "substance"
+    };
+    const section = sectionMap[noteKey] ?? noteKey;
+    const existingRow = onboardingSections.find((r) => r.section === section);
+    try {
+      await window.psygil.onboarding.save({
+        case_id: caseRow.case_id,
+        section,
+        data: {
+          content: existingRow?.content ?? "{}",
+          clinician_notes: clinNotes[noteKey] ?? "",
+          status: existingRow?.status ?? "draft"
+        }
+      });
+    } catch (err) {
+      console.error("[IntakeSubTab] Failed to save clinical note:", err);
+    }
+  }, [caseRow.case_id, onboardingSections, clinNotes]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Collateral Documents" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        style: {
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          overflow: "hidden"
-        },
-        children: docs.map((doc, idx) => {
-          const isReceived = alwaysReceived.has(doc) || stageIndex >= 2;
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)" }, children: "Patient Information" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
+        intakeRow && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, fontWeight: 600, color: intakeRow.status === "complete" ? "#4caf50" : "#ff9800" }, children: intakeRow.status === "complete" ? "✓ Complete" : "⏳ Draft" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onEdit, style: editBtnStyle, children: "Edit" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: innerTabBarStyle, children: INTAKE_INNER_TABS.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setActiveInner(t.id), style: innerTabStyle(activeInner === t.id), children: t.label }, t.id)) }),
+    activeInner === "overview" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingTop: 12, display: "flex", flexDirection: "column", gap: 0 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: threeColGrid, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Identity" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Name", value: `${caseRow.examinee_last_name ?? "—"}, ${caseRow.examinee_first_name ?? ""}` }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "DOB / Age", value: caseRow.examinee_dob ? `${caseRow.examinee_dob} (${calcAge$1(caseRow.examinee_dob)})` : void 0 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Gender", value: caseRow.examinee_gender ?? void 0 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Language", value: demo?.primary_language })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Living Situation" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Marital", value: demo?.marital_status }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Dependents", value: demo?.dependents }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Housing", value: demo?.living_situation })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Education & Employment" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Education", value: edu?.highest_education ?? fam?.highest_education }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Employment", value: edu?.employment_status ?? fam?.employment_status }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Employer", value: edu?.current_employer ?? fam?.current_employer }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Military", value: edu?.military_service ?? fam?.military_service })
+          ] }) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Family Background" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Family Psych Hx", value: summaryNote(fam?.family_mental_health), fullText: fam?.family_mental_health }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Family Medical Hx", value: summaryNote(fam?.family_medical_history), fullText: fam?.family_medical_history })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Current Stressors" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Eval Goals", value: summaryNote(recent?.goals_evaluation), fullText: recent?.goals_evaluation })
+          ] }) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinNotesColumnStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: "Clinical Notes" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            ClinicalNoteField,
             {
-              style: {
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 16px",
-                borderBottom: idx < docs.length - 1 ? "1px solid var(--border)" : "none",
-                gap: 12
-              },
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", fontWeight: 500 }, children: doc }),
-                  isReceived && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }, children: [
-                    "Pages: ",
-                    Math.floor(Math.random() * 40) + 5
-                  ] })
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "span",
-                  {
-                    style: {
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: isReceived ? "#4caf50" : "#ff9800",
-                      whiteSpace: "nowrap"
-                    },
-                    children: isReceived ? "✓ Received" : "⏳ Requested"
-                  }
-                )
-              ]
-            },
-            doc
-          );
-        })
+              label: "Identity & Presentation",
+              value: clinNotes.demographics ?? "",
+              onChange: (v) => updateNote("demographics", v),
+              onBlur: () => void saveNote("demographics"),
+              placeholder: "Presentation discrepancies, living stability, language/interpreter needs, cultural considerations…"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            ClinicalNoteField,
+            {
+              label: "Education & Employment",
+              value: clinNotes.education ?? "",
+              onChange: (v) => updateNote("education", v),
+              onBlur: () => void saveNote("education"),
+              placeholder: "Cognitive indicators, employment stability, vocational capacity, academic difficulties…"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            ClinicalNoteField,
+            {
+              label: "Family & Stressors",
+              value: clinNotes.family ?? "",
+              onChange: (v) => updateNote("family", v),
+              onBlur: () => void saveNote("family"),
+              placeholder: "Support system, intergenerational patterns, precipitating factors, protective factors…"
+            }
+          )
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0, marginTop: 4 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Family & Relationships" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Family of Origin", value: summaryNote(fam?.family_of_origin), fullText: fam?.family_of_origin }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Relationships", value: summaryNote(fam?.current_family_relationships), fullText: fam?.current_family_relationships })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Current Circumstances" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Events", value: summaryNote(recent?.events_circumstances), fullText: recent?.events_circumstances }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Stressors", value: summaryNote(recent?.current_stressors), fullText: recent?.current_stressors })
+        ] }) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Work & Academic History" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Work History", value: summaryNote(edu?.work_history ?? fam?.work_history), fullText: edu?.work_history ?? fam?.work_history }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Academic Hx", value: summaryNote(edu?.academic_experience ?? fam?.academic_experience), fullText: edu?.academic_experience ?? fam?.academic_experience })
+      ] }) }) })
+    ] }),
+    activeInner === "referral" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { paddingTop: 12 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(ReferralSubTab, { caseRow, intakeRow, onboardingSections, onEdit }) }),
+    activeInner === "medical" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { paddingTop: 12, display: "flex", flexDirection: "column", gap: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: threeColGrid, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Neurological & TBI" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Head Injuries", value: shortNote(health?.head_injuries), fullText: health?.head_injuries }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Seizures", value: shortNote(health?.seizure_history), fullText: health?.seizure_history }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "LOC History", value: shortNote(health?.loss_of_consciousness), fullText: health?.loss_of_consciousness })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Active Medical Conditions" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Conditions", value: shortNote(health?.medical_conditions), fullText: health?.medical_conditions }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Surgeries / Hosp", value: shortNote(health?.surgeries_hospitalizations), fullText: health?.surgeries_hospitalizations })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Substance Use" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Alcohol", value: shortNote(substance?.alcohol_use), fullText: substance?.alcohol_use }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Drugs", value: shortNote(substance?.drug_use), fullText: substance?.drug_use }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "SA Treatment", value: shortNote(substance?.substance_treatment), fullText: substance?.substance_treatment })
+        ] }) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Current Medications" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Psych Meds", value: shortNote(mental?.psych_medications), fullText: mental?.psych_medications }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Other Meds", value: shortNote(health?.current_medications), fullText: health?.current_medications })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Functional Status" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Sleep", value: shortNote(health?.sleep_quality), fullText: health?.sleep_quality }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Appetite / Wt", value: shortNote(health?.appetite_weight), fullText: health?.appetite_weight }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Pain", value: shortNote(health?.chronic_pain), fullText: health?.chronic_pain }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Mobility", value: shortNote(health?.mobility_limitations), fullText: health?.mobility_limitations })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Relevant History" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Allergies", value: shortNote(health?.allergies), fullText: health?.allergies }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Family Medical", value: shortNote(fam?.family_medical_history), fullText: fam?.family_medical_history })
+        ] }) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinNotesColumnStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: "Clinical Notes" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Neurological / TBI",
+            value: clinNotes.neuro ?? "",
+            onChange: (v) => updateNote("neuro", v),
+            onBlur: () => void saveNote("neuro"),
+            placeholder: "TBI severity, cognitive sequelae, imaging results, relevance to current presentation…"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Medications & Compliance",
+            value: clinNotes.medical ?? "",
+            onChange: (v) => updateNote("medical", v),
+            onBlur: () => void saveNote("medical"),
+            placeholder: "Medication effects on testing, compliance, polypharmacy concerns, side effects affecting presentation…"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Substance Use",
+            value: clinNotes.substance ?? "",
+            onChange: (v) => updateNote("substance", v),
+            onBlur: () => void saveNote("substance"),
+            placeholder: "Impact on cognitive testing, current use patterns, sobriety duration, treatment engagement…"
+          }
+        )
+      ] })
+    ] }) }),
+    activeInner === "clinical" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { paddingTop: 12, display: "flex", flexDirection: "column", gap: 0 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: threeColGrid, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Risk & Safety" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Self-Harm / SI", value: shortNote(mental?.self_harm_history), fullText: mental?.self_harm_history }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Violence / HI", value: shortNote(mental?.violence_history), fullText: mental?.violence_history }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Current Risk", value: shortNote(mental?.current_risk_level), fullText: mental?.current_risk_level }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Safety Plan", value: shortNote(mental?.safety_plan), fullText: mental?.safety_plan })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Presenting Concerns" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Primary", value: shortNote(complaints?.primary_complaint ?? intakeRow?.presenting_complaint), fullText: complaints?.primary_complaint ?? intakeRow?.presenting_complaint }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Secondary", value: shortNote(complaints?.secondary_concerns), fullText: complaints?.secondary_concerns }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Onset", value: shortNote(complaints?.onset_timeline), fullText: complaints?.onset_timeline }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Stressors", value: shortNote(complaints?.stressors ?? recent?.current_stressors), fullText: complaints?.stressors ?? recent?.current_stressors })
+        ] }) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Psychiatric History" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Prior Dx", value: shortNote(mental?.previous_diagnoses), fullText: mental?.previous_diagnoses }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Prior Treatment", value: shortNote(mental?.previous_treatment), fullText: mental?.previous_treatment }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Hospitalizations", value: shortNote(mental?.psych_hospitalizations), fullText: mental?.psych_hospitalizations }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Psych Meds", value: shortNote(mental?.psych_medications), fullText: mental?.psych_medications })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Functional & Behavioral" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Current Functioning", value: shortNote(mental?.current_functioning), fullText: mental?.current_functioning }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Coping", value: shortNote(mental?.coping_mechanisms), fullText: mental?.coping_mechanisms }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Social Support", value: shortNote(mental?.social_support), fullText: mental?.social_support }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Family Psych Hx", value: shortNote(fam?.family_mental_health), fullText: fam?.family_mental_health })
+        ] }) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinNotesColumnStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: "Clinical Notes" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Risk Assessment",
+            value: clinNotes.risk ?? "",
+            onChange: (v) => updateNote("risk", v),
+            onBlur: () => void saveNote("risk"),
+            placeholder: "Risk level rationale, protective factors, safety plan adequacy, imminent concerns…"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Presenting Concerns",
+            value: clinNotes.complaints ?? "",
+            onChange: (v) => updateNote("complaints", v),
+            onBlur: () => void saveNote("complaints"),
+            placeholder: "Consistency of concern presentation, symptom validity observations, malingering indicators…"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Psychiatric History",
+            value: clinNotes.mental ?? "",
+            onChange: (v) => updateNote("mental", v),
+            onBlur: () => void saveNote("mental"),
+            placeholder: "Treatment compliance, diagnostic consistency, hospitalization triggers, medication response…"
+          }
+        )
+      ] })
+    ] }) })
+  ] });
+}
+function ClinicalNoteField({
+  label,
+  value,
+  onChange,
+  onBlur,
+  placeholder: placeholder2
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 10 }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNoteLabelStyle, children: label }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        style: clinNoteTextareaStyle,
+        value,
+        onChange: (e) => onChange(e.target.value),
+        onBlur,
+        placeholder: placeholder2,
+        rows: 3
       }
     )
   ] });
 }
+const dataTableStyle = {
+  width: "100%",
+  borderCollapse: "collapse",
+  fontSize: 12,
+  marginBottom: 12
+};
+const dataLabelTd = {
+  padding: "3px 8px 3px 0",
+  fontWeight: 600,
+  fontSize: 11,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: 0.3,
+  whiteSpace: "nowrap",
+  verticalAlign: "top",
+  width: "35%",
+  borderBottom: "1px solid var(--border)"
+};
+const dataValueTd = {
+  padding: "3px 0",
+  fontSize: 12.5,
+  color: "var(--text)",
+  verticalAlign: "top",
+  borderBottom: "1px solid var(--border)"
+};
+const dataValueEmptyTd = {
+  ...dataValueTd,
+  color: "var(--text-secondary)",
+  fontStyle: "italic",
+  opacity: 0.5
+};
+const sectionHeadTd = {
+  padding: "10px 0 4px",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--text)",
+  textTransform: "uppercase",
+  letterSpacing: 0.8,
+  borderBottom: "1px solid var(--text-secondary)"
+};
+const narrativeLabelStyle = {
+  fontSize: 10,
+  fontWeight: 600,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: 0.4,
+  marginBottom: 2
+};
+const narrativeValueStyle = {
+  fontSize: 12.5,
+  color: "var(--text)",
+  lineHeight: 1.55,
+  padding: "4px 8px",
+  background: "var(--bg)",
+  borderRadius: 3,
+  borderLeft: "2px solid var(--border)",
+  whiteSpace: "pre-wrap",
+  minHeight: 24
+};
+const narrativeValueEmptyStyle = {
+  ...narrativeValueStyle,
+  minHeight: 24,
+  opacity: 0.4
+};
+const narrativeSectionHeader = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--text)",
+  textTransform: "uppercase",
+  letterSpacing: 0.8,
+  padding: "10px 0 6px",
+  marginTop: 4,
+  borderBottom: "1px solid var(--text-secondary)",
+  marginBottom: 8
+};
+const threeColGrid = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr 280px",
+  gap: 20
+};
+const clinNotesColumnHeader = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--text)",
+  textTransform: "uppercase",
+  letterSpacing: 0.8,
+  padding: "10px 0 8px",
+  borderBottom: "1px solid var(--text-secondary)",
+  marginBottom: 10
+};
+const clinNoteLabelStyle = {
+  fontSize: 10,
+  fontWeight: 600,
+  color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: 0.4,
+  marginBottom: 3
+};
+const clinNoteTextareaStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "6px 8px",
+  fontSize: 12,
+  color: "var(--text)",
+  fontFamily: "inherit",
+  resize: "vertical",
+  lineHeight: 1.5,
+  minHeight: 60
+};
+const clinNotesColumnStyle = {
+  background: "var(--sidebar-bg, #f5f5f5)",
+  borderRadius: 6,
+  padding: "0 12px 12px"
+};
+function ReferralSubTab({
+  caseRow,
+  intakeRow,
+  onboardingSections,
+  onEdit
+}) {
+  const legalData = reactExports.useMemo(() => {
+    const row = onboardingSections.find((r) => r.section === "legal");
+    if (!row) return void 0;
+    try {
+      return JSON.parse(row.content);
+    } catch {
+      return void 0;
+    }
+  }, [onboardingSections]);
+  const [refNotes, setRefNotes] = reactExports.useState({});
+  const refNotesLoaded = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    if (refNotesLoaded.current) return;
+    const row = onboardingSections.find((r) => r.section === "referral_notes");
+    if (row) {
+      try {
+        setRefNotes(JSON.parse(row.content));
+      } catch {
+      }
+    }
+    refNotesLoaded.current = true;
+  }, [onboardingSections]);
+  const saveRefNotes = reactExports.useCallback(async () => {
+    try {
+      await window.psygil.onboarding.save({
+        case_id: caseRow.case_id,
+        section: "referral_notes",
+        data: { content: JSON.stringify(refNotes), status: "draft" }
+      });
+    } catch (err) {
+      console.error("[ReferralSubTab] Failed to save notes:", err);
+    }
+  }, [caseRow.case_id, refNotes]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)" }, children: "Referral Information" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onEdit, style: editBtnStyle, children: "Edit" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: threeColGrid, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Referring Party" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Source Type", value: intakeRow?.referral_type ?? void 0 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Referring Party", value: intakeRow?.referral_source ?? caseRow.referral_source ?? void 0 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Date Authorized", value: caseRow.created_at ? new Date(caseRow.created_at).toLocaleDateString() : void 0 })
+      ] }) }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Court & Attorney" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Jurisdiction / Court", value: intakeRow?.jurisdiction ?? void 0 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Attorney / Counsel", value: intakeRow?.attorney_name ?? void 0 }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Report Deadline", value: intakeRow?.report_deadline ? new Date(intakeRow.report_deadline).toLocaleDateString() : void 0 })
+      ] }) }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinNotesColumnStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: "Clinical Notes" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Referral Context",
+            value: refNotes.referral ?? "",
+            onChange: (v) => setRefNotes((p) => ({ ...p, referral: v })),
+            onBlur: () => void saveRefNotes(),
+            placeholder: "Referral source relationship, potential bias, referral question clarity…"
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: threeColGrid, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Evaluation Details" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Evaluation Type", value: intakeRow?.eval_type ?? caseRow.evaluation_type ?? void 0 })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NarrativeBlock, { label: "Reason for Referral / Evaluation Questions", value: intakeRow?.presenting_complaint ?? caseRow.evaluation_questions ?? void 0 })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Legal History" }) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NarrativeBlock, { label: "Prior Arrests & Convictions", value: legalData?.arrests_convictions }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NarrativeBlock, { label: "Incarceration History", value: legalData?.incarceration_history }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NarrativeBlock, { label: "Probation / Parole", value: legalData?.probation_parole }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NarrativeBlock, { label: "Protective / Restraining Orders", value: legalData?.protective_orders })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinNotesColumnStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: " " }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Evaluation Scope",
+            value: refNotes.eval ?? "",
+            onChange: (v) => setRefNotes((p) => ({ ...p, eval: v })),
+            onBlur: () => void saveRefNotes(),
+            placeholder: "Referral question adequacy, scope limitations, charge severity considerations…"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Legal History",
+            value: refNotes.legal ?? "",
+            onChange: (v) => setRefNotes((p) => ({ ...p, legal: v })),
+            onBlur: () => void saveRefNotes(),
+            placeholder: "Pattern observations, escalation/de-escalation, relevance to referral question…"
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(NarrativeBlock, { label: "Charges", value: intakeRow?.charges ?? void 0 })
+  ] });
+}
+const DOC_DIRECTORIES = [
+  { key: "Intake", subfolder: "_Inbox", color: "#2196f3" },
+  { key: "Referral", subfolder: "Collateral", color: "#00897b" },
+  { key: "Testing", subfolder: "Testing", color: "#9c27b0" },
+  { key: "Interview", subfolder: "Interviews", color: "#e91e63" },
+  { key: "Diagnostics", subfolder: "Diagnostics", color: "#ff9800" },
+  { key: "Reports", subfolder: "Reports", color: "#4caf50" }
+];
+function DocumentsSubTab({
+  caseRow,
+  intakeRow,
+  stageIndex,
+  onEdit
+}) {
+  const [docsByDir, setDocsByDir] = reactExports.useState({});
+  const [docNotes, setDocNotes] = reactExports.useState({});
+  const [loading, setLoading] = reactExports.useState(true);
+  const docNotesLoaded = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    if (docNotesLoaded.current) return;
+    docNotesLoaded.current = true;
+    (async () => {
+      try {
+        const resp = await window.psygil.onboarding.get({ case_id: caseRow.case_id });
+        if (resp.status === "success" && resp.data) {
+          const row = resp.data.find((r) => r.section === "documents_notes");
+          if (row) {
+            try {
+              setDocNotes(JSON.parse(row.content));
+            } catch {
+            }
+          }
+        }
+      } catch {
+      }
+    })();
+  }, [caseRow.case_id]);
+  const saveDocNotes = reactExports.useCallback(async () => {
+    try {
+      await window.psygil.onboarding.save({
+        case_id: caseRow.case_id,
+        section: "documents_notes",
+        data: { content: JSON.stringify(docNotes), status: "draft" }
+      });
+    } catch (err) {
+      console.error("[DocumentsSubTab] Failed to save notes:", err);
+    }
+  }, [caseRow.case_id, docNotes]);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await window.psygil.documents.list({ case_id: caseRow.case_id });
+        if (cancelled) return;
+        if (resp.status === "success" && resp.data) {
+          const grouped = {};
+          for (const dir of DOC_DIRECTORIES) grouped[dir.key] = [];
+          for (const doc of resp.data) {
+            const path = doc.file_path.replace(/\\/g, "/");
+            let matched = false;
+            for (const dir of DOC_DIRECTORIES) {
+              if (path.includes(`/${dir.subfolder}/`) || path.includes(`\\${dir.subfolder}\\`)) {
+                grouped[dir.key].push({
+                  document_id: doc.document_id,
+                  filename: doc.original_filename,
+                  description: doc.description ?? doc.document_type ?? null,
+                  mime_type: doc.mime_type,
+                  file_path: doc.file_path,
+                  upload_date: doc.upload_date
+                });
+                matched = true;
+                break;
+              }
+            }
+            if (!matched) {
+              grouped["Intake"].push({
+                document_id: doc.document_id,
+                filename: doc.original_filename,
+                description: doc.description ?? doc.document_type ?? null,
+                mime_type: doc.mime_type,
+                file_path: doc.file_path,
+                upload_date: doc.upload_date
+              });
+            }
+          }
+          setDocsByDir(grouped);
+        }
+      } catch (err) {
+        console.error("[DocumentsSubTab] list error:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [caseRow.case_id]);
+  const totalFiles = Object.values(docsByDir).reduce((sum, arr) => sum + arr.length, 0);
+  const handleUpload = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil.documents.pickFiles();
+      if (resp.status === "success" && resp.data?.filePaths?.length > 0) {
+        for (const fp of resp.data.filePaths) {
+          await window.psygil.documents.ingest({ case_id: caseRow.case_id, file_path: fp, subfolder: "_Inbox" });
+        }
+        const listResp = await window.psygil.documents.list({ case_id: caseRow.case_id });
+        if (listResp.status === "success" && listResp.data) {
+          const grouped = {};
+          for (const dir of DOC_DIRECTORIES) grouped[dir.key] = [];
+          for (const doc of listResp.data) {
+            const path = doc.file_path.replace(/\\/g, "/");
+            let matched = false;
+            for (const dir of DOC_DIRECTORIES) {
+              if (path.includes(`/${dir.subfolder}/`)) {
+                grouped[dir.key].push({ document_id: doc.document_id, filename: doc.original_filename, description: doc.description ?? doc.document_type ?? null, mime_type: doc.mime_type, file_path: doc.file_path, upload_date: doc.upload_date });
+                matched = true;
+                break;
+              }
+            }
+            if (!matched) grouped["Intake"].push({ document_id: doc.document_id, filename: doc.original_filename, description: doc.description ?? doc.document_type ?? null, mime_type: doc.mime_type, file_path: doc.file_path, upload_date: doc.upload_date });
+          }
+          setDocsByDir(grouped);
+        }
+      }
+    } catch (err) {
+      console.error("[DocumentsSubTab] upload error:", err);
+    }
+  }, [caseRow.case_id]);
+  const handleOpenFile = reactExports.useCallback((filePath) => {
+    window.psygil.workspace.openNative(filePath).catch((err) => {
+      console.error("[DocumentsSubTab] open error:", err);
+    });
+  }, []);
+  const formatDate = (dateStr) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      return dateStr?.split("T")[0] ?? "—";
+    }
+  };
+  const fileIcon2 = (mime) => {
+    if (!mime) return "📄";
+    if (mime.includes("pdf")) return "📕";
+    if (mime.includes("image")) return "🖼";
+    if (mime.includes("word") || mime.includes("docx")) return "📘";
+    if (mime.includes("sheet") || mime.includes("xlsx") || mime.includes("csv")) return "📊";
+    if (mime.includes("audio")) return "🎙";
+    if (mime.includes("video")) return "🎬";
+    return "📄";
+  };
+  const fileLinkStyle = {
+    cursor: "pointer",
+    color: "var(--accent)",
+    textDecoration: "none",
+    fontSize: 12,
+    fontWeight: 500
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)" }, children: [
+        "Case Documents ",
+        !loading && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontWeight: 400, fontSize: 12, color: "var(--text-secondary)" }, children: [
+          "(",
+          totalFiles,
+          " file",
+          totalFiles !== 1 ? "s" : "",
+          ")"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleUpload, style: editBtnStyle, children: "＋ Upload Files" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 280px", gap: 20 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: DOC_DIRECTORIES.map(({ key: key2, color }) => {
+        const files = docsByDir[key2] ?? [];
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 16 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "6px 10px",
+            background: "var(--sidebar-bg, #f5f5f5)",
+            borderLeft: `3px solid ${color}`,
+            borderRadius: "0 4px 4px 0",
+            marginBottom: 2
+          }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, fontWeight: 700, color: "var(--text)" }, children: key2 }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, color: "var(--text-secondary)" }, children: files.length > 0 ? `${files.length} file${files.length !== 1 ? "s" : ""}` : "No files" })
+          ] }),
+          files.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: { ...dataTableStyle, marginLeft: 12 }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: files.map((doc) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "tr",
+            {
+              style: { cursor: "pointer" },
+              onClick: () => handleOpenFile(doc.file_path),
+              onMouseEnter: (e) => {
+                e.currentTarget.style.background = "var(--sidebar-bg, #f0f0f0)";
+              },
+              onMouseLeave: (e) => {
+                e.currentTarget.style.background = "transparent";
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...dataLabelTd, width: "40%" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: fileLinkStyle, children: [
+                  fileIcon2(doc.mime_type),
+                  " ",
+                  doc.filename
+                ] }) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...dataValueTd, width: "40%", fontSize: 11, color: "var(--text-secondary)" }, children: doc.description ?? doc.mime_type ?? "—" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...dataValueTd, width: "20%", fontSize: 11, color: "var(--text-secondary)", textAlign: "right" }, children: formatDate(doc.upload_date) })
+              ]
+            },
+            doc.document_id
+          )) }) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { marginLeft: 12, padding: "4px 10px", fontSize: 11, color: "var(--text-secondary)", fontStyle: "italic" }, children: "No files uploaded" })
+        ] }, key2);
+      }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinNotesColumnStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: "Clinical Notes" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Document Review",
+            value: docNotes.review ?? "",
+            onChange: (v) => setDocNotes((p) => ({ ...p, review: v })),
+            onBlur: () => void saveDocNotes(),
+            placeholder: "Missing critical documents, inconsistencies across records, collateral source reliability…"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Record Gaps",
+            value: docNotes.gaps ?? "",
+            onChange: (v) => setDocNotes((p) => ({ ...p, gaps: v })),
+            onBlur: () => void saveDocNotes(),
+            placeholder: "Key records not yet obtained, impact on evaluation, follow-up needed…"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "File Notes",
+            value: docNotes.files ?? "",
+            onChange: (v) => setDocNotes((p) => ({ ...p, files: v })),
+            onBlur: () => void saveDocNotes(),
+            placeholder: "Notable discrepancies between records, files requiring follow-up…"
+          }
+        )
+      ] })
+    ] })
+  ] });
+}
+function calcAge$1(dob) {
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return "—";
+  const now2 = /* @__PURE__ */ new Date();
+  let age = now2.getFullYear() - birth.getFullYear();
+  const m = now2.getMonth() - birth.getMonth();
+  if (m < 0 || m === 0 && now2.getDate() < birth.getDate()) age--;
+  return String(age);
+}
+const editBtnStyle = {
+  padding: "4px 14px",
+  fontSize: 11,
+  fontWeight: 500,
+  border: "1px solid var(--accent)",
+  borderRadius: 4,
+  background: "var(--accent)",
+  color: "#fff",
+  cursor: "pointer",
+  fontFamily: "inherit"
+};
 function TestingSubTab({
   caseRow,
   stageIndex
 }) {
-  const instruments = getInstrumentsForEvalType(caseRow.evaluation_type);
-  const hasValidityInstruments = instruments.some((key2) => INSTRUMENT_INFO[key2]?.isValidity);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Test Battery" }),
-    hasValidityInstruments && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          background: "#fff3e0",
-          border: "1px solid #ff9800",
-          borderRadius: 6,
-          padding: "10px 14px",
-          marginBottom: 14,
-          fontSize: 12,
-          color: "#e65100",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 8
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14 }, children: "⚠" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Validity/effort measures included. Review validity results before interpreting clinical scales." })
-        ]
+  const [uploadedFiles, setUploadedFiles] = reactExports.useState([]);
+  const [testNotes, setTestNotes] = reactExports.useState({});
+  const [orderedExtras, setOrderedExtras] = reactExports.useState([]);
+  const [showOrderDropdown, setShowOrderDropdown] = reactExports.useState(false);
+  const orderRef = reactExports.useRef(null);
+  const testNotesLoaded = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    if (testNotesLoaded.current) return;
+    testNotesLoaded.current = true;
+    (async () => {
+      try {
+        const resp = await window.psygil.onboarding.get({ case_id: caseRow.case_id });
+        if (resp.status === "success" && resp.data) {
+          const row = resp.data.find((r) => r.section === "testing_notes");
+          if (row) {
+            try {
+              const parsed = JSON.parse(row.content);
+              if (parsed.notes) setTestNotes(parsed.notes);
+              if (parsed.extras) setOrderedExtras(parsed.extras);
+            } catch {
+            }
+          }
+        }
+      } catch {
       }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        style: {
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          overflow: "hidden"
-        },
-        children: instruments.map((key2, idx) => {
-          const info = INSTRUMENT_INFO[key2];
-          const isScored = stageIndex >= 2;
-          if (info == null) return null;
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
+    })();
+  }, [caseRow.case_id]);
+  const saveTestData = reactExports.useCallback(async () => {
+    try {
+      await window.psygil.onboarding.save({
+        case_id: caseRow.case_id,
+        section: "testing_notes",
+        data: { content: JSON.stringify({ notes: testNotes, extras: orderedExtras }), status: "draft" }
+      });
+    } catch (err) {
+      console.error("[TestingSubTab] Failed to save notes:", err);
+    }
+  }, [caseRow.case_id, testNotes, orderedExtras]);
+  const defaultInstruments = getInstrumentsForEvalType(caseRow.evaluation_type);
+  const defaultSet = reactExports.useMemo(() => new Set(defaultInstruments), [defaultInstruments]);
+  const instruments = reactExports.useMemo(() => {
+    const set = new Set(defaultInstruments);
+    for (const k of orderedExtras) set.add(k);
+    return Array.from(set);
+  }, [defaultInstruments, orderedExtras]);
+  const validityInstruments = instruments.filter((k) => INSTRUMENT_INFO[k]?.isValidity);
+  const fullCatalog = reactExports.useMemo(() => {
+    return Object.keys(INSTRUMENT_INFO).sort((a, b) => {
+      const catA = INSTRUMENT_INFO[a]?.category ?? "";
+      const catB = INSTRUMENT_INFO[b]?.category ?? "";
+      return catA.localeCompare(catB) || a.localeCompare(b);
+    });
+  }, []);
+  reactExports.useEffect(() => {
+    function handleClick(e) {
+      if (orderRef.current && !orderRef.current.contains(e.target)) {
+        setShowOrderDropdown(false);
+      }
+    }
+    if (showOrderDropdown) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showOrderDropdown]);
+  const handleUploadTesting = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil.documents.pickFiles();
+      if (resp.status === "success" && resp.data?.filePaths?.length > 0) {
+        const paths = resp.data.filePaths;
+        const names = [];
+        for (const fp of paths) {
+          await window.psygil.documents.ingest({ case_id: caseRow.case_id, file_path: fp, subfolder: "Testing" });
+          const parts = fp.replace(/\\/g, "/").split("/");
+          names.push(parts[parts.length - 1]);
+        }
+        setUploadedFiles((prev) => [...prev, ...names]);
+      }
+    } catch (err) {
+      console.error("[TestingSubTab] File upload error:", err);
+    }
+  }, [caseRow.case_id]);
+  const handleToggleMeasure = reactExports.useCallback((key2) => {
+    setOrderedExtras(
+      (prev) => prev.includes(key2) ? prev.filter((k) => k !== key2) : [...prev, key2]
+    );
+  }, []);
+  const extrasInitialized = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    if (!extrasInitialized.current) {
+      extrasInitialized.current = true;
+      return;
+    }
+    void saveTestData();
+  }, [orderedExtras]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)" }, children: "Test Battery" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8, alignItems: "center" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { ref: orderRef, style: { position: "relative" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
             {
+              onClick: () => setShowOrderDropdown((p) => !p),
               style: {
-                padding: "10px 16px",
-                borderBottom: idx < instruments.length - 1 ? "1px solid var(--border)" : "none",
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: 12
+                ...editBtnStyle,
+                background: showOrderDropdown ? "var(--accent)" : "var(--panel)",
+                color: showOrderDropdown ? "#fff" : "var(--accent)",
+                border: "1px solid var(--accent)"
               },
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "div",
-                    {
-                      style: {
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "var(--text)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6
-                      },
-                      children: [
-                        info.isValidity && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#ff9800", fontSize: 12 }, children: "⚠" }),
-                        key2,
-                        " — ",
-                        info.fullName
-                      ]
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "div",
-                    {
-                      style: {
-                        fontSize: 11,
-                        color: "var(--text-secondary)",
-                        marginTop: 2,
-                        display: "flex",
-                        gap: 12,
-                        flexWrap: "wrap"
-                      },
-                      children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: info.category }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: info.duration })
-                      ]
-                    }
-                  )
-                ] }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "span",
-                  {
-                    style: {
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: isScored ? "#4caf50" : "#9c27b0",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0
-                    },
-                    children: isScored ? "✓ Scored" : "● In Progress"
-                  }
-                )
-              ]
-            },
-            key2
-          );
-        })
-      }
-    )
-  ] });
-}
-function InterviewsSubTab({ caseRow }) {
-  const sessionCount = 2;
-  const totalHours = 3;
-  const sessionDuration = (totalHours / sessionCount).toFixed(1);
-  const titles = getSessionTitles(caseRow.evaluation_type);
-  const evalTypeLower = (caseRow.evaluation_type ?? "").toLowerCase();
-  function getSessionNotes(title) {
-    if (evalTypeLower.includes("cst") || evalTypeLower.includes("competency")) {
-      if (title.includes("Dusky")) {
-        return "Assessed understanding of legal proceedings, ability to assist counsel, and factual/rational understanding of charges. Dusky criteria reviewed in detail.";
-      }
-      return "Psychiatric history, symptom review, mental status examination, and prior hospitalizations documented.";
-    }
-    if (evalTypeLower.includes("custody")) {
-      return "Parenting practices, discipline approach, child-parent relationship quality, and co-parenting dynamics reviewed.";
-    }
-    if (evalTypeLower.includes("risk")) {
-      return "Index offense narrative, criminal history, victim information, and dynamic risk factors assessed.";
-    }
-    if (evalTypeLower.includes("ptsd")) {
-      return "Trauma timeline, symptom onset, re-experiencing phenomena, avoidance, and functional impairment reviewed.";
-    }
-    if (evalTypeLower.includes("malingering")) {
-      return "Symptom presentation consistency across methods, reported vs. observed behavior, and feigning indicators assessed.";
-    }
-    if (evalTypeLower.includes("capacity")) {
-      return "Cognitive functioning, decision-making capacity, understanding of condition and treatment options evaluated.";
-    }
-    return "History, presenting concerns, current functioning, and evaluation questions addressed.";
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Clinical Interviews" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          display: "flex",
-          gap: 16,
-          marginBottom: 14,
-          fontSize: 13,
-          color: "var(--text-secondary)"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: "Sessions:" }),
-            " ",
-            sessionCount
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: "Total Hours:" }),
-            " ",
-            totalHours
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: "Avg Duration:" }),
-            " ",
-            sessionDuration,
-            " hr"
-          ] })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", flexDirection: "column", gap: 10 }, children: Array.from({ length: sessionCount }, (_, i) => {
-      const title = titles[i] ?? titles[titles.length - 1];
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "div",
-        {
-          style: {
+              children: "＋ Order Measures"
+            }
+          ),
+          showOrderDropdown && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+            position: "absolute",
+            top: "100%",
+            right: 0,
+            marginTop: 4,
             background: "var(--panel)",
             border: "1px solid var(--border)",
             borderRadius: 6,
-            padding: "12px 16px"
+            boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+            width: 420,
+            maxHeight: 440,
+            overflowY: "auto",
+            zIndex: 100,
+            padding: "8px 0"
+          }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "4px 12px 8px", fontSize: 11, color: "var(--text-secondary)", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                "Test Instruments (",
+                instruments.length,
+                " ordered)"
+              ] }),
+              orderedExtras.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "var(--accent)", fontWeight: 600 }, children: [
+                "+",
+                orderedExtras.length,
+                " added"
+              ] })
+            ] }),
+            fullCatalog.map((key2) => {
+              const info = INSTRUMENT_INFO[key2];
+              if (!info) return null;
+              const isDefault = defaultSet.has(key2);
+              const isOrdered = orderedExtras.includes(key2);
+              const isChecked = isDefault || isOrdered;
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "label",
+                {
+                  style: {
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 8,
+                    padding: "5px 12px",
+                    cursor: isDefault ? "default" : "pointer",
+                    opacity: isDefault ? 0.7 : 1
+                  },
+                  onMouseEnter: (e) => {
+                    if (!isDefault) e.currentTarget.style.background = "var(--sidebar-bg, #f0f0f0)";
+                  },
+                  onMouseLeave: (e) => {
+                    e.currentTarget.style.background = "transparent";
+                  },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "input",
+                      {
+                        type: "checkbox",
+                        checked: isChecked,
+                        disabled: isDefault,
+                        onChange: () => {
+                          if (!isDefault) handleToggleMeasure(key2);
+                        },
+                        style: { marginTop: 2, accentColor: "var(--accent)", cursor: isDefault ? "default" : "pointer" }
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 4 }, children: [
+                        info.isValidity && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#ff9800", fontSize: 10 }, children: "⚠" }),
+                        key2,
+                        " — ",
+                        info.fullName,
+                        isDefault && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 9, color: "var(--text-secondary)", fontWeight: 400, marginLeft: 4 }, children: "(default)" }),
+                        isOrdered && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 9, color: "#2196f3", fontWeight: 700, marginLeft: 4, border: "1px solid #2196f3", borderRadius: 3, padding: "0 3px" }, children: "ADDED" })
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 10, color: "var(--text-secondary)" }, children: [
+                        info.category,
+                        " · ",
+                        info.duration
+                      ] })
+                    ] })
+                  ]
+                },
+                key2
+              );
+            })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleUploadTesting, style: editBtnStyle, children: "＋ Upload Score Reports" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: threeColGrid, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Tests & Scores" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Total Instruments", value: String(instruments.length) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Scored", value: `${stageIndex >= 2 ? instruments.length : 0} / ${instruments.length}` }),
+          orderedExtras.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Ordered (added)", value: String(orderedExtras.length) })
+        ] }) }),
+        instruments.map((key2) => {
+          const info = INSTRUMENT_INFO[key2];
+          if (!info) return null;
+          const isScored = stageIndex >= 2;
+          const isOrdered = orderedExtras.includes(key2);
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "6px 0", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12.5, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 4 }, children: [
+                info.isValidity && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#ff9800", fontSize: 11 }, children: "⚠" }),
+                key2,
+                " — ",
+                info.fullName,
+                isOrdered && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 9, color: "#2196f3", fontWeight: 700, marginLeft: 4, border: "1px solid #2196f3", borderRadius: 3, padding: "0 4px" }, children: "ORDERED" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 11, color: "var(--text-secondary)", display: "flex", gap: 12 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: info.category }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: info.duration }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: isScored && !isOrdered ? "#4caf50" : "#9c27b0", fontWeight: 600 }, children: isScored && !isOrdered ? "✓ Scored" : "● In Progress" })
+              ] })
+            ] }),
+            isOrdered && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => handleToggleMeasure(key2),
+                title: "Remove from battery",
+                style: {
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#f44336",
+                  fontSize: 14,
+                  padding: "2px 4px",
+                  lineHeight: 1,
+                  fontFamily: "inherit"
+                },
+                children: "✕"
+              }
+            )
+          ] }, key2);
+        }),
+        uploadedFiles.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...narrativeSectionHeader, marginTop: 8 }, children: "Uploaded Score Reports" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: uploadedFiles.map((name, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: dataLabelTd, children: name }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...dataValueTd, color: "#4caf50", fontWeight: 600, fontSize: 11 }, children: "✓ Uploaded" })
+          ] }, `${name}-${idx}`)) }) })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Validity & Evaluation Info" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Evaluation Type", value: caseRow.evaluation_type ?? void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Validity Measures", value: validityInstruments.length > 0 ? String(validityInstruments.length) : "None" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Effort Status", value: stageIndex >= 2 ? "All scored" : "Pending" })
+        ] }) }),
+        validityInstruments.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...narrativeSectionHeader, marginTop: 4 }, children: "Validity Instruments" }),
+          validityInstruments.map((key2) => {
+            const info = INSTRUMENT_INFO[key2];
+            if (!info) return null;
+            const isScored = stageIndex >= 2;
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "6px 0", borderBottom: "1px solid var(--border)" }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12.5, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 4 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#ff9800", fontSize: 11 }, children: "⚠" }),
+                " ",
+                key2,
+                " — ",
+                info.fullName
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 11, color: "var(--text-secondary)", display: "flex", gap: 12 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: info.category }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: info.duration }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: isScored ? "#4caf50" : "#9c27b0", fontWeight: 600 }, children: isScored ? "✓ Pass" : "● Pending" })
+              ] })
+            ] }, key2);
+          })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NarrativeBlock, { label: "Embedded Validity Note", value: "Clinical instruments (MMPI-3, PAI, MCMI-IV) include internal validity indicators (F, Fp, FBS, NIM, MAL). Review these scales in the full test report." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinNotesColumnStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: "Clinical Notes" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Battery Selection",
+            value: testNotes.battery ?? "",
+            onChange: (v) => setTestNotes((p) => ({ ...p, battery: v })),
+            onBlur: () => void saveTestData(),
+            placeholder: "Rationale for instrument selection, additional tests needed, appropriateness for this population…"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Validity & Effort",
+            value: testNotes.validity ?? "",
+            onChange: (v) => setTestNotes((p) => ({ ...p, validity: v })),
+            onBlur: () => void saveTestData(),
+            placeholder: "Effort indicators, response style observations, embedded validity scale notes…"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ClinicalNoteField,
+          {
+            label: "Testing Observations",
+            value: testNotes.observations ?? "",
+            onChange: (v) => setTestNotes((p) => ({ ...p, observations: v })),
+            onBlur: () => void saveTestData(),
+            placeholder: "Behavioral observations during testing, rapport, attention, fatigue, environmental factors…"
+          }
+        )
+      ] })
+    ] })
+  ] });
+}
+let _nextSessionId = 1;
+function InterviewsSubTab({ caseRow }) {
+  const titles = getSessionTitles(caseRow.evaluation_type);
+  const [sessions, setSessions] = reactExports.useState([]);
+  const [activeSessionId, setActiveSessionId] = reactExports.useState(null);
+  const [intNotes, setIntNotes] = reactExports.useState({});
+  const [showNewSessionInput, setShowNewSessionInput] = reactExports.useState(false);
+  const [newSessionTitle, setNewSessionTitle] = reactExports.useState("");
+  const newTitleRef = reactExports.useRef(null);
+  const interviewDataLoaded = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    if (interviewDataLoaded.current) return;
+    interviewDataLoaded.current = true;
+    (async () => {
+      try {
+        const resp = await window.psygil.onboarding.get({ case_id: caseRow.case_id });
+        if (resp.status === "success" && resp.data) {
+          const row = resp.data.find((r) => r.section === "interview_notes");
+          if (row) {
+            try {
+              const parsed = JSON.parse(row.content);
+              if (parsed.sessions?.length) {
+                setSessions(parsed.sessions);
+                setActiveSessionId(parsed.sessions[0].id);
+              }
+              if (parsed.notes) setIntNotes(parsed.notes);
+            } catch {
+            }
+          }
+        }
+      } catch {
+      }
+    })();
+  }, [caseRow.case_id]);
+  const saveInterviewData = reactExports.useCallback(async (sessionsOverride, notesOverride) => {
+    const sessionsToSave = sessionsOverride ?? sessions;
+    const notesToSave = notesOverride ?? intNotes;
+    try {
+      await window.psygil.onboarding.save({
+        case_id: caseRow.case_id,
+        section: "interview_notes",
+        data: {
+          content: JSON.stringify({ sessions: sessionsToSave, notes: notesToSave }),
+          status: "draft"
+        }
+      });
+    } catch (err) {
+      console.error("[InterviewsSubTab] Failed to save:", err);
+    }
+  }, [caseRow.case_id, sessions, intNotes]);
+  const [showAudioSettings, setShowAudioSettings] = reactExports.useState(false);
+  const [audioDevices, setAudioDevices] = reactExports.useState([]);
+  const [selectedMicId, setSelectedMicId] = reactExports.useState("");
+  const [captureSystemAudio, setCaptureSystemAudio] = reactExports.useState(true);
+  const [whisperStatus, setWhisperStatus] = reactExports.useState(null);
+  const [micGain, setMicGain] = reactExports.useState(100);
+  const audioSettingsRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    async function loadDevices() {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => s.getTracks().forEach((t) => t.stop()));
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const mics = devices.filter((d) => d.kind === "audioinput");
+        setAudioDevices(mics);
+        if (!selectedMicId && mics.length > 0) setSelectedMicId(mics[0].deviceId);
+      } catch (err) {
+        console.error("[Audio] Failed to enumerate devices:", err);
+      }
+    }
+    if (showAudioSettings) {
+      void loadDevices();
+      window.psygil.whisper.status().then((resp) => {
+        if (resp.status === "success") setWhisperStatus(resp.data);
+      }).catch(() => setWhisperStatus({ available: false, model: null }));
+    }
+  }, [showAudioSettings, selectedMicId]);
+  reactExports.useEffect(() => {
+    if (!showAudioSettings) return;
+    const handler = (e) => {
+      if (audioSettingsRef.current && !audioSettingsRef.current.contains(e.target)) {
+        setShowAudioSettings(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showAudioSettings]);
+  reactExports.useEffect(() => {
+    return () => {
+      mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+      rawMicStreamRef.current?.getTracks().forEach((t) => t.stop());
+      if (mediaRecorderRef.current?.state !== "inactive") {
+        try {
+          mediaRecorderRef.current?.stop();
+        } catch {
+        }
+      }
+      if (pcmScriptNodeRef.current) {
+        try {
+          pcmScriptNodeRef.current.disconnect();
+        } catch {
+        }
+      }
+      if (pcmAudioContextRef.current) {
+        pcmAudioContextRef.current.close().catch(() => {
+        });
+      }
+    };
+  }, []);
+  reactExports.useEffect(() => {
+    const id = "psygil-interview-keyframes";
+    if (document.getElementById(id)) return;
+    const style2 = document.createElement("style");
+    style2.id = id;
+    style2.textContent = `
+      @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+      @keyframes spin { to{transform:rotate(360deg)} }
+    `;
+    document.head.appendChild(style2);
+  }, []);
+  reactExports.useEffect(() => {
+    if (showNewSessionInput && newTitleRef.current) newTitleRef.current.focus();
+  }, [showNewSessionInput]);
+  reactExports.useEffect(() => {
+    if (activeSessionId === null && sessions.length > 0) {
+      setActiveSessionId(sessions[0].id);
+    }
+  }, [sessions, activeSessionId]);
+  const interviewSaveInitialized = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    if (!interviewSaveInitialized.current) {
+      interviewSaveInitialized.current = true;
+      return;
+    }
+    const timer = setTimeout(() => {
+      void saveInterviewData();
+    }, 1e3);
+    return () => clearTimeout(timer);
+  }, [sessions, intNotes]);
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
+  const activeNotes = activeSessionId ? intNotes[activeSessionId] ?? {} : {};
+  const updateSessionNote = reactExports.useCallback((key2, value) => {
+    if (!activeSessionId) return;
+    setIntNotes((prev) => ({
+      ...prev,
+      [activeSessionId]: { ...prev[activeSessionId] ?? {}, [key2]: value }
+    }));
+  }, [activeSessionId]);
+  const updateSessionField = reactExports.useCallback((id, field, value) => {
+    setSessions((prev) => prev.map((s) => s.id === id ? { ...s, [field]: value } : s));
+  }, []);
+  const handleImportTranscripts = reactExports.useCallback(async () => {
+    try {
+      const resp = await window.psygil.documents.pickFilesFrom({
+        defaultPath: "$DOWNLOADS",
+        title: "Select Interview Transcripts (Zoom, Teams, etc.)",
+        extensions: ["vtt", "txt", "pdf", "json", "csv", "docx", "doc"]
+      });
+      if (resp.status === "success" && resp.data?.filePaths?.length > 0) {
+        const paths = resp.data.filePaths;
+        const newSessions = [];
+        for (const fp of paths) {
+          await window.psygil.documents.ingest({ case_id: caseRow.case_id, file_path: fp, subfolder: "Interviews" });
+          const parts = fp.replace(/\\/g, "/").split("/");
+          const filename = parts[parts.length - 1];
+          const baseName = filename.replace(/\.[^.]+$/, "").replace(/[_-]/g, " ");
+          const sessionNum = sessions.length + newSessions.length + 1;
+          const suggestedTitle = titles[sessionNum - 1] ?? `Session ${sessionNum}`;
+          const id = `session-${_nextSessionId++}`;
+          newSessions.push({
+            id,
+            title: suggestedTitle,
+            date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+            source: "import",
+            filename,
+            transcript: `[Imported from ${filename}]
+
+Transcript content will be loaded from the file. Source: ${baseName}`,
+            summary: "",
+            duration: ""
+          });
+        }
+        setSessions((prev) => [...prev, ...newSessions]);
+        if (newSessions.length > 0) setActiveSessionId(newSessions[0].id);
+      }
+    } catch (err) {
+      console.error("[InterviewsSubTab] Import error:", err);
+    }
+  }, [caseRow.case_id, sessions.length, titles]);
+  const handleCreateNewSession = reactExports.useCallback(() => {
+    const today = /* @__PURE__ */ new Date();
+    const dateStr = today.toISOString().split("T")[0];
+    const sessionNum = sessions.length + 1;
+    const id = `session-${_nextSessionId++}`;
+    const suggestedTitle = titles[sessionNum - 1] ?? `Session ${sessionNum}`;
+    const newSession = {
+      id,
+      title: `${suggestedTitle} — ${dateStr}`,
+      date: dateStr,
+      source: "recording",
+      filename: null,
+      transcript: "",
+      summary: "",
+      duration: "",
+      recordingStatus: "idle",
+      recordingStartedAt: null,
+      recordingElapsed: 0
+    };
+    setSessions((prev) => [...prev, newSession]);
+    setActiveSessionId(id);
+    setShowNewSessionInput(false);
+    setNewSessionTitle("");
+  }, [sessions.length, titles]);
+  const handleCreateManualSession = reactExports.useCallback(() => {
+    const title = newSessionTitle.trim();
+    if (!title) return;
+    const id = `session-${_nextSessionId++}`;
+    const newSession = {
+      id,
+      title,
+      date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+      source: "manual",
+      filename: null,
+      transcript: "",
+      summary: "",
+      duration: ""
+    };
+    setSessions((prev) => [...prev, newSession]);
+    setActiveSessionId(id);
+    setNewSessionTitle("");
+    setShowNewSessionInput(false);
+  }, [newSessionTitle]);
+  const mediaRecorderRef = reactExports.useRef(null);
+  const audioChunksRef = reactExports.useRef([]);
+  const mediaStreamRef = reactExports.useRef(null);
+  const rawMicStreamRef = reactExports.useRef(null);
+  const liveStreamActiveRef = reactExports.useRef(false);
+  const activeSessionIdForStreamRef = reactExports.useRef(null);
+  const pcmAudioContextRef = reactExports.useRef(null);
+  const pcmScriptNodeRef = reactExports.useRef(null);
+  const pcmChunkCountRef = reactExports.useRef(0);
+  const float32ToBase64 = reactExports.useCallback((f32) => {
+    const u8 = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength);
+    let binary = "";
+    for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
+    return btoa(binary);
+  }, []);
+  const startMediaCapture = reactExports.useCallback(async (sessionId) => {
+    try {
+      const micConstraints = selectedMicId ? { deviceId: { exact: selectedMicId }, echoCancellation: true, noiseSuppression: true } : { echoCancellation: true, noiseSuppression: true };
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: micConstraints });
+      rawMicStreamRef.current = micStream;
+      let streamForRecorder;
+      if (micGain !== 100) {
+        const gainCtx = new AudioContext();
+        const source = gainCtx.createMediaStreamSource(micStream);
+        const gainNode = gainCtx.createGain();
+        gainNode.gain.value = micGain / 100;
+        source.connect(gainNode);
+        const dest = gainCtx.createMediaStreamDestination();
+        gainNode.connect(dest);
+        streamForRecorder = dest.stream;
+      } else {
+        streamForRecorder = micStream;
+      }
+      mediaStreamRef.current = streamForRecorder;
+      activeSessionIdForStreamRef.current = sessionId;
+      if (typeof window.psygil?.whisper?.streamStart === "function") {
+        try {
+          const resp = await window.psygil.whisper.streamStart({ sessionId });
+          liveStreamActiveRef.current = resp.status === "success";
+          if (liveStreamActiveRef.current) {
+            console.log(`[Audio] Live stream started for session ${sessionId}`);
+          }
+        } catch (err) {
+          console.warn("[Audio] Live stream start failed:", err);
+          liveStreamActiveRef.current = false;
+        }
+      }
+      pcmChunkCountRef.current = 0;
+      if (liveStreamActiveRef.current) {
+        try {
+          const pcmCtx = new AudioContext({ sampleRate: 16e3 });
+          const pcmSource = pcmCtx.createMediaStreamSource(micStream);
+          const scriptNode = pcmCtx.createScriptProcessor(4096, 1, 1);
+          scriptNode.onaudioprocess = (e) => {
+            if (!liveStreamActiveRef.current) return;
+            const inputData = e.inputBuffer.getChannelData(0);
+            const pcmCopy = new Float32Array(inputData.length);
+            pcmCopy.set(inputData);
+            const b64 = float32ToBase64(pcmCopy);
+            pcmChunkCountRef.current += 1;
+            if (pcmChunkCountRef.current <= 3 || pcmChunkCountRef.current % 20 === 0) {
+              console.log(`[Audio] PCM chunk #${pcmChunkCountRef.current}: ${pcmCopy.length} samples, ${b64.length} b64 chars`);
+            }
+            window.psygil?.whisper?.streamAudio({
+              sessionId: activeSessionIdForStreamRef.current ?? "",
+              audioBase64: b64
+            });
+          };
+          pcmSource.connect(scriptNode);
+          scriptNode.connect(pcmCtx.destination);
+          pcmAudioContextRef.current = pcmCtx;
+          pcmScriptNodeRef.current = scriptNode;
+          console.log(`[Audio] PCM ScriptProcessorNode started at ${pcmCtx.sampleRate} Hz`);
+        } catch (err) {
+          console.warn("[Audio] ScriptProcessor setup failed, live transcription may not work:", err);
+        }
+      }
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(streamForRecorder, {
+        mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm"
+      });
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.start(1e3);
+      mediaRecorderRef.current = recorder;
+      return true;
+    } catch (err) {
+      console.error("[Audio] Failed to start capture:", err);
+      return false;
+    }
+  }, [selectedMicId, micGain, float32ToBase64]);
+  const stopMediaCapture = reactExports.useCallback(() => {
+    return new Promise((resolve) => {
+      if (liveStreamActiveRef.current && activeSessionIdForStreamRef.current) {
+        if (typeof window.psygil?.whisper?.streamStop === "function") {
+          window.psygil.whisper.streamStop({ sessionId: activeSessionIdForStreamRef.current }).catch(() => {
+          });
+        }
+        liveStreamActiveRef.current = false;
+      }
+      if (pcmScriptNodeRef.current) {
+        pcmScriptNodeRef.current.disconnect();
+        pcmScriptNodeRef.current = null;
+      }
+      if (pcmAudioContextRef.current) {
+        pcmAudioContextRef.current.close().catch(() => {
+        });
+        pcmAudioContextRef.current = null;
+      }
+      const recorder = mediaRecorderRef.current;
+      if (!recorder || recorder.state === "inactive") {
+        resolve(new Blob(audioChunksRef.current, { type: "audio/webm" }));
+        return;
+      }
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        resolve(blob);
+      };
+      recorder.stop();
+      mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+      mediaRecorderRef.current = null;
+    });
+  }, []);
+  const pauseMediaCapture = reactExports.useCallback(() => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.pause();
+    }
+  }, []);
+  const resumeMediaCapture = reactExports.useCallback(() => {
+    if (mediaRecorderRef.current?.state === "paused") {
+      mediaRecorderRef.current.resume();
+    }
+  }, []);
+  const saveAudioFile = reactExports.useCallback(async (blob, sessionId) => {
+    try {
+      if (!caseRow.case_id) return null;
+      const arrayBuf = await blob.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuf);
+      let binary = "";
+      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+      const b64 = btoa(binary);
+      const filename = `interview_${sessionId}_${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}.webm`;
+      const resp = await window.psygil.whisper.saveAudio({
+        caseId: caseRow.case_id,
+        audioBase64: b64,
+        filename,
+        mimeType: "audio/webm"
+      });
+      if (resp.status === "success") {
+        console.log(`[Audio] Saved: ${resp.data.filePath} (${(resp.data.sizeBytes / 1024).toFixed(1)} KB)`);
+        return resp.data.filePath;
+      }
+      console.error("[Audio] Save failed:", resp.error);
+      return null;
+    } catch (err) {
+      console.error("[Audio] Failed to save audio:", err);
+      return null;
+    }
+  }, [caseRow.case_id]);
+  const handleToggleRecording = reactExports.useCallback(async () => {
+    if (!activeSession) return;
+    const status = activeSession.recordingStatus ?? "idle";
+    if (status === "idle" || status === "done") {
+      const ok = await startMediaCapture(activeSession.id);
+      if (!ok) {
+        setSessions((prev) => prev.map((s) => s.id === activeSession.id ? {
+          ...s,
+          transcript: (s.transcript ? s.transcript + "\n" : "") + "⚠ Microphone access denied or unavailable. Check Audio Settings (gear icon) and ensure a mic is selected."
+        } : s));
+        return;
+      }
+      setSessions((prev) => prev.map((s) => s.id === activeSession.id ? {
+        ...s,
+        recordingStatus: "recording",
+        recordingStartedAt: Date.now(),
+        recordingElapsed: 0,
+        isStreaming: true
+      } : s));
+    } else if (status === "recording") {
+      pauseMediaCapture();
+      const elapsed = activeSession.recordingStartedAt ? Math.round((Date.now() - activeSession.recordingStartedAt) / 1e3) + (activeSession.recordingElapsed ?? 0) : activeSession.recordingElapsed ?? 0;
+      setSessions((prev) => prev.map((s) => s.id === activeSession.id ? {
+        ...s,
+        recordingStatus: "paused",
+        recordingStartedAt: null,
+        recordingElapsed: elapsed
+      } : s));
+    } else if (status === "paused") {
+      resumeMediaCapture();
+      setSessions((prev) => prev.map((s) => s.id === activeSession.id ? {
+        ...s,
+        recordingStatus: "recording",
+        recordingStartedAt: Date.now()
+      } : s));
+    }
+  }, [activeSession, startMediaCapture, pauseMediaCapture, resumeMediaCapture]);
+  const pendingTextRef = reactExports.useRef("");
+  const pendingTimestampRef = reactExports.useRef("");
+  reactExports.useCallback((sessionId) => {
+    const pending = pendingTextRef.current.trim();
+    if (!pending) return;
+    const ts = pendingTimestampRef.current;
+    setSessions((prev) => prev.map((s) => {
+      if (s.id !== sessionId) return s;
+      const cleaned = s.transcript.replace(/\n?⏳ .*$/, "");
+      const sep = cleaned ? "\n" : "";
+      return { ...s, transcript: cleaned + sep + ts + pending };
+    }));
+    pendingTextRef.current = "";
+    pendingTimestampRef.current = "";
+  }, []);
+  reactExports.useEffect(() => {
+    const whisper = window.psygil?.whisper;
+    if (!whisper?.onLiveText) {
+      console.log("[InterviewsSubTab] Live transcription listener not available (rebuild needed)");
+      return;
+    }
+    const off = whisper.onLiveText((data) => {
+      if (data.type === "partial") {
+        setSessions((prev) => prev.map((s) => {
+          if (s.id !== data.sessionId) return s;
+          const startedAt = s.recordingStartedAt;
+          let nowTimestamp = "";
+          if (startedAt) {
+            const elapsedSec = Math.round((Date.now() - startedAt) / 1e3) + (s.recordingElapsed ?? 0);
+            const mm = Math.floor(elapsedSec / 60);
+            const ss = elapsedSec % 60;
+            nowTimestamp = `[${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}] `;
+          }
+          if (!pendingTextRef.current) {
+            pendingTimestampRef.current = nowTimestamp;
+          }
+          const incoming = data.text.trim();
+          if (!incoming) return s;
+          pendingTextRef.current = pendingTextRef.current ? pendingTextRef.current + " " + incoming : incoming;
+          const sentenceEndRe = /([.!?])\s+/g;
+          const fullText = pendingTextRef.current;
+          let lastSplit = 0;
+          let match = null;
+          const committedLines = [];
+          while ((match = sentenceEndRe.exec(fullText)) !== null) {
+            const endIdx = match.index + match[0].length;
+            const sentence = fullText.slice(lastSplit, endIdx).trim();
+            if (sentence) committedLines.push(sentence);
+            lastSplit = endIdx;
+          }
+          if (lastSplit === 0 && /[.!?]$/.test(fullText.trim())) {
+            committedLines.push(fullText.trim());
+            lastSplit = fullText.length;
+          }
+          if (committedLines.length > 0) {
+            const committed = committedLines.join(" ");
+            const remainder = fullText.slice(lastSplit).trim();
+            const ts = pendingTimestampRef.current;
+            const cleaned = s.transcript.replace(/\n?⏳ .*$/, "");
+            const sep = cleaned ? "\n" : "";
+            let newTranscript = cleaned + sep + ts + committed;
+            pendingTextRef.current = remainder;
+            pendingTimestampRef.current = remainder ? nowTimestamp : "";
+            if (remainder) {
+              newTranscript += "\n⏳ " + remainder;
+            }
+            return { ...s, transcript: newTranscript };
+          } else {
+            const cleaned = s.transcript.replace(/\n?⏳ .*$/, "");
+            const sep = cleaned ? "\n" : "";
+            return { ...s, transcript: cleaned + sep + "⏳ " + pendingTextRef.current };
+          }
+        }));
+      } else if (data.type === "final") {
+        const pending = pendingTextRef.current.trim();
+        if (pending) {
+          const ts = pendingTimestampRef.current;
+          setSessions((prev) => prev.map((s) => {
+            if (s.id !== data.sessionId) return s;
+            const cleaned = s.transcript.replace(/\n?⏳ .*$/, "");
+            const sep = cleaned ? "\n" : "";
+            return { ...s, transcript: cleaned + sep + ts + pending };
+          }));
+          pendingTextRef.current = "";
+          pendingTimestampRef.current = "";
+        }
+        console.log(`[Transcribe] Final transcript for ${data.sessionId}: ${data.text.length} chars`);
+      } else if (data.type === "error") {
+        setSessions((prev) => prev.map((s) => {
+          if (s.id !== data.sessionId) return s;
+          return { ...s, transcript: s.transcript + `
+[${data.text}]
+` };
+        }));
+      }
+    });
+    return () => {
+      off();
+    };
+  }, []);
+  const generateSessionSummary = reactExports.useCallback(async (sessionId, transcript) => {
+    console.log(`[Summary] generateSessionSummary called for ${sessionId}, transcript length: ${transcript?.length ?? 0}`);
+    if (!transcript || transcript.trim().length < 40) {
+      console.log("[Summary] Transcript too short for summary generation, skipping");
+      return;
+    }
+    const patientName = caseRow.patient_name ?? "the patient";
+    const evalType = caseRow.evaluation_type ?? "forensic psychological evaluation";
+    console.log(`[Summary] Calling Claude API for session ${sessionId}...`);
+    try {
+      const resp = await window.psygil.ai.complete({
+        systemPrompt: `You are a forensic psychology clinical assistant. Generate a concise, professional interview session summary from the provided transcript. The summary should be written in clinical language appropriate for a forensic psychological evaluation report.
+
+Structure the summary as follows:
+1. **Session Overview** — One sentence: who was interviewed, approximate duration, and setting context.
+2. **Key Topics Covered** — Brief bullet points of the main areas discussed (e.g., presenting complaint, psychiatric history, substance use, legal history, family background).
+3. **Notable Clinical Observations** — Any significant behavioral observations, affect, rapport quality, or inconsistencies noted in the transcript.
+4. **Clinically Relevant Statements** — Direct quotes or paraphrased statements from the interviewee that are diagnostically or forensically significant.
+5. **Follow-up Considerations** — Areas that need further exploration, collateral contacts to pursue, or additional testing indicated.
+
+Keep the summary to 200-400 words. Use professional clinical language. Do not diagnose — note observations only. DOCTOR ALWAYS DIAGNOSES — the AI never makes diagnostic conclusions.`,
+        userMessage: `Patient: ${patientName}
+Evaluation type: ${evalType}
+
+Interview transcript:
+${transcript.trim()}
+
+Generate the clinical interview session summary.`,
+        maxTokens: 1024
+      });
+      console.log(`[Summary] Claude API response status: ${resp.status}`, resp);
+      if (resp.status === "success" && resp.data?.content) {
+        setSessions((prev) => {
+          const updated = prev.map(
+            (s) => s.id === sessionId ? { ...s, summary: resp.data.content } : s
+          );
+          void saveInterviewData(updated);
+          return updated;
+        });
+        console.log(`[Summary] Generated summary for session ${sessionId} (${resp.data.content.length} chars)`);
+      } else {
+        console.warn("[Summary] AI completion failed:", resp);
+        const errorMsg = resp.status === "error" ? `[Summary generation failed: ${resp.message ?? "unknown error"}. You can write a summary manually.]` : "";
+        if (errorMsg) {
+          setSessions((prev) => prev.map(
+            (s) => s.id === sessionId ? { ...s, summary: errorMsg } : s
+          ));
+        }
+      }
+    } catch (err) {
+      console.warn("[Summary] Failed to generate summary:", err);
+      setSessions((prev) => prev.map(
+        (s) => s.id === sessionId ? { ...s, summary: `[Summary generation failed: ${err instanceof Error ? err.message : "unknown error"}. You can write a summary manually.]` } : s
+      ));
+    }
+  }, [caseRow.patient_name, caseRow.evaluation_type, saveInterviewData]);
+  const handleStopRecording = reactExports.useCallback(async () => {
+    if (!activeSession) return;
+    const sessionId = activeSession.id;
+    const elapsed = activeSession.recordingStartedAt ? Math.round((Date.now() - activeSession.recordingStartedAt) / 1e3) + (activeSession.recordingElapsed ?? 0) : activeSession.recordingElapsed ?? 0;
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    const durationStr = `${mins}:${String(secs).padStart(2, "0")}`;
+    let capturedTranscript = "";
+    const pendingFlush = pendingTextRef.current.trim();
+    const pendingTs = pendingTimestampRef.current;
+    pendingTextRef.current = "";
+    pendingTimestampRef.current = "";
+    setSessions((prev) => prev.map((s) => {
+      if (s.id !== sessionId) return s;
+      let transcript = (s.transcript || "").replace(/\n?⏳ .*$/, "");
+      if (pendingFlush) {
+        const sep = transcript ? "\n" : "";
+        transcript = transcript + sep + pendingTs + pendingFlush;
+      }
+      capturedTranscript = transcript;
+      return {
+        ...s,
+        recordingStatus: "finalizing",
+        recordingStartedAt: null,
+        recordingElapsed: elapsed,
+        duration: durationStr,
+        transcript
+      };
+    }));
+    const audioBlob = await stopMediaCapture();
+    const sizeKB = (audioBlob.size / 1024).toFixed(1);
+    const savedFilePath = await saveAudioFile(audioBlob, sessionId);
+    const savedNote = savedFilePath ? `
+[Audio saved: ${sizeKB} KB, ${durationStr}]
+` : `
+[Audio captured: ${sizeKB} KB, ${durationStr} — file save failed]
+`;
+    setSessions((prev) => prev.map((s) => s.id === sessionId ? {
+      ...s,
+      recordingStatus: "done",
+      isStreaming: false,
+      transcript: capturedTranscript + savedNote
+    } : s));
+    const cleanTranscript = capturedTranscript.replace(/^\[[\d:]+\]\s*/gm, "").replace(/^\[Audio .*\]$/gm, "").trim();
+    console.log(`[Summary] Sending transcript to Claude (${cleanTranscript.length} chars)`);
+    generateSessionSummary(sessionId, cleanTranscript);
+  }, [activeSession, stopMediaCapture, saveAudioFile, generateSessionSummary]);
+  const [tick, setTick] = reactExports.useState(0);
+  reactExports.useEffect(() => {
+    if (activeSession?.recordingStatus !== "recording") return;
+    const iv = setInterval(() => setTick((t) => t + 1), 1e3);
+    return () => clearInterval(iv);
+  }, [activeSession?.recordingStatus]);
+  const liveElapsed = reactExports.useMemo(() => {
+    if (!activeSession) return "0:00";
+    const base = activeSession.recordingElapsed ?? 0;
+    const running = activeSession.recordingStartedAt ? Math.round((Date.now() - activeSession.recordingStartedAt) / 1e3) : 0;
+    const total = base + running;
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+  }, [activeSession?.recordingStartedAt, activeSession?.recordingElapsed, tick]);
+  const sessionTabStyle = (active2) => ({
+    padding: "5px 12px",
+    fontSize: 11,
+    fontWeight: active2 ? 600 : 400,
+    color: active2 ? "var(--accent)" : "var(--text-secondary)",
+    background: "transparent",
+    border: "none",
+    borderBottom: active2 ? "2px solid var(--accent)" : "2px solid transparent",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    whiteSpace: "nowrap",
+    flexShrink: 0
+  });
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)" }, children: [
+        "Clinical Interviews",
+        sessions.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontWeight: 400, fontSize: 12, color: "var(--text-secondary)", marginLeft: 6 }, children: [
+          "(",
+          sessions.length,
+          " session",
+          sessions.length !== 1 ? "s" : "",
+          ")"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 8 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleImportTranscripts, style: editBtnStyle, children: "＋ Import Transcripts" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: handleCreateNewSession,
+            style: { ...editBtnStyle, background: "var(--panel)", color: "var(--accent)", border: "1px solid var(--accent)" },
+            children: "＋ New Session"
+          }
+        )
+      ] })
+    ] }),
+    showNewSessionInput && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      marginBottom: 10,
+      padding: "8px 12px",
+      background: "var(--sidebar-bg, #f5f5f5)",
+      borderRadius: 6
+    }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          ref: newTitleRef,
+          type: "text",
+          value: newSessionTitle,
+          onChange: (e) => setNewSessionTitle(e.target.value),
+          onKeyDown: (e) => {
+            if (e.key === "Enter") handleCreateManualSession();
+            if (e.key === "Escape") {
+              setShowNewSessionInput(false);
+              setNewSessionTitle("");
+            }
           },
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "div",
-              {
-                style: {
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
-                  gap: 12
-                },
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)" }, children: [
-                    "Session ",
-                    i + 1,
-                    ": ",
-                    title
-                  ] }),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }, children: [
-                    sessionDuration,
-                    " hr"
-                  ] })
-                ]
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }, children: getSessionNotes(title) })
-          ]
-        },
-        i
-      );
-    }) })
-  ] });
-}
-function DiagnosticsSubTab({ stageIndex }) {
-  const isInProgress = stageIndex === 3;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Diagnostic Formulation" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
+          placeholder: "Session title (e.g., Clinical Interview — Psychiatric History)",
+          style: {
+            flex: 1,
+            padding: "5px 10px",
+            fontSize: 12,
+            fontFamily: "inherit",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            background: "var(--bg)",
+            color: "var(--text)"
+          }
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: handleCreateManualSession, style: { ...editBtnStyle, padding: "5px 14px" }, children: "Create" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => {
+            setShowNewSessionInput(false);
+            setNewSessionTitle("");
+          },
+          style: { ...editBtnStyle, background: "var(--panel)", color: "var(--text-secondary)", border: "1px solid var(--border)" },
+          children: "Cancel"
+        }
+      )
+    ] }),
+    sessions.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+      display: "flex",
+      gap: 0,
+      borderBottom: "1px solid var(--border)",
+      marginBottom: 0,
+      overflowX: "auto"
+    }, children: sessions.map((s, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "button",
       {
-        style: {
-          background: "#ffebee",
-          border: "2px solid #f44336",
-          borderRadius: 6,
-          padding: "12px 16px",
-          marginBottom: 16,
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 10
-        },
+        onClick: () => setActiveSessionId(s.id),
+        style: sessionTabStyle(activeSessionId === s.id),
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 18, flexShrink: 0 }, children: "🚨" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                style: {
-                  fontSize: 13,
-                  fontWeight: 800,
-                  color: "#c62828",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                  marginBottom: 4
-                },
-                children: "THE DOCTOR ALWAYS DIAGNOSES"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "#d32f2f", lineHeight: 1.5 }, children: "All diagnostic conclusions must be made by a licensed clinician. Psygil provides supporting data only. No AI-generated diagnosis will be inserted into this record. Clinician review and attestation required before this section is considered complete." })
-          ] })
+          idx + 1,
+          ". ",
+          s.title,
+          s.source === "import" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { marginLeft: 4, fontSize: 9, opacity: 0.6 }, children: "📎" })
         ]
-      }
-    ),
-    isInProgress ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          padding: "24px",
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          textAlign: "center"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }, children: "⏳ Awaiting Clinician Determination" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }, children: "Testing and interview phases complete. The evaluating clinician must review all data and enter their diagnostic formulation before this evaluation can proceed to Report." })
-        ]
-      }
-    ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          overflow: "hidden"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "12px 16px", borderBottom: "1px solid var(--border)" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                style: {
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                  marginBottom: 4
-                },
-                children: "Primary Diagnosis"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)" }, children: "Clinician-entered diagnosis will appear here." })
+      },
+      s.id
+    )) }),
+    sessions.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+      padding: "40px 20px",
+      textAlign: "center",
+      color: "var(--text-secondary)",
+      fontSize: 13
+    }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 32, marginBottom: 8, opacity: 0.3 }, children: "🎙" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontWeight: 600, marginBottom: 4 }, children: "No interview sessions yet" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12 }, children: "Import transcripts from Zoom, Teams, or other meeting portals, or create a manual session for typed notes." })
+    ] }),
+    activeSession && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { paddingTop: 12 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+        display: "flex",
+        gap: 12,
+        alignItems: "center",
+        marginBottom: 12,
+        padding: "8px 12px",
+        background: "var(--sidebar-bg, #f5f5f5)",
+        borderRadius: 6
+      }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: { ...dataTableStyle, marginBottom: 0, width: "auto" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...dataLabelTd, borderBottom: "none", padding: "2px 10px 2px 0" }, children: "Date" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...dataValueTd, borderBottom: "none", padding: "2px 0" }, children: activeSession.date })
+        ] }) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: { ...dataTableStyle, marginBottom: 0, width: "auto" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...dataLabelTd, borderBottom: "none", padding: "2px 10px 2px 0" }, children: "Source" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("td", { style: { ...dataValueTd, borderBottom: "none", padding: "2px 0" }, children: activeSession.source === "import" ? `📎 ${activeSession.filename}` : activeSession.source === "recording" ? "🎙 Recording" : "✏️ Manual" })
+        ] }) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1 } }),
+        (activeSession.source === "recording" || activeSession.source === "manual") && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: [
+          (activeSession.recordingStatus === "recording" || activeSession.recordingStatus === "paused") && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: {
+            fontFamily: "monospace",
+            fontSize: 13,
+            fontWeight: 600,
+            color: activeSession.recordingStatus === "recording" ? "#e54040" : "var(--text-secondary)",
+            minWidth: 48,
+            textAlign: "right"
+          }, children: liveElapsed }),
+          activeSession.recordingStatus === "recording" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 8, height: 8, borderRadius: "50%", background: "#e54040", animation: "pulse 1.2s ease-in-out infinite", flexShrink: 0 } }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10, fontWeight: 600, color: "#e54040", textTransform: "uppercase", letterSpacing: "0.04em" }, children: "LIVE" })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "12px 16px", borderBottom: "1px solid var(--border)" }, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                style: {
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                  marginBottom: 4
-                },
-                children: "Supporting Evidence"
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }, children: "Test results, interview data, and collateral information will be summarized here once the clinician completes their formulation." })
-          ] })
-        ]
-      }
-    )
-  ] });
-}
-function ReportSubTab({
-  caseRow,
-  stageIndex
-}) {
-  const isFinal = stageIndex >= 5;
-  const sections = getReportSections(caseRow.evaluation_type);
-  const completedCount = isFinal ? sections.length : Math.min(3, sections.length);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHeader, { title: "Evaluation Report" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        style: {
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          overflow: "hidden",
-          marginBottom: 16
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeField, { label: "Report Type", value: caseRow.evaluation_type ?? "Psychological Evaluation" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
+          (activeSession.recordingStatus === "idle" || activeSession.recordingStatus === "done" || !activeSession.recordingStatus) && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
             {
-              label: "Status",
-              value: isFinal ? "✓ Final" : "⏳ Draft"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
-            {
-              label: "Evaluator",
-              value: "Assigned Clinician"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            IntakeField,
-            {
-              label: "Est. Length",
-              value: `${sections.length * 2}–${sections.length * 3} pages`
-            }
-          )
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 10 }, children: "Report Sections" }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        style: {
-          background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: 6,
-          overflow: "hidden"
-        },
-        children: sections.map((section, idx) => {
-          const done = idx < completedCount;
-          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
-            {
+              onClick: handleToggleRecording,
+              title: "Start recording — live transcription streams as you speak",
               style: {
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                padding: "9px 16px",
-                borderBottom: idx < sections.length - 1 ? "1px solid var(--border)" : "none"
+                gap: 5,
+                padding: "4px 12px",
+                fontSize: 11,
+                fontWeight: 600,
+                border: "1px solid #e54040",
+                borderRadius: 4,
+                background: "rgba(229,64,64,0.08)",
+                color: "#e54040",
+                cursor: "pointer",
+                fontFamily: "inherit"
               },
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "span",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14 }, children: "🎙" }),
+                " Record"
+              ]
+            }
+          ),
+          activeSession.recordingStatus === "recording" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: handleToggleRecording,
+                title: "Pause recording and transcription",
+                style: {
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
+                  background: "var(--panel)",
+                  color: "var(--text)",
+                  cursor: "pointer",
+                  fontFamily: "inherit"
+                },
+                children: "⏸ Pause"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: handleStopRecording,
+                title: "Stop recording",
+                style: {
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  border: "1px solid #e54040",
+                  borderRadius: 4,
+                  background: "#e54040",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontFamily: "inherit"
+                },
+                children: "⏹ Stop"
+              }
+            )
+          ] }),
+          activeSession.recordingStatus === "paused" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: handleToggleRecording,
+                title: "Resume recording and live transcription",
+                style: {
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  border: "1px solid #e54040",
+                  borderRadius: 4,
+                  background: "rgba(229,64,64,0.08)",
+                  color: "#e54040",
+                  cursor: "pointer",
+                  fontFamily: "inherit"
+                },
+                children: "🎙 Resume"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: handleStopRecording,
+                title: "Stop recording",
+                style: {
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  border: "1px solid #e54040",
+                  borderRadius: 4,
+                  background: "#e54040",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontFamily: "inherit"
+                },
+                children: "⏹ Stop"
+              }
+            )
+          ] }),
+          activeSession.recordingStatus === "finalizing" && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 11, fontWeight: 600, color: "var(--accent)", display: "flex", alignItems: "center", gap: 6 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { display: "inline-block", width: 12, height: 12, border: "2px solid var(--accent)", borderTop: "2px solid transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" } }),
+            "Finalizing transcript…"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative" }, ref: audioSettingsRef, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => setShowAudioSettings((v) => !v),
+                title: "Audio input settings",
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 28,
+                  height: 28,
+                  padding: 0,
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
+                  background: showAudioSettings ? "var(--accent)" : "var(--panel)",
+                  color: showAudioSettings ? "#fff" : "var(--text-secondary)",
+                  cursor: "pointer",
+                  fontSize: 14
+                },
+                children: /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "12", cy: "12", r: "3" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" })
+                ] })
+              }
+            ),
+            showAudioSettings && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+              position: "absolute",
+              right: 0,
+              top: "100%",
+              marginTop: 6,
+              zIndex: 9999,
+              width: 320,
+              padding: "14px 16px",
+              background: "var(--panel, #fff)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.15)"
+            }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("path", { d: "M19 10v2a7 7 0 0 1-14 0v-2" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "12", y1: "19", x2: "12", y2: "23" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("line", { x1: "8", y1: "23", x2: "16", y2: "23" })
+                ] }),
+                "Audio Settings"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 12 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { fontSize: 10, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 4 }, children: "Microphone" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "select",
                   {
+                    value: selectedMicId,
+                    onChange: (e) => setSelectedMicId(e.target.value),
                     style: {
-                      fontSize: 13,
-                      color: done ? "#4caf50" : "var(--text-secondary)",
-                      flexShrink: 0
+                      width: "100%",
+                      padding: "5px 8px",
+                      fontSize: 11,
+                      fontFamily: "inherit",
+                      border: "1px solid var(--border)",
+                      borderRadius: 4,
+                      background: "var(--bg)",
+                      color: "var(--text)"
                     },
-                    children: done ? "✓" : "⏳"
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "span",
-                  {
-                    style: {
-                      fontSize: 13,
-                      color: done ? "var(--text)" : "var(--text-secondary)"
-                    },
-                    children: section
+                    children: [
+                      audioDevices.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "No microphones detected" }),
+                      audioDevices.map((d) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: d.deviceId, children: d.label || `Microphone (${d.deviceId.slice(0, 8)}…)` }, d.deviceId))
+                    ]
                   }
                 )
-              ]
-            },
-            section
-          );
-        })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 12 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: { fontSize: 10, fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", justifyContent: "space-between", marginBottom: 4 }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Input Level" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontFamily: "monospace", color: "var(--text)" }, children: [
+                    micGain,
+                    "%"
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "input",
+                  {
+                    type: "range",
+                    min: 0,
+                    max: 200,
+                    value: micGain,
+                    onChange: (e) => setMicGain(Number(e.target.value)),
+                    style: { width: "100%", accentColor: "var(--accent)" }
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 12 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 11,
+                  color: "var(--text)",
+                  cursor: "pointer"
+                }, children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "input",
+                    {
+                      type: "checkbox",
+                      checked: captureSystemAudio,
+                      onChange: (e) => setCaptureSystemAudio(e.target.checked),
+                      style: { accentColor: "var(--accent)" }
+                    }
+                  ),
+                  "Capture system audio (speaker output)"
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 10, color: "var(--text-secondary)", marginTop: 3, paddingLeft: 24 }, children: "Records audio from video calls, playback, etc." })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+                padding: "8px 10px",
+                borderRadius: 4,
+                fontSize: 10,
+                lineHeight: 1.5,
+                background: whisperStatus?.available ? "rgba(46,160,67,0.08)" : "rgba(229,64,64,0.06)",
+                border: `1px solid ${whisperStatus?.available ? "rgba(46,160,67,0.2)" : "rgba(229,64,64,0.15)"}`,
+                color: "var(--text-secondary)"
+              }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: "Transcription Engine:" }),
+                " ",
+                whisperStatus?.available ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: "#2ea043" }, children: [
+                  "Whisper.cpp ready (",
+                  whisperStatus.model,
+                  ")"
+                ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#e54040" }, children: "Whisper.cpp not installed" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+                whisperStatus?.available ? "All audio is processed on-device. Nothing leaves this machine." : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                  "Setup: ",
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("code", { style: { fontSize: 9 }, children: "~/Library/Application Support/Psygil/whisper/" }),
+                  " needs ",
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("code", { style: { fontSize: 9 }, children: "main" }),
+                  " + ",
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("code", { style: { fontSize: 9 }, children: "ggml-base.en.bin" })
+                ] })
+              ] })
+            ] })
+          ] })
+        ] }),
+        activeSession.duration && activeSession.recordingStatus !== "recording" && activeSession.recordingStatus !== "paused" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 6 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10, color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase" }, children: "Duration" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 12, fontFamily: "monospace", color: "var(--text)" }, children: activeSession.duration })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 280px", gap: 20 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 0 }, children: [
+          (activeSession.recordingStatus === "done" || activeSession.summary || activeSession.source !== "recording") && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 16 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...narrativeSectionHeader, display: "flex", alignItems: "center", gap: 8 }, children: [
+              "Session Summary",
+              activeSession.recordingStatus === "done" && !activeSession.summary && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 10, fontWeight: 500, color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 4 }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { display: "inline-block", width: 10, height: 10, border: "2px solid var(--accent)", borderTop: "2px solid transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" } }),
+                "Generating…"
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "textarea",
+              {
+                value: activeSession.summary,
+                onChange: (e) => updateSessionField(activeSession.id, "summary", e.target.value),
+                onBlur: () => void saveInterviewData(),
+                placeholder: activeSession.recordingStatus === "done" && !activeSession.summary ? "AI is generating a clinical summary from the transcript…" : "Brief summary of this interview session — key topics covered, notable observations, clinical impressions…",
+                style: {
+                  width: "100%",
+                  boxSizing: "border-box",
+                  minHeight: 80,
+                  padding: "8px 10px",
+                  fontSize: 12.5,
+                  fontFamily: "inherit",
+                  lineHeight: 1.6,
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
+                  background: "var(--bg)",
+                  color: "var(--text)",
+                  resize: "vertical"
+                }
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, display: "flex", flexDirection: "column" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...narrativeSectionHeader, display: "flex", alignItems: "center", gap: 8 }, children: [
+              activeSession.source === "import" ? "Transcript" : activeSession.source === "recording" ? "Live Transcript" : "Session Notes",
+              activeSession.isStreaming && activeSession.recordingStatus === "recording" && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: {
+                fontSize: 10,
+                fontWeight: 600,
+                color: "#e54040",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4
+              }, children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { width: 6, height: 6, borderRadius: "50%", background: "#e54040", animation: "pulse 1.2s ease-in-out infinite" } }),
+                "streaming"
+              ] }),
+              activeSession.recordingStatus === "paused" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10, fontWeight: 600, color: "var(--text-secondary)" }, children: "paused" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "textarea",
+              {
+                value: activeSession.transcript,
+                onChange: (e) => updateSessionField(activeSession.id, "transcript", e.target.value),
+                onBlur: () => void saveInterviewData(),
+                placeholder: activeSession.recordingStatus === "idle" ? "Press Record to begin live transcription. Words appear here as you speak. You can also type notes directly…" : activeSession.recordingStatus === "recording" ? "Listening… transcription will stream here in real time. You can type notes alongside the live text." : activeSession.recordingStatus === "paused" ? "Recording paused. Press Resume to continue live transcription…" : activeSession.recordingStatus === "finalizing" ? "Flushing final audio chunk…" : activeSession.source === "import" ? "Imported transcript content will appear here…" : "Type session notes, observations, and interview content here…",
+                style: {
+                  width: "100%",
+                  boxSizing: "border-box",
+                  minHeight: 420,
+                  flex: 1,
+                  padding: "10px 12px",
+                  fontSize: 12.5,
+                  fontFamily: "monospace",
+                  lineHeight: 1.7,
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
+                  background: activeSession.recordingStatus === "recording" ? "rgba(229,64,64,0.03)" : "var(--bg)",
+                  color: "var(--text)",
+                  resize: "vertical",
+                  borderColor: activeSession.recordingStatus === "recording" ? "rgba(229,64,64,0.3)" : void 0
+                }
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinNotesColumnStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: "Clinical Notes" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            ClinicalNoteField,
+            {
+              label: "Mental Status Exam",
+              value: activeNotes.mse ?? "",
+              onChange: (v) => updateSessionNote("mse", v),
+              onBlur: () => void saveInterviewData(),
+              placeholder: "Appearance, behavior, speech, mood/affect, thought process/content, cognition, insight/judgment…"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            ClinicalNoteField,
+            {
+              label: "Rapport & Engagement",
+              value: activeNotes.rapport ?? "",
+              onChange: (v) => updateSessionNote("rapport", v),
+              onBlur: () => void saveInterviewData(),
+              placeholder: "Cooperativeness, defensiveness, forthcomingness, consistency across sessions…"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            ClinicalNoteField,
+            {
+              label: "Key Clinical Observations",
+              value: activeNotes.observations ?? "",
+              onChange: (v) => updateSessionNote("observations", v),
+              onBlur: () => void saveInterviewData(),
+              placeholder: "Discrepancies noted, emotional responses, areas requiring follow-up, collateral contradictions…"
+            }
+          )
+        ] })
+      ] })
+    ] })
+  ] });
+}
+function getDiagnosticConsiderations(evalType, parsedOb, intakeRow, stageIndex) {
+  const et = (evalType ?? "").toLowerCase();
+  const mental = parsedOb.mental;
+  const health = parsedOb.health;
+  const substance = parsedOb.substance;
+  const complaints = parsedOb.complaints;
+  const legal = parsedOb.legal;
+  const family = parsedOb.family;
+  const conditions = [];
+  const has = (val) => !!val && !val.toLowerCase().match(/^(—|none|n\/a|no |denies|not reported|no prior|no significant|no reported|no criminal|no history|no known)/);
+  if (et.includes("cst") || et.includes("competency")) {
+    const hasPriorPsychDx = has(mental?.previous_diagnoses);
+    const hasPsychMeds = has(mental?.psych_medications);
+    const hasPriorTreatment = has(mental?.previous_treatment);
+    const hasSubstance = has(substance?.alcohol_use) || has(substance?.drug_use);
+    const hasCognitiveHistory = has(health?.head_injuries);
+    if (hasPriorPsychDx || hasPsychMeds || hasPriorTreatment) {
+      conditions.push({
+        name: "Schizophrenia",
+        dsmCode: "F20.9",
+        dsmExcerpt: "Two or more of: delusions, hallucinations, disorganized speech, grossly disorganized or catatonic behavior, negative symptoms. At least one must be delusions, hallucinations, or disorganized speech. Continuous disturbance for at least 6 months, with at least 1 month of active-phase symptoms. (DSM-5-TR 298.9)",
+        relevance: `Prior psychiatric history suggests psychotic spectrum consideration. ${hasPriorPsychDx ? `Documented prior diagnoses: ${mental.previous_diagnoses}.` : ""} ${hasPsychMeds ? `Psychiatric medications: ${mental.psych_medications}.` : ""} ${hasPriorTreatment ? `Treatment history: ${mental.previous_treatment}.` : ""}`,
+        dataSummary: `MSE findings, collateral reports, medication response history, and SIRS-2/MMPI-3 psychotic scales should be cross-referenced to determine whether active psychotic symptoms are present and meet duration criteria.`,
+        contradictingData: `${!hasPriorPsychDx ? "No prior psychotic diagnoses documented. " : ""}If SIRS-2 indicates feigned psychosis, or if symptoms only appeared in the context of substance use, a primary psychotic disorder may not be supported.${hasSubstance ? ` Substance use is reported — substance-induced psychotic disorder must be differentiated.` : ""}`,
+        templateOptions: [
+          { title: "Full criteria met — active psychosis confirmed", body: "Clinical history, psychometric testing, and behavioral observations during the evaluation are consistent with an active psychotic disorder meeting DSM-5-TR criteria for Schizophrenia. The examinee demonstrated positive symptoms including [specify: delusions/hallucinations/disorganized speech] that have persisted for a duration consistent with the six-month continuous disturbance requirement. Functional impairment across occupational, social, and self-care domains is well-documented in both the clinical record and collateral reports. The symptom profile is not better accounted for by a mood disorder with psychotic features, substance-induced psychosis, or a medical condition." },
+          { title: "Partial criteria — subthreshold presentation", body: "While the clinical history documents prior psychotic episodes and the examinee reports residual symptoms, the current evaluation does not establish active psychotic symptoms meeting full DSM-5-TR criteria at this time. The presentation is more consistent with the residual phase of the illness, characterized by attenuated positive symptoms and persistent negative symptoms. This diagnostic consideration remains active pending integration of collateral records and longitudinal treatment data." },
+          { title: "History supports but current MSE unremarkable", body: "The examinee carries a documented history of schizophrenia per treatment records; however, mental status examination during the current evaluation was largely unremarkable for active psychotic symptoms. This may reflect adequate medication management, symptom remission, or strategic symptom minimization in the forensic context. The diagnosis is supported historically but cannot be confirmed as currently active based on the present evaluation data alone." },
+          { title: "Diagnosis not supported — alternative explanation", body: "The available clinical data do not support a diagnosis of Schizophrenia. Reported symptoms are better accounted for by [specify alternative: substance-induced psychotic disorder/mood disorder with psychotic features/malingering]. Testing validity indicators, behavioral observations, and the temporal relationship between symptoms and external circumstances argue against a primary psychotic disorder." },
+          { title: "Medication response supports diagnosis", body: "The examinee's documented positive response to antipsychotic medication is consistent with a primary psychotic disorder. Treatment records indicate symptom reduction with [medication], which is a first-line agent for schizophrenia. The pattern of medication response, when considered alongside the clinical history and current symptom presentation, provides additional support for this diagnostic consideration." },
+          { title: "Collateral confirms chronic course", body: "Collateral informants describe a chronic and deteriorating course consistent with the longitudinal trajectory expected in Schizophrenia. Reports from [family/treatment providers/correctional staff] document persistent functional decline, disorganized behavior, and social withdrawal predating the current forensic involvement. This corroborating information strengthens the diagnostic formulation." },
+          { title: "Differentiate from substance-induced psychosis", body: "Given the documented co-occurring substance use history, careful differential diagnosis is required between primary Schizophrenia and Substance-Induced Psychotic Disorder. The critical question is whether psychotic symptoms persist during periods of documented sobriety. Available data [support/do not clearly support] the independence of psychotic symptoms from substance use, and this differentiation has direct implications for competency-related treatment recommendations." },
+          { title: "Negative symptoms predominate", body: "The current clinical presentation is dominated by negative symptoms including affective flattening, alogia, avolition, and social withdrawal, with minimal active positive symptoms. This negative symptom profile is consistent with the deficit syndrome variant of Schizophrenia and has particular relevance to the competency question, as these symptoms may impair the examinee's ability to assist counsel and maintain rational understanding of proceedings independently of positive symptom management." },
+          { title: "Cognitive deficits secondary to psychosis", body: "Neurocognitive testing reveals deficits in processing speed, working memory, and executive functioning that are consistent with the cognitive impairment commonly associated with chronic schizophrenia. These deficits are unlikely to represent a primary neurocognitive disorder given the age of onset and symptom trajectory, but they are directly relevant to the examinee's functional capacity and ability to participate meaningfully in legal proceedings." },
+          { title: "Competency implications — treatment restorability", body: "If Schizophrenia is confirmed as the primary condition impairing competency, the prognosis for restoration through psychopharmacological treatment is [favorable/guarded/poor] based on the examinee's documented treatment history, medication adherence patterns, and degree of prior symptom stabilization. Treatment recommendations should account for the specific symptom profile contributing to the competency deficits identified." }
+        ]
+      });
+    }
+    if (hasPriorPsychDx && hasPriorTreatment) {
+      conditions.push({
+        name: "Schizoaffective Disorder",
+        dsmCode: "F25.x",
+        dsmExcerpt: "An uninterrupted period during which there is a major mood episode concurrent with Criterion A of Schizophrenia. Delusions or hallucinations for 2+ weeks in the absence of a major mood episode during the lifetime duration of the illness. (DSM-5-TR 295.70)",
+        relevance: `Both psychiatric treatment history and prior diagnoses are documented, raising the question of whether mood and psychotic symptoms co-occur or are independent.`,
+        dataSummary: `The temporal relationship between mood and psychotic symptoms must be established through detailed timeline analysis. MMPI-3/PAI mood and psychotic scales, interview timeline, and collateral informants are critical.`,
+        contradictingData: `If psychotic symptoms occur exclusively during mood episodes, a mood disorder with psychotic features is more appropriate. If no clear mood episodes are documented, primary psychotic disorder should be considered instead.`,
+        templateOptions: [
+          { title: "Temporal independence confirmed — schizoaffective supported", body: "Longitudinal analysis of the clinical record establishes that psychotic symptoms have persisted for at least two weeks in the absence of a concurrent major mood episode, meeting the critical DSM-5-TR criterion distinguishing Schizoaffective Disorder from a mood disorder with psychotic features. The temporal relationship between mood and psychotic symptoms, supported by treatment records, medication history, and the current clinical interview, is consistent with Schizoaffective Disorder." },
+          { title: "Both features present — temporal independence unclear", body: "Mood and psychotic features are both documented in the clinical history and are observed in the current evaluation; however, their temporal independence has not been clearly established through available data. It remains unclear whether psychotic symptoms have persisted during euthymic periods. This diagnostic consideration is active but not confirmed, and additional collateral information or treatment records may clarify the longitudinal course." },
+          { title: "Mood disorder with psychotic features more likely", body: "Review of available data suggests that psychotic symptoms have occurred exclusively during major mood episodes and do not persist independently. This pattern is more consistent with a mood disorder with psychotic features (Major Depressive Disorder or Bipolar Disorder) rather than Schizoaffective Disorder. The distinction has treatment implications, as mood stabilization may be the primary treatment target." },
+          { title: "Bipolar type vs. depressive type differentiation", body: "The clinical history includes [manic/depressive] episodes co-occurring with psychotic symptoms. Clarification of the Schizoaffective Disorder subtype (Bipolar Type vs. Depressive Type) is necessary for accurate diagnosis and treatment planning. Available data are most consistent with the [Bipolar/Depressive] type designation based on the documented mood episode history." },
+          { title: "Treatment records clarify longitudinal course", body: "Psychiatric treatment records spanning [duration] provide critical longitudinal data for this differential. Hospital discharge summaries document [psychotic symptoms during euthymic periods / psychotic symptoms only during mood episodes], which [supports / argues against] the temporal independence criterion required for Schizoaffective Disorder. This historical documentation is weighted heavily in the diagnostic formulation." },
+          { title: "Current presentation mixed — defer final diagnosis", body: "The current evaluation captures a mixed clinical presentation with both mood and psychotic features active simultaneously, making it difficult to parse temporal independence at this single point in time. A definitive differentiation between Schizoaffective Disorder and a mood disorder with psychotic features may require longitudinal observation. For the purposes of this evaluation, both conditions are considered and treatment recommendations address both symptom domains." },
+          { title: "Medication history informs differential", body: "The examinee's differential response to antipsychotic versus mood-stabilizing medications provides additional diagnostic data. Records indicate [better response to antipsychotics alone / requirement of combined antipsychotic and mood stabilizer for stabilization], which is [consistent with / atypical for] Schizoaffective Disorder and informs the diagnostic formulation." },
+          { title: "Functional impact on competency", body: "Regardless of whether the final diagnosis is Schizoaffective Disorder or a mood disorder with psychotic features, the combined impact of mood dysregulation and psychotic symptoms on the examinee's rational understanding, factual understanding, and ability to assist counsel is the critical forensic question. The current symptom severity in both domains [significantly impairs / does not significantly impair] these competency-related abilities." },
+          { title: "Collateral supports independent psychotic periods", body: "Collateral informants, including [family members/treatment providers], describe periods during which the examinee exhibited clear psychotic symptoms (e.g., paranoid ideation, auditory hallucinations, disorganized behavior) in the absence of observable mood disturbance. This corroborating information supports the temporal independence of psychotic symptoms required for a Schizoaffective Disorder diagnosis." },
+          { title: "Substance use complicates differential", body: "Co-occurring substance use introduces additional complexity into the mood-psychosis differential. Periods of substance use may independently trigger both mood and psychotic symptoms, confounding the assessment of temporal independence. Documented periods of sobriety with persistent symptoms are critical for resolving this differential, and available data [are sufficient / are insufficient] to confidently parse the contributions of substance use versus primary psychiatric illness." }
+        ]
+      });
+    }
+    if (hasCognitiveHistory || et.includes("fitness")) {
+      conditions.push({
+        name: "Intellectual Disability",
+        dsmCode: "F7x",
+        dsmExcerpt: "Deficits in intellectual functions confirmed by clinical assessment and standardized intelligence testing. Deficits in adaptive functioning. Onset during the developmental period. (DSM-5-TR)",
+        relevance: `${hasCognitiveHistory ? `Documented cognitive/neurological history: ${health.head_injuries}.` : "Cognitive functioning is relevant to competency determination."} WAIS-V results should be reviewed for full-scale and index-level performance.`,
+        dataSummary: `WAIS-V FSIQ and index scores, educational history (${parsedOb.education?.highest_education ?? "not documented"}), adaptive functioning observations from interview and collateral.`,
+        contradictingData: `If WAIS-V scores fall within normal limits and educational/occupational history demonstrates age-appropriate functioning, intellectual disability is not supported.`,
+        templateOptions: [
+          { title: "Full criteria met — ID confirmed", body: "Cognitive testing results (WAIS-V FSIQ in the [specify range]) combined with documented deficits in adaptive functioning and a developmental period onset are consistent with a diagnosis of Intellectual Disability. Educational records, vocational history, and collateral informant reports corroborate longstanding deficits in conceptual, social, and practical adaptive domains. This diagnosis is directly relevant to the competency determination, as intellectual deficits may impair the examinee's ability to understand legal concepts and assist counsel." },
+          { title: "Borderline cognitive functioning — not ID", body: "Cognitive scores fall in the borderline range (FSIQ 70-84), which does not meet the intellectual functioning criterion for Intellectual Disability but represents meaningfully reduced cognitive capacity. This level of functioning is relevant to the competency question, as the examinee may require simplified communication, additional time, and concrete explanations to participate meaningfully in proceedings. Adaptive functioning is [consistent with / better than expected for] the measured cognitive level." },
+          { title: "Scores normal — ID not supported", body: "Cognitive testing yields scores within the normal range across all index domains. The intellectual functioning criterion for Intellectual Disability is not met. Educational and occupational history further demonstrate age-appropriate cognitive capacity. This condition is ruled out as a contributor to any competency-related deficits." },
+          { title: "Effort concerns compromise interpretation", body: "Performance on effort testing raises concern for suboptimal engagement during cognitive assessment. Measured cognitive scores may underestimate the examinee's true abilities, and a diagnosis of Intellectual Disability cannot be reliably established in the context of questionable effort. Readministration under conditions of adequate motivation may be warranted before drawing diagnostic conclusions." },
+          { title: "Adaptive functioning deficits exceed IQ prediction", body: "Adaptive functioning deficits documented through collateral reports and behavioral observation exceed what would be predicted by measured intellectual ability alone. This discrepancy may reflect comorbid conditions (e.g., psychotic disorder, autism spectrum features) or environmental factors that compound the impact of cognitive limitations on daily functioning. The adaptive deficit profile is relevant to competency regardless of whether formal ID criteria are fully met." },
+          { title: "Mild severity — can assist with accommodations", body: "The pattern of results is consistent with Mild Intellectual Disability. The examinee demonstrates the capacity to acquire basic academic skills, communicate needs, and manage routine daily activities with support. With appropriate accommodations — including simplified legal language, visual aids, and extended preparation time — the examinee may be capable of achieving sufficient understanding to participate in proceedings. Specific accommodation recommendations are provided." },
+          { title: "Moderate-severe — significant competency implications", body: "Cognitive testing and adaptive functioning data are consistent with [Moderate/Severe] Intellectual Disability. Deficits in abstract reasoning, comprehension of complex information, and independent decision-making are profound and raise serious questions about the examinee's capacity to achieve a rational and factual understanding of proceedings, even with accommodation and competency restoration efforts. The likelihood of successful restoration should be addressed explicitly." },
+          { title: "Educational history corroborates developmental onset", body: "Educational records document placement in special education services beginning at age [X], individualized education plans targeting [academic/behavioral/adaptive] goals, and [completion of / failure to complete] a modified curriculum. This documented history of developmental-period onset corroborates the current cognitive testing and supports a longstanding pattern of intellectual limitation rather than an acquired cognitive deficit." },
+          { title: "Comorbid psychiatric condition complicates picture", body: "The examinee presents with both intellectual limitations and a co-occurring psychiatric condition [specify], which independently and synergistically impact competency-related abilities. The relative contributions of cognitive deficits versus psychiatric symptoms to the observed functional impairments must be carefully parsed, as they have different implications for treatment and restorability." },
+          { title: "Cultural/linguistic factors require cautious interpretation", body: "The examinee's cultural and linguistic background introduces potential confounds in interpreting standardized cognitive testing. Measured scores should be interpreted cautiously, with appropriate consideration of [limited English proficiency / limited formal education / cultural factors affecting test-taking behavior]. Nonverbal indices and behavioral observations may provide a more accurate estimate of intellectual functioning than the Full Scale IQ in this case." }
+        ]
+      });
+    }
+    if (hasSubstance) {
+      conditions.push({
+        name: "Substance-Induced Psychotic Disorder",
+        dsmCode: "F1x.x59",
+        dsmExcerpt: "Prominent hallucinations or delusions that developed during or soon after substance intoxication or withdrawal, and the substance is capable of producing these symptoms. Not better explained by an independent psychotic disorder. (DSM-5-TR)",
+        relevance: `Active substance use is documented: ${[substance?.alcohol_use, substance?.drug_use].filter(has).join("; ")}. The temporal relationship between substance use and psychotic symptoms must be established.`,
+        dataSummary: `Substance timeline relative to symptom onset, toxicology if available, periods of sobriety with/without symptom persistence, and collateral reports of substance use patterns.`,
+        contradictingData: `If psychotic symptoms persist during documented periods of abstinence, a substance-induced etiology is unlikely. If symptoms clearly predate substance use onset, an independent psychotic disorder is more likely.`,
+        templateOptions: [
+          { title: "Substance-induced etiology supported", body: "The temporal relationship between substance use and psychotic symptom onset supports a substance-induced etiology. Psychotic symptoms emerged in the context of active substance use and available data indicate symptom remission during documented periods of abstinence. The substance(s) involved ([specify]) are pharmacologically capable of producing psychotic symptoms, and the clinical presentation is consistent with a substance-induced psychotic disorder rather than an independent psychotic illness." },
+          { title: "Independent psychotic disorder more likely", body: "Although substance use is documented, psychotic symptoms appear to persist independently of substance use status. Treatment records and collateral reports indicate that hallucinations and/or delusional thinking continued during periods of verified sobriety, suggesting an independent psychotic disorder rather than a purely substance-induced condition. Substance use may exacerbate but does not fully account for the psychotic presentation." },
+          { title: "Temporal relationship unclear — insufficient sobriety data", body: "The differential between substance-induced and independent psychotic disorder cannot be confidently resolved based on available data. There are no well-documented periods of sustained sobriety during which the presence or absence of psychotic symptoms was clinically assessed. Longitudinal observation in a controlled setting may be necessary to establish whether psychotic symptoms persist independent of substance use." },
+          { title: "Methamphetamine-induced psychosis pattern", body: "The clinical presentation is consistent with methamphetamine-induced psychotic disorder, characterized by prominent paranoid ideation, persecutory delusions, and tactile/auditory hallucinations emerging in the context of chronic stimulant use. This substance-specific pattern is well-documented in the literature and typically resolves with sustained abstinence, though resolution may require weeks to months following cessation. The time course of symptom resolution will be diagnostically informative." },
+          { title: "Cannabis-associated psychosis — primary disorder risk", body: "Psychotic symptoms emerged in the context of heavy cannabis use. The relationship between cannabis and psychosis is complex — cannabis can trigger psychotic episodes in individuals with genetic vulnerability and may represent either a substance-induced condition or the unmasking of an independent psychotic disorder. The examinee's age of onset, family psychiatric history, and symptom trajectory will inform this differentiation over time." },
+          { title: "Dual diagnosis — co-occurring independent disorders", body: "Clinical data suggest that both an independent psychotic disorder and a substance use disorder are present and interacting. Psychotic symptoms appear to predate the onset of substance use, and substance use exacerbates but did not initiate the psychotic illness. Both conditions require independent treatment attention, and competency restoration planning should address both substance use and psychotic symptom management." },
+          { title: "Withdrawal-related psychosis", body: "The timing of psychotic symptom onset is consistent with a withdrawal-related psychotic episode rather than intoxication-related psychosis. Symptoms emerged during the acute withdrawal period following cessation of [specify substance], which is consistent with the known withdrawal syndrome for this substance class. Medical monitoring during withdrawal and appropriate pharmacological management are recommended." },
+          { title: "Polysubstance use complicates attribution", body: "The examinee's polysubstance use pattern makes it difficult to attribute psychotic symptoms to any single substance. Multiple substances used concurrently or in close temporal proximity are each capable of producing psychotic features. For diagnostic and treatment purposes, the substance-induced etiology is supported in aggregate, but the specific causative agent cannot be isolated with certainty." },
+          { title: "Competency implications — expected course", body: "If the psychotic presentation is primarily substance-induced, the expected course with sustained abstinence is [favorable/guarded] for symptom resolution. Competency restoration efforts should prioritize substance use treatment alongside symptom monitoring. The examinee should be reassessed after a period of documented sobriety to determine whether psychotic symptoms have resolved and competency has been restored." },
+          { title: "Prior episodes resolve with sobriety — pattern established", body: "Review of the longitudinal history reveals a pattern of psychotic episodes occurring exclusively during active substance use, with documented symptom resolution during prior periods of sobriety. This established pattern strongly supports a substance-induced etiology and argues against an independent psychotic disorder. This historical pattern is the strongest diagnostic evidence available for this differentiation." }
+        ]
+      });
+    }
+    conditions.push({
+      name: "Malingering",
+      dsmCode: "Z76.5 (not a mental disorder)",
+      dsmExcerpt: "Intentional production of false or grossly exaggerated symptoms motivated by external incentives. Strongly suspect when: medicolegal context of presentation, marked discrepancy between claimed disability and objective findings, lack of cooperation during evaluation, or presence of Antisocial Personality Disorder. (DSM-5-TR)",
+      relevance: `Forensic competency evaluation inherently involves external incentive (avoidance of criminal prosecution). ${intakeRow?.charges ? `Pending charges: ${intakeRow.charges}.` : ""} Malingering must be assessed in all forensic contexts regardless of clinical presentation.`,
+      dataSummary: `SIRS-2 profile: ${stageIndex >= 2 ? "scored — review classification" : "pending"}. TOMM effort testing: ${stageIndex >= 2 ? "scored — review trial data" : "pending"}. MMPI-3 validity scales (F, Fp, FBS): ${stageIndex >= 2 ? "review over-reporting indicators" : "pending"}. Cross-method symptom consistency from interview.`,
+      contradictingData: `If SIRS-2 classifies as genuine, TOMM passes effort threshold, and MMPI-3 validity scales are within acceptable limits, malingering is not supported. Consistent symptom presentation across methods further argues against feigning.`,
+      templateOptions: [
+        { title: "Credible presentation — no feigning indicators", body: "Validity testing across multiple instruments is consistent with a credible clinical presentation. SIRS-2 classification falls in the genuine range, TOMM performance exceeds the established cutoff for adequate effort, and MMPI-3 validity scales (F, Fp, FBS) are within acceptable limits. Cross-method consistency between self-report, structured interview, and behavioral observation further supports the credibility of the reported symptom profile. Malingering is not indicated." },
+        { title: "Mild over-reporting — interpret with caution", body: "Some validity indicators are mildly elevated, suggesting a tendency toward symptom over-reporting or exaggeration that does not rise to the level of definitive malingering. This pattern may reflect a genuine cry for help, limited psychological sophistication in describing symptoms, or mild exaggeration of real distress. Clinical findings from self-report measures should be interpreted conservatively, with greater weight given to behavioral observations and structured interview data." },
+        { title: "Strong feigning indicators — symptom credibility compromised", body: "Multiple validity indicators across instruments converge on a pattern strongly suggestive of feigned or grossly exaggerated symptomatology. SIRS-2 classifies the presentation in the [probable/definite] feigning range, TOMM performance falls below the cutoff for adequate effort, and MMPI-3 over-reporting scales are clinically elevated. The clinical findings from self-report measures cannot be considered reliable indicators of genuine psychopathology and should be interpreted in this context." },
+        { title: "Inconsistent presentation across methods", body: "Significant inconsistencies were observed between the examinee's self-reported symptoms and behavioral presentation during the evaluation. Symptoms endorsed on structured instruments were not corroborated by mental status examination findings, and the pattern of reported impairment is not consistent with known clinical presentations of the claimed condition. This cross-method inconsistency raises concern for symptom fabrication or exaggeration." },
+        { title: "External incentive is prominent", body: "The evaluative context presents a clear and powerful external incentive for symptom fabrication or exaggeration. The examinee faces [serious criminal charges / potential incarceration / forensic commitment] and a finding of incompetence would [delay proceedings / result in treatment rather than prosecution]. While external incentive alone does not establish malingering, it is a necessary consideration per DSM-5-TR and elevates the importance of empirically validated validity testing in this case." },
+        { title: "Selective symptom endorsement pattern", body: "The examinee endorsed an unusual pattern of symptoms characterized by [rare symptom combinations / improbable symptoms / obvious symptoms with no subtle ones / dramatic presentation inconsistent with known disorders]. This selective endorsement pattern is inconsistent with genuine psychopathology and is more consistent with a naive attempt to present as mentally ill. The symptom profile does not map onto any recognized diagnostic entity." },
+        { title: "Coaching or preparation suspected", body: "Elements of the clinical presentation suggest possible coaching or prior preparation for the evaluation. The examinee demonstrated [rehearsed responses / knowledge of specific test strategies / sudden onset of symptoms coinciding with legal proceedings / symptom presentation that shifted when validity measures were administered]. While not conclusive, these observations are noted and considered in the overall credibility assessment." },
+        { title: "Partial malingering — genuine condition with exaggeration", body: "The data pattern is most consistent with partial malingering — the exaggeration or embellishment of genuine psychiatric symptoms. The examinee likely does experience some degree of [specify: mood disturbance / anxiety / cognitive difficulty], but the severity and functional impact are overstated relative to what objective testing and behavioral observation support. Clinical formulations should be based on the probable genuine baseline rather than the exaggerated self-report." },
+        { title: "Effort adequate despite forensic context", body: "Despite the inherent external incentive present in this forensic evaluation, the examinee demonstrated adequate effort on validity testing and maintained a consistent and clinically coherent symptom presentation. This is noteworthy and supports the authenticity of the clinical picture. The presence of a forensic context alone does not impugn symptom credibility when validity measures are passed." },
+        { title: "Validity testing inconclusive — mixed indicators", body: "Validity testing produced a mixed profile that does not clearly resolve the question of symptom credibility. Some indicators suggest adequate effort and genuine responding, while others show mild elevations in the over-reporting direction. This pattern may reflect genuine distress combined with unsophisticated self-reporting, or it may represent a partially successful attempt at symptom exaggeration. Clinical conclusions should be drawn primarily from sources less susceptible to manipulation, including behavioral observation and collateral data." },
+        { title: "Malingered incompetence vs. malingered symptoms", body: "An important distinction exists between malingering psychiatric symptoms and malingering incompetence to stand trial. The examinee may [report genuine symptoms while exaggerating incompetence / feign psychiatric symptoms to support an incompetency finding / genuinely lack understanding that appears strategic]. The validity assessment addresses symptom credibility; the competency determination requires separate analysis of whether genuine or feigned symptoms actually impair the specific functional abilities required for competency." }
+      ]
+    });
+  } else if (et.includes("custody")) {
+    const hasDepressiveFeatures = has(mental?.previous_treatment) || has(mental?.previous_diagnoses) || has(health?.sleep_quality);
+    const hasPersonalityData = stageIndex >= 2;
+    const hasSubstance = has(substance?.alcohol_use) || has(substance?.drug_use);
+    if (hasDepressiveFeatures) {
+      conditions.push({
+        name: "Major Depressive Disorder",
+        dsmCode: "F33.x",
+        dsmExcerpt: "Five or more symptoms during the same 2-week period representing a change from previous functioning; at least one is depressed mood or loss of interest/pleasure. Symptoms cause clinically significant distress or impairment. (DSM-5-TR 296.xx)",
+        relevance: `Clinical history suggests depressive features. ${has(mental?.previous_diagnoses) ? `Prior diagnoses: ${mental.previous_diagnoses}.` : ""} ${has(mental?.previous_treatment) ? `Treatment history: ${mental.previous_treatment}.` : ""} ${has(health?.sleep_quality) ? `Sleep disturbance reported: ${health.sleep_quality}.` : ""}`,
+        dataSummary: `MMPI-3 depression scales (RC2, RCd), MCMI-IV clinical scales, interview mood assessment, appetite/weight changes (${health?.appetite_weight ?? "not assessed"}), functional impairment.`,
+        contradictingData: `If symptoms are temporally limited to the custody proceedings and do not meet 2-week duration/severity criteria, Adjustment Disorder is more appropriate. If testing mood scales are within normal limits, a clinical mood disorder may not be present.`,
+        templateOptions: [
+          { title: "MDD confirmed — predates custody stressor", body: "Clinical data including self-report, psychometric testing, and behavioral observation are consistent with Major Depressive Disorder meeting full DSM-5-TR duration and severity criteria. Importantly, the depressive episode predates the onset of custody proceedings, indicating that the mood disorder is not merely a reaction to the current legal stressor. The impact of MDD on parenting capacity, emotional availability, and daily functioning is addressed in the parenting assessment section." },
+          { title: "Depressive features — adjustment disorder more likely", body: "Depressive features are present and acknowledged by the examinee; however, symptom onset is temporally linked to the initiation of custody proceedings, and the severity and duration do not clearly meet full criteria for Major Depressive Disorder. The clinical picture is more consistent with an Adjustment Disorder with depressed mood, reflecting a proportionate emotional response to a significant psychosocial stressor. This distinction has implications for prognosis and treatment recommendations." },
+          { title: "No clinical depression — proportionate distress", body: "Testing and clinical interview data do not support a clinical depressive disorder. The examinee reports some mood-related concerns; however, these appear proportionate to the current life circumstances, including the stress of custody litigation. MMPI-3 depression scales fall within normal limits, and behavioral observations during the evaluation are inconsistent with a clinical mood disorder." },
+          { title: "Recurrent MDD — established pattern", body: "The examinee has a documented history of recurrent Major Depressive Disorder, with the current episode representing the [number]th documented episode. Prior episodes have been treated with [medication/therapy], with [partial/full] response. The recurrent nature of the illness is relevant to the long-term parenting assessment, as it introduces a probabilistic risk of future episodes that may temporarily impact parenting capacity." },
+          { title: "MDD with impact on parenting capacity", body: "The current depressive episode is associated with observable deficits in energy, motivation, concentration, and emotional responsiveness that are relevant to parenting capacity. The examinee reports difficulty maintaining consistent routines, reduced patience with the child(ren), and withdrawal from activities previously shared with the child(ren). These functional impairments are directly relevant to the best-interest analysis and are amenable to treatment." },
+          { title: "MDD in remission — not currently impairing", body: "The examinee has a documented history of Major Depressive Disorder that is currently in partial or full remission, either through ongoing treatment or spontaneous recovery. Current testing and interview do not reveal active symptoms meeting diagnostic threshold. The historical diagnosis is noted but does not represent a current impairment to parenting capacity. Continued treatment adherence is recommended as a protective factor." },
+          { title: "Examinee minimizing — testing suggests more impairment", body: "The examinee presented as minimally distressed during the clinical interview; however, psychometric testing reveals clinically significant elevations on depression-related scales that are inconsistent with the self-presentation. This discrepancy may reflect a defensive test-taking approach motivated by the evaluative context, emotional suppression as a coping style, or limited insight into the severity of the mood disturbance. The testing data are weighted in this formulation." },
+          { title: "Suicide risk factors warrant monitoring", body: "In addition to meeting criteria for Major Depressive Disorder, the examinee endorses [hopelessness/passive suicidal ideation/prior attempts/other risk factors] that warrant clinical attention. While this evaluation is not a suicide risk assessment per se, these factors are relevant to parenting in that they indicate a level of psychiatric severity requiring active treatment and monitoring. Appropriate safety recommendations are included." },
+          { title: "Depression secondary to domestic violence", body: "The depressive presentation appears closely linked to the examinee's reported history of domestic violence within the marital relationship. Symptoms of helplessness, low self-worth, hypervigilance, and social withdrawal are consistent with both MDD and the psychological sequelae of intimate partner violence. This etiological context is important for treatment planning and for understanding the examinee's presentation within the custody evaluation." },
+          { title: "Comorbid anxiety amplifies functional impact", body: "Major Depressive Disorder co-occurs with significant anxiety symptoms, creating a combined clinical picture that has a greater functional impact than either condition alone. The examinee reports [rumination, indecisiveness, worry about custody outcome, sleep disruption] that interfere with daily parenting tasks. Treatment addressing both mood and anxiety domains is likely to produce the most meaningful improvement in parenting-related functioning." }
+        ]
+      });
+    }
+    conditions.push({
+      name: "Adjustment Disorder",
+      dsmCode: "F43.2x",
+      dsmExcerpt: "Emotional or behavioral symptoms in response to an identifiable stressor within 3 months of onset. Clinically significant as evidenced by marked distress or significant impairment. Does not meet criteria for another mental disorder and is not merely an exacerbation of a preexisting condition. (DSM-5-TR 309.x)",
+      relevance: `Custody proceedings constitute a major psychosocial stressor. Onset: ${complaints?.onset_timeline ?? "review intake"}. Current stressors: ${parsedOb.recent?.current_stressors ?? "not documented"}.`,
+      dataSummary: `Symptom onset relative to stressor, prior baseline functioning, proportionality of symptoms to stressor severity, and whether full criteria for a more specific disorder (MDD, GAD) are met.`,
+      contradictingData: `${hasDepressiveFeatures ? "If depressive symptoms meet full MDD criteria independently of the stressor, Adjustment Disorder would not apply — a more specific diagnosis takes precedence." : "If no clinically significant distress or impairment is documented, Adjustment Disorder is not warranted."}`,
+      templateOptions: [
+        { title: "Adjustment disorder confirmed — custody stressor", body: "The examinee's emotional and behavioral symptoms are temporally linked to the onset of custody proceedings and are consistent with an Adjustment Disorder with [depressed mood/anxiety/mixed anxiety and depressed mood/disturbance of conduct]. Symptoms are clinically significant, representing distress that exceeds what would be expected given the stressor, but do not meet criteria for a more specific diagnosis such as Major Depressive Disorder or Generalized Anxiety Disorder. Prognosis is favorable with resolution of the stressor and/or appropriate therapeutic support." },
+        { title: "Symptoms exceed adjustment — more specific dx warranted", body: "While the symptom onset is temporally related to the custody proceedings, the severity, duration, and pervasiveness of the clinical presentation exceed what would be expected for an Adjustment Disorder. The symptom profile more closely approximates criteria for [Major Depressive Disorder/Generalized Anxiety Disorder], and the more specific diagnosis should take diagnostic precedence per DSM-5-TR convention." },
+        { title: "Expected stress response — not clinically significant", body: "The examinee reports emotional distress related to the custody proceedings; however, the level of distress observed and reported does not rise to the level of clinical significance required for an Adjustment Disorder diagnosis. The emotional response appears proportionate to the gravity of the situation and does not demonstrate marked distress beyond what would be expected or significant impairment in functioning." },
+        { title: "Parenting impact is transient and situation-specific", body: "The adjustment reaction has produced some transient effects on parenting-related functioning, including [reduced patience, difficulty with routines, emotional reactivity in front of the child(ren)]. These impairments appear directly tied to the custody litigation stressor and are expected to improve as the legal process resolves. They do not reflect a stable impairment in parenting capacity and should be distinguished from characterological or chronic limitations." },
+        { title: "High-conflict custody amplifying symptoms", body: "The adjustment symptoms are being actively maintained and amplified by the high-conflict nature of the custody dispute itself. Ongoing litigation, contentious communication with the co-parent, and uncertainty about the outcome are functioning as chronic re-stressors that prevent natural symptom resolution. Reduction in interpersonal conflict and establishment of a stable custody arrangement would likely be the most effective intervention." },
+        { title: "Adjustment disorder with behavioral disturbance", body: "The examinee's adjustment reaction has manifested primarily in behavioral terms, including [poor judgment in communication with co-parent, boundary violations, impulsive decision-making, violation of court orders]. While the underlying emotional distress is understandable, the behavioral expression raises concerns relevant to the custody determination and suggests a need for structured intervention to improve coping and decision-making during the litigation period." },
+        { title: "Pre-existing vulnerability amplifying reaction", body: "The examinee's adjustment reaction is occurring in the context of pre-existing psychological vulnerability, including [prior mood episodes, personality features, limited coping resources, minimal social support]. While the current symptoms are primarily adjustment-related, the underlying vulnerability increases the risk of a more severe psychiatric decompensation and suggests that prophylactic therapeutic support is warranted." },
+        { title: "Children's adjustment should be considered", body: "It is noted that the examinee's adjustment reaction to the custody proceedings may have secondary effects on the child(ren)'s adjustment and emotional well-being. The parent's emotional availability, consistency, and ability to shield the child(ren) from adult conflict during this period are relevant considerations in the best-interest analysis, independent of the parent's own diagnostic status." },
+        { title: "Prior adjustment to divorce was adaptive", body: "The examinee demonstrates a history of adaptive coping with prior significant stressors, including [the separation, relocation, financial changes]. The current adjustment reaction appears to be a time-limited response to the escalation of custody litigation rather than a pattern of chronic maladjustment. This adaptive history is a protective factor in the parenting assessment." },
+        { title: "Malingered or exaggerated adjustment symptoms", body: "Consideration is given to the possibility that the examinee is presenting or exaggerating adjustment-related symptoms to create a favorable impression in the custody evaluation — either to appear as a sympathetic victim or to attribute impairment to the co-parent's behavior. Validity testing and cross-method consistency [support the credibility of the presentation / raise some concern about the authenticity of reported distress]." }
+      ]
+    });
+    if (hasPersonalityData) {
+      conditions.push({
+        name: "Personality Disorder Features",
+        dsmCode: "F60.x",
+        dsmExcerpt: "An enduring pattern of inner experience and behavior that deviates markedly from cultural expectations, manifested in 2+ of: cognition, affectivity, interpersonal functioning, impulse control. The pattern is inflexible and pervasive, leads to distress or impairment, is stable/longstanding, and not better explained by another disorder. (DSM-5-TR)",
+        relevance: `MCMI-IV and MMPI-3 personality scales have been administered and scored. Personality assessment is standard in custody evaluations to evaluate interpersonal functioning, emotional regulation, and parenting-relevant traits.`,
+        dataSummary: `MCMI-IV personality scales — review elevation patterns and BR scores. MMPI-3 RC and PSY-5 scales. Interview: relationship history, interpersonal patterns, emotional regulation, conflict style.`,
+        contradictingData: `If personality scales are within normal limits and no pervasive maladaptive pattern is documented across multiple data sources, personality pathology is not indicated. Situational stress can temporarily elevate personality scales without reflecting enduring traits.`,
+        templateOptions: [
+          { title: "Clinically significant personality features identified", body: "Personality testing reveals clinically significant elevations consistent with maladaptive personality features, specifically [Cluster B traits / narcissistic features / borderline features / antisocial features / dependent features]. These characterological patterns are relevant to parenting capacity assessment, as they impact interpersonal functioning, emotional regulation, co-parenting cooperation, and the ability to prioritize the child(ren)'s needs over the parent's own emotional needs. The pervasive and enduring nature of these traits suggests they are unlikely to change substantially without sustained therapeutic intervention." },
+          { title: "Testing within normal limits — no personality pathology", body: "Personality testing, including MCMI-IV clinical and personality pattern scales, falls within normal limits. No clinically significant personality pathology is indicated. The examinee demonstrates adequate emotional regulation, interpersonal flexibility, and impulse control as measured by standardized instruments and corroborated by behavioral observation during the evaluation." },
+          { title: "Elevations present but context-inflated", body: "Personality scale elevations are noted on the MCMI-IV; however, these should be interpreted cautiously given the acute stress of the custody proceedings and the evaluative context, both of which are known to inflate trait-like measures on personality instruments. The elevations may reflect state-dependent distress rather than enduring characterological dysfunction. Longitudinal data, including collateral reports and functioning outside the litigation context, would help clarify whether these represent stable personality traits." },
+          { title: "Narcissistic features — impact on co-parenting", body: "Testing and interview data are consistent with narcissistic personality features, including a pervasive pattern of grandiosity, need for admiration, and limited empathy. In the custody context, these features are most relevant to the examinee's capacity for genuine co-parenting, ability to acknowledge the other parent's relationship with the child(ren), and willingness to support the child(ren)'s autonomy rather than viewing them as extensions of self. These features are associated with high-conflict co-parenting dynamics." },
+          { title: "Borderline features — emotional dysregulation concerns", body: "The personality assessment reveals borderline personality features characterized by emotional instability, fear of abandonment, identity disturbance, and impulsive behavior. These features have direct relevance to parenting capacity, as they may contribute to inconsistent emotional availability, difficulty maintaining stable routines, boundary violations with the child(ren), and the potential to involve the child(ren) in adult emotional conflicts. The custody evaluator should assess whether these features are being effectively managed with treatment." },
+          { title: "Antisocial features — rule-violation pattern", body: "Personality testing and historical data indicate antisocial personality features, including a pattern of disregard for rules and social norms, deceitfulness, and limited remorse. In the custody context, these features are relevant to the examinee's ability to model prosocial behavior, maintain truthful communication with the court and co-parent, and comply with custody orders and parenting plans. The examinee's criminal history [corroborates / is inconsistent with] the testing findings." },
+          { title: "Dependent features — enmeshment risk", body: "Testing suggests dependent personality features, including excessive need for reassurance, difficulty making independent decisions, and fear of separation. In the parenting context, these features may manifest as enmeshment with the child(ren), difficulty supporting age-appropriate autonomy, and reliance on the child(ren) for emotional support (parentification). The evaluator should assess the quality of parent-child boundaries." },
+          { title: "Defensive profile — personality assessment limited", body: "The examinee produced a highly defensive personality testing profile, with significant minimization and social desirability responding. The resulting personality scale scores may significantly underestimate the presence of maladaptive traits. Behavioral observations and collateral data should be weighted more heavily than self-report testing in assessing personality functioning for this examinee." },
+          { title: "Personality features stable — treatment prognosis guarded", body: "The identified personality features are characterological in nature, reflecting longstanding and deeply ingrained patterns of thinking, feeling, and relating to others. Per the DSM-5-TR criteria for personality disorders, these patterns are inflexible and pervasive, and they are unlikely to change substantially without intensive, sustained therapeutic intervention (e.g., DBT, schema therapy). Treatment prognosis for personality-level change is guarded and should be factored into long-term custody planning." },
+          { title: "Personality strengths noted alongside concerns", body: "While certain personality features raise concern, the assessment also identifies personality strengths relevant to parenting, including [conscientiousness, warmth, resilience, strong work ethic, social engagement]. A balanced formulation recognizes both the areas of concern and the adaptive personality resources the examinee brings to the parenting role. Recommendations should build on identified strengths while addressing areas of vulnerability." }
+        ]
+      });
+    }
+    if (hasSubstance) {
+      conditions.push({
+        name: "Substance Use Disorder",
+        dsmCode: "F1x.x",
+        dsmExcerpt: "A problematic pattern of use leading to clinically significant impairment or distress, as manifested by 2+ of 11 criteria within a 12-month period. Severity: Mild (2-3), Moderate (4-5), Severe (6+). (DSM-5-TR)",
+        relevance: `Substance use is documented and is relevant to parenting capacity assessment. Alcohol: ${substance?.alcohol_use ?? "—"}. Drugs: ${substance?.drug_use ?? "—"}.`,
+        dataSummary: `Self-report quantity/frequency, collateral reports, impact on parenting or daily functioning, treatment history: ${substance?.substance_treatment ?? "none reported"}.`,
+        contradictingData: `If use is infrequent and no functional impairment or parenting impact is documented, diagnostic threshold may not be met. Self-report minimization is common in custody evaluations.`,
+        templateOptions: [
+          { title: "SUD confirmed — parenting impact documented", body: "Reported substance use patterns, functional impact, and collateral data are consistent with a Substance Use Disorder ([specify substance], [mild/moderate/severe] severity). The substance use has demonstrable impact on parenting capacity, including [impaired supervision, inconsistent routines, exposure of child(ren) to substance use behavior, driving under the influence with child(ren) present]. Treatment recommendations are directly tied to custody considerations." },
+          { title: "Use documented but below diagnostic threshold", body: "Substance use is documented and acknowledged by the examinee; however, the pattern does not clearly meet the DSM-5-TR diagnostic threshold of two or more criteria within a 12-month period. Current use appears [recreational/social/infrequent] without documented functional impairment or impact on parenting. This finding does not preclude monitoring, as self-report minimization is common in custody evaluations." },
+          { title: "Active SUD — safety concerns for child(ren)", body: "The examinee meets criteria for an active Substance Use Disorder that raises specific safety concerns for the child(ren). These include [unsupervised access while intoxicated, impaired judgment affecting child safety decisions, exposing child(ren) to drug-related activity or individuals, DUI incidents with child(ren) present]. Structured safety measures, including [drug testing, supervised visitation, substance abuse treatment] should be considered as conditions of custody or visitation." },
+          { title: "SUD in sustained remission", body: "The examinee has a documented history of Substance Use Disorder that is currently in sustained remission, supported by [length of sobriety, treatment completion, ongoing recovery program participation, negative drug screens]. The historical diagnosis is noted as a relevant consideration, but the examinee's recovery trajectory represents a positive prognostic indicator for parenting capacity. Continued monitoring and relapse prevention are recommended." },
+          { title: "Minimization suspected — collateral contradicts self-report", body: "The examinee's self-report of substance use is notably minimal and inconsistent with collateral information, which documents [more frequent use, more problematic consequences, incidents involving child(ren)]. This discrepancy suggests minimization motivated by the evaluative context and raises concern that the true extent of substance involvement may be greater than acknowledged. Collateral data are weighted more heavily in this formulation." },
+          { title: "Alcohol use in co-parenting conflict context", body: "Alcohol use has become a focal point of the custody dispute, with the co-parent alleging problematic drinking. The current evaluation finds that the examinee's alcohol consumption [meets/does not meet] criteria for an Alcohol Use Disorder. Self-report, collateral, and any available objective data (e.g., EtG testing) are [consistent/inconsistent] with the allegations. Regardless of diagnostic status, the evaluator notes that alcohol use during parenting time is a legitimate custodial concern." },
+          { title: "Treatment compliance as prognostic indicator", body: "The examinee has engaged in substance abuse treatment, including [specify: inpatient, outpatient, AA/NA, medication-assisted treatment]. Treatment compliance and engagement are [good/partial/poor], which serves as a prognostic indicator for sustained recovery and, by extension, parenting capacity. The examinee's willingness to participate in structured treatment is [a positive indicator / a concern given inconsistent follow-through]." },
+          { title: "Prescription medication misuse", body: "The substance use concern involves misuse of prescribed medications, specifically [specify: opioids, benzodiazepines, stimulants]. This is distinguished from illicit drug use but carries similar implications for parenting capacity, including impaired alertness, judgment, and responsiveness. The evaluator notes that prescription medication misuse can be more difficult to detect and monitor than illicit substance use, and specific recommendations for medication management are provided." },
+          { title: "Child(ren) exposed to parental substance use", body: "Regardless of whether the examinee's substance use meets formal diagnostic criteria, collateral information indicates that the child(ren) have been exposed to parental substance use behavior, including [witnessing intoxication, finding substances/paraphernalia, being present during substance-related conflict, parentification due to parent's impairment]. The impact of this exposure on the child(ren)'s emotional well-being and sense of safety is a primary consideration in the custody recommendation." },
+          { title: "Co-occurring MDD and SUD — integrated treatment needed", body: "Substance Use Disorder co-occurs with Major Depressive Disorder in this case, and the two conditions appear to reinforce each other — depressive symptoms trigger substance use as a coping mechanism, and substance use exacerbates mood instability. Integrated dual-diagnosis treatment addressing both conditions simultaneously is recommended, as treating either in isolation is unlikely to produce sustained improvement in overall functioning and parenting capacity." }
+        ]
+      });
+    }
+  } else if (et.includes("risk")) {
+    const hasViolence = has(mental?.violence_history);
+    const hasCriminal = has(legal?.arrests_convictions);
+    const hasSubstance = has(substance?.alcohol_use) || has(substance?.drug_use);
+    conditions.push({
+      name: "Antisocial Personality Disorder",
+      dsmCode: "F60.2",
+      dsmExcerpt: "Pervasive pattern of disregard for and violation of the rights of others since age 15. Three or more of: failure to conform to social norms, deceitfulness, impulsivity, irritability/aggressiveness, reckless disregard for safety, consistent irresponsibility, lack of remorse. Age 18+, evidence of Conduct Disorder before age 15. (DSM-5-TR 301.7)",
+      relevance: `Risk assessment context requires evaluation of characterological antisocial patterns. ${hasViolence ? `Violence history: ${mental.violence_history}.` : ""} ${hasCriminal ? `Criminal history: ${legal.arrests_convictions}.` : ""} PCL-R results directly inform this consideration.`,
+      dataSummary: `PCL-R total and factor scores: ${stageIndex >= 2 ? "scored — review interpersonal, affective, lifestyle, antisocial facets" : "pending"}. MMPI-3 antisocial scales. Conduct disorder history before age 15 per interview and records.`,
+      contradictingData: `If PCL-R total score is below clinical threshold, criminal history is limited to a single incident, and no pervasive pattern of rights-violation is documented, ASPD criteria are likely not met. ${!hasViolence ? "No violence history has been documented. " : ""}Situational criminal behavior does not necessarily reflect a personality disorder.`,
+      templateOptions: [
+        { title: "ASPD confirmed — full criteria met", body: "PCL-R results, criminal history, and the longitudinal behavioral pattern support a diagnosis of Antisocial Personality Disorder. The examinee demonstrates a pervasive pattern of disregard for and violation of the rights of others since at least age 15, with evidence of Conduct Disorder prior to that age documented in [juvenile records/school records/collateral reports]. At least three DSM-5-TR criteria are clearly met, including [specify: failure to conform, deceitfulness, impulsivity, aggressiveness, reckless disregard, irresponsibility, lack of remorse]. This diagnosis has direct and significant implications for the violence risk formulation." },
+        { title: "Some antisocial features — full pattern not established", body: "While some antisocial features are present in the behavioral history and testing profile, the full pervasive and enduring pattern required for a diagnosis of Antisocial Personality Disorder is not clearly established across all data sources. The PCL-R total score falls in the [moderate/low] range, and the criterion of onset before age 15 (Conduct Disorder) is [not documented/questionable]. Antisocial traits are noted as relevant to the risk formulation but a categorical ASPD diagnosis is not confirmed." },
+        { title: "Criminal behavior situational — ASPD not supported", body: "Available clinical data do not support a diagnosis of Antisocial Personality Disorder. Criminal behavior appears situational rather than reflecting an enduring personality pattern, occurring in the context of [specific circumstances: substance intoxication, peer influence, economic desperation, a single impulsive act]. Interpersonal functioning outside of the index behavior does not demonstrate the pervasive disregard for others' rights characteristic of ASPD." },
+        { title: "PCL-R elevated — psychopathic features present", body: "The PCL-R total score of [score] falls in the [moderate/high] range, with particular elevation on Factor 1 (Interpersonal/Affective) facets. This suggests psychopathic personality features, including superficial charm, grandiosity, pathological lying, lack of empathy, and shallow affect. Psychopathic traits are among the strongest predictors of instrumental violence and have specific implications for risk management, including reduced amenability to standard therapeutic interventions." },
+        { title: "Factor 2 dominant — lifestyle/antisocial behavior", body: "The PCL-R profile is characterized by predominant elevation on Factor 2 (Lifestyle/Antisocial) facets, reflecting chronic behavioral instability, impulsivity, irresponsibility, and a persistent pattern of criminal behavior. Factor 1 (Interpersonal/Affective) traits are less prominent, suggesting that the antisocial behavior pattern is driven more by impulsivity and poor self-regulation than by the callous-unemotional traits characteristic of primary psychopathy. This profile has somewhat different risk management implications." },
+        { title: "Conduct Disorder history confirmed", body: "Evidence of Conduct Disorder prior to age 15 is clearly documented, including [specify: aggressive behavior toward people/animals, destruction of property, deceitfulness/theft, serious rule violations]. This developmental history meets the DSM-5-TR requirement for an ASPD diagnosis and reflects an early-onset pattern of antisocial behavior that has persisted into adulthood. Early onset is a negative prognostic indicator for behavioral change." },
+        { title: "ASPD with comorbid SUD — compounding risk", body: "Antisocial Personality Disorder co-occurs with a Substance Use Disorder, creating a compounding risk profile. Research consistently demonstrates that ASPD with comorbid substance use is associated with higher rates of violent recidivism, poorer treatment outcomes, and greater difficulty with community supervision compliance. Both conditions must be addressed in the risk management plan, with the understanding that substance use may function as a disinhibiting factor that increases the probability of violence in an already high-risk individual." },
+        { title: "Treatment amenability assessment", body: "The examinee's amenability to treatment is a critical consideration given the ASPD diagnosis. Available data suggest [limited/moderate/uncertain] treatment responsivity based on [prior treatment engagement, motivation for change, capacity for emotional insight, age-related maturation]. Risk management recommendations should be calibrated to the realistic probability of behavioral change, with greater emphasis on external controls for individuals assessed as having low treatment amenability." },
+        { title: "Age and desistance considerations", body: "The examinee is [age], and the well-documented phenomenon of age-related desistance from antisocial behavior is relevant to the longitudinal risk assessment. Antisocial behavior, particularly the impulsive/lifestyle dimension, tends to attenuate with age. However, the interpersonal/affective (psychopathic) dimension is more stable. The examinee's current behavioral trajectory and the specific PCL-R factor pattern inform whether age-related desistance is likely to meaningfully reduce risk in this case." },
+        { title: "Institutional vs. community behavior discrepancy", body: "A notable discrepancy exists between the examinee's behavior in structured/institutional settings and behavior in community settings. This pattern is relevant to the risk formulation, as [institutional compliance may reflect external contingency management rather than internalized behavioral change / community dysfunction may reflect lack of external structure rather than characterological deficiency]. Risk management recommendations should account for this discrepancy." }
+      ]
+    });
+    conditions.push({
+      name: "Structured Violence Risk (HCR-20v3)",
+      dsmCode: "N/A — risk formulation",
+      dsmExcerpt: "The HCR-20v3 is not a diagnostic tool. It structures professional judgment about violence risk using Historical (10), Clinical (5), and Risk Management (5) factors. The output is a formulated risk level (low/moderate/high) with scenario planning — not an actuarial prediction or a diagnosis.",
+      relevance: `Violence risk formulation is the primary purpose of this evaluation. HCR-20v3 provides the framework for integrating all data sources into a structured risk judgment. ${intakeRow?.charges ? `Current charges: ${intakeRow.charges}.` : ""}`,
+      dataSummary: `HCR-20v3 factor ratings: ${stageIndex >= 2 ? "review H, C, R factors" : "pending"}. ${stageIndex >= 2 ? "STATIC-99R actuarial estimate (if applicable)." : ""} Dynamic risk factors from clinical interview. Protective factors assessment.`,
+      contradictingData: `Risk instruments produce structured judgments, not diagnoses, and are not subject to rule-in/rule-out logic. However, protective factors (stable employment, social support, treatment engagement) may mitigate overall risk formulation.`,
+      templateOptions: [
+        { title: "High risk — multiple domains elevated", body: "Structured professional judgment incorporating historical, clinical, and risk management factors indicates an elevated violence risk profile. Multiple Historical factors are present and immutable, Clinical factors reflect active and poorly managed symptomatology, and Risk Management factors indicate limited viable community supervision options. Specific risk scenarios, including [most likely, worst case, and escalation pathway scenarios], have been formulated with corresponding management recommendations. The overall risk judgment is HIGH for future violence." },
+        { title: "Moderate risk — dynamic factors amenable to intervention", body: "The HCR-20v3 assessment indicates a moderate level of concern for future violence. While Historical factors establish a baseline of elevated risk, the Clinical and Risk Management domains contain dynamic factors that are amenable to intervention. Specifically, [active mental illness, substance use, insight deficits, treatment noncompliance] are currently contributing to risk but could be reduced with appropriate intervention. Risk management recommendations target these modifiable factors." },
+        { title: "Low-to-moderate risk — protective factors established", body: "Current assessment reflects a low-to-moderate risk profile. While some Historical factors are present, protective factors are well-established, including [stable employment/housing, prosocial relationships, treatment engagement, absence of recent violence, aging]. The Clinical factor profile reflects [managed/stable] symptomatology, and Risk Management factors indicate [adequate supervision resources, treatment compliance, social support]. The risk judgment is LOW-TO-MODERATE with current protective factors maintained." },
+        { title: "Historical factors establish baseline risk", body: "The Historical (H) scale of the HCR-20v3 documents immutable risk factors that establish the baseline risk level for this individual. Key historical factors rated as Present include [H1: Violence, H2: Other Antisocial Behavior, H3: Relationships, H4: Employment, H5: Substance Use, H6: Major Mental Disorder, H7: Personality Disorder, H8: Traumatic Experiences, H9: Violent Attitudes, H10: Treatment Response]. These factors cannot be changed but inform the level of risk management intensity required." },
+        { title: "Clinical factors — active destabilizers identified", body: "The Clinical (C) scale identifies current, dynamic factors that may actively increase violence risk. Key elevations include [C1: Insight (poor), C2: Violent Ideation/Intent, C3: Symptoms of Major Mental Disorder, C4: Instability, C5: Treatment/Supervision Response (noncompliant)]. These factors represent current destabilizers that, if addressed through targeted intervention, could meaningfully reduce the overall risk level. Clinical factor management should be the primary focus of the risk management plan." },
+        { title: "Risk management factors — supervision planning", body: "The Risk Management (R) scale evaluates the quality and feasibility of future supervision and intervention plans. Current assessment indicates [R1: Professional Services (available/limited), R2: Living Situation (stable/unstable), R3: Personal Support (present/absent), R4: Treatment/Supervision Response (likely compliant/noncompliant), R5: Stress/Coping (manageable/overwhelmed)]. These factors directly inform the specificity of release and community supervision recommendations." },
+        { title: "Risk scenario — most likely violence pattern", body: "Based on integration of all HCR-20v3 factors and case-specific data, the most likely violence scenario involves [describe: the nature of violence (physical assault, threats, domestic violence, weapon use), the most likely victim(s), the situational triggers (substance use, interpersonal conflict, treatment discontinuation, psychotic decompensation), the temporal context, and the severity]. This scenario informs targeted prevention and management strategies." },
+        { title: "Protective factors reduce overall risk judgment", body: "Several protective factors mitigate the risk indicated by the HCR-20v3 factor ratings. These include [genuine motivation for change, strong family support, stable employment, absence of violence for extended period, demonstrated treatment response, prosocial peer network, aging effects]. These protective factors are weighted in the overall structured professional judgment and result in a risk rating that is [lower than/consistent with] what the factor count alone would suggest." },
+        { title: "Conditional risk — substance use as key trigger", body: "The violence risk is strongly conditional on substance use status. Historical analysis reveals that all or most prior violent incidents occurred in the context of substance intoxication, and periods of sobriety have been associated with absence of aggressive behavior. The risk level is materially different when the examinee is actively using substances versus maintaining sobriety. Risk management must therefore prioritize substance use monitoring and treatment as the primary violence prevention strategy." },
+        { title: "Institutional vs. community risk differential", body: "The risk formulation must account for the significant difference between institutional and community risk. The examinee's risk level in a structured, supervised environment is [lower/similar] to the community risk. Transition planning from institutional to community settings represents a period of elevated risk, as external controls are reduced and environmental stressors increase. A graduated transition plan with increasing autonomy contingent on demonstrated stability is recommended." },
+        { title: "Imminent vs. long-term risk differentiation", body: "The distinction between imminent and long-term violence risk is clinically important in this case. Imminent risk (days to weeks) is [elevated/not elevated] based on current Clinical factors. Long-term risk (months to years) is [elevated/moderate/low] based primarily on Historical factors and the trajectory of dynamic risk management. Intervention priorities differ depending on the temporal frame of the risk question being addressed." }
+      ]
+    });
+    if (hasSubstance) {
+      conditions.push({
+        name: "Substance Use Disorder",
+        dsmCode: "F1x.x",
+        dsmExcerpt: "A problematic pattern of use leading to clinically significant impairment or distress, 2+ of 11 criteria within a 12-month period. (DSM-5-TR)",
+        relevance: `Substance use is documented and is a well-established dynamic risk factor for violence. Alcohol: ${substance?.alcohol_use ?? "—"}. Drugs: ${substance?.drug_use ?? "—"}.`,
+        dataSummary: `Use patterns, intoxication at time of index offense (if applicable), treatment history: ${substance?.substance_treatment ?? "none reported"}. HCR-20v3 Clinical factor C4 (Substance Use Problems).`,
+        contradictingData: `If substance use is minimal, infrequent, and not associated with aggressive behavior or the index offense, its contribution to violence risk may be limited.`,
+        templateOptions: [
+          { title: "SUD as primary dynamic risk factor", body: "Active substance use is a significant dynamic risk factor in this case, rated as Present on HCR-20v3 Historical factor H5 (Substance Use Problems) and relevant to Clinical factor C4 (Instability). The temporal association between substance use and prior violent behavior is [strong/moderate], with [most/some/all] prior incidents occurring in the context of intoxication. Substance use treatment and monitoring are central to the risk management plan, as sustained sobriety would meaningfully reduce the assessed risk level." },
+          { title: "Substance use documented — not primary risk driver", body: "Substance use is documented in the clinical history but does not appear to be a primary contributing factor to the violence risk profile in this case. Prior violent behavior has occurred independently of substance use, and the primary risk drivers appear to be [characterological/psychiatric/situational] rather than substance-related. Substance use is noted as a general risk factor but is not identified as a key intervention target for violence prevention." },
+          { title: "Disinhibition pathway — violence while intoxicated", body: "The substance use pattern functions primarily as a disinhibiting factor, reducing impulse control and judgment during intoxication and creating conditions under which pre-existing aggressive tendencies are more likely to be expressed. This pharmacological disinhibition pathway is well-documented in the violence risk literature and suggests that the examinee's risk level is materially different when intoxicated versus sober. Risk management should include objective substance use monitoring." },
+          { title: "Withdrawal-related agitation and aggression", body: "In addition to intoxication-related risk, withdrawal from [specify substance] is associated with irritability, agitation, and lowered threshold for aggressive responding. The examinee's history includes [documented/reported] episodes of aggression during withdrawal periods. Risk management must address both active use and withdrawal phases, potentially including medically managed detoxification and medication-assisted treatment to reduce withdrawal-related aggression." },
+          { title: "Treatment engagement as risk management tool", body: "The examinee's engagement with substance use treatment is a critical risk management variable. Current treatment status is [actively engaged/previously engaged but dropped out/never engaged/court-ordered but minimally compliant]. Treatment engagement and sustained recovery would address one of the most modifiable risk factors in this case, and treatment recommendations should be specific regarding modality, intensity, and monitoring requirements." },
+          { title: "Polysubstance use amplifies overall risk", body: "The examinee's polysubstance use pattern creates a compounding risk profile in which the combined effects of multiple substances — including impaired judgment, disinhibition, paranoia, and physiological agitation — exceed the risk associated with any single substance. Risk management must address the full substance use pattern rather than targeting a single substance, and the feasibility of sustained abstinence should be realistically assessed." }
+        ]
+      });
+    }
+    if (has(mental?.violence_history) && has(legal?.arrests_convictions)) {
+      conditions.push({
+        name: "Intermittent Explosive Disorder",
+        dsmCode: "F63.81",
+        dsmExcerpt: "Recurrent behavioral outbursts representing a failure to control aggressive impulses: verbal aggression 2x/week for 3 months, or 3 behavioral outbursts involving property damage/physical assault in 12 months. Aggression is grossly out of proportion to provocation. Age 6+, not better explained by another disorder. (DSM-5-TR 312.34)",
+        relevance: `Both violence history and criminal record document recurrent aggressive behavior. Violence: ${mental.violence_history}. Criminal: ${legal.arrests_convictions}.`,
+        dataSummary: `Frequency and proportionality of aggressive outbursts, provocation analysis, whether aggression is premeditated (arguing against IED) or impulsive, comorbid substance use at time of incidents.`,
+        contradictingData: `If aggressive behavior is premeditated, instrumental, or occurs exclusively in the context of substance intoxication, IED criteria are not met. If ASPD better accounts for the pattern, IED should not be diagnosed concurrently per DSM-5-TR exclusion.`,
+        templateOptions: [
+          { title: "IED confirmed — recurrent impulsive aggression", body: "The documented pattern of recurrent, impulsive aggressive outbursts that are grossly disproportionate to provocation is consistent with a diagnosis of Intermittent Explosive Disorder. The examinee reports [verbal aggression occurring at least twice weekly for three months / at least three behavioral outbursts involving property damage or physical assault within the past 12 months]. The aggressive episodes are not premeditated, are not committed to achieve a tangible objective, and cause the examinee marked distress or functional impairment. The aggression is not better accounted for by ASPD, a psychotic disorder, or substance intoxication." },
+          { title: "Aggression instrumental/premeditated — IED not met", body: "Analysis of the aggressive behavior pattern reveals that episodes are more instrumental, goal-directed, or premeditated than would be consistent with Intermittent Explosive Disorder. The aggression appears to serve identifiable purposes (e.g., intimidation, coercion, material gain) rather than representing a failure of impulse control. This pattern is more consistent with [ASPD / characterological aggression / situational violence] and does not meet IED criteria." },
+          { title: "Aggression in substance context — IED exclusion", body: "Aggressive outbursts occur predominantly or exclusively in the context of substance intoxication, which represents an exclusionary consideration for IED per DSM-5-TR. The impulsive aggression may be a direct pharmacological effect of the substance rather than reflecting a separate impulse control disorder. If aggressive behavior does not occur during sobriety, IED should not be diagnosed, and the aggression should be attributed to the substance use disorder." },
+          { title: "IED with TBI — neurological disinhibition", body: "The examinee's history of traumatic brain injury involving [frontal/temporal] regions is directly relevant to the IED diagnosis, as TBI-related damage to prefrontal regulatory circuits can produce a neurobehavioral syndrome characterized by impulsive aggression, emotional dysregulation, and disproportionate reactive responses. The neurological contribution to the aggressive behavior has implications for treatment (pharmacological management may be more effective than behavioral interventions alone) and for the risk formulation." },
+          { title: "IED comorbid with mood disorder", body: "Intermittent Explosive Disorder co-occurs with [MDD / Bipolar Disorder], and the irritability associated with mood episodes may exacerbate the frequency and severity of aggressive outbursts. Mood stabilization through pharmacological and therapeutic intervention may reduce the frequency of IED episodes, suggesting that treatment of the comorbid mood disorder should be prioritized in the risk management plan." },
+          { title: "Pattern emerging — subthreshold presentation", body: "The examinee demonstrates a concerning pattern of impulsive aggressive responses that approaches but does not clearly meet the frequency or severity threshold for IED. This subthreshold presentation is clinically relevant to the risk formulation even without a formal diagnosis, as it indicates impulse control deficits that may escalate under stress or substance influence. Anger management intervention is recommended regardless of diagnostic status." },
+          { title: "ASPD better accounts for aggression pattern", body: "Per DSM-5-TR exclusionary criteria, IED should not be diagnosed when the aggressive behavior is better accounted for by Antisocial Personality Disorder. In this case, the pattern of aggression is embedded within a broader characterological pattern of rights-violation, deceitfulness, and disregard for others that is more parsimoniously explained by ASPD. The aggression is a feature of the personality disorder rather than a separate impulse control disorder." }
+        ]
+      });
+    }
+  } else if (et.includes("ptsd")) {
+    conditions.push({
+      name: "Posttraumatic Stress Disorder",
+      dsmCode: "F43.10",
+      dsmExcerpt: "Exposure to actual or threatened death, serious injury, or sexual violence (Criterion A). Presence of: intrusion symptoms (B, 1+), persistent avoidance (C, 1+), negative alterations in cognitions/mood (D, 2+), marked alterations in arousal/reactivity (E, 2+). Duration 1+ month (F). Clinically significant distress or impairment (G). (DSM-5-TR 309.81)",
+      relevance: `This is a PTSD-specific evaluation. Primary concern: ${complaints?.primary_complaint ?? intakeRow?.presenting_complaint ?? "review referral"}. Onset: ${complaints?.onset_timeline ?? "not documented"}.`,
+      dataSummary: `CAPS-5 cluster scores and severity: ${stageIndex >= 2 ? "scored — review criterion-by-criterion" : "pending"}. PCL-5 total and cluster scores: ${stageIndex >= 2 ? "scored" : "pending"}. Trauma narrative from interview. Functional impairment: ${complaints?.secondary_concerns ?? "review interview"}.`,
+      contradictingData: `If CAPS-5 does not meet threshold for all required clusters, full PTSD criteria are not met — consider subthreshold presentation or alternative diagnosis. If validity testing suggests exaggeration (see response style below), symptom credibility is compromised. Duration under 1 month → Acute Stress Disorder instead.`,
+      templateOptions: [
+        { title: "Full PTSD criteria met — CAPS-5 confirmed", body: "CAPS-5 administration confirms symptoms meeting full DSM-5-TR diagnostic criteria across all required clusters: Criterion B (intrusion, [specify number] symptoms endorsed), Criterion C (avoidance, [specify number] symptoms endorsed), Criterion D (negative alterations in cognitions and mood, [specify number] symptoms endorsed), and Criterion E (arousal and reactivity, [specify number] symptoms endorsed). Symptom onset is temporally linked to the documented traumatic event, duration exceeds one month, and clinically significant functional impairment is documented across [occupational/social/personal] domains." },
+        { title: "Subthreshold PTSD — partial criteria met", body: "Significant trauma-related symptoms are present and clinically meaningful; however, one or more DSM-5-TR criterion clusters are not fully met at the clinical threshold on CAPS-5. Specifically, [Cluster C avoidance / Cluster D cognitions-mood / Cluster E arousal] falls below the diagnostic cutoff with [specify number] of the required [specify number] symptoms endorsed. This subthreshold presentation still represents clinically significant distress and may warrant treatment, though a formal PTSD diagnosis is not supported at this time." },
+        { title: "Trauma exposure documented but PTSD not supported", body: "While the examinee reports exposure to a traumatic event meeting Criterion A, the subsequent symptom presentation does not reliably meet PTSD criteria. CAPS-5 severity scores are below the diagnostic threshold, and the clinical picture may be better accounted for by [an adjustment disorder / a pre-existing mood or anxiety disorder exacerbated by the event / normal stress response]. The absence of a PTSD diagnosis does not invalidate the examinee's reported distress." },
+        { title: "Delayed-expression PTSD", body: "The PTSD presentation in this case meets the DSM-5-TR specifier for delayed expression, with full diagnostic criteria not met until at least six months after the traumatic event. The examinee reports [initial partial symptoms / no immediate symptoms / initial numbing followed by gradual symptom emergence]. Delayed expression is well-documented in the literature, particularly following [sexual trauma / military combat / childhood abuse], and does not undermine the validity of the diagnosis." },
+        { title: "PTSD with dissociative subtype", body: "In addition to meeting full PTSD criteria, the examinee demonstrates persistent or recurrent symptoms of [depersonalization / derealization] in response to trauma-related stimuli, meeting the DSM-5-TR dissociative subtype specifier. This dissociative presentation is clinically significant because it may [complicate treatment engagement, affect the examinee's credibility in legal proceedings, indicate more severe trauma exposure, require specialized treatment approaches such as phase-oriented trauma therapy]." },
+        { title: "Complex trauma presentation", body: "While DSM-5-TR does not include a separate Complex PTSD diagnosis, the examinee's presentation includes features characteristic of chronic, repeated traumatic exposure, including [affect dysregulation, negative self-concept, interpersonal difficulties, somatization]. These features extend beyond the core PTSD symptom clusters and suggest that the impact of trauma on this individual's functioning is broader than a standard PTSD diagnosis captures. Treatment planning should address these additional domains." },
+        { title: "Multiple trauma exposures — index event identified", body: "The examinee reports exposure to multiple traumatic events across the lifespan. For the purposes of this evaluation, the index traumatic event is identified as [specify event], which is the event most directly linked to the current PTSD symptom presentation and the referral question. However, the clinician notes that cumulative trauma exposure creates a vulnerability context that may amplify symptom severity and complicate treatment response beyond what would be expected from a single-incident trauma." },
+        { title: "Functional impairment documented across domains", body: "The PTSD diagnosis is associated with significant and documented functional impairment. The examinee reports [inability to work / reduced work capacity, social withdrawal and isolation, disrupted intimate relationships, impaired parenting, neglect of self-care, substance use as coping]. Functional impairment verification is an essential component of the diagnostic formulation and is relevant to any determination of disability or damages in the forensic context." },
+        { title: "Pre-existing vulnerability amplified trauma response", body: `The examinee's pre-existing psychological vulnerability, including [prior trauma history / pre-existing mood disorder / personality features / limited coping resources], likely contributed to the severity of the trauma response. The "eggshell plaintiff" principle is relevant in forensic contexts — a defendant takes the plaintiff as they find them, and pre-existing vulnerability does not diminish the causal role of the index trauma. However, apportionment of impairment between pre-existing conditions and trauma-related symptoms should be addressed.` },
+        { title: "Treatment response informs prognosis", body: "The examinee's response to prior PTSD treatment is informative for prognosis. [The examinee has not yet engaged in evidence-based trauma treatment / The examinee completed [CPT/PE/EMDR] with [significant/partial/minimal] symptom reduction / The examinee has been treatment-resistant to multiple modalities]. This treatment history informs the expected trajectory of recovery and the degree of permanent impairment that may be anticipated." },
+        { title: "Criterion A event meets threshold — analysis", body: "The reported traumatic event meets DSM-5-TR Criterion A through [direct exposure / witnessing / learning about a close family member or friend's experience / repeated professional exposure to details]. The specific elements establishing Criterion A qualification include [actual/threatened death, serious injury, or sexual violence]. This determination is foundational to the PTSD diagnosis and has been verified through [self-report, police reports, medical records, witness statements]." }
+      ]
+    });
+    const onset = complaints?.onset_timeline ?? "";
+    if (onset.toLowerCase().includes("week") || onset.toLowerCase().includes("days") || onset.toLowerCase().includes("recent")) {
+      conditions.push({
+        name: "Acute Stress Disorder",
+        dsmCode: "F43.0",
+        dsmExcerpt: "9+ symptoms from any of five categories: intrusion, negative mood, dissociative, avoidance, arousal. Duration: 3 days to 1 month after trauma exposure. If symptoms persist beyond 1 month, PTSD should be diagnosed instead. (DSM-5-TR 308.3)",
+        relevance: `Symptom onset description suggests a relatively recent timeframe: "${onset}". If duration is under 1 month, ASD rather than PTSD applies.`,
+        dataSummary: `Exact symptom onset date and current duration are critical for differentiating ASD from PTSD. The 1-month threshold is the key differentiator.`,
+        contradictingData: `If symptoms have persisted beyond 1 month (as is likely by evaluation date), ASD is ruled out by definition and PTSD criteria should be evaluated.`,
+        templateOptions: [
+          { title: "ASD confirmed — under one month duration", body: "Symptom duration is less than one month from the date of trauma exposure, and the examinee meets the DSM-5-TR requirement of nine or more symptoms from the five categories (intrusion, negative mood, dissociation, avoidance, and arousal). The presentation is consistent with Acute Stress Disorder. Symptom severity and functional impairment are clinically significant. Re-evaluation for PTSD is recommended if symptoms persist beyond the one-month mark." },
+          { title: "Duration exceeds one month — ASD ruled out", body: "Symptom duration exceeds one month from the date of trauma exposure. Acute Stress Disorder is ruled out by definition per DSM-5-TR temporal criteria, as ASD applies only within the 3-day to 1-month window following trauma. The diagnostic focus should shift to evaluation of PTSD criteria, which applies when symptoms persist beyond one month." },
+          { title: "Early intervention recommended — prevent PTSD", body: "The current ASD presentation represents a window of opportunity for early intervention to prevent the development of chronic PTSD. Research indicates that early, evidence-based intervention (particularly brief CBT with exposure components) during the acute post-trauma period can significantly reduce the probability of PTSD development. Specific treatment recommendations for this acute phase are provided." },
+          { title: "Prominent dissociative features in acute phase", body: "The acute stress presentation is characterized by prominent dissociative symptoms, including [depersonalization, derealization, dissociative amnesia, reduced awareness of surroundings, emotional numbing]. Peritraumatic and acute-phase dissociation is a well-established predictor of subsequent PTSD development. The prominence of dissociative features in this presentation increases the clinical concern for chronic PTSD and supports the recommendation for early therapeutic intervention." },
+          { title: "Severity suggests high PTSD conversion risk", body: "The severity of the current acute stress presentation — particularly the intensity of intrusion and hyperarousal symptoms — places the examinee at elevated risk for conversion to PTSD. While not all individuals with ASD develop PTSD, the current symptom profile and severity level are associated with a [high/moderate] probability of chronic course without intervention." },
+          { title: "Functional impairment requires immediate support", body: "The acute stress reaction has produced significant functional impairment that requires immediate clinical attention, including [inability to work, inability to be alone, severe sleep disruption, inability to care for dependents, avoidance of necessary activities]. Regardless of whether the presentation ultimately meets PTSD criteria, the current level of functional impairment warrants immediate supportive intervention and safety planning." }
+        ]
+      });
+    }
+    conditions.push({
+      name: "Malingered / Exaggerated PTSD Symptoms",
+      dsmCode: "Z76.5",
+      dsmExcerpt: "In forensic and disability contexts, the base rate of malingered or exaggerated PTSD is significant. Assessment requires multi-method validity evaluation including embedded validity indicators in PTSD measures, standalone symptom validity tests, and cross-method consistency analysis. (Clinical standard of practice)",
+      relevance: `PTSD evaluations frequently occur in medicolegal contexts with external incentives. ${intakeRow?.charges ? `Legal context: ${intakeRow.charges}.` : "Assess for litigation, disability, or other external incentive."}`,
+      dataSummary: `TSI-2 atypical response scale: ${stageIndex >= 2 ? "review" : "pending"}. MMPI-3 over-reporting (F, Fp, FBS, RBS): ${stageIndex >= 2 ? "review" : "pending"}. CAPS-5 symptom consistency with behavioral observation. PCL-5 vs. CAPS-5 concordance.`,
+      contradictingData: `If all validity indicators are within normal limits and symptom presentation is consistent across self-report, structured interview, and behavioral observation, malingering is not supported.`,
+      templateOptions: [
+        { title: "Credible presentation — validity indicators passed", body: "Multi-method validity assessment is consistent with a genuine and credible PTSD presentation. TSI-2 atypical response scale is within normal limits, MMPI-3 over-reporting indicators (F, Fp, FBS, RBS) do not suggest exaggeration, and symptom presentation on CAPS-5 structured interview is concordant with PCL-5 self-report and behavioral observation during evaluation sessions. No reliable indicators of symptom fabrication or exaggeration were detected across instruments. The clinical data can be interpreted at face value." },
+        { title: "Mild over-reporting — conservative interpretation advised", body: 'Some validity indicators show mild elevations in the over-reporting direction, suggesting a tendency to endorse symptoms more broadly or severely than is typical of genuine PTSD presentations. This may reflect a "cry for help" pattern, unsophisticated symptom description, or mild exaggeration of genuine distress. Clinical findings from self-report instruments should be interpreted conservatively, with greater reliance placed on structured interview data and behavioral observation.' },
+        { title: "Strong exaggeration pattern — credibility compromised", body: "Convergent validity indicators across multiple instruments suggest a pattern of symptom exaggeration that is inconsistent with genuine PTSD. MMPI-3 over-reporting scales are clinically elevated (F = [score], Fp = [score], FBS = [score]), TSI-2 atypical response scale exceeds the cutoff, and CAPS-5 symptom endorsement is inconsistent with behavioral presentation during the evaluation. Self-report symptom data cannot be considered reliable indicators of the examinee's actual clinical status." },
+        { title: "Symptom coaching suspected", body: "Elements of the symptom presentation suggest possible coaching or preparation, including [textbook recitation of DSM criteria, implausible symptom combinations, symptoms that align perfectly with diagnostic criteria without the expected individual variation, sudden onset coinciding precisely with legal proceedings]. While coaching does not preclude the presence of genuine symptoms, it compromises the reliability of the self-reported clinical picture and warrants heightened scrutiny of all symptom claims." },
+        { title: "External incentive analysis", body: "The evaluation context presents a clear external incentive for symptom exaggeration or fabrication. The examinee stands to [gain financially through litigation/receive disability benefits/avoid legal consequences/obtain favorable custody determination] if a PTSD diagnosis is established. While external incentive alone does not establish malingering, it is a critical contextual factor that must be considered in the overall credibility assessment. The base rate of malingered PTSD in [litigation/disability/forensic] contexts is estimated at [10-50%] depending on the setting." },
+        { title: "Partial malingering — genuine distress with exaggeration", body: "The overall data pattern is most consistent with partial malingering — the exaggeration of genuine trauma-related symptoms for external gain. The examinee likely did experience a traumatic event and has some authentic distress; however, the severity and functional impact are overstated relative to what objective data support. The genuine baseline of symptoms is estimated to be [less severe than reported], and clinical formulations should be based on this adjusted baseline rather than the exaggerated self-report." },
+        { title: "Cross-method consistency supports genuineness", body: "Symptom presentation was notably consistent across self-report measures (PCL-5), structured clinical interview (CAPS-5), behavioral observation, and collateral reports. This cross-method consistency is difficult to fabricate and provides strong support for the genuineness of the reported PTSD symptoms. The concordance across methods is specifically noted as evidence against symptom fabrication or exaggeration." },
+        { title: "Atypical symptom profile warrants further inquiry", body: "The examinee's symptom profile departs from typical PTSD presentations in ways that warrant further clinical inquiry. Specifically, [endorsement of rare symptoms, absence of expected core symptoms, symptom severity that does not diminish with therapeutic rapport, symptom presentation that fluctuates inconsistently across evaluation sessions]. These atypical features do not definitively establish malingering but are noted as requiring integration into the overall credibility assessment." },
+        { title: "Validity testing inconclusive — clinical judgment primary", body: "Validity testing produced an inconclusive profile that neither clearly supports nor clearly undermines symptom credibility. In the absence of definitive validity testing results, the clinician's overall judgment is based on the totality of data, including behavioral observation, consistency of presentation, concordance between reported symptoms and known clinical patterns, plausibility of the reported trauma-symptom connection, and external incentive analysis. The overall clinical impression is that the presentation is [probably genuine / of uncertain credibility / probably exaggerated]." },
+        { title: "Fabricated trauma event suspected", body: "Beyond symptom exaggeration, there is concern that the reported traumatic event itself may be fabricated or substantially embellished. Inconsistencies between the examinee's account and [police reports, medical records, witness statements, prior statements] raise questions about the veracity of the Criterion A event. If the traumatic event did not occur as described, the PTSD diagnosis is invalid regardless of the symptom presentation, as Criterion A is a prerequisite for the diagnosis." }
+      ]
+    });
+    if (has(mental?.previous_treatment) || has(mental?.previous_diagnoses) || has(health?.sleep_quality)) {
+      conditions.push({
+        name: "Major Depressive Disorder (comorbid)",
+        dsmCode: "F33.x",
+        dsmExcerpt: "MDD is highly comorbid with PTSD (estimated 50%+ co-occurrence). DSM-5-TR Criterion D for PTSD (negative cognitions/mood) overlaps substantially with MDD symptoms. The clinician must determine whether depressive symptoms warrant an independent MDD diagnosis or are subsumed under the PTSD diagnosis. (DSM-5-TR 296.xx)",
+        relevance: `Depressive features are suggested by the clinical history. ${has(mental?.previous_diagnoses) ? `Prior diagnoses: ${mental.previous_diagnoses}.` : ""} ${has(health?.sleep_quality) ? `Sleep: ${health.sleep_quality}.` : ""} Criterion D overlap with PTSD must be carefully differentiated.`,
+        dataSummary: `MMPI-3 depression scales (RC2, RCd, Low Positive Emotions), interview mood assessment, whether depressive symptoms exist independently of PTSD avoidance/numbing.`,
+        contradictingData: `If depressive symptoms are entirely accounted for by PTSD Criterion D (negative cognitions/mood associated with the trauma), a separate MDD diagnosis may not be warranted. If symptoms preceded the trauma, independent MDD is supported.`,
+        templateOptions: [
+          { title: "Comorbid MDD — independent of PTSD Criterion D", body: "Depressive symptoms are present that appear to function independently of the PTSD Criterion D cluster and warrant a separate comorbid diagnosis of Major Depressive Disorder. Key indicators supporting an independent MDD diagnosis include [depressive episodes predating the trauma, depressive symptoms extending beyond trauma-related cognitions, anhedonia and vegetative symptoms not linked to specific trauma content, prior depressive episodes unrelated to traumatic events]. The 50%+ comorbidity rate between PTSD and MDD is well-established, and both conditions require independent treatment attention." },
+          { title: "Depression subsumed under PTSD Criterion D", body: "Depressive features are present but appear to be largely subsumed under the PTSD Criterion D cluster (negative alterations in cognitions and mood associated with the traumatic event). Specifically, [negative beliefs about self, persistent negative emotional state, diminished interest, detachment] are all directly linked to the trauma content and its aftermath rather than representing an independent depressive syndrome. A separate MDD diagnosis is not indicated, and treatment of the PTSD is expected to address the depressive features concurrently." },
+          { title: "Pre-existing MDD worsened by trauma", body: "The examinee has a documented history of Major Depressive Disorder that predated the traumatic event and was subsequently worsened by the trauma exposure. This temporal sequence has implications for the forensic context — both the exacerbation of the pre-existing MDD and the new PTSD diagnosis may be attributable to the traumatic event, but the pre-existing baseline must be established for accurate apportionment of impairment and damages." },
+          { title: "MDD driving primary functional impairment", body: "While both PTSD and MDD are diagnosed, the depressive symptoms appear to be the primary driver of the examinee's current functional impairment. [Anhedonia, psychomotor retardation, impaired concentration, fatigue, worthlessness] are more prominently contributing to occupational and social disability than the trauma-specific symptoms. This has treatment implications, as antidepressant medication and behavioral activation may produce the most immediate functional improvement." },
+          { title: "Suicidality in context of comorbid PTSD-MDD", body: "The combination of PTSD and MDD creates an elevated suicide risk that exceeds the risk associated with either condition alone. The examinee endorses [hopelessness, passive suicidal ideation, active ideation without plan, prior attempts]. The trauma-related cognitions (particularly guilt, shame, and perceived burdensomeness) interact with depressive cognitions to create a high-risk profile. Safety planning and risk monitoring are critical treatment priorities." },
+          { title: "Differentiation requires longitudinal analysis", body: "The overlapping symptom profiles of PTSD and MDD make differential diagnosis difficult at a single evaluation point. Several symptoms (insomnia, concentration difficulty, anhedonia, irritability) are shared across both conditions. A definitive determination of whether the depressive syndrome is independent or subsumed under PTSD Criterion D may require longitudinal observation of whether depressive symptoms persist after PTSD-specific treatment. For current purposes, both conditions are diagnosed and targeted in treatment recommendations." },
+          { title: "Treatment implications for comorbidity", body: "The PTSD-MDD comorbidity has specific treatment implications. Evidence-based PTSD treatments (CPT, PE) often produce concurrent improvement in depressive symptoms. However, severe MDD with vegetative features may need to be partially stabilized before the examinee can meaningfully engage in trauma-focused therapy. A sequenced approach — initial mood stabilization followed by trauma processing — may be optimal in this case. Combined pharmacotherapy (SSRI) and psychotherapy is recommended." }
+        ]
+      });
+    }
+  } else if (et.includes("capacity")) {
+    conditions.push({
+      name: "Major Neurocognitive Disorder",
+      dsmCode: "F02.8x",
+      dsmExcerpt: "Significant cognitive decline from a previous level of performance in one or more cognitive domains (complex attention, executive function, learning/memory, language, perceptual-motor, social cognition) based on clinician concern AND substantial impairment documented by standardized testing. Deficits interfere with independence in everyday activities. (DSM-5-TR)",
+      relevance: `Capacity evaluation directly requires assessment of cognitive functioning and its impact on decision-making. Medical history: ${health?.medical_conditions ?? "review"}. Head injuries: ${health?.head_injuries ?? "none reported"}. Family history: ${family?.family_mental_health ?? "review"}.`,
+      dataSummary: `MoCA: ${stageIndex >= 2 ? "scored" : "pending"}. WAIS-V indices (processing speed, working memory): ${stageIndex >= 2 ? "scored" : "pending"}. Trail Making B: ${stageIndex >= 2 ? "review time and errors" : "pending"}. WCST: ${stageIndex >= 2 ? "review perseverative errors" : "pending"}. Collateral informant report of functional decline.`,
+      contradictingData: `If cognitive scores are within normal limits for age and education, and informant reports do not document functional decline, a neurocognitive disorder is not supported. Depression can produce cognitive deficits that mimic dementia (see below if applicable).`,
+      templateOptions: [
+        { title: "Major NCD confirmed — multi-domain decline", body: "Neuropsychological testing reveals a consistent pattern of cognitive decline across multiple domains, including [memory, executive function, attention, language, visuospatial processing], that meets DSM-5-TR criteria for Major Neurocognitive Disorder. Performance falls [1.5+ / 2+ standard deviations] below expected levels based on age and educational attainment. Collateral informants confirm progressive functional decline affecting [financial management, medication management, driving, meal preparation, personal safety judgment]. The pattern and progression are most consistent with [Alzheimer's type / vascular / Lewy body / frontotemporal / mixed etiology]." },
+        { title: "Mild NCD — independent functioning preserved", body: "Cognitive testing reveals modest but clinically significant decline from the expected baseline, consistent with Mild Neurocognitive Disorder. The examinee demonstrates measurable deficits in [specify domains] that require greater effort or compensatory strategies but do not yet interfere with independence in everyday activities. Monitoring for progression to Major NCD is recommended." },
+        { title: "Cognitive performance normal — NCD not supported", body: "Cognitive performance across all assessed domains falls within expected limits for the examinee's age, education, and estimated premorbid functioning. A neurocognitive disorder is not supported by the current neuropsychological data. Subjective cognitive concerns may reflect normal aging, depression-related cognitive inefficiency, or medication side effects rather than a neurodegenerative process." },
+        { title: "Alzheimer's-type pattern identified", body: "The neuropsychological profile is most consistent with an Alzheimer's-type etiology, characterized by predominant deficits in episodic memory and delayed recall with relative preservation of attention and motor function in early stages. This pattern, combined with the reported insidious onset and gradual progression, is consistent with the clinical presentation of Alzheimer's disease. Neuroimaging and biomarker studies may further support or refine this etiological attribution." },
+        { title: "Vascular pattern — stepwise decline", body: "The cognitive profile demonstrates features consistent with vascular neurocognitive disorder, including predominant deficits in executive function, processing speed, and attention with relatively preserved episodic memory. The examinee's medical history of [hypertension, diabetes, stroke, cardiovascular disease] and the reported stepwise pattern of decline further support a vascular etiology." },
+        { title: "Frontotemporal pattern — behavioral variant", body: "The clinical presentation is characterized by prominent behavioral and personality changes, including disinhibition, apathy, loss of empathy, and compulsive behaviors, with relative preservation of memory and visuospatial function. This pattern is most consistent with the behavioral variant of frontotemporal neurocognitive disorder and has particular relevance to capacity determination, as these behavioral changes affect judgment and vulnerability to exploitation." },
+        { title: "Capacity specifically impaired — unable to manage affairs", body: "The severity of neurocognitive decline directly impairs the examinee's capacity to manage financial affairs, make informed medical decisions, and understand and appreciate the consequences of decisions. Specific functional impairments documented during the evaluation include inability to understand financial documents, confusion about medical treatments, and inability to weigh risks and benefits of proposed actions." },
+        { title: "Capacity partially preserved — domain-specific", body: "Neurocognitive decline is documented; however, capacity is not uniformly impaired across all domains. The examinee retains sufficient cognitive function to understand basic information about personal care and express consistent preferences, while lacking capacity for complex financial decisions and independent living without supervision. A domain-specific capacity determination is most appropriate." },
+        { title: "Effort adequate — scores reflect true ability", body: "Performance validity testing indicates adequate effort and engagement during the neuropsychological evaluation. The measured cognitive scores are interpreted as a reliable reflection of the examinee's current cognitive functioning rather than an underestimate due to poor effort or deliberate underperformance. This foundational finding supports the validity of the capacity determination." },
+        { title: "Rapid decline warrants urgent protective measures", body: "Collateral informants describe a rapid trajectory of cognitive decline with documented incidents of financial exploitation, wandering, medication errors, and safety-compromising decisions. The pace of decline suggests that protective measures should be implemented urgently rather than deferred. Recommendations for guardianship, conservatorship, or power of attorney activation are provided with appropriate urgency." },
+        { title: "Medication effects may contribute to presentation", body: "The examinee's current medication regimen includes agents known to impair cognitive function in older adults, including [anticholinergics, benzodiazepines, opioids]. The observed cognitive deficits may be partially or wholly attributable to medication effects rather than a neurodegenerative process. A medication review by the prescribing physician is recommended before establishing a definitive neurocognitive disorder diagnosis." }
+      ]
+    });
+    if (has(mental?.previous_treatment) || has(mental?.previous_diagnoses) || has(health?.sleep_quality)) {
+      conditions.push({
+        name: "Depressive Pseudodementia",
+        dsmCode: "F33.x",
+        dsmExcerpt: `Major depression can produce cognitive impairment (concentration, memory, executive function) that mimics neurocognitive disorder. Key differentiators: subacute onset (weeks vs. months/years), prominent subjective concerns relative to objective performance, effortful "I don't know" responses, response to antidepressant treatment. (Clinical differential)`,
+        relevance: `${has(mental?.previous_diagnoses) ? `Prior diagnoses: ${mental.previous_diagnoses}.` : ""} ${has(health?.sleep_quality) ? `Sleep disturbance: ${health.sleep_quality}.` : ""} Depression-related cognitive deficits must be differentiated from neurodegenerative decline.`,
+        dataSummary: `Mood assessment from interview, onset acuity (sudden vs. gradual), effort on cognitive testing (adequate effort with poor performance suggests organic decline; poor effort may suggest depression or malingering), depression history.`,
+        contradictingData: `If onset is clearly gradual over months/years, informants describe progressive decline, and mood symptoms are absent or secondary, organic neurocognitive disorder is more likely than pseudodementia.`,
+        templateOptions: [
+          { title: "Depression likely accounting for cognitive deficits", body: `The combination of active mood symptoms, prominent subjective cognitive concerns, and the pattern of cognitive testing raises the strong possibility that depression is contributing to or fully accounting for the observed cognitive deficits. Key indicators favoring a depressive etiology include: subacute symptom onset (weeks rather than months/years), prominent "I don't know" responses on cognitive testing despite adequate effort, subjective concerns disproportionately severe relative to objective performance, and history of mood disorder. An antidepressant trial with cognitive re-evaluation after mood stabilization is recommended before concluding a neurodegenerative diagnosis.` },
+          { title: "Neurodegenerative process more likely than pseudodementia", body: `The pattern of cognitive decline is more consistent with a neurodegenerative process than depressive pseudodementia. Onset has been gradual over [months/years], collateral informants describe progressive functional decline, and mood symptoms appear secondary to and less prominent than the cognitive deterioration. The examinee demonstrates typical dementia features including confabulation, lack of concern about cognitive deficits, and a pattern of near-miss errors rather than the effortful "I don't know" responses characteristic of depression-related cognitive impairment.` },
+          { title: "Mixed presentation — both depression and neurodegeneration", body: "The clinical data suggest a mixed presentation in which both a depressive disorder and a neurocognitive disorder may be contributing to the observed cognitive impairment. Depression may be exacerbating or unmasking cognitive deficits that have a neurodegenerative basis. Treatment of the depressive component is recommended with the expectation that cognitive re-evaluation after mood stabilization will clarify the degree of improvement attributable to mood treatment versus the residual cognitive deficit representing a neurodegenerative process." },
+          { title: "Effort pattern consistent with depression-related impairment", body: `The pattern of effort on cognitive testing is informative for this differential. The examinee demonstrated adequate effort (performance validity tests are passed) but showed a pattern of slow, effortful processing, frequent "I don't know" responses, and variable performance that is more characteristic of depression-related cognitive impairment than of neurodegenerative disease. In dementia, patients typically attempt tasks and fail; in depression, patients often give up prematurely despite having residual capacity.` },
+          { title: "Treatment trial recommended before capacity determination", body: "Given the plausibility of depressive pseudodementia, a definitive capacity determination should be deferred pending an adequate antidepressant treatment trial. If depression is the primary driver of cognitive deficits, cognitive function may improve substantially with mood stabilization, fundamentally altering the capacity assessment. A 6-8 week treatment trial with cognitive re-evaluation is recommended before making decisions about guardianship or other protective measures." },
+          { title: "Prior depression history supports pseudodementia hypothesis", body: "The examinee's documented history of recurrent depressive episodes, with prior episodes associated with cognitive concerns that resolved with treatment, supports the pseudodementia hypothesis. The current presentation mirrors prior episodes in which mood symptoms were accompanied by concentration difficulty, memory concerns, and psychomotor retardation. This historical pattern is the strongest evidence available for a reversible, depression-mediated etiology." },
+          { title: "Grief reaction mimicking cognitive decline", body: "The onset of cognitive concerns coincides with a significant bereavement ([specify loss]), and the presentation may represent a grief reaction with prominent cognitive features rather than a neurodegenerative process. Complicated grief can produce concentration difficulty, disorientation, confusion, and apparent memory impairment that mimics dementia. Grief-focused intervention should be considered before attributing cognitive deficits to a neurodegenerative etiology." },
+          { title: "Age complicates differential — higher index of suspicion", body: "The examinee's age ([age]) places them in a demographic where both depression and neurodegenerative disease are prevalent, making this differential diagnosis particularly challenging. Neither condition can be dismissed based on demographics alone. The base rate of neurodegenerative disease at this age is [elevated/significant], warranting a thorough workup even when depression is present and may be contributing to the cognitive picture." }
+        ]
+      });
+    }
+    conditions.push({
+      name: "Delirium (rule-out)",
+      dsmCode: "F05",
+      dsmExcerpt: "A disturbance in attention and awareness that develops acutely (hours to days), represents a change from baseline, tends to fluctuate during the day, and is a direct physiological consequence of a medical condition, substance, or multiple etiologies. (DSM-5-TR 293.0)",
+      relevance: `Delirium must be ruled out before diagnosing neurocognitive disorder, as it can produce severe cognitive deficits that are reversible. Current medications: ${health?.current_medications ?? "review"}.`,
+      dataSummary: `Onset acuity, fluctuation pattern during evaluation sessions, medication review for deliriogenic agents, recent medical events, attentional performance on testing.`,
+      contradictingData: `If cognitive deficits are stable across evaluation sessions, onset is gradual over months, and no acute medical precipitant is identified, delirium is effectively ruled out.`,
+      templateOptions: [
+        { title: "Delirium ruled out — stable presentation", body: "No evidence of delirium is present. Cognitive performance was stable across evaluation sessions with no fluctuation in attention or awareness. Onset of cognitive difficulties was gradual rather than acute, no acute medical precipitant has been identified, and the examinee demonstrated consistent orientation and attentional capacity throughout the evaluation. Delirium is ruled out as a contributor to the observed cognitive deficits, and the capacity assessment can proceed based on the neurocognitive evaluation findings." },
+        { title: "Fluctuating presentation — delirium concern", body: "Fluctuating cognitive performance across evaluation sessions raises concern for a delirious process. Specifically, the examinee demonstrated [variable attention, waxing and waning of orientation, inconsistent performance on attentional tasks, apparent confusion during afternoon sessions not present in morning sessions]. Medical evaluation should be obtained before finalizing a neurocognitive disorder diagnosis, as delirium is a reversible medical emergency and its identification fundamentally changes the diagnostic and management approach." },
+        { title: "Medication-induced delirium suspected", body: "The examinee's current medication regimen includes agents with known deliriogenic potential, including [anticholinergics, benzodiazepines, opioids, corticosteroids, polypharmacy in an elderly patient]. The relatively acute onset and fluctuating nature of cognitive symptoms raise concern for a medication-induced delirium superimposed on any underlying cognitive baseline. An urgent medication review by the prescribing physician is recommended before proceeding with capacity determination." },
+        { title: "Post-operative or medical delirium context", body: "The evaluation is occurring in the context of a recent [surgery, hospitalization, infection, metabolic disturbance], which is a common precipitant of delirium in older adults. Cognitive testing performed during an active delirious episode does not validly represent the examinee's baseline cognitive functioning, and any capacity determination based on such data would be premature. Re-evaluation after medical stabilization is strongly recommended." },
+        { title: "Delirium superimposed on dementia", body: "The clinical picture suggests delirium superimposed on a pre-existing neurocognitive disorder. The examinee has a baseline of cognitive decline consistent with [specify type of NCD], with a recent acute worsening characterized by [fluctuating attention, new-onset confusion, visual hallucinations, psychomotor agitation/retardation]. Both conditions must be addressed — the delirium requires urgent medical evaluation and treatment, while the underlying NCD informs the long-term capacity question." },
+        { title: "Hypoactive delirium — may be missed", body: "The examinee presents with features consistent with hypoactive delirium, characterized by reduced alertness, psychomotor slowing, and apparent apathy rather than the agitated presentation typically associated with delirium. Hypoactive delirium is frequently misdiagnosed as depression or dementia and carries a worse prognosis due to delayed identification. Formal delirium screening and medical workup are recommended before attributing the presentation to a neurocognitive or mood disorder." }
+      ]
+    });
+  } else {
+    const hasDepressive = has(mental?.previous_treatment) || has(mental?.previous_diagnoses);
+    const hasSubstance = has(substance?.alcohol_use) || has(substance?.drug_use);
+    if (hasDepressive) {
+      conditions.push({
+        name: "Major Depressive Disorder",
+        dsmCode: "F33.x",
+        dsmExcerpt: "Five or more symptoms during the same 2-week period. At least one is depressed mood or loss of interest/pleasure. Symptoms cause clinically significant distress or impairment. (DSM-5-TR 296.xx)",
+        relevance: `Clinical history suggests depressive features. ${has(mental?.previous_diagnoses) ? `Prior diagnoses: ${mental.previous_diagnoses}.` : ""} ${has(mental?.previous_treatment) ? `Treatment: ${mental.previous_treatment}.` : ""}`,
+        dataSummary: `Testing mood scales, interview observations, sleep/appetite/concentration, functional impairment, prior episode history.`,
+        contradictingData: `If symptoms are situational and do not meet 2-week severity/duration threshold, Adjustment Disorder is more appropriate.`,
+        templateOptions: [
+          { title: "MDD confirmed — full criteria met", body: "Clinical data, including psychometric testing, clinical interview, and behavioral observation, are consistent with Major Depressive Disorder meeting full DSM-5-TR criteria. The examinee endorses five or more qualifying symptoms, including [depressed mood / anhedonia] as a core symptom, that have persisted for at least two weeks and represent a change from previous functioning. Clinically significant distress and functional impairment are documented." },
+          { title: "Depressive features situational — may not meet criteria", body: "Depressive features are present and acknowledged by the examinee; however, the onset and course appear situational, temporally linked to [current stressors]. The severity and duration may not meet the full DSM-5-TR criteria for Major Depressive Disorder. An Adjustment Disorder with depressed mood may more accurately capture the current clinical picture." },
+          { title: "Depression not supported by available data", body: "A clinical depressive disorder is not supported by the available evaluation data. Psychometric mood scales fall within normal limits, and behavioral observations during the evaluation are inconsistent with clinically significant depression. Any mood-related concerns reported by the examinee are proportionate to current life circumstances and do not warrant a formal diagnosis." },
+          { title: "Recurrent episode — established pattern", body: "The current depressive episode occurs in the context of a documented history of recurrent Major Depressive Disorder. Prior episodes have been treated with [medication/therapy] with [partial/full/minimal] response. The recurrent nature of the illness informs prognosis, treatment planning, and the expected trajectory of symptom resolution." },
+          { title: "Severe episode with vegetative features", body: "The current depressive episode is severe, with prominent vegetative features including [significant weight change, insomnia/hypersomnia, psychomotor retardation/agitation, fatigue, impaired concentration]. The severity of the episode is relevant to the forensic question in that it may [affect the examinee's reliability as an informant, impair participation in proceedings, explain behavioral changes relevant to the referral question]." },
+          { title: "Defensive presentation may mask depression", body: "The examinee presented with a minimizing and defensive interpersonal style during the evaluation. Psychometric validity indicators suggest underreporting of psychological distress. It is possible that the true severity of depressive symptoms is greater than what is reflected in self-report data. Behavioral observations and collateral information should be weighted accordingly in the diagnostic formulation." },
+          { title: "Comorbid anxiety complicates presentation", body: "Depressive symptoms co-occur with significant anxiety features, creating a mixed presentation. The co-occurrence of depression and anxiety is associated with greater functional impairment, longer episode duration, and reduced treatment response compared to either condition alone. Treatment recommendations should address both symptom domains." },
+          { title: "Treatment response informs prognosis", body: "The examinee's history of treatment response is relevant to the diagnostic formulation and prognosis. [Prior positive response to SSRIs suggests a biologically-mediated depression amenable to pharmacotherapy / Prior treatment resistance suggests a more complex or chronic condition / No prior treatment has been attempted, so prognosis is uncertain]. These treatment history data inform recommendations." }
+        ]
+      });
+    }
+    conditions.push({
+      name: "Adjustment Disorder",
+      dsmCode: "F43.2x",
+      dsmExcerpt: "Emotional or behavioral symptoms in response to identifiable stressor within 3 months. Marked distress or significant impairment. Does not meet criteria for another disorder. (DSM-5-TR 309.x)",
+      relevance: `Current evaluation context constitutes a stressor. Stressors: ${parsedOb.recent?.current_stressors ?? "review intake"}. Onset: ${complaints?.onset_timeline ?? "not documented"}.`,
+      dataSummary: `Temporal relationship between stressor and symptoms, proportionality, whether a more specific diagnosis is warranted.`,
+      contradictingData: `${hasDepressive ? "If full MDD criteria are met, Adjustment Disorder should not be diagnosed — the more specific diagnosis takes precedence." : "If no clinically significant distress or impairment is present, Adjustment Disorder is not warranted."}`,
+      templateOptions: [
+        { title: "Adjustment disorder confirmed", body: "The examinee's emotional and behavioral symptoms are temporally linked to an identifiable stressor and consistent with an Adjustment Disorder. Symptoms developed within three months of the stressor onset, represent clinically significant distress or impairment, and do not meet criteria for a more specific mental disorder. The subtype is best characterized as [with depressed mood / with anxiety / with mixed anxiety and depressed mood / with disturbance of conduct / with mixed disturbance of emotions and conduct / unspecified]." },
+        { title: "Symptoms exceed adjustment — more specific dx warranted", body: "While the temporal relationship to a stressor is documented, the severity and scope of symptoms exceed what would be characterized as an adjustment reaction. The clinical picture more closely meets criteria for [Major Depressive Disorder / Generalized Anxiety Disorder / other specified disorder], which takes diagnostic precedence per DSM-5-TR. The more specific diagnosis should be assigned." },
+        { title: "Expected response — does not meet clinical threshold", body: "The examinee reports distress related to [current circumstances]; however, the response appears proportionate to the situation and does not reach the clinical threshold required for an Adjustment Disorder diagnosis. The distress does not represent marked impairment or exceed what would be expected given the nature and severity of the stressor." },
+        { title: "Chronic stressor — adjustment may be prolonged", body: "The stressor is chronic and ongoing rather than a discrete event, which may produce a prolonged adjustment reaction that persists as long as the stressor continues. DSM-5-TR permits the persistent specifier when the stressor or its consequences are ongoing. The prognosis for symptom resolution is directly tied to resolution or adaptation to the chronic stressor." },
+        { title: "Stressor has resolved — symptoms persisting", body: "The identifiable stressor has resolved; however, symptoms persist beyond the expected adaptation period. Per DSM-5-TR, Adjustment Disorder symptoms should not persist for more than six months after the stressor (or its consequences) has terminated. If symptoms continue, an alternative diagnosis should be considered, as the presentation may reflect a more enduring condition that was triggered but not solely caused by the stressor." },
+        { title: "Pre-existing vulnerability amplifying reaction", body: "The adjustment reaction is occurring in the context of pre-existing psychological vulnerability that may amplify the stress response. While the current symptoms are primarily adjustment-related, the underlying vulnerability suggests that the examinee may be at higher risk for developing a more severe condition if the stressor continues or escalates. Supportive intervention is recommended as both treatment and prevention." }
+      ]
+    });
+    if (hasSubstance) {
+      conditions.push({
+        name: "Substance Use Disorder",
+        dsmCode: "F1x.x",
+        dsmExcerpt: "Problematic pattern of use leading to impairment or distress, 2+ of 11 criteria in 12 months. (DSM-5-TR)",
+        relevance: `Substance use documented. Alcohol: ${substance?.alcohol_use ?? "—"}. Drugs: ${substance?.drug_use ?? "—"}.`,
+        dataSummary: `Use patterns, functional impact, treatment history: ${substance?.substance_treatment ?? "none reported"}.`,
+        contradictingData: `If use is infrequent with no documented impairment, diagnostic threshold is not met.`,
+        templateOptions: [
+          { title: "SUD confirmed — criteria met", body: "Self-reported substance use patterns, functional impact, and available collateral data are consistent with a Substance Use Disorder ([specify substance], [mild/moderate/severe] severity). The examinee meets [number] of 11 DSM-5-TR criteria within the past 12 months. The substance use is relevant to the referral question in that it may [affect cognitive functioning during evaluation, contribute to the clinical picture, represent a treatment target, serve as a risk factor]." },
+          { title: "Use documented but below diagnostic threshold", body: "Substance use is documented and acknowledged; however, the current pattern does not meet the DSM-5-TR threshold of two or more criteria within a 12-month period. Use appears [recreational/occasional/social] without evidence of compulsive use, tolerance, withdrawal, or functional impairment meeting diagnostic criteria. The substance use is noted but does not warrant a formal SUD diagnosis at this time." },
+          { title: "SUD in remission — historical diagnosis noted", body: "The examinee has a historical Substance Use Disorder that is currently in [early/sustained] remission. The period of remission is [specify duration], supported by [self-report/drug screening/treatment records]. The historical diagnosis is noted as relevant context but does not represent a current active condition. Relapse risk should be monitored." },
+          { title: "Minimization suspected in forensic context", body: "Given the forensic evaluation context, the examinee's self-report of substance use may underrepresent the true extent of involvement. Collateral data, if available, should be compared against self-report. The current formulation is based on available information but may require revision if additional data emerge." },
+          { title: "Substance use complicating diagnostic picture", body: "Active substance use complicates the diagnostic picture by potentially mimicking, exacerbating, or masking other psychiatric conditions. The contribution of substance use to the overall clinical presentation must be carefully parsed, as it has implications for treatment planning and for answering the specific referral question." },
+          { title: "Treatment history informs prognosis", body: "The examinee's substance use treatment history includes [specify: no prior treatment / outpatient counseling / inpatient rehabilitation / medication-assisted treatment / 12-step program]. Treatment engagement and response to date have been [good/partial/poor], which informs the prognosis for sustained recovery and guides treatment recommendations in the context of this evaluation." }
+        ]
+      });
+    }
+    if (intakeRow?.charges) {
+      conditions.push({
+        name: "Malingering",
+        dsmCode: "Z76.5",
+        dsmExcerpt: "Intentional production of false or exaggerated symptoms motivated by external incentives. Not a mental disorder. (DSM-5-TR)",
+        relevance: `Forensic context with pending charges: ${intakeRow.charges}. External incentive is present.`,
+        dataSummary: `Validity testing: ${stageIndex >= 2 ? "review MMPI-3 validity scales and standalone measures" : "pending"}. Cross-method consistency.`,
+        contradictingData: `If all validity indicators are within normal limits and presentation is consistent across methods, malingering is not supported.`,
+        templateOptions: [
+          { title: "Credible presentation — validity passed", body: "Validity testing is consistent with a genuine and credible clinical presentation. Over-reporting indicators on standardized instruments fall within acceptable limits, and the symptom presentation is internally consistent and concordant with behavioral observation. Clinical data can be interpreted at face value for the purposes of this evaluation." },
+          { title: "Possible exaggeration detected — interpret with caution", body: "Validity indicators suggest possible symptom exaggeration or over-reporting. While not definitive for malingering, the elevated scores on [specify scales] indicate that self-reported symptoms may overstate the examinee's actual level of distress or impairment. Clinical conclusions should rely more heavily on behavioral observation and collateral data than on self-report measures in this case." },
+          { title: "Strong feigning indicators — credibility compromised", body: "Multiple validity indicators converge on a pattern strongly suggestive of symptom fabrication or gross exaggeration. Self-report clinical data cannot be considered reliable and should not form the basis of diagnostic conclusions. The forensic context, including pending charges of [specify], provides a clear external incentive for symptom misrepresentation." },
+          { title: "External incentive present but presentation credible", body: "The forensic context provides a clear external incentive for symptom misrepresentation. However, validity testing and cross-method consistency support the credibility of the clinical presentation. The presence of external incentive alone does not establish malingering, and in this case, the weight of evidence supports genuine symptom reporting despite the motivational context." },
+          { title: "Partial exaggeration of genuine symptoms", body: "The data pattern is most consistent with partial malingering — the embellishment of genuine symptoms for secondary gain. The examinee likely experiences some degree of authentic psychological distress, but the severity is overstated relative to what objective measures and behavioral observation support. Diagnostic formulations should be based on the estimated genuine baseline rather than the inflated self-report." },
+          { title: "Validity inconclusive — mixed indicators", body: "Validity testing produced a mixed and inconclusive profile. Some indicators support genuine responding while others suggest mild over-reporting tendencies. In the absence of a clear resolution, clinical conclusions are drawn with appropriate conservatism, weighting behavioral observation and collateral data alongside self-report. The overall impression is that the presentation is [probably genuine / of uncertain credibility]." }
+        ]
+      });
+    }
+  }
+  if (has(health?.head_injuries) && !et.includes("capacity")) {
+    conditions.push({
+      name: "Neurocognitive Disorder Due to TBI",
+      dsmCode: "S06.x / F02.8x",
+      dsmExcerpt: "Cognitive decline with evidence of TBI (impact to head, acceleration/deceleration, blast). Deficits present immediately or after recovery of consciousness. May be major (interferes with independence) or mild (does not interfere). (DSM-5-TR)",
+      relevance: `Documented head injury: ${health.head_injuries}. Cognitive effects of TBI may influence presentation and must be considered in the differential.`,
+      dataSummary: `Neuropsychological profile: ${stageIndex >= 2 ? "review cognitive testing pattern for TBI-consistent deficits (processing speed, executive function, memory)" : "pending"}. Injury severity indicators, recovery trajectory.`,
+      contradictingData: `If cognitive testing shows no deficits, or if injury was minor with no LOC and negative neuroimaging, clinically significant TBI effects are unlikely.`,
+      templateOptions: [
+        { title: "TBI with confirmed cognitive sequelae", body: "Documented traumatic brain injury with neuropsychological testing revealing a pattern of cognitive deficits consistent with post-traumatic sequelae, particularly in [processing speed, executive function, memory, attention]. The severity and distribution of deficits are commensurate with the reported injury severity and mechanism. These cognitive effects are relevant to the current evaluation in that they may [impact competency-related abilities, contribute to the clinical presentation, affect treatment response, alter the risk profile, reduce cognitive reserve]." },
+        { title: "TBI documented but no current cognitive deficits", body: "TBI is documented in the medical history; however, current neuropsychological testing does not reveal cognitive deficits attributable to the reported injury. Scores across cognitive domains fall within expected limits, suggesting either full recovery from the injury, a mild injury without lasting effects, or adequate compensation. The historical TBI is noted but does not appear to be contributing to the current clinical or forensic picture." },
+        { title: "TBI complicating psychiatric differential", body: "The documented TBI introduces complexity into the psychiatric differential diagnosis, as post-traumatic neurological changes can produce symptoms that overlap with primary psychiatric conditions, including [mood lability, impulsivity, personality changes, psychotic-like experiences, cognitive concerns]. Careful differentiation between TBI-related neurobehavioral effects and primary psychiatric illness is essential, as the treatment implications differ significantly." },
+        { title: "Chronic TBI effects — frontal/executive dysfunction", body: "Neuropsychological testing reveals a pattern of executive dysfunction consistent with frontal lobe injury, including [impaired planning, reduced cognitive flexibility, poor impulse control, difficulty with abstract reasoning, perseveration]. This frontal dysexecutive profile is consistent with the documented mechanism of injury and has direct relevance to [competency-related abilities, risk assessment, capacity for behavioral self-regulation, treatment amenability]." },
+        { title: "Multiple TBIs — cumulative effects", body: "The examinee reports multiple traumatic brain injuries over the lifespan, raising concern for cumulative neurological effects. The aggregate impact of repeated brain injuries may exceed what would be expected from any single event. The neuropsychological profile should be interpreted in the context of this cumulative exposure history, and the possibility of chronic traumatic encephalopathy (CTE) spectrum changes is noted, though definitive diagnosis is not possible during life." },
+        { title: "TBI as mitigating factor — forensic consideration", body: "The documented TBI and associated cognitive and behavioral sequelae are relevant as a potential mitigating factor in the forensic context. Post-traumatic changes in [impulse control, judgment, emotional regulation, social cognition] may have contributed to the behavior in question and should be considered in the overall forensic formulation. The degree to which TBI-related deficits contributed to the behavior versus other factors requires careful analysis." },
+        { title: "Neuroimaging recommended to corroborate", body: "Neuropsychological findings are suggestive of TBI-related cognitive effects; however, neuroimaging (MRI with susceptibility-weighted imaging) is recommended to corroborate the injury and assess for structural abnormalities including [contusions, diffuse axonal injury, white matter changes, cortical atrophy]. Imaging findings would strengthen the diagnostic formulation and are relevant to medico-legal proceedings." },
+        { title: "Mild TBI — post-concussive symptoms", body: "The reported injury meets criteria for mild TBI (brief or no loss of consciousness, GCS 13-15). Current concerns of [headache, dizziness, concentration difficulty, irritability, sleep disturbance, light/noise sensitivity] are consistent with post-concussive symptoms. While most mild TBI symptoms resolve within weeks to months, a minority of patients develop persistent post-concussive syndrome. The relationship between ongoing symptoms and the injury should be evaluated in the context of other potential contributing factors including pre-existing conditions and psychological factors." }
+      ]
+    });
+  }
+  return conditions;
+}
+const DSM_CATALOG = [
+  // Psychotic Spectrum
+  { name: "Schizophrenia", dsmCode: "F20.9", category: "Psychotic Spectrum", evalTypes: ["cst", "competency"] },
+  { name: "Schizoaffective Disorder", dsmCode: "F25.x", category: "Psychotic Spectrum", evalTypes: ["cst", "competency"] },
+  { name: "Brief Psychotic Disorder", dsmCode: "F23", category: "Psychotic Spectrum", evalTypes: ["cst", "competency"] },
+  { name: "Delusional Disorder", dsmCode: "F22", category: "Psychotic Spectrum", evalTypes: ["cst", "competency"] },
+  { name: "Substance-Induced Psychotic Disorder", dsmCode: "F1x.x59", category: "Psychotic Spectrum", evalTypes: ["cst", "competency"] },
+  // Mood Disorders
+  { name: "Major Depressive Disorder", dsmCode: "F33.x", category: "Mood Disorders", evalTypes: [] },
+  { name: "Bipolar I Disorder", dsmCode: "F31.x", category: "Mood Disorders", evalTypes: [] },
+  { name: "Bipolar II Disorder", dsmCode: "F31.81", category: "Mood Disorders", evalTypes: [] },
+  { name: "Persistent Depressive Disorder", dsmCode: "F34.1", category: "Mood Disorders", evalTypes: [] },
+  { name: "Adjustment Disorder", dsmCode: "F43.2x", category: "Mood Disorders", evalTypes: [] },
+  // Anxiety & Trauma
+  { name: "Posttraumatic Stress Disorder", dsmCode: "F43.10", category: "Anxiety & Trauma", evalTypes: [] },
+  { name: "Acute Stress Disorder", dsmCode: "F43.0", category: "Anxiety & Trauma", evalTypes: ["ptsd", "personal injury"] },
+  { name: "Generalized Anxiety Disorder", dsmCode: "F41.1", category: "Anxiety & Trauma", evalTypes: [] },
+  { name: "Panic Disorder", dsmCode: "F41.0", category: "Anxiety & Trauma", evalTypes: [] },
+  { name: "Social Anxiety Disorder", dsmCode: "F40.10", category: "Anxiety & Trauma", evalTypes: [] },
+  // Personality Disorders
+  { name: "Antisocial Personality Disorder", dsmCode: "F60.2", category: "Personality Disorders", evalTypes: ["risk", "cst", "competency"] },
+  { name: "Borderline Personality Disorder", dsmCode: "F60.3", category: "Personality Disorders", evalTypes: [] },
+  { name: "Narcissistic Personality Disorder", dsmCode: "F60.81", category: "Personality Disorders", evalTypes: [] },
+  { name: "Personality Disorder Features", dsmCode: "F60.x", category: "Personality Disorders", evalTypes: ["custody"] },
+  // Substance Use
+  { name: "Alcohol Use Disorder", dsmCode: "F10.x", category: "Substance Use", evalTypes: [] },
+  { name: "Cannabis Use Disorder", dsmCode: "F12.x", category: "Substance Use", evalTypes: [] },
+  { name: "Opioid Use Disorder", dsmCode: "F11.x", category: "Substance Use", evalTypes: [] },
+  { name: "Stimulant Use Disorder", dsmCode: "F15.x", category: "Substance Use", evalTypes: [] },
+  { name: "Substance Use Disorder", dsmCode: "F1x.x", category: "Substance Use", evalTypes: [] },
+  // Neurocognitive
+  { name: "Major Neurocognitive Disorder", dsmCode: "F02.8x", category: "Neurocognitive", evalTypes: ["capacity", "testamentary"] },
+  { name: "Mild Neurocognitive Disorder", dsmCode: "G31.84", category: "Neurocognitive", evalTypes: ["capacity", "testamentary"] },
+  { name: "Neurocognitive Disorder Due to TBI", dsmCode: "S06.x / F02.8x", category: "Neurocognitive", evalTypes: [] },
+  { name: "Delirium", dsmCode: "F05", category: "Neurocognitive", evalTypes: ["capacity"] },
+  { name: "Intellectual Disability", dsmCode: "F7x", category: "Neurocognitive", evalTypes: ["cst", "competency"] },
+  // Behavioral / Impulse
+  { name: "Intermittent Explosive Disorder", dsmCode: "F63.81", category: "Behavioral", evalTypes: ["risk"] },
+  { name: "Conduct Disorder", dsmCode: "F91.x", category: "Behavioral", evalTypes: ["risk", "juvenile"] },
+  { name: "ADHD", dsmCode: "F90.x", category: "Behavioral", evalTypes: [] },
+  // Dissociative
+  { name: "Dissociative Identity Disorder", dsmCode: "F44.81", category: "Dissociative", evalTypes: [] },
+  { name: "Dissociative Amnesia", dsmCode: "F44.0", category: "Dissociative", evalTypes: [] },
+  // Validity / Forensic
+  { name: "Malingering", dsmCode: "Z76.5", category: "Response Validity", evalTypes: [] },
+  { name: "Malingered / Exaggerated PTSD Symptoms", dsmCode: "Z76.5", category: "Response Validity", evalTypes: ["ptsd", "personal injury"] },
+  { name: "Factitious Disorder", dsmCode: "F68.10", category: "Response Validity", evalTypes: [] },
+  // Risk Frameworks
+  { name: "Structured Violence Risk (HCR-20v3)", dsmCode: "N/A — risk formulation", category: "Risk Frameworks", evalTypes: ["risk"] },
+  // Other
+  { name: "Somatic Symptom Disorder", dsmCode: "F45.1", category: "Other", evalTypes: ["personal injury"] },
+  { name: "Depressive Pseudodementia", dsmCode: "F33.x", category: "Other", evalTypes: ["capacity"] },
+  { name: "Insomnia Disorder", dsmCode: "G47.00", category: "Other", evalTypes: [] },
+  { name: "Unspecified Mental Disorder", dsmCode: "F99", category: "Other", evalTypes: [] }
+];
+function buildManualCondition(entry) {
+  return {
+    name: entry.name,
+    dsmCode: entry.dsmCode,
+    dsmExcerpt: `See DSM-5-TR criteria for ${entry.name} (${entry.dsmCode}).`,
+    relevance: "Manually added by clinician for diagnostic consideration.",
+    dataSummary: "Review case data and testing results for evidence supporting or contradicting this diagnosis.",
+    contradictingData: "",
+    templateOptions: [
+      { title: "Criteria met — diagnosis supported", body: `Clinical data, testing results, and behavioral observations are consistent with a diagnosis of ${entry.name}. [Provide specific supporting evidence and rationale.]` },
+      { title: "Partial criteria — under consideration", body: `Some features of ${entry.name} are present; however, full diagnostic criteria are not clearly met at this time. [Specify which criteria are met and which require further evaluation.]` },
+      { title: "Diagnosis not supported", body: `The available clinical data do not support a diagnosis of ${entry.name}. [Provide basis for ruling out and identify alternative explanations.]` },
+      { title: "Deferred — insufficient data", body: `Insufficient data are currently available to render a diagnostic opinion regarding ${entry.name}. Additional [testing/collateral/records] would be needed to adequately evaluate this condition.` }
+    ]
+  };
+}
+function DiagnosticsSubTab({
+  caseRow,
+  intakeRow,
+  onboardingSections,
+  stageIndex,
+  onBuildReport
+}) {
+  const [clinicianNotes, setClinicianNotes] = reactExports.useState({});
+  const [selectedTemplates, setSelectedTemplates] = reactExports.useState({});
+  const [declinedConditions, setDeclinedConditions] = reactExports.useState({});
+  const [ruledOutConditions, setRuledOutConditions] = reactExports.useState({});
+  const [deletedConditions, setDeletedConditions] = reactExports.useState({});
+  const [attestationChecked, setAttestationChecked] = reactExports.useState(false);
+  const [formReviewed, setFormReviewed] = reactExports.useState(false);
+  const [clinicalObsNotes, setClinicalObsNotes] = reactExports.useState({});
+  const [reportDrafts, setReportDrafts] = reactExports.useState([]);
+  const [currentReport, setCurrentReport] = reactExports.useState("");
+  const [reportBuilding, setReportBuilding] = reactExports.useState(false);
+  const [addedConditions, setAddedConditions] = reactExports.useState([]);
+  const [showAddDropdown, setShowAddDropdown] = reactExports.useState(false);
+  const parsedOb = reactExports.useMemo(() => {
+    const map = {};
+    for (const row of onboardingSections) {
+      try {
+        map[row.section] = JSON.parse(row.content);
+      } catch {
       }
-    )
+    }
+    return map;
+  }, [onboardingSections]);
+  const baseConditions = reactExports.useMemo(() => {
+    return getDiagnosticConsiderations(caseRow.evaluation_type, parsedOb, intakeRow, stageIndex);
+  }, [caseRow.evaluation_type, parsedOb, intakeRow, stageIndex]);
+  const allConditions = reactExports.useMemo(() => {
+    return [...baseConditions, ...addedConditions];
+  }, [baseConditions, addedConditions]);
+  const handleNoteChange = reactExports.useCallback((key2, value) => {
+    setClinicianNotes((prev) => ({ ...prev, [key2]: value }));
+  }, []);
+  const handleTemplateSelect = reactExports.useCallback((condName, idx, body) => {
+    setSelectedTemplates((prev) => ({ ...prev, [condName]: idx }));
+    setClinicianNotes((prev) => ({ ...prev, [condName]: body }));
+  }, []);
+  const fullName = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`;
+  const age = caseRow.examinee_dob ? calcAge$1(caseRow.examinee_dob) : "—";
+  const instruments = getInstrumentsForEvalType(caseRow.evaluation_type);
+  const et = (caseRow.evaluation_type ?? "").toLowerCase();
+  const availableToAdd = reactExports.useMemo(() => {
+    const existingNames = new Set(allConditions.map((c) => c.name));
+    return DSM_CATALOG.filter((entry) => {
+      if (existingNames.has(entry.name)) return false;
+      if (entry.evalTypes.length === 0) return true;
+      return entry.evalTypes.some((t) => et.includes(t));
+    });
+  }, [allConditions, et]);
+  const catalogByCategory = reactExports.useMemo(() => {
+    const groups = {};
+    for (const entry of availableToAdd) {
+      if (!groups[entry.category]) groups[entry.category] = [];
+      groups[entry.category].push(entry);
+    }
+    return groups;
+  }, [availableToAdd]);
+  const handleAddCondition = reactExports.useCallback((entry) => {
+    setAddedConditions((prev) => [...prev, buildManualCondition(entry)]);
+    setShowAddDropdown(false);
+  }, []);
+  const autoFormulation = reactExports.useMemo(() => {
+    const conditionsWithNotes = allConditions.filter((c) => clinicianNotes[c.name]?.trim());
+    const conditionsWithoutNotes = allConditions.filter((c) => !clinicianNotes[c.name]?.trim());
+    const impressionLines = [];
+    conditionsWithNotes.forEach((c) => {
+      const note = clinicianNotes[c.name].trim();
+      const lowerNote = note.toLowerCase();
+      const isRuledOut = lowerNote.includes("not supported") || lowerNote.includes("ruled out") || lowerNote.includes("do not support") || lowerNote.includes("does not meet") || lowerNote.includes("not indicated") || lowerNote.includes("not warranted");
+      if (!isRuledOut) {
+        impressionLines.push(`${c.dsmCode}  ${c.name}`);
+      }
+    });
+    if (conditionsWithoutNotes.length > 0 && conditionsWithNotes.length > 0) {
+      impressionLines.push("");
+      impressionLines.push("Conditions under consideration (formulation pending):");
+      conditionsWithoutNotes.forEach((c) => {
+        impressionLines.push(`  ${c.dsmCode}  ${c.name}`);
+      });
+    } else if (conditionsWithNotes.length === 0) {
+      allConditions.forEach((c) => {
+        impressionLines.push(`${c.dsmCode}  ${c.name}  [formulation pending]`);
+      });
+    }
+    const impressions = impressionLines.join("\n");
+    const ruledOutLines = [];
+    conditionsWithNotes.forEach((c) => {
+      const note = clinicianNotes[c.name].trim();
+      const lowerNote = note.toLowerCase();
+      const isRuledOut = lowerNote.includes("not supported") || lowerNote.includes("ruled out") || lowerNote.includes("do not support") || lowerNote.includes("does not meet") || lowerNote.includes("not indicated") || lowerNote.includes("not warranted");
+      if (isRuledOut) {
+        const firstSentence = note.split(/\.\s/)[0] + ".";
+        ruledOutLines.push(`${c.name} (${c.dsmCode}): ${firstSentence}`);
+      }
+    });
+    const ruledOut = ruledOutLines.length > 0 ? ruledOutLines.join("\n\n") : allConditions.length > 0 ? "No conditions have been ruled out. Complete individual condition formulations above." : "";
+    const validityParts = [];
+    const malingeringCond = allConditions.find((c) => c.name.toLowerCase().includes("malingering") || c.name.toLowerCase().includes("exaggerated"));
+    if (malingeringCond && clinicianNotes[malingeringCond.name]?.trim()) {
+      validityParts.push(clinicianNotes[malingeringCond.name].trim());
+    } else {
+      const validityInstruments = [];
+      if (instruments.includes("TOMM")) validityInstruments.push("TOMM");
+      if (instruments.includes("SIRS-2")) validityInstruments.push("SIRS-2");
+      if (instruments.includes("M-FAST")) validityInstruments.push("M-FAST");
+      if (instruments.includes("MMPI-3")) validityInstruments.push("MMPI-3 validity scales (F, Fp, FBS, RBS)");
+      if (instruments.includes("PAI")) validityInstruments.push("PAI validity indicators (NIM, PIM, MAL)");
+      if (instruments.includes("TSI-2")) validityInstruments.push("TSI-2 atypical response scale");
+      if (validityInstruments.length > 0) {
+        if (stageIndex >= 2) {
+          validityParts.push(`Response style was assessed using ${validityInstruments.join(", ")}. All validity indicators should be reviewed and integrated into the overall credibility assessment.`);
+        } else {
+          validityParts.push(`Response style will be assessed using ${validityInstruments.join(", ")}. Testing is pending.`);
+        }
+      }
+      validityParts.push(`Behavioral observations during the evaluation: The examinee was [cooperative/guarded/defensive/forthcoming] throughout the clinical interview. Effort and engagement appeared [adequate/variable/questionable]. Self-report was [consistent/inconsistent] with behavioral presentation and collateral data.`);
+    }
+    const validity = validityParts.join("\n\n");
+    const recParts = [];
+    const confirmedConditions = conditionsWithNotes.filter((c) => {
+      const lowerNote = (clinicianNotes[c.name] ?? "").toLowerCase();
+      return !(lowerNote.includes("not supported") || lowerNote.includes("ruled out") || lowerNote.includes("do not support") || lowerNote.includes("does not meet") || lowerNote.includes("not indicated") || lowerNote.includes("not warranted"));
+    });
+    if (et.includes("cst") || et.includes("competency")) {
+      recParts.push(`Based on the findings of this evaluation, it is the opinion of the undersigned that ${fullName} is [competent/not competent] to stand trial at this time. [If not competent: The primary factors contributing to the competency deficit are [specify conditions]. The prognosis for restoration to competency through [inpatient/outpatient] treatment is [favorable/guarded/poor], with an estimated restoration period of [timeframe].]`);
+    } else if (et.includes("custody")) {
+      recParts.push(`Based on the findings of this evaluation and consistent with the best interests of the child(ren), the following custody and parenting plan recommendations are offered:`);
+      recParts.push(`1. Primary residential custody: [recommendation]
+2. Parenting time schedule: [recommendation]
+3. Decision-making authority: [recommendation]
+4. Therapeutic interventions: [recommendation]
+5. Conditions or stipulations: [recommendation]`);
+    } else if (et.includes("risk")) {
+      recParts.push(`Based on integration of all assessment data through structured professional judgment, the overall violence risk level is assessed as [LOW / MODERATE / HIGH].`);
+      recParts.push(`Risk management recommendations:
+1. Supervision level: [recommendation]
+2. Treatment targets: [recommendation]
+3. Substance use monitoring: [recommendation]
+4. Community supports: [recommendation]
+5. Conditions for risk reduction: [recommendation]`);
+    } else if (et.includes("ptsd")) {
+      const hasValidPTSD = confirmedConditions.some((c) => c.name === "Posttraumatic Stress Disorder");
+      if (hasValidPTSD) {
+        recParts.push(`The examinee meets DSM-5-TR diagnostic criteria for Posttraumatic Stress Disorder. The condition is causally linked to the reported traumatic event and is associated with [significant/moderate] functional impairment.`);
+      }
+      recParts.push(`Treatment recommendations:
+1. Evidence-based trauma therapy: [CPT / PE / EMDR]
+2. Pharmacotherapy: [SSRI consideration]
+3. Prognosis with treatment: [favorable/guarded]
+4. Prognosis without treatment: [chronic course expected]
+5. Estimated duration of treatment: [timeframe]`);
+    } else if (et.includes("capacity")) {
+      recParts.push(`Based on the findings of this evaluation, it is the opinion of the undersigned that ${fullName} [has/lacks] the capacity to [manage financial affairs / make medical decisions / execute legal documents / live independently].`);
+      recParts.push(`Recommendations:
+1. [Guardianship/conservatorship recommendation]
+2. [Protective measures]
+3. [Treatment for reversible contributors]
+4. [Re-evaluation timeline]`);
+    } else {
+      recParts.push(`Diagnostic conclusions and treatment recommendations are summarized below.`);
+    }
+    if (confirmedConditions.length > 0) {
+      const condList = confirmedConditions.map((c) => `${c.name} (${c.dsmCode})`).join(", ");
+      recParts.push(`
+Diagnoses informing these recommendations: ${condList}.`);
+    }
+    const prognosis = recParts.join("\n\n");
+    return { impressions, ruledOut, validity, prognosis };
+  }, [allConditions, clinicianNotes, instruments, stageIndex, fullName, et]);
+  const conditionCompletionMap = reactExports.useMemo(() => {
+    const map = {};
+    for (const cond of allConditions) {
+      if (deletedConditions[cond.name]) {
+        map[cond.name] = "deleted";
+      } else if (ruledOutConditions[cond.name]) {
+        map[cond.name] = "ruled_out";
+      } else if (declinedConditions[cond.name]) {
+        map[cond.name] = "declined";
+      } else if (clinicianNotes[cond.name]?.trim()) {
+        map[cond.name] = "complete";
+      } else {
+        map[cond.name] = "pending";
+      }
+    }
+    return map;
+  }, [allConditions, clinicianNotes, declinedConditions, ruledOutConditions, deletedConditions]);
+  const gate1_allConditionsFormulated = reactExports.useMemo(() => {
+    return allConditions.length > 0 && allConditions.every((c) => conditionCompletionMap[c.name] !== "pending");
+  }, [allConditions, conditionCompletionMap]);
+  const gate2_finalFormulationComplete = reactExports.useMemo(() => {
+    return formReviewed && !!clinicianNotes._impressions?.trim() && !!clinicianNotes._ruledOut?.trim() && !!clinicianNotes._validity?.trim() && !!clinicianNotes._prognosis?.trim();
+  }, [formReviewed, clinicianNotes]);
+  const gate3_attestationSigned = attestationChecked;
+  const allGatesPassed = gate1_allConditionsFormulated && gate2_finalFormulationComplete && gate3_attestationSigned;
+  const completedCount = allConditions.filter((c) => conditionCompletionMap[c.name] !== "pending").length;
+  const [formSeeded, setFormSeeded] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    if (!formSeeded && allConditions.length > 0) {
+      setClinicianNotes((prev) => ({
+        ...prev,
+        _impressions: prev._impressions || autoFormulation.impressions,
+        _ruledOut: prev._ruledOut || autoFormulation.ruledOut,
+        _validity: prev._validity || autoFormulation.validity,
+        _prognosis: prev._prognosis || autoFormulation.prognosis
+      }));
+      setFormSeeded(true);
+    }
+  }, [allConditions, autoFormulation, formSeeded]);
+  const diagNoteStyle = {
+    width: "100%",
+    minHeight: 60,
+    padding: "6px 8px",
+    fontSize: 12,
+    fontFamily: "inherit",
+    lineHeight: 1.6,
+    boxSizing: "border-box",
+    border: "1px solid var(--border)",
+    borderRadius: 4,
+    background: "var(--bg)",
+    color: "var(--text)",
+    resize: "vertical"
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 12 }, children: "Diagnostic Workspace" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: threeColGrid, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Patient" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Name", value: fullName }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "DOB", value: caseRow.examinee_dob ? `${caseRow.examinee_dob}  (age ${age})` : void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Gender", value: caseRow.examinee_gender ?? void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Language", value: parsedOb.contact?.primary_language })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NarrativeBlock, { label: "Concern", value: parsedOb.complaints?.primary_complaint ?? intakeRow?.presenting_complaint ?? void 0 })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Referral" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Type", value: intakeRow?.eval_type ?? caseRow.evaluation_type ?? void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Source", value: intakeRow?.referral_source ?? caseRow.referral_source ?? void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Jurisdiction", value: intakeRow?.jurisdiction ?? void 0 })
+        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(NarrativeBlock, { label: "Charges", value: intakeRow?.charges ?? void 0 })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { background: "var(--sidebar-bg, #f5f5f5)", borderRadius: 6, padding: "0 10px 8px" }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("table", { style: dataTableStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SectionHead, { title: "Clinical Summary" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Eval Type", value: intakeRow?.eval_type ?? caseRow.evaluation_type ?? void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Test Battery", value: instruments.length > 0 ? instruments.join(", ") : void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Setting", value: parsedOb.contact?.eval_setting ?? "In-Person" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Stage", value: ["Onboarding", "Testing", "Interview", "Diagnostics", "Review", "Complete"][stageIndex] ?? void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Intake Date", value: intakeRow?.created_at ? intakeRow.created_at.split("T")[0] : caseRow.created_at?.split("T")[0] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Due Date", value: intakeRow?.report_deadline ?? void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Prior Dx", value: shortNote(parsedOb.mental?.previous_diagnoses) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Hx Treatment", value: shortNote(parsedOb.mental?.previous_treatment) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Medications", value: shortNote(parsedOb.mental?.psych_medications) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Medical", value: shortNote(parsedOb.health?.medical_conditions) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Neurological", value: parsedOb.health?.head_injuries && !parsedOb.health.head_injuries.toLowerCase().match(/^(no |none|denies)/) ? shortNote(parsedOb.health.head_injuries) : void 0 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Substance Use", value: shortNote([
+            parsedOb.substance?.alcohol_use && !parsedOb.substance.alcohol_use.toLowerCase().match(/^(—|none|denies|no )/) ? parsedOb.substance.alcohol_use : null,
+            parsedOb.substance?.drug_use && !parsedOb.substance.drug_use.toLowerCase().match(/^(—|none|denies|no )/) ? parsedOb.substance.drug_use : null
+          ].filter(Boolean).join(", ") || void 0) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Sleep", value: shortNote(parsedOb.health?.sleep_quality) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(DataRow, { label: "Stressors", value: shortNote(parsedOb.complaints?.stressors ?? parsedOb.mental?.current_stressors) })
+        ] }) }),
+        parsedOb.mental?.violence_history && !parsedOb.mental.violence_history.toLowerCase().includes("denies") || parsedOb.mental?.self_harm_history && !parsedOb.mental.self_harm_history.toLowerCase().includes("denies") || parsedOb.substance?.drug_use && !parsedOb.substance.drug_use.toLowerCase().includes("denies") ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { margin: "4px 0 6px", padding: "5px 8px", background: "#fff8e1", borderLeft: "3px solid #ff9800", fontSize: 10, color: "#795548", lineHeight: 1.5, borderRadius: "0 4px 4px 0" }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Flagged: " }),
+          parsedOb.mental?.violence_history && !parsedOb.mental.violence_history.toLowerCase().includes("denies") && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Violence hx. " }),
+          parsedOb.mental?.self_harm_history && !parsedOb.mental.self_harm_history.toLowerCase().includes("denies") && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Self-harm hx. " }),
+          parsedOb.substance?.drug_use && !parsedOb.substance.drug_use.toLowerCase().includes("denies") && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Substance use. " }),
+          parsedOb.health?.head_injuries && !parsedOb.health.head_injuries.toLowerCase().includes("no reported") && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "TBI hx. " })
+        ] }) : null
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { marginTop: 16, padding: "10px 0 8px", borderBottom: "1px solid var(--text-secondary)", marginBottom: 12 }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 12 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "var(--text)", whiteSpace: "nowrap" }, children: "Diagnostic Considerations" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, height: 5, background: "var(--border)", borderRadius: 3, overflow: "hidden" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+        width: allConditions.length > 0 ? `${completedCount / allConditions.length * 100}%` : "0%",
+        height: "100%",
+        borderRadius: 3,
+        transition: "width 0.3s",
+        background: completedCount === allConditions.length ? "#2e7d32" : "#1976d2"
+      } }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 10, fontWeight: 600, color: gate1_allConditionsFormulated ? "#2e7d32" : "var(--text-secondary)", whiteSpace: "nowrap" }, children: [
+        completedCount,
+        "/",
+        allConditions.length,
+        " ",
+        gate1_allConditionsFormulated ? "✓" : ""
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { position: "relative", flexShrink: 0 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: () => setShowAddDropdown(!showAddDropdown),
+            style: {
+              padding: "3px 10px",
+              fontSize: 10,
+              fontWeight: 600,
+              fontFamily: "inherit",
+              cursor: "pointer",
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              color: "var(--text-secondary)",
+              whiteSpace: "nowrap"
+            },
+            children: "+ Add"
+          }
+        ),
+        showAddDropdown && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+          position: "absolute",
+          top: "100%",
+          right: 0,
+          marginTop: 4,
+          zIndex: 100,
+          width: 320,
+          maxHeight: 400,
+          overflowY: "auto",
+          background: "var(--bg)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.15)"
+        }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "8px 10px", borderBottom: "1px solid var(--border)", fontSize: 11, fontWeight: 700, color: "var(--text)", display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Add Diagnostic Consideration" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => setShowAddDropdown(false), style: { background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-secondary)", padding: "0 2px" }, children: "×" })
+          ] }),
+          availableToAdd.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "12px 10px", fontSize: 11, color: "var(--text-secondary)", fontStyle: "italic" }, children: "All relevant conditions are already listed." }) : Object.entries(catalogByCategory).map(([category, entries]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "6px 10px 3px", fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--text-secondary)", background: "var(--sidebar-bg, #f5f5f5)" }, children: category }),
+            entries.map((entry) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                onClick: () => handleAddCondition(entry),
+                style: {
+                  display: "block",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "6px 10px",
+                  fontSize: 11,
+                  fontFamily: "inherit",
+                  background: "none",
+                  border: "none",
+                  borderBottom: "1px solid var(--border)",
+                  cursor: "pointer",
+                  color: "var(--text)"
+                },
+                onMouseEnter: (e) => {
+                  e.target.style.background = "var(--sidebar-bg, #f5f5f5)";
+                },
+                onMouseLeave: (e) => {
+                  e.target.style.background = "none";
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 600 }, children: entry.name }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--text-secondary)", fontFamily: "monospace" }, children: entry.dsmCode })
+                ]
+              },
+              entry.name
+            ))
+          ] }, category))
+        ] })
+      ] })
+    ] }) }),
+    allConditions.map((cond) => {
+      const status = conditionCompletionMap[cond.name] ?? "pending";
+      if (status === "deleted") return null;
+      const statusColor = status === "complete" ? "#2e7d32" : status === "ruled_out" ? "#e65100" : status === "declined" ? "#6a6a6a" : "#c62828";
+      const statusIcon = status === "complete" ? "●" : status === "ruled_out" ? "✕" : status === "declined" ? "○" : "◌";
+      const statusLabel = status === "complete" ? "Formulated" : status === "ruled_out" ? "Ruled Out" : status === "declined" ? "No comments" : "Pending";
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid var(--border)", opacity: status === "ruled_out" ? 0.65 : 1 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: statusColor, fontSize: 11, flexShrink: 0 }, title: statusLabel, children: statusIcon }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, fontWeight: 700, color: "var(--text)" }, children: cond.name }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, color: "var(--text-secondary)", fontFamily: "monospace" }, children: cond.dsmCode }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 10, color: statusColor, marginLeft: "auto", flexShrink: 0 }, children: statusLabel })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: threeColGrid, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNoteLabelStyle, children: "Why Considered" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text)", lineHeight: 1.55, marginBottom: 8 }, children: cond.relevance }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNoteLabelStyle, children: "Case Data" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text)", lineHeight: 1.55 }, children: cond.dataSummary })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNoteLabelStyle, children: "DSM-5-TR Reference" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text)", lineHeight: 1.55, marginBottom: 8 }, children: cond.dsmExcerpt }),
+            cond.contradictingData ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...clinNoteLabelStyle, color: "#c62828" }, children: "Contradicting / Rule-Out" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }, children: cond.contradictingData })
+            ] }) : null
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...clinNotesColumnStyle, display: "flex", flexDirection: "column" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...clinNoteLabelStyle, marginTop: 0, paddingTop: 4, flexShrink: 0 }, children: "Clinician Formulation" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "select",
+              {
+                value: ruledOutConditions[cond.name] ? "__ruleout__" : declinedConditions[cond.name] ? "__decline__" : selectedTemplates[cond.name] != null ? String(selectedTemplates[cond.name]) : "",
+                onChange: (e) => {
+                  const val = e.target.value;
+                  const clearFlags = () => {
+                    setDeclinedConditions((prev) => ({ ...prev, [cond.name]: false }));
+                    setRuledOutConditions((prev) => ({ ...prev, [cond.name]: false }));
+                    setDeletedConditions((prev) => ({ ...prev, [cond.name]: false }));
+                  };
+                  if (val === "__delete__") {
+                    clearFlags();
+                    setDeletedConditions((prev) => ({ ...prev, [cond.name]: true }));
+                    setSelectedTemplates((prev) => ({ ...prev, [cond.name]: null }));
+                    setClinicianNotes((prev) => ({ ...prev, [cond.name]: "" }));
+                  } else if (val === "__ruleout__") {
+                    clearFlags();
+                    setRuledOutConditions((prev) => ({ ...prev, [cond.name]: true }));
+                    setSelectedTemplates((prev) => ({ ...prev, [cond.name]: null }));
+                    setClinicianNotes((prev) => ({ ...prev, [cond.name]: `Ruled out: ${cond.name}. ${cond.contradictingData || "Clinical data does not support this diagnosis."}` }));
+                  } else if (val === "__decline__") {
+                    clearFlags();
+                    setDeclinedConditions((prev) => ({ ...prev, [cond.name]: true }));
+                    setSelectedTemplates((prev) => ({ ...prev, [cond.name]: null }));
+                    setClinicianNotes((prev) => ({ ...prev, [cond.name]: "" }));
+                  } else if (val === "") {
+                    clearFlags();
+                    setSelectedTemplates((prev) => ({ ...prev, [cond.name]: null }));
+                  } else {
+                    clearFlags();
+                    const idx = parseInt(val, 10);
+                    handleTemplateSelect(cond.name, idx, cond.templateOptions[idx].body);
+                  }
+                },
+                style: {
+                  width: "100%",
+                  padding: "4px 6px",
+                  fontSize: 11,
+                  fontFamily: "inherit",
+                  border: "1px solid var(--border)",
+                  borderRadius: 3,
+                  background: "var(--bg)",
+                  color: declinedConditions[cond.name] || ruledOutConditions[cond.name] ? "#6a6a6a" : "var(--text)",
+                  marginBottom: 4,
+                  cursor: "pointer",
+                  flexShrink: 0
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "— Select formulation template —" }),
+                  cond.templateOptions.map((tpl, idx) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: idx, children: tpl.title }, idx)),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "__decline__", children: "No additional comments" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "__ruleout__", children: "⊘ Rule Out" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "__delete__", children: "✕ DELETE" })
+                ]
+              }
+            ),
+            ruledOutConditions[cond.name] ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, display: "flex", flexDirection: "column", gap: 4 }, children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "6px 8px", fontSize: 11, color: "#e65100", fontWeight: 600, background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: 4 }, children: "⊘ RULED OUT" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "textarea",
+                {
+                  value: clinicianNotes[cond.name] ?? "",
+                  onChange: (e) => handleNoteChange(cond.name, e.target.value),
+                  placeholder: "Basis for ruling out this condition...",
+                  style: { ...diagNoteStyle, flex: 1, minHeight: 60 }
+                }
+              )
+            ] }) : declinedConditions[cond.name] ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#6a6a6a", fontStyle: "italic", border: "1px dashed var(--border)", borderRadius: 4, background: "var(--bg)" }, children: "No additional clinician comments for this condition." }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "textarea",
+              {
+                value: clinicianNotes[cond.name] ?? "",
+                onChange: (e) => handleNoteChange(cond.name, e.target.value),
+                placeholder: "Clinical notes for this condition...",
+                style: { ...diagNoteStyle, flex: 1, minHeight: 120 }
+              }
+            )
+          ] })
+        ] })
+      ] }, cond.name);
+    }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: narrativeSectionHeader, children: "Final Diagnostic Formulation" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => {
+            setClinicianNotes((prev) => ({
+              ...prev,
+              _impressions: autoFormulation.impressions,
+              _ruledOut: autoFormulation.ruledOut,
+              _validity: autoFormulation.validity,
+              _prognosis: autoFormulation.prognosis
+            }));
+          },
+          style: {
+            padding: "4px 10px",
+            fontSize: 11,
+            fontFamily: "inherit",
+            cursor: "pointer",
+            background: "var(--bg)",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            color: "var(--text-secondary)"
+          },
+          title: "Rebuild all fields from the diagnostic considerations and clinician notes above",
+          children: "↻ Rebuild from above"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: threeColGrid, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNoteLabelStyle, children: "Diagnostic Impressions" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            value: clinicianNotes._impressions ?? "",
+            onChange: (e) => handleNoteChange("_impressions", e.target.value),
+            placeholder: "DSM-5-TR codes and full diagnostic labels...",
+            style: { ...diagNoteStyle, minHeight: 100 }
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...clinNoteLabelStyle, marginTop: 10 }, children: "Conditions Ruled Out" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            value: clinicianNotes._ruledOut ?? "",
+            onChange: (e) => handleNoteChange("_ruledOut", e.target.value),
+            placeholder: "Conditions considered and ruled out with basis...",
+            style: { ...diagNoteStyle, minHeight: 80 }
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNoteLabelStyle, children: "Response Style & Validity" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            value: clinicianNotes._validity ?? "",
+            onChange: (e) => handleNoteChange("_validity", e.target.value),
+            placeholder: "Effort, consistency, credibility of self-report...",
+            style: { ...diagNoteStyle, minHeight: 100 }
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { ...clinNoteLabelStyle, marginTop: 10 }, children: "Prognosis & Recommendations" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            value: clinicianNotes._prognosis ?? "",
+            onChange: (e) => handleNoteChange("_prognosis", e.target.value),
+            placeholder: "Prognosis, treatment recommendations, referrals...",
+            style: { ...diagNoteStyle, minHeight: 80 }
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { ...clinNotesColumnStyle, display: "flex", flexDirection: "column", gap: 12 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: "Gate 2 — Final Review" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 8 }, children: "Review all four formulation fields. When satisfied, mark the review as complete." }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setFormReviewed(!formReviewed),
+              disabled: !clinicianNotes._impressions?.trim() || !clinicianNotes._ruledOut?.trim() || !clinicianNotes._validity?.trim() || !clinicianNotes._prognosis?.trim(),
+              style: {
+                width: "100%",
+                padding: "6px 10px",
+                fontSize: 11,
+                fontFamily: "inherit",
+                cursor: "pointer",
+                background: gate2_finalFormulationComplete ? "#2e7d32" : "var(--bg)",
+                color: gate2_finalFormulationComplete ? "#fff" : "var(--text)",
+                border: `1px solid ${gate2_finalFormulationComplete ? "#2e7d32" : "var(--border)"}`,
+                borderRadius: 4,
+                fontWeight: 600,
+                opacity: !clinicianNotes._impressions?.trim() || !clinicianNotes._ruledOut?.trim() || !clinicianNotes._validity?.trim() || !clinicianNotes._prognosis?.trim() ? 0.4 : 1
+              },
+              children: gate2_finalFormulationComplete ? "✓ Review Complete" : "Mark Review Complete"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: clinNotesColumnHeader, children: "Attestation" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "flex-start", gap: 8, padding: "4px 0" }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "checkbox",
+                checked: attestationChecked,
+                onChange: (e) => setAttestationChecked(e.target.checked),
+                style: { marginTop: 2, flexShrink: 0, width: 14, height: 14, cursor: "pointer" }
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.6 }, children: "I attest that all conclusions documented herein represent my independent professional judgment. No AI system rendered, suggested, or influenced these diagnostic conclusions." })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 8 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 10, marginBottom: 8, fontSize: 10 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: gate1_allConditionsFormulated ? "#2e7d32" : "#c62828" }, children: [
+              gate1_allConditionsFormulated ? "✓" : "○",
+              " Formulations"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: gate2_finalFormulationComplete ? "#2e7d32" : "#c62828" }, children: [
+              gate2_finalFormulationComplete ? "✓" : "○",
+              " Review"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { color: gate3_attestationSigned ? "#2e7d32" : "#c62828" }, children: [
+              gate3_attestationSigned ? "✓" : "○",
+              " Attestation"
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              disabled: !allGatesPassed || reportBuilding,
+              onClick: async () => {
+                setReportBuilding(true);
+                try {
+                  for (const c of allConditions) {
+                    const status = conditionCompletionMap[c.name];
+                    if (status === "deleted") continue;
+                    const decision = status === "ruled_out" ? "rule_out" : status === "complete" ? "render" : "defer";
+                    await window.psygil.diagnosticDecisions.save({
+                      case_id: caseRow.case_id,
+                      diagnosis_key: c.name.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+                      icd_code: c.dsmCode,
+                      diagnosis_name: c.name,
+                      decision,
+                      clinician_notes: clinicianNotes[c.name] ?? ""
+                    });
+                  }
+                  await window.psygil.onboarding.save({
+                    case_id: caseRow.case_id,
+                    section: "diagnostic_notes",
+                    data: {
+                      impressions: clinicianNotes._impressions ?? "",
+                      ruled_out: clinicianNotes._ruledOut ?? "",
+                      validity: clinicianNotes._validity ?? "",
+                      prognosis: clinicianNotes._prognosis ?? "",
+                      clinical_obs: JSON.stringify(clinicalObsNotes),
+                      attestation_signed: attestationChecked ? "true" : "false",
+                      attestation_date: (/* @__PURE__ */ new Date()).toISOString()
+                    }
+                  });
+                  await window.psygil.audit.log({
+                    caseId: caseRow.case_id,
+                    actionType: "diagnostic_formulation_complete",
+                    actorType: "clinician",
+                    details: {
+                      conditionsRendered: allConditions.filter((c) => conditionCompletionMap[c.name] === "complete").map((c) => c.name),
+                      conditionsRuledOut: allConditions.filter((c) => conditionCompletionMap[c.name] === "ruled_out").map((c) => c.name),
+                      conditionsDeleted: allConditions.filter((c) => conditionCompletionMap[c.name] === "deleted").map((c) => c.name),
+                      attestationSigned: attestationChecked
+                    }
+                  });
+                  const condPayload = allConditions.filter((c) => conditionCompletionMap[c.name] !== "deleted").map((c) => ({
+                    name: c.name,
+                    dsmCode: c.dsmCode,
+                    notes: clinicianNotes[c.name] ?? "",
+                    status: conditionCompletionMap[c.name] ?? "pending"
+                  }));
+                  onBuildReport({
+                    impressions: clinicianNotes._impressions ?? "",
+                    ruledOut: clinicianNotes._ruledOut ?? "",
+                    validity: clinicianNotes._validity ?? "",
+                    prognosis: clinicianNotes._prognosis ?? "",
+                    conditions: condPayload
+                  });
+                } catch (err) {
+                  console.error("Build report failed:", err);
+                } finally {
+                  setReportBuilding(false);
+                }
+              },
+              style: {
+                width: "100%",
+                padding: "8px 12px",
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: "inherit",
+                cursor: allGatesPassed && !reportBuilding ? "pointer" : "not-allowed",
+                background: allGatesPassed ? "#1565c0" : "#ccc",
+                color: allGatesPassed ? "#fff" : "#888",
+                border: "none",
+                borderRadius: 5,
+                transition: "background 0.2s"
+              },
+              title: allGatesPassed ? "Save diagnostic decisions and build report" : "Complete all gates to unlock",
+              children: reportBuilding ? "⟳ Saving & Building…" : allGatesPassed ? "⬢ Build Report" : "⬡ Complete Gates to Build"
+            }
+          )
+        ] })
+      ] })
+    ] })
+  ] });
+}
+function buildReportContent(caseRow, intakeRow, parsedOb, stageIndex) {
+  const fullName = `${caseRow.examinee_last_name ?? ""}, ${caseRow.examinee_first_name ?? ""}`;
+  const age = caseRow.examinee_dob ? calcAge$1(caseRow.examinee_dob) : "—";
+  const dob = caseRow.examinee_dob ?? "—";
+  const evalType = caseRow.evaluation_type ?? "Psychological Evaluation";
+  const evalDate = caseRow.created_at ? new Date(caseRow.created_at).toLocaleDateString() : "—";
+  const contact = parsedOb.contact;
+  const complaints = parsedOb.complaints;
+  const family = parsedOb.family;
+  const education = parsedOb.education;
+  const health = parsedOb.health;
+  const mental = parsedOb.mental;
+  const substance = parsedOb.substance;
+  const legal = parsedOb.legal;
+  parsedOb.recent;
+  const sections = [];
+  sections.push({
+    title: "Identifying Information & Referral Question",
+    body: `Name: ${fullName}
+Date of Birth: ${dob}
+Age: ${age}
+Gender: ${contact?.gender ?? intakeRow?.gender ?? "—"}
+Referral Source: ${intakeRow?.referral_source ?? "—"}
+Referring Attorney/Agency: ${intakeRow?.referring_attorney ?? "—"}
+Evaluation Type: ${evalType}
+Date of Evaluation: ${evalDate}
+Charges/Legal Context: ${intakeRow?.charges ?? "—"}
+
+Referral Question: ${intakeRow?.referral_question ?? intakeRow?.presenting_complaint ?? "[Enter referral question]"}`
+  });
+  const instruments = getInstrumentsForEvalType(caseRow.evaluation_type);
+  const instrumentList = instruments.map((i) => {
+    const info = INSTRUMENT_INFO[i];
+    return info ? `${i} — ${info.fullName}` : i;
+  }).join("\n");
+  sections.push({
+    title: "Informed Consent & Evaluation Procedures",
+    body: `${fullName.split(",")[1]?.trim() ?? "The examinee"} was informed of the nature and purpose of this evaluation, including limits of confidentiality, the non-treatment nature of the evaluation, and that findings would be documented in a written report. The examinee acknowledged understanding and provided verbal consent to proceed.
+
+The following assessment procedures were administered:
+${instrumentList}
+Clinical Interview
+Review of Collateral Records`
+  });
+  const bgParts = [];
+  if (family) {
+    bgParts.push(`Family History: ${family.marital_status ? `Marital status: ${family.marital_status}.` : ""} ${family.children ? `Children: ${family.children}.` : ""} ${family.family_mental_health ? `Family psychiatric history: ${family.family_mental_health}.` : ""}`);
+  }
+  if (education) {
+    bgParts.push(`Education & Employment: ${education.highest_education ? `Education: ${education.highest_education}.` : ""} ${education.current_employment ? `Current employment: ${education.current_employment}.` : ""} ${education.military_service ? `Military: ${education.military_service}.` : ""}`);
+  }
+  if (health) {
+    bgParts.push(`Medical History: ${health.medical_conditions ? `Conditions: ${health.medical_conditions}.` : "No significant medical history reported."} ${health.head_injuries ? `Head injuries: ${health.head_injuries}.` : ""} ${health.current_medications ? `Medications: ${health.current_medications}.` : ""}`);
+  }
+  if (mental) {
+    bgParts.push(`Mental Health History: ${mental.previous_diagnoses ? `Prior diagnoses: ${mental.previous_diagnoses}.` : "No prior psychiatric diagnoses reported."} ${mental.previous_treatment ? `Treatment: ${mental.previous_treatment}.` : ""} ${mental.psych_medications ? `Psychiatric medications: ${mental.psych_medications}.` : ""}`);
+  }
+  if (substance) {
+    bgParts.push(`Substance Use History: ${substance.alcohol_use ? `Alcohol: ${substance.alcohol_use}.` : ""} ${substance.drug_use ? `Drugs: ${substance.drug_use}.` : ""} ${substance.substance_treatment ? `Treatment: ${substance.substance_treatment}.` : ""}`);
+  }
+  if (legal) {
+    bgParts.push(`Legal History: ${legal.arrests_convictions ?? "No significant criminal history reported."} ${legal.incarceration_history ? `Incarceration: ${legal.incarceration_history}.` : ""}`);
+  }
+  sections.push({
+    title: "Background Information",
+    body: bgParts.join("\n\n") || "[Background information to be compiled from intake data]"
+  });
+  sections.push({
+    title: "Behavioral Observations",
+    body: `[Clinician to document behavioral observations from evaluation sessions including: appearance, demeanor, cooperation level, rapport, speech characteristics, thought process, affect, orientation, and any notable behavioral features.]`
+  });
+  const testParts = instruments.map((i) => {
+    const info = INSTRUMENT_INFO[i];
+    if (!info) return `${i}: [Results pending]`;
+    return `${i} (${info.fullName}):
+${info.isValidity ? "[Validity/effort test results]" : "[Test scores and interpretation]"}`;
+  });
+  sections.push({
+    title: "Test Results & Validity",
+    body: stageIndex >= 2 ? testParts.join("\n\n") || "[Test results to be entered]" : "[Testing not yet completed for this case]"
+  });
+  sections.push({
+    title: "Clinical Interview Findings",
+    body: `Presenting Concerns: ${complaints?.primary_complaint ?? intakeRow?.presenting_complaint ?? "[Enter presenting concerns]"}
+${complaints?.onset_timeline ? `Onset: ${complaints.onset_timeline}` : ""}
+${complaints?.secondary_concerns ? `Secondary Concerns: ${complaints.secondary_concerns}` : ""}
+
+[Clinician to document clinical interview findings including: history of present illness, symptom review, functional assessment, and any additional clinical observations.]`
+  });
+  const et = (evalType ?? "").toLowerCase();
+  if (et.includes("cst") || et.includes("competency")) {
+    sections.push({ title: "Competency Analysis — Dusky Criteria", body: "[Clinician analysis of factual understanding, rational understanding, and ability to consult with counsel per Dusky v. United States (1960).]" });
+  } else if (et.includes("custody")) {
+    sections.push({ title: "Parenting Capacity Analysis", body: "[Analysis of parenting capacity based on testing, interview, collateral, and behavioral observations.]" });
+    sections.push({ title: "Best Interest Assessment", body: "[Best interest factors analysis per applicable jurisdiction.]" });
+  } else if (et.includes("risk")) {
+    sections.push({ title: "Risk Factor Analysis", body: "[Structured analysis of historical, clinical, and risk management factors. HCR-20v3 and/or other risk instruments.]" });
+    sections.push({ title: "Dynamic Risk Factors", body: "[Current dynamic risk factors including substance use, treatment engagement, social support, and environmental stressors.]" });
+    sections.push({ title: "Risk Level Opinion", body: "[Clinician risk level opinion with structured professional judgment rationale.]" });
+  } else if (et.includes("ptsd")) {
+    sections.push({ title: "Trauma History & PTSD Criteria", body: "[Detailed trauma history and criterion-by-criterion PTSD analysis per DSM-5-TR.]" });
+  } else if (et.includes("capacity")) {
+    sections.push({ title: "Cognitive & Functional Assessment", body: "[Neuropsychological test results and functional capacity analysis.]" });
+    sections.push({ title: "Capacity Opinion", body: "[Clinician opinion on decisional capacity with supporting data.]" });
+  }
+  sections.push({
+    title: "Diagnostic Impressions",
+    body: "[Clinician to enter final DSM-5-TR diagnostic impressions based on the Diagnostics tab formulations.]"
+  });
+  sections.push({
+    title: "Summary & Recommendations",
+    body: "[Clinician summary of key findings, opinions, and recommendations.]"
+  });
+  return sections;
+}
+const tbBtn = {
+  width: 28,
+  height: 28,
+  border: "1px solid #d0d0d0",
+  borderRadius: 3,
+  background: "#fff",
+  cursor: "pointer",
+  fontSize: 12,
+  color: "#444",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0
+};
+const tbSep = { width: 1, height: 20, background: "#d0d0d0", margin: "0 3px", flexShrink: 0 };
+const tbSelect = {
+  height: 28,
+  border: "1px solid #d0d0d0",
+  borderRadius: 3,
+  background: "#fff",
+  fontSize: 11,
+  color: "#444",
+  cursor: "pointer",
+  padding: "0 4px"
+};
+function ReportSubTab({
+  caseRow,
+  intakeRow,
+  onboardingSections,
+  stageIndex,
+  diagnosticFormulation
+}) {
+  const parsedOb = reactExports.useMemo(() => {
+    const map = {};
+    for (const row of onboardingSections) {
+      try {
+        map[row.section] = JSON.parse(row.content);
+      } catch {
+      }
+    }
+    return map;
+  }, [onboardingSections]);
+  const reportSections = reactExports.useMemo(
+    () => buildReportContent(caseRow, intakeRow, parsedOb, stageIndex),
+    [caseRow, intakeRow, parsedOb, stageIndex]
+  );
+  const [sectionContent, setSectionContent] = reactExports.useState({});
+  const [sectionTitles, setSectionTitles] = reactExports.useState({});
+  reactExports.useEffect(() => {
+    const bodies = {};
+    const titles = {};
+    reportSections.forEach((sec, idx) => {
+      bodies[idx] = sec.body;
+      titles[idx] = sec.title;
+    });
+    setSectionContent(bodies);
+    setSectionTitles(titles);
+  }, [reportSections]);
+  reactExports.useEffect(() => {
+    if (!diagnosticFormulation) return;
+    const dx = diagnosticFormulation;
+    setSectionContent((prev) => {
+      const updated = { ...prev };
+      const titles = { ...sectionTitles };
+      for (const idxStr of Object.keys(titles)) {
+        const idx = parseInt(idxStr, 10);
+        const title = (titles[idx] ?? "").toLowerCase();
+        if (title.includes("diagnostic impression")) {
+          const rendered = dx.conditions.filter((c) => c.status === "complete");
+          const ruledOut = dx.conditions.filter((c) => c.status === "ruled_out");
+          const lines = [];
+          if (rendered.length > 0) {
+            for (const c of rendered) {
+              lines.push(`${c.dsmCode}  ${c.name}`);
+              if (c.notes.trim()) lines.push(`  ${c.notes.trim()}`);
+              lines.push("");
+            }
+          }
+          if (ruledOut.length > 0) {
+            lines.push("Conditions Ruled Out:");
+            for (const c of ruledOut) {
+              lines.push(`  ${c.dsmCode}  ${c.name}`);
+              if (c.notes.trim()) lines.push(`    ${c.notes.trim()}`);
+            }
+            lines.push("");
+          }
+          if (dx.ruledOut.trim()) {
+            lines.push(dx.ruledOut);
+            lines.push("");
+          }
+          updated[idx] = (dx.impressions ? dx.impressions + "\n\n" : "") + lines.join("\n");
+        }
+        if (title.includes("summary") && title.includes("recommendation")) {
+          const parts = [];
+          if (dx.validity.trim()) parts.push(`Response Style & Validity:
+${dx.validity}`);
+          if (dx.prognosis.trim()) parts.push(`Prognosis & Recommendations:
+${dx.prognosis}`);
+          if (parts.length > 0) {
+            updated[idx] = parts.join("\n\n");
+          }
+        }
+      }
+      return updated;
+    });
+  }, [diagnosticFormulation, sectionTitles]);
+  const [isExporting, setIsExporting] = reactExports.useState(false);
+  const [isLoadingTemplate, setIsLoadingTemplate] = reactExports.useState(false);
+  const handleEditInWord = reactExports.useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const fullName2 = `${caseRow.examinee_last_name ?? ""}, ${caseRow.examinee_first_name ?? ""}`;
+      const evalType2 = caseRow.evaluation_type ?? "Psychological Evaluation";
+      const sections = reportSections.map((sec, idx) => ({
+        title: sectionTitles[idx] ?? sec.title,
+        body: sectionContent[idx] ?? sec.body
+      }));
+      await window.psygil.report.exportAndOpen({
+        caseId: caseRow.case_id,
+        fullName: fullName2,
+        evalType: evalType2,
+        sections
+      });
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [caseRow, reportSections, sectionContent, sectionTitles]);
+  const handleUploadTemplate = reactExports.useCallback(async () => {
+    setIsLoadingTemplate(true);
+    try {
+      const resp = await window.psygil.report.loadTemplate();
+      if (resp.status === "success" && resp.data?.sections) {
+        const loaded = resp.data.sections;
+        const bodies = {};
+        const titles = {};
+        loaded.forEach((sec, idx) => {
+          titles[idx] = sec.title;
+          bodies[idx] = sec.body;
+        });
+        setSectionTitles(titles);
+        setSectionContent(bodies);
+      }
+    } catch (err) {
+      console.error("Template load failed:", err);
+    } finally {
+      setIsLoadingTemplate(false);
+    }
+  }, []);
+  const fullName = `${caseRow.examinee_last_name ?? ""}, ${caseRow.examinee_first_name ?? ""}`;
+  const evalType = caseRow.evaluation_type ?? "Psychological Evaluation";
+  const activeSections = Object.keys(sectionContent).length || reportSections.length;
+  const REPORT_TEMPLATES = [
+    { key: "forensic-cst", label: "Competency to Stand Trial (CST)" },
+    { key: "forensic-risk", label: "Violence Risk Assessment" },
+    { key: "forensic-custody", label: "Child Custody Evaluation" },
+    { key: "forensic-ptsd", label: "PTSD / Trauma Evaluation" },
+    { key: "forensic-capacity", label: "Decisional Capacity" },
+    { key: "forensic-malingering", label: "Malingering Assessment" },
+    { key: "forensic-general", label: "General Forensic Evaluation" },
+    { key: "clinical-neuro", label: "Neuropsychological Evaluation" },
+    { key: "clinical-diagnostic", label: "Diagnostic Psychological Evaluation" },
+    { key: "clinical-disability", label: "Disability / IME Report" },
+    { key: "sentencing", label: "Sentencing Mitigation Report" },
+    { key: "juvenile", label: "Juvenile Forensic Evaluation" },
+    { key: "blank", label: "Blank Report (No Sections)" }
+  ];
+  const [selectedTemplate, setSelectedTemplate] = reactExports.useState("");
+  const handleTemplateChange = reactExports.useCallback((e) => {
+    const key2 = e.target.value;
+    setSelectedTemplate(key2);
+    if (!key2) return;
+    const sections = buildReportContent(caseRow, intakeRow, parsedOb, stageIndex);
+    const bodies = {};
+    const titles = {};
+    sections.forEach((sec, idx) => {
+      titles[idx] = sec.title;
+      bodies[idx] = sec.body;
+    });
+    setSectionTitles(titles);
+    setSectionContent(bodies);
+  }, [caseRow, intakeRow, parsedOb, stageIndex]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: 0, background: "#e8e8e8", minHeight: "100%" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "6px 12px",
+      borderBottom: "1px solid #d0d0d0",
+      background: "#f5f5f5",
+      position: "sticky",
+      top: 0,
+      zIndex: 11
+    }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, fontWeight: 700, color: "#333" }, children: "Evaluation Report" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            value: selectedTemplate,
+            onChange: handleTemplateChange,
+            style: {
+              height: 26,
+              border: "1px solid #d0d0d0",
+              borderRadius: 3,
+              background: "#fff",
+              fontSize: 11,
+              color: "#444",
+              cursor: "pointer",
+              padding: "0 6px",
+              minWidth: 200
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "— Select Template —" }),
+              REPORT_TEMPLATES.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: t.key, children: t.label }, t.key))
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 11, color: "#999", background: "#e8e8e8", padding: "1px 8px", borderRadius: 3 }, children: "Draft" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { fontSize: 11, color: "#aaa" }, children: [
+          activeSections,
+          " sections"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 6 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: handleUploadTemplate,
+            disabled: isLoadingTemplate,
+            style: {
+              padding: "4px 12px",
+              fontSize: 11,
+              fontWeight: 600,
+              background: "#fff",
+              color: "#555",
+              border: "1px solid #d0d0d0",
+              borderRadius: 4,
+              cursor: isLoadingTemplate ? "not-allowed" : "pointer",
+              opacity: isLoadingTemplate ? 0.6 : 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 5
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13 }, children: "+" }),
+              isLoadingTemplate ? "Loading…" : "Upload Template"
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            onClick: handleEditInWord,
+            disabled: isExporting,
+            style: {
+              padding: "4px 12px",
+              fontSize: 11,
+              fontWeight: 600,
+              background: "#185abd",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              cursor: isExporting ? "not-allowed" : "pointer",
+              opacity: isExporting ? 0.6 : 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 5
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, fontWeight: 800, fontFamily: "serif" }, children: "W" }),
+              isExporting ? "Exporting…" : "Edit in Word"
+            ]
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 3,
+      flexWrap: "wrap",
+      padding: "4px 12px",
+      borderBottom: "1px solid #d0d0d0",
+      background: "#fafafa",
+      position: "sticky",
+      top: 39,
+      zIndex: 10
+    }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: tbBtn, title: "Undo", children: "↩" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: tbBtn, title: "Redo", children: "↪" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tbSep }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { style: { ...tbSelect, width: 130 }, defaultValue: "Times New Roman", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Times New Roman" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Arial" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Calibri" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Georgia" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Courier New" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { style: { ...tbSelect, width: 48 }, defaultValue: "12", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "9" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "10" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "11" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "12" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "14" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "16" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "18" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "24" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tbSep }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, fontWeight: 700 }, title: "Bold", children: "B" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, fontStyle: "italic" }, title: "Italic", children: "I" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, textDecoration: "underline" }, title: "Underline", children: "U" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, textDecoration: "line-through" }, title: "Strikethrough", children: "S" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tbSep }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { style: { ...tbBtn, position: "relative" }, title: "Text Color", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "A" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { position: "absolute", bottom: 2, left: 4, right: 4, height: 3, background: "#222", borderRadius: 1 } })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, position: "relative" }, title: "Highlight", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { background: "#ffeb3b", padding: "0 3px", borderRadius: 1, fontSize: 11 }, children: "ab" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tbSep }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: tbBtn, title: "Align Left", children: "≡" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: tbBtn, title: "Center", children: "☰" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: tbBtn, title: "Align Right", children: "≡" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: tbBtn, title: "Justify", children: "⊞" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tbSep }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, fontSize: 14 }, title: "Bullet List", children: "•≡" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, fontSize: 11 }, title: "Numbered List", children: "1." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tbSep }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, fontSize: 13 }, title: "Decrease Indent", children: "⇤" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, fontSize: 13 }, title: "Increase Indent", children: "⇥" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tbSep }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("select", { style: { ...tbSelect, width: 44 }, defaultValue: "1.5", title: "Line Spacing", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "1.0", children: "1.0" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "1.15", children: "1.15" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "1.5", children: "1.5" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "2.0", children: "2.0" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tbSep }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, fontSize: 11, width: "auto", padding: "0 6px" }, title: "Insert Table", children: "Table" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, fontSize: 11, width: "auto", padding: "0 6px" }, title: "Insert Image", children: "Image" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { style: { ...tbBtn, fontSize: 11, width: "auto", padding: "0 6px" }, title: "Page Break", children: "Break" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: "24px 0", minHeight: "calc(100vh - 120px)" }, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: {
+      maxWidth: 816,
+      margin: "0 auto",
+      padding: "56px 72px",
+      background: "#fff",
+      border: "1px solid #c8c8c8",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
+      minHeight: 1056,
+      fontFamily: "'Times New Roman', Times, serif",
+      fontSize: 13,
+      lineHeight: 1.8,
+      color: "#222"
+    }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { textAlign: "center", marginBottom: 32 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 15, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }, children: "Confidential Forensic Evaluation Report" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "#666", marginBottom: 16 }, children: evalType }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { borderBottom: "2px solid #333", width: 120, margin: "0 auto" } })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 24px", marginBottom: 28, fontSize: 12 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Examinee:" }),
+          " ",
+          fullName
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Date of Birth:" }),
+          " ",
+          caseRow.examinee_dob ?? "—"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Case ID:" }),
+          " ",
+          caseRow.case_id
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Age:" }),
+          " ",
+          caseRow.examinee_dob ? calcAge$1(caseRow.examinee_dob) : "—"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Evaluation Type:" }),
+          " ",
+          evalType
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Date of Report:" }),
+          " ",
+          (/* @__PURE__ */ new Date()).toLocaleDateString()
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { borderTop: "1px solid #ccc", marginBottom: 24 } }),
+      (Object.keys(sectionContent).length > 0 ? Object.keys(sectionContent).map(Number).sort((a, b) => a - b) : reportSections.map((_, i) => i)).map((idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginBottom: 24 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
+          fontSize: 13,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          marginBottom: 8,
+          color: "#111",
+          borderBottom: "1px solid #ddd",
+          paddingBottom: 4
+        }, children: sectionTitles[idx] ?? reportSections[idx]?.title ?? `Section ${idx + 1}` }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            contentEditable: true,
+            suppressContentEditableWarning: true,
+            onBlur: (e) => {
+              const text = e.currentTarget.innerText ?? "";
+              setSectionContent((prev) => ({ ...prev, [idx]: text }));
+            },
+            style: {
+              fontSize: 13,
+              fontFamily: "'Times New Roman', Times, serif",
+              lineHeight: 1.8,
+              color: "#222",
+              whiteSpace: "pre-wrap",
+              wordWrap: "break-word",
+              outline: "none",
+              cursor: "text",
+              padding: "2px 0",
+              minHeight: 20
+            },
+            children: sectionContent[idx] ?? ""
+          }
+        )
+      ] }, idx)),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { marginTop: 48, borderTop: "1px solid #ccc", paddingTop: 24 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { marginBottom: 48 } }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { borderTop: "1px solid #333", width: 280, marginBottom: 4 } }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12 }, children: "[Clinician Name, Credentials]" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "#666" }, children: "Licensed Psychologist" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 12, color: "#666" }, children: "Date: _______________" })
+      ] })
+    ] }) })
   ] });
 }
 function IntakeField({
   label,
-  value
+  value,
+  wrap
 }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
@@ -23921,7 +28226,7 @@ function IntakeField({
             children: label
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", flex: 1 }, children: value })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 13, color: "var(--text)", flex: 1, lineHeight: wrap ? 1.6 : void 0 }, children: value })
       ]
     }
   );
@@ -23946,22 +28251,186 @@ function SectionHeader({
     }
   );
 }
-function EmptyState({ message }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "div",
-    {
-      style: {
-        padding: "24px",
-        background: "var(--panel)",
-        border: "1px solid var(--border)",
-        borderRadius: 6,
-        textAlign: "center",
-        color: "var(--text-secondary)",
-        fontSize: 13
-      },
-      children: message
-    }
-  );
+function ResourceViewerTab({
+  filePath,
+  title
+}) {
+  const [content, setContent] = reactExports.useState(null);
+  const [redacted, setRedacted] = reactExports.useState(null);
+  const [loading, setLoading] = reactExports.useState(true);
+  const [error, setError] = reactExports.useState(null);
+  const [encoding, setEncoding] = reactExports.useState("text");
+  const [phiCount, setPhiCount] = reactExports.useState(0);
+  const [showRedacted, setShowRedacted] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setContent(null);
+    setRedacted(null);
+    setShowRedacted(false);
+    void (async () => {
+      try {
+        const resp = await window.psygil?.resources?.read?.({ storedPath: filePath });
+        if (cancelled) return;
+        if (resp?.status === "success" && resp.data) {
+          setContent(resp.data.content);
+          setRedacted(resp.data.redacted);
+          setEncoding(resp.data.encoding);
+          setPhiCount(resp.data.phiCount);
+        } else {
+          setError(resp?.error?.message ?? "Failed to read file");
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to read file");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [filePath]);
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  const categoryLabel = filePath.includes("Writing Samples") ? "Writing Sample" : filePath.includes("Templates") ? "Template" : filePath.includes("Documentation") ? "Reference Document" : "Resource";
+  const activeContent = showRedacted ? redacted : content;
+  const docHtmlStyle = `
+    body { font-family: 'Georgia', 'Times New Roman', serif; font-size: 13px; line-height: 1.8;
+           color: var(--text); max-width: 100%; padding: 24px 32px; margin: 0; background: transparent; }
+    h1, h2, h3, h4, h5, h6 { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           color: var(--text); margin: 1.2em 0 0.4em; }
+    h1 { font-size: 20px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    h2 { font-size: 17px; } h3 { font-size: 15px; }
+    p { margin: 0.5em 0; } ul, ol { margin: 0.5em 0; padding-left: 24px; }
+    table { border-collapse: collapse; margin: 12px 0; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 6px 10px; font-size: 12px; text-align: left; }
+    th { background: var(--panel); font-weight: 600; }
+    strong { font-weight: 700; } em { font-style: italic; }
+    img { max-width: 100%; }
+  `;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "10px 20px",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--panel)",
+          flexShrink: 0
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 16 }, children: ext === "pdf" ? "📕" : ext === "docx" || ext === "doc" ? "📄" : ext === "txt" ? "📝" : "📎" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1, minWidth: 0 }, children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: title }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.5px", marginTop: 1 }, children: categoryLabel })
+          ] }),
+          !loading && phiCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setShowRedacted(!showRedacted),
+              style: {
+                padding: "4px 10px",
+                fontSize: 11,
+                background: showRedacted ? "var(--accent)" : "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
+                color: showRedacted ? "#fff" : "var(--text-secondary)",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "all 0.15s"
+              },
+              title: showRedacted ? `Showing redacted view (${phiCount} PHI item${phiCount === 1 ? "" : "s"} removed)` : `${phiCount} potential PHI item${phiCount === 1 ? "" : "s"} detected — click to view redacted`,
+              children: showRedacted ? "⚕ PHI Redacted" : `⚕ ${phiCount} PHI`
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => window.psygil?.resources?.open?.({ storedPath: filePath }),
+              style: {
+                padding: "4px 10px",
+                fontSize: 11,
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                whiteSpace: "nowrap"
+              },
+              title: "Open in external application",
+              children: "Open External"
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }, children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: 40, textAlign: "center", color: "var(--text-tertiary)", fontSize: 13 }, children: "Loading…" }) : error ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { padding: 40, textAlign: "center", color: "#ef5350", fontSize: 13 }, children: error }) : encoding === "pdf-base64" && !showRedacted ? (
+      /* PDF: embed in iframe for native rendering */
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "iframe",
+        {
+          src: `data:application/pdf;base64,${content}`,
+          style: { flex: 1, border: "none", width: "100%" },
+          title
+        }
+      )
+    ) : encoding === "html" || encoding === "pdf-base64" && showRedacted ? (
+      /* DOCX converted HTML or PDF redacted text view */
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "iframe",
+        {
+          srcDoc: `<!DOCTYPE html><html><head><style>${docHtmlStyle}</style></head><body>${activeContent}</body></html>`,
+          style: { flex: 1, border: "none", width: "100%" },
+          title,
+          sandbox: "allow-same-origin"
+        }
+      )
+    ) : encoding === "base64" ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: 40, textAlign: "center", color: "var(--text-secondary)", fontSize: 13 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { style: { margin: "0 0 12px" }, children: [
+        "Binary file — preview not available for .",
+        ext
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          onClick: () => window.psygil?.resources?.open?.({ storedPath: filePath }),
+          style: {
+            padding: "8px 16px",
+            fontSize: 12,
+            background: "var(--accent)",
+            border: "none",
+            borderRadius: 4,
+            color: "#fff",
+            cursor: "pointer"
+          },
+          children: "Open in External App"
+        }
+      )
+    ] }) : (
+      /* Plain text — monospace rendering */
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { flex: 1, overflow: "auto" }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "pre",
+        {
+          style: {
+            margin: 0,
+            padding: "16px 24px",
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+            fontSize: 12,
+            lineHeight: 1.7,
+            color: "var(--text)",
+            whiteSpace: "pre-wrap",
+            wordWrap: "break-word",
+            background: "transparent",
+            tabSize: 4
+          },
+          children: activeContent
+        }
+      ) })
+    ) })
+  ] });
 }
 function DocumentContent({ tab }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px", overflow: "auto", height: "100%" }, children: [
@@ -24723,6 +29192,16 @@ function VSplitter({ onResize, onResizeEnd }) {
     }
   );
 }
+const STEPS = [
+  // Phase 1: Intake (steps 0-1)
+  { index: 0, number: 1, label: "Contact & Insurance", phase: "intake", type: "intake", intakeField: "contact" },
+  { index: 1, number: 2, label: "Referral & Legal", phase: "intake", type: "intake", intakeField: "referral" },
+  // Phase 2: Patient History (steps 2-5)
+  { index: 2, number: 3, label: "Demographics & Family", phase: "patient-history", type: "onboarding", onboardingSection: "contact", onboardingSections: ["contact", "family"] },
+  { index: 3, number: 4, label: "Presenting Complaints", phase: "patient-history", type: "onboarding", onboardingSection: "complaints" },
+  { index: 4, number: 5, label: "Medical & Substance Use", phase: "patient-history", type: "onboarding", onboardingSection: "health", onboardingSections: ["health", "substance"] },
+  { index: 5, number: 6, label: "Recent Events", phase: "patient-history", type: "onboarding", onboardingSection: "recent" }
+];
 const EVAL_TYPE_OPTIONS = [
   "CST",
   "Custody",
@@ -24740,7 +29219,65 @@ const EVAL_TYPE_OPTIONS = [
   "Mitigation"
 ];
 const REFERRING_PARTY_TYPES = ["Court", "Attorney", "Physician", "Agency", "Insurance", "Other"];
-const EMPTY_FORM = {
+const US_STATES = [
+  "AL",
+  "AK",
+  "AZ",
+  "AR",
+  "CA",
+  "CO",
+  "CT",
+  "DE",
+  "FL",
+  "GA",
+  "HI",
+  "ID",
+  "IL",
+  "IN",
+  "IA",
+  "KS",
+  "KY",
+  "LA",
+  "ME",
+  "MD",
+  "MA",
+  "MI",
+  "MN",
+  "MS",
+  "MO",
+  "MT",
+  "NE",
+  "NV",
+  "NH",
+  "NJ",
+  "NM",
+  "NY",
+  "NC",
+  "ND",
+  "OH",
+  "OK",
+  "OR",
+  "PA",
+  "RI",
+  "SC",
+  "SD",
+  "TN",
+  "TX",
+  "UT",
+  "VT",
+  "VA",
+  "WA",
+  "WV",
+  "WI",
+  "WY"
+];
+const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Transgender Male", "Transgender Female", "Other", "Prefer not to say"];
+const MARITAL_STATUS_OPTIONS = ["Single", "Married", "Divorced", "Separated", "Widowed", "Domestic Partnership", "Other"];
+const EMPLOYMENT_STATUS_OPTIONS = ["Employed Full-Time", "Employed Part-Time", "Self-Employed", "Unemployed", "Retired", "Disabled", "Student"];
+const EDUCATION_OPTIONS = ["Less than High School", "High School/GED", "Some College", "Associate's", "Bachelor's", "Master's", "Doctorate/Professional", "Other"];
+const LANGUAGES = ["English", "Spanish", "Mandarin", "Cantonese", "Vietnamese", "Tagalog", "Arabic", "French", "Korean", "Japanese", "Other"];
+const INSURANCE_RELATIONSHIP = ["Self", "Spouse", "Parent", "Child", "Other"];
+const EMPTY_INTAKE_FORM = {
   contact: {
     lastName: "",
     firstName: "",
@@ -24758,14 +29295,12 @@ const EMPTY_FORM = {
     emergencyContactRelationship: "",
     emergencyContactPhone: ""
   },
-  referringParty: {
+  referral: {
     referringPartyType: "",
     referringPartyName: "",
     referringPartyAddress: "",
     referringPartyPhone: "",
-    referringPartyEmail: ""
-  },
-  courtAttorney: {
+    referringPartyEmail: "",
     caseNumber: "",
     judgeAssignedCourt: "",
     defenseCounselName: "",
@@ -24774,40 +29309,35 @@ const EMPTY_FORM = {
     prosecutionAttorney: "",
     prosecutionPhone: "",
     prosecutionEmail: "",
-    courtDeadline: ""
-  },
-  evalDocs: {
+    courtDeadline: "",
     evalType: "",
     reasonForReferral: "",
     charges: "",
     supportingDocuments: "",
-    additionalNotes: ""
-  },
-  presenting: {
-    primaryComplaint: "",
-    whenBegan: "",
-    betterOrWorse: "",
-    currentlySafe: "",
-    previousTreatment: "",
-    whoRecommended: "",
-    primaryCarePhysician: ""
-  },
-  insurance: {
-    insuranceCarrier: "",
-    policyMemberId: "",
-    groupNumber: "",
-    policyholderName: "",
-    relationshipToPatient: ""
+    additionalNotes: "",
+    arrestsConvictions: "",
+    incarcerationHistory: "",
+    probationParole: "",
+    protectiveOrders: ""
   }
 };
+function buildEmptyOnboardingForm() {
+  const state = {};
+  const sections = ["contact", "complaints", "family", "health", "substance", "recent"];
+  for (const section of sections) {
+    state[section] = { clinician_notes: "" };
+  }
+  return state;
+}
 function generateCaseNumber() {
   const year = (/* @__PURE__ */ new Date()).getFullYear();
   const rand = Math.floor(Math.random() * 9e3) + 1e3;
   return `PSY-${year}-${rand}`;
 }
-function calcAge$1(dob) {
+function calcAge(dob) {
   if (!dob) return "";
   const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return "—";
   const today = /* @__PURE__ */ new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
@@ -24823,21 +29353,12 @@ function mapToIpcReferralType(mode, partyType) {
 }
 function intakeRowToForm(row) {
   return {
-    evalDocs: {
-      evalType: row.eval_type ?? "",
-      reasonForReferral: row.presenting_complaint ?? "",
-      charges: row.charges ?? "",
-      supportingDocuments: "",
-      additionalNotes: ""
-    },
-    referringParty: {
+    referral: {
       referringPartyType: "",
       referringPartyName: row.referral_source ?? "",
       referringPartyAddress: "",
       referringPartyPhone: "",
-      referringPartyEmail: ""
-    },
-    courtAttorney: {
+      referringPartyEmail: "",
       caseNumber: row.jurisdiction ?? "",
       judgeAssignedCourt: "",
       defenseCounselName: "",
@@ -24846,1288 +29367,80 @@ function intakeRowToForm(row) {
       prosecutionAttorney: row.attorney_name ?? "",
       prosecutionPhone: "",
       prosecutionEmail: "",
-      courtDeadline: row.report_deadline ?? ""
-    },
-    presenting: {
-      primaryComplaint: row.presenting_complaint ?? "",
-      whenBegan: "",
-      betterOrWorse: "",
-      currentlySafe: "",
-      previousTreatment: "",
-      whoRecommended: "",
-      primaryCarePhysician: ""
+      courtDeadline: row.report_deadline ?? "",
+      evalType: row.eval_type ?? "",
+      reasonForReferral: row.presenting_complaint ?? "",
+      charges: row.charges ?? "",
+      supportingDocuments: "",
+      additionalNotes: ""
     }
   };
 }
-function IntakeModal({
+function IntakeOnboardingModal({
   isOpen,
   onClose,
   caseId,
   onSaved
 }) {
   const isEditMode = caseId != null;
+  const [currentStepIndex, setCurrentStepIndex] = reactExports.useState(0);
+  const currentStep = STEPS[currentStepIndex];
   const [referralMode, setReferralMode] = reactExports.useState("referral");
-  const [primaryTab, setPrimaryTab] = reactExports.useState("contact");
-  const [referralSubTab, setReferralSubTab] = reactExports.useState("referring-party");
-  const [form, setForm] = reactExports.useState(EMPTY_FORM);
+  const [intakeForm, setIntakeForm] = reactExports.useState(EMPTY_INTAKE_FORM);
+  const [intakeMode, setIntakeMode] = reactExports.useState("self-report");
+  const [onboardingForm, setOnboardingForm] = reactExports.useState(buildEmptyOnboardingForm());
+  const [onboardingMode, setOnboardingMode] = reactExports.useState("self-report");
+  const [caseData, setCaseData] = reactExports.useState(null);
+  const [createdCaseId, setCreatedCaseId] = reactExports.useState(null);
   const [saving, setSaving] = reactExports.useState(false);
   const [error, setError] = reactExports.useState(null);
+  const [completedSteps, setCompletedSteps] = reactExports.useState(/* @__PURE__ */ new Set());
+  const effectiveCaseId = caseId ?? createdCaseId;
+  const effectiveMode = currentStepIndex < 2 ? "self-report" : onboardingMode;
+  const isClinician = effectiveMode === "clinician";
   reactExports.useEffect(() => {
     if (!isOpen) return;
     setError(null);
     setSaving(false);
-    setPrimaryTab("contact");
-    setReferralSubTab("referring-party");
-    if (isEditMode) {
-      void (async () => {
-        const resp = await window.psygil?.intake?.get?.({ case_id: caseId });
-        if (resp?.status === "success" && resp.data != null) {
-          const partial = intakeRowToForm(resp.data);
-          setForm((prev) => ({
-            ...prev,
-            ...partial,
-            evalDocs: { ...prev.evalDocs, ...partial.evalDocs ?? {} },
-            referringParty: { ...prev.referringParty, ...partial.referringParty ?? {} },
-            courtAttorney: { ...prev.courtAttorney, ...partial.courtAttorney ?? {} },
-            presenting: { ...prev.presenting, ...partial.presenting ?? {} }
-          }));
-          const rt = resp.data.referral_type;
-          if (rt === "walk-in" || rt === "self") setReferralMode("walkin");
-          else setReferralMode("referral");
-        } else {
-          setForm(EMPTY_FORM);
-        }
-      })();
-    } else {
-      setForm(EMPTY_FORM);
-      setReferralMode("referral");
-    }
-  }, [isOpen, isEditMode, caseId]);
-  reactExports.useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
-  reactExports.useEffect(() => {
-    if (referralMode === "walkin" && primaryTab === "referral") {
-      setPrimaryTab("presenting");
-    } else if (referralMode === "referral" && primaryTab === "presenting") {
-      setPrimaryTab("referral");
-    }
-  }, [referralMode, primaryTab]);
-  const updateContact = reactExports.useCallback((k, v) => {
-    setForm((p) => ({ ...p, contact: { ...p.contact, [k]: v } }));
-  }, []);
-  const updateReferringParty = reactExports.useCallback((k, v) => {
-    setForm((p) => ({ ...p, referringParty: { ...p.referringParty, [k]: v } }));
-  }, []);
-  const updateCourtAttorney = reactExports.useCallback((k, v) => {
-    setForm((p) => ({ ...p, courtAttorney: { ...p.courtAttorney, [k]: v } }));
-  }, []);
-  const updateEvalDocs = reactExports.useCallback((k, v) => {
-    setForm((p) => ({ ...p, evalDocs: { ...p.evalDocs, [k]: v } }));
-  }, []);
-  const updatePresenting = reactExports.useCallback((k, v) => {
-    setForm((p) => ({ ...p, presenting: { ...p.presenting, [k]: v } }));
-  }, []);
-  const updateInsurance = reactExports.useCallback((k, v) => {
-    setForm((p) => ({ ...p, insurance: { ...p.insurance, [k]: v } }));
-  }, []);
-  const saveIntakeData = reactExports.useCallback(
-    async (targetCaseId, isDraft) => {
-      const resp = await window.psygil?.intake?.save?.({
-        case_id: targetCaseId,
-        data: {
-          referral_type: mapToIpcReferralType(referralMode, form.referringParty.referringPartyType),
-          referral_source: form.referringParty.referringPartyName || void 0,
-          eval_type: form.evalDocs.evalType || void 0,
-          presenting_complaint: referralMode === "walkin" ? form.presenting.primaryComplaint || void 0 : form.evalDocs.reasonForReferral || void 0,
-          jurisdiction: form.courtAttorney.caseNumber || void 0,
-          charges: form.evalDocs.charges || void 0,
-          attorney_name: form.courtAttorney.prosecutionAttorney || void 0,
-          report_deadline: form.courtAttorney.courtDeadline || void 0,
-          status: isDraft ? "draft" : "complete"
-        }
-      });
-      return resp?.status === "success";
-    },
-    [form, referralMode]
-  );
-  const handleSaveDraft = reactExports.useCallback(async () => {
-    if (saving) return;
-    setSaving(true);
-    setError(null);
-    try {
-      if (isEditMode) {
-        await saveIntakeData(caseId, true);
-      }
-    } finally {
-      setSaving(false);
-    }
-  }, [saving, isEditMode, caseId, saveIntakeData]);
-  const handleSubmit = reactExports.useCallback(async () => {
-    if (saving) return;
-    setSaving(true);
-    setError(null);
-    try {
-      if (isEditMode) {
-        const ok = await saveIntakeData(caseId, false);
-        if (ok) {
-          onClose();
-        } else {
-          setError("Failed to save intake. Please try again.");
-        }
-      } else {
-        if (!form.contact.firstName.trim() || !form.contact.lastName.trim()) {
-          setError("First and last name are required.");
-          setSaving(false);
-          return;
-        }
-        const createResp = await window.psygil?.cases?.create?.({
-          case_number: generateCaseNumber(),
-          primary_clinician_user_id: 1,
-          examinee_first_name: form.contact.firstName.trim(),
-          examinee_last_name: form.contact.lastName.trim(),
-          examinee_dob: form.contact.dob || void 0,
-          examinee_gender: form.contact.gender || void 0,
-          evaluation_type: form.evalDocs.evalType || void 0,
-          referral_source: form.referringParty.referringPartyName || void 0,
-          evaluation_questions: referralMode === "walkin" ? form.presenting.primaryComplaint || void 0 : form.evalDocs.reasonForReferral || void 0
-        });
-        if (createResp?.status !== "success") {
-          setError(createResp?.message ?? "Failed to create case.");
-          setSaving(false);
-          return;
-        }
-        const newCase = createResp.data;
-        await saveIntakeData(newCase.case_id, false);
-        onClose();
-        onSaved?.(newCase);
-      }
-    } catch {
-      setError("An unexpected error occurred.");
-    } finally {
-      setSaving(false);
-    }
-  }, [saving, isEditMode, caseId, form, referralMode, saveIntakeData, onClose, onSaved]);
-  if (!isOpen) return null;
-  const age = calcAge$1(form.contact.dob);
-  const primaryTabs = [
-    { id: "contact", label: "Contact Information" },
-    ...referralMode === "referral" ? [{ id: "referral", label: "Referral Information" }] : [{ id: "presenting", label: "Presenting Concerns" }],
-    { id: "insurance", label: "Insurance & Billing" }
-  ];
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: overlayStyle$1, onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: containerStyle$1, onClick: (e) => e.stopPropagation(), children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: headerStyle$1, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 14, fontWeight: 600, color: "var(--text)" }, children: isEditMode ? "Edit Intake" : "New Patient Intake" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, style: closeButtonStyle$1, "aria-label": "Close", children: "×" })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "14px 24px 0", display: "flex", gap: 24, alignItems: "center" }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: labelStyle$1, children: "Intake Type" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: radioLabelStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            type: "radio",
-            name: "referralMode",
-            value: "referral",
-            checked: referralMode === "referral",
-            onChange: () => setReferralMode("referral"),
-            style: { marginRight: 6 }
-          }
-        ),
-        "Referral",
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "var(--text-secondary)", marginLeft: 6, fontSize: 11 }, children: "(Court / Attorney / Physician / Insurance)" })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: radioLabelStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            type: "radio",
-            name: "referralMode",
-            value: "walkin",
-            checked: referralMode === "walkin",
-            onChange: () => setReferralMode("walkin"),
-            style: { marginRight: 6 }
-          }
-        ),
-        "Walk-in / Self-Referred"
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: tabStripStyle, children: primaryTabs.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        onClick: () => setPrimaryTab(t.id),
-        style: t.id === primaryTab ? activeTabStyle$1 : inactiveTabStyle$1,
-        children: t.label
-      },
-      t.id
-    )) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: bodyStyle, children: [
-      primaryTab === "contact" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Last Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.lastName,
-              onChange: (e) => updateContact("lastName", e.target.value),
-              placeholder: "Last name"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "First Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.firstName,
-              onChange: (e) => updateContact("firstName", e.target.value),
-              placeholder: "First name"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "MI", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.middleInitial,
-              onChange: (e) => updateContact("middleInitial", e.target.value),
-              maxLength: 1,
-              placeholder: "M"
-            }
-          ) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Date of Birth", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              type: "date",
-              style: inputStyle$1,
-              value: form.contact.dob,
-              onChange: (e) => updateContact("dob", e.target.value)
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Age", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: { ...inputStyle$1, background: "var(--panel)", color: "var(--text-secondary)" },
-              value: age,
-              readOnly: true,
-              placeholder: "—"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Gender", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.gender,
-              onChange: (e) => updateContact("gender", e.target.value),
-              placeholder: "Gender identity"
-            }
-          ) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Street Address", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.streetAddress,
-              onChange: (e) => updateContact("streetAddress", e.target.value),
-              placeholder: "123 Main St"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "City", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.city,
-              onChange: (e) => updateContact("city", e.target.value),
-              placeholder: "City"
-            }
-          ) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "State", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.state,
-              onChange: (e) => updateContact("state", e.target.value),
-              placeholder: "CO",
-              maxLength: 2
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "ZIP", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.zip,
-              onChange: (e) => updateContact("zip", e.target.value),
-              placeholder: "80901"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Phone", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.phone,
-              onChange: (e) => updateContact("phone", e.target.value),
-              placeholder: "(555) 555-5555"
-            }
-          ) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Email", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              type: "email",
-              value: form.contact.email,
-              onChange: (e) => updateContact("email", e.target.value),
-              placeholder: "patient@example.com"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Preferred Contact Method", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "select",
-            {
-              style: inputStyle$1,
-              value: form.contact.preferredContact,
-              onChange: (e) => updateContact("preferredContact", e.target.value),
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Phone" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Email" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Text" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Mail" })
-              ]
-            }
-          ) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Emergency Contact Name", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.emergencyContactName,
-              onChange: (e) => updateContact("emergencyContactName", e.target.value),
-              placeholder: "Full name"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Relationship", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.emergencyContactRelationship,
-              onChange: (e) => updateContact("emergencyContactRelationship", e.target.value),
-              placeholder: "Spouse, Parent…"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Emergency Phone", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.contact.emergencyContactPhone,
-              onChange: (e) => updateContact("emergencyContactPhone", e.target.value),
-              placeholder: "(555) 555-5555"
-            }
-          ) })
-        ] })
-      ] }),
-      primaryTab === "referral" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: subTabStripStyle, children: [
-          { id: "referring-party", label: "Referring Party" },
-          { id: "court-attorney", label: "Court & Attorney" },
-          { id: "eval-docs", label: "Evaluation & Documents" }
-        ].map((st) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            onClick: () => setReferralSubTab(st.id),
-            style: st.id === referralSubTab ? activeSubTabStyle : inactiveSubTabStyle,
-            children: st.label
-          },
-          st.id
-        )) }),
-        referralSubTab === "referring-party" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: subSectionStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Type", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" }, children: REFERRING_PARTY_TYPES.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              onClick: () => updateReferringParty("referringPartyType", t),
-              style: form.referringParty.referringPartyType === t ? activeChipStyle : inactiveChipStyle,
-              children: t
-            },
-            t
-          )) }) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Name / Office", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.referringParty.referringPartyName,
-              onChange: (e) => updateReferringParty("referringPartyName", e.target.value),
-              placeholder: "Name or office"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Address", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.referringParty.referringPartyAddress,
-              onChange: (e) => updateReferringParty("referringPartyAddress", e.target.value),
-              placeholder: "Street address"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Phone", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                value: form.referringParty.referringPartyPhone,
-                onChange: (e) => updateReferringParty("referringPartyPhone", e.target.value),
-                placeholder: "(555) 555-5555"
-              }
-            ) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Email", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                type: "email",
-                value: form.referringParty.referringPartyEmail,
-                onChange: (e) => updateReferringParty("referringPartyEmail", e.target.value),
-                placeholder: "email@example.com"
-              }
-            ) })
-          ] })
-        ] }),
-        referralSubTab === "court-attorney" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: subSectionStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Court / Case Number", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                value: form.courtAttorney.caseNumber,
-                onChange: (e) => updateCourtAttorney("caseNumber", e.target.value),
-                placeholder: "Case #"
-              }
-            ) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Judge / Assigned Court", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                value: form.courtAttorney.judgeAssignedCourt,
-                onChange: (e) => updateCourtAttorney("judgeAssignedCourt", e.target.value),
-                placeholder: "Hon. Smith / District Court"
-              }
-            ) })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Defense Counsel Name", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                value: form.courtAttorney.defenseCounselName,
-                onChange: (e) => updateCourtAttorney("defenseCounselName", e.target.value),
-                placeholder: "Attorney name"
-              }
-            ) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Defense Phone", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                value: form.courtAttorney.defenseCounselPhone,
-                onChange: (e) => updateCourtAttorney("defenseCounselPhone", e.target.value),
-                placeholder: "(555) 555-5555"
-              }
-            ) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Defense Email", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                type: "email",
-                value: form.courtAttorney.defenseCounselEmail,
-                onChange: (e) => updateCourtAttorney("defenseCounselEmail", e.target.value),
-                placeholder: "defense@firm.com"
-              }
-            ) })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Prosecution / Referring Attorney", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                value: form.courtAttorney.prosecutionAttorney,
-                onChange: (e) => updateCourtAttorney("prosecutionAttorney", e.target.value),
-                placeholder: "Attorney name"
-              }
-            ) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Prosecution Phone", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                value: form.courtAttorney.prosecutionPhone,
-                onChange: (e) => updateCourtAttorney("prosecutionPhone", e.target.value),
-                placeholder: "(555) 555-5555"
-              }
-            ) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Prosecution Email", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "input",
-              {
-                style: inputStyle$1,
-                type: "email",
-                value: form.courtAttorney.prosecutionEmail,
-                onChange: (e) => updateCourtAttorney("prosecutionEmail", e.target.value),
-                placeholder: "da@county.gov"
-              }
-            ) })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Court Deadline / Due Date", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              type: "date",
-              style: { ...inputStyle$1, maxWidth: 200 },
-              value: form.courtAttorney.courtDeadline,
-              onChange: (e) => updateCourtAttorney("courtDeadline", e.target.value)
-            }
-          ) })
-        ] }),
-        referralSubTab === "eval-docs" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: subSectionStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Evaluation Type", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "select",
-            {
-              style: { ...inputStyle$1, maxWidth: 280 },
-              value: form.evalDocs.evalType,
-              onChange: (e) => updateEvalDocs("evalType", e.target.value),
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select evaluation type…" }),
-                EVAL_TYPE_OPTIONS.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: t, children: t }, t))
-              ]
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Reason for Referral / Evaluation Requested", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "textarea",
-            {
-              style: { ...inputStyle$1, minHeight: 72, resize: "vertical" },
-              value: form.evalDocs.reasonForReferral,
-              onChange: (e) => updateEvalDocs("reasonForReferral", e.target.value),
-              placeholder: "Describe the evaluation being requested…"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Complaint / Charges / Legal Matter", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "textarea",
-            {
-              style: { ...inputStyle$1, minHeight: 72, resize: "vertical" },
-              value: form.evalDocs.charges,
-              onChange: (e) => updateEvalDocs("charges", e.target.value),
-              placeholder: "List charges or legal matter…"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Supporting Documents Received", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "textarea",
-            {
-              style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
-              value: form.evalDocs.supportingDocuments,
-              onChange: (e) => updateEvalDocs("supportingDocuments", e.target.value),
-              placeholder: "Police report, prior evals, medical records…"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Additional Notes", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "textarea",
-            {
-              style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
-              value: form.evalDocs.additionalNotes,
-              onChange: (e) => updateEvalDocs("additionalNotes", e.target.value),
-              placeholder: "Any other relevant information…"
-            }
-          ) })
-        ] })
-      ] }),
-      primaryTab === "presenting" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Primary Complaint", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "textarea",
-          {
-            style: { ...inputStyle$1, minHeight: 88, resize: "vertical" },
-            value: form.presenting.primaryComplaint,
-            onChange: (e) => updatePresenting("primaryComplaint", e.target.value),
-            placeholder: "Describe the primary presenting concern…"
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "When Did These Concerns Begin?", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "textarea",
-          {
-            style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
-            value: form.presenting.whenBegan,
-            onChange: (e) => updatePresenting("whenBegan", e.target.value),
-            placeholder: "Approximate onset and timeline…"
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Has Anything Made It Better or Worse?", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "textarea",
-          {
-            style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
-            value: form.presenting.betterOrWorse,
-            onChange: (e) => updatePresenting("betterOrWorse", e.target.value),
-            placeholder: "Factors that exacerbate or alleviate symptoms…"
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Are You Currently Safe?", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "textarea",
-          {
-            style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
-            value: form.presenting.currentlySafe,
-            onChange: (e) => updatePresenting("currentlySafe", e.target.value),
-            placeholder: "Safety screening response…"
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Previous Treatment or Evaluation", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "textarea",
-          {
-            style: { ...inputStyle$1, minHeight: 64, resize: "vertical" },
-            value: form.presenting.previousTreatment,
-            onChange: (e) => updatePresenting("previousTreatment", e.target.value),
-            placeholder: "Prior therapy, hospitalization, or assessments…"
-          }
-        ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Who Recommended You Come In?", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.presenting.whoRecommended,
-              onChange: (e) => updatePresenting("whoRecommended", e.target.value),
-              placeholder: "Referral source"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Primary Care Physician", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.presenting.primaryCarePhysician,
-              onChange: (e) => updatePresenting("primaryCarePhysician", e.target.value),
-              placeholder: "Dr. Name"
-            }
-          ) })
-        ] })
-      ] }),
-      primaryTab === "insurance" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Insurance Carrier", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.insurance.insuranceCarrier,
-              onChange: (e) => updateInsurance("insuranceCarrier", e.target.value),
-              placeholder: "Aetna, BCBS, etc."
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Policy / Member ID", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.insurance.policyMemberId,
-              onChange: (e) => updateInsurance("policyMemberId", e.target.value),
-              placeholder: "Member ID"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Group Number", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.insurance.groupNumber,
-              onChange: (e) => updateInsurance("groupNumber", e.target.value),
-              placeholder: "Group #"
-            }
-          ) })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Policyholder Name (if not patient)", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              style: inputStyle$1,
-              value: form.insurance.policyholderName,
-              onChange: (e) => updateInsurance("policyholderName", e.target.value),
-              placeholder: "Leave blank if patient is policyholder"
-            }
-          ) }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Relationship to Patient", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "select",
-            {
-              style: inputStyle$1,
-              value: form.insurance.relationshipToPatient,
-              onChange: (e) => updateInsurance("relationshipToPatient", e.target.value),
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select…" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Self" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Spouse" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Parent" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Guardian" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Other" })
-              ]
-            }
-          ) })
-        ] })
-      ] }),
-      error != null && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: errorStyle, children: error }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "flex-end", gap: 12, paddingTop: 8 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => {
-          void handleSaveDraft();
-        }, style: secondaryButtonStyle$1, disabled: saving, children: "Save Draft" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            onClick: () => {
-              void handleSubmit();
-            },
-            style: saving ? { ...primaryButtonStyle$1, opacity: 0.6 } : primaryButtonStyle$1,
-            disabled: saving,
-            children: saving ? "Saving…" : isEditMode ? "Save Changes" : "Create Case"
-          }
-        )
-      ] })
-    ] })
-  ] }) });
-}
-function Field({
-  label,
-  flex,
-  children
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 4, flex }, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: labelStyle$1, children: label }),
-    children
-  ] });
-}
-const overlayStyle$1 = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.55)",
-  zIndex: 9999,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center"
-};
-const containerStyle$1 = {
-  background: "var(--panel)",
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-  width: 860,
-  height: "calc(100vh - 64px)",
-  maxWidth: "96vw",
-  maxHeight: "calc(100vh - 32px)",
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden"
-};
-const headerStyle$1 = {
-  background: "var(--panel)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "12px 24px",
-  borderBottom: "1px solid var(--border)",
-  flexShrink: 0
-};
-const closeButtonStyle$1 = {
-  background: "none",
-  border: "none",
-  fontSize: 20,
-  color: "var(--text-secondary)",
-  cursor: "pointer",
-  padding: 0,
-  lineHeight: 1
-};
-const tabStripStyle = {
-  display: "flex",
-  borderBottom: "1px solid var(--border)",
-  padding: "0 24px",
-  gap: 0,
-  flexShrink: 0,
-  marginTop: 2
-};
-const subTabStripStyle = {
-  display: "flex",
-  borderBottom: "1px solid var(--border)",
-  gap: 0,
-  marginBottom: 16
-};
-const baseTabStyle = {
-  background: "none",
-  border: "none",
-  borderBottom: "2px solid transparent",
-  padding: "8px 16px",
-  fontSize: 13,
-  cursor: "pointer",
-  fontFamily: "inherit",
-  marginBottom: -1,
-  transition: "color 0.15s"
-};
-const activeTabStyle$1 = {
-  ...baseTabStyle,
-  color: "var(--accent)",
-  borderBottomColor: "var(--accent)",
-  fontWeight: 600
-};
-const inactiveTabStyle$1 = {
-  ...baseTabStyle,
-  color: "var(--text-secondary)"
-};
-const baseSubTabStyle = {
-  background: "none",
-  border: "none",
-  borderBottom: "2px solid transparent",
-  padding: "6px 14px",
-  fontSize: 12,
-  cursor: "pointer",
-  fontFamily: "inherit",
-  marginBottom: -1
-};
-const activeSubTabStyle = {
-  ...baseSubTabStyle,
-  color: "var(--accent)",
-  borderBottomColor: "var(--accent)",
-  fontWeight: 600
-};
-const inactiveSubTabStyle = {
-  ...baseSubTabStyle,
-  color: "var(--text-secondary)"
-};
-const bodyStyle = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "20px 24px 24px",
-  display: "flex",
-  flexDirection: "column",
-  gap: 0
-};
-const sectionStyle = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 14,
-  flex: 1
-};
-const subSectionStyle = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 14
-};
-const rowStyle = {
-  display: "flex",
-  gap: 12
-};
-const labelStyle$1 = {
-  fontSize: 11,
-  fontWeight: 500,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: 0.5
-};
-const radioLabelStyle = {
-  fontSize: 13,
-  color: "var(--text)",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center"
-};
-const inputStyle$1 = {
-  background: "var(--bg)",
-  border: "1px solid var(--border)",
-  borderRadius: 4,
-  padding: "7px 10px",
-  fontSize: 13,
-  color: "var(--text)",
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
-  fontFamily: "inherit"
-};
-const activeChipStyle = {
-  background: "var(--accent)",
-  color: "#ffffff",
-  border: "1px solid var(--accent)",
-  borderRadius: 4,
-  padding: "4px 12px",
-  fontSize: 12,
-  fontWeight: 500,
-  cursor: "pointer",
-  fontFamily: "inherit"
-};
-const inactiveChipStyle = {
-  background: "var(--panel)",
-  color: "var(--text)",
-  border: "1px solid var(--border)",
-  borderRadius: 4,
-  padding: "4px 12px",
-  fontSize: 12,
-  fontWeight: 500,
-  cursor: "pointer",
-  fontFamily: "inherit"
-};
-const primaryButtonStyle$1 = {
-  background: "var(--accent)",
-  color: "#ffffff",
-  border: "none",
-  borderRadius: 4,
-  padding: "8px 24px",
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: "pointer",
-  fontFamily: "inherit"
-};
-const secondaryButtonStyle$1 = {
-  background: "var(--panel)",
-  color: "var(--text)",
-  border: "1px solid var(--border)",
-  borderRadius: 4,
-  padding: "8px 24px",
-  fontSize: 13,
-  fontWeight: 500,
-  cursor: "pointer",
-  fontFamily: "inherit"
-};
-const errorStyle = {
-  background: "rgba(244,67,54,0.1)",
-  border: "1px solid rgba(244,67,54,0.4)",
-  borderRadius: 4,
-  padding: "8px 12px",
-  fontSize: 13,
-  color: "#f44336",
-  marginTop: 4
-};
-const TABS = [
-  {
-    key: "contact",
-    label: "Contact",
-    note: "Name, date of birth, age, and gender are carried over from intake and shown below.",
-    fields: [
-      {
-        key: "marital_status",
-        label: "Marital / Relationship Status",
-        placeholder: "Describe current marital or relationship status…",
-        rows: 1
-      },
-      {
-        key: "dependents",
-        label: "Dependents / Children",
-        placeholder: "Names and ages of children or other dependents…",
-        rows: 2
-      },
-      {
-        key: "living_situation",
-        label: "Current Living Situation",
-        placeholder: "Who do you live with? House, apartment, shelter, other?",
-        rows: 2
-      },
-      {
-        key: "primary_language",
-        label: "Primary Language",
-        placeholder: "Primary language spoken at home…",
-        rows: 1
-      }
-    ]
-  },
-  {
-    key: "complaints",
-    label: "Complaints",
-    note: "Narrative responses only — no checklists. Reduces over-reporting bias.",
-    fields: [
-      {
-        key: "primary_complaint",
-        label: "Primary Complaint — Describe in Detail",
-        placeholder: "Describe the primary concern in your own words…",
-        rows: 4
-      },
-      {
-        key: "secondary_concerns",
-        label: "Secondary Concerns",
-        placeholder: "Any other concerns or symptoms you want to mention…",
-        rows: 3
-      },
-      {
-        key: "onset_timeline",
-        label: "Onset & Timeline",
-        placeholder: "When did this begin? How has it changed over time?",
-        rows: 2
-      }
-    ]
-  },
-  {
-    key: "family",
-    label: "Family",
-    fields: [
-      {
-        key: "family_of_origin",
-        label: "Family of Origin",
-        placeholder: "Describe your upbringing, parents, siblings, household growing up…",
-        rows: 3
-      },
-      {
-        key: "family_mental_health",
-        label: "Family Mental Health History",
-        placeholder: "Any known mental health diagnoses or concerns in family members?",
-        rows: 3
-      },
-      {
-        key: "family_medical_history",
-        label: "Family Medical History",
-        placeholder: "Significant medical conditions in immediate or extended family…",
-        rows: 2
-      },
-      {
-        key: "current_family_relationships",
-        label: "Current Family Relationships",
-        placeholder: "Describe your current relationships with family members…",
-        rows: 2
-      }
-    ]
-  },
-  {
-    key: "education",
-    label: "Education & Work",
-    fields: [
-      {
-        key: "highest_education",
-        label: "Highest Level of Education",
-        placeholder: "e.g. High school diploma, GED, some college, bachelor's degree…",
-        rows: 1
-      },
-      {
-        key: "schools_attended",
-        label: "Schools Attended",
-        placeholder: "List schools attended and approximate years…",
-        rows: 1
-      },
-      {
-        key: "academic_experience",
-        label: "Academic Experience",
-        placeholder: "Describe your overall experience in school — strengths, struggles, notable events…",
-        rows: 2
-      },
-      {
-        key: "employment_status",
-        label: "Current Employment Status",
-        placeholder: "Employed, unemployed, disabled, retired, student…",
-        rows: 1
-      },
-      {
-        key: "current_employer",
-        label: "Current / Most Recent Employer & Role",
-        placeholder: "Employer name and your role or job title…",
-        rows: 1
-      },
-      {
-        key: "work_history",
-        label: "Work History Summary",
-        placeholder: "Summarize your work history, including gaps or significant changes…",
-        rows: 3
-      },
-      {
-        key: "military_service",
-        label: "Military Service",
-        placeholder: "Branch, dates of service, rank, discharge status. Write N/A if none.",
-        rows: 2,
-        hint: "Write N/A if none"
-      }
-    ]
-  },
-  {
-    key: "health",
-    label: "Health",
-    fields: [
-      {
-        key: "medical_conditions",
-        label: "Current Medical Conditions",
-        placeholder: "List any active medical diagnoses or ongoing health concerns…",
-        rows: 2
-      },
-      {
-        key: "current_medications",
-        label: "Current Medications",
-        placeholder: "Medication name, dosage, prescriber, and purpose for each…",
-        rows: 2
-      },
-      {
-        key: "surgeries_hospitalizations",
-        label: "Surgeries & Hospitalizations",
-        placeholder: "Any past surgeries, hospitalizations, or significant medical procedures…",
-        rows: 2
-      },
-      {
-        key: "head_injuries",
-        label: "Head Injuries / Traumatic Brain Injury",
-        placeholder: "Any history of head injuries, concussions, or TBI…",
-        rows: 2
-      },
-      {
-        key: "sleep_quality",
-        label: "Sleep Quality & Disturbance",
-        placeholder: "Describe your typical sleep patterns and any difficulties…",
-        rows: 1
-      },
-      {
-        key: "appetite_weight",
-        label: "Appetite & Weight Changes",
-        placeholder: "Any recent changes in appetite or significant weight gain/loss?",
-        rows: 1
-      }
-    ]
-  },
-  {
-    key: "mental",
-    label: "Mental Health",
-    fields: [
-      {
-        key: "previous_treatment",
-        label: "Previous Mental Health Treatment",
-        placeholder: "Describe any past therapy, counseling, or psychiatric care…",
-        rows: 3
-      },
-      {
-        key: "previous_diagnoses",
-        label: "Previous Diagnoses",
-        placeholder: "Any mental health diagnoses you have received in the past…",
-        rows: 2
-      },
-      {
-        key: "psych_medications",
-        label: "Psychiatric Medications Past & Present",
-        placeholder: "List psychiatric medications you have taken, including current ones…",
-        rows: 2
-      },
-      {
-        key: "self_harm_history",
-        label: "History of Self-Harm or Suicidal Thoughts",
-        placeholder: "Any history of self-harm, suicidal thoughts, or attempts…",
-        rows: 2
-      },
-      {
-        key: "violence_history",
-        label: "History of Violence or Harm to Others",
-        placeholder: "Any history of violent behavior or causing harm to others…",
-        rows: 2
-      }
-    ]
-  },
-  {
-    key: "substance",
-    label: "Substance Use",
-    fields: [
-      {
-        key: "alcohol_use",
-        label: "Alcohol Use",
-        placeholder: "Describe your alcohol use — frequency, amount, patterns, impact…",
-        rows: 2
-      },
-      {
-        key: "drug_use",
-        label: "Drug / Substance Use",
-        placeholder: "Describe any use of illicit drugs, marijuana, or misuse of prescriptions…",
-        rows: 3
-      },
-      {
-        key: "substance_treatment",
-        label: "Treatment for Substance Use",
-        placeholder: "Any past or current treatment programs for substance use…",
-        rows: 2
-      }
-    ]
-  },
-  {
-    key: "legal",
-    label: "Legal",
-    fields: [
-      {
-        key: "arrests_convictions",
-        label: "Prior Arrests & Convictions",
-        placeholder: "List prior arrests and convictions, including dates and outcomes…",
-        rows: 3
-      },
-      {
-        key: "incarceration_history",
-        label: "Incarceration History",
-        placeholder: "Any periods of incarceration — facility, dates, reason…",
-        rows: 2
-      },
-      {
-        key: "probation_parole",
-        label: "Probation / Parole",
-        placeholder: "Current or past probation or parole status and conditions…",
-        rows: 2
-      },
-      {
-        key: "protective_orders",
-        label: "Protective Orders / Restraining Orders",
-        placeholder: "Any active or prior protective or restraining orders…",
-        rows: 2
-      }
-    ]
-  },
-  {
-    key: "recent",
-    label: "Recent Events",
-    fields: [
-      {
-        key: "events_circumstances",
-        label: "Describe the Events or Circumstances",
-        placeholder: "Describe what happened leading up to this evaluation…",
-        rows: 5
-      },
-      {
-        key: "current_stressors",
-        label: "Current Stressors",
-        placeholder: "What is causing stress in your life right now?",
-        rows: 2
-      },
-      {
-        key: "goals_evaluation",
-        label: "Goals for This Evaluation",
-        placeholder: "What do you hope to get out of this evaluation?",
-        rows: 2
-      }
-    ]
-  }
-];
-function buildEmptyForm() {
-  const state = {};
-  for (const tab of TABS) {
-    const sectionData = { clinician_notes: "" };
-    for (const field of tab.fields) {
-      sectionData[field.key] = "";
-    }
-    state[tab.key] = sectionData;
-  }
-  return state;
-}
-function OnboardingModal({
-  isOpen,
-  onClose,
-  caseId,
-  onSaved
-}) {
-  const [activeTab, setActiveTab] = reactExports.useState("contact");
-  const [mode, setMode] = reactExports.useState("self-report");
-  const [form, setForm] = reactExports.useState(buildEmptyForm);
-  const [caseData, setCaseData] = reactExports.useState(null);
-  const [saving, setSaving] = reactExports.useState(false);
-  reactExports.useEffect(() => {
-    if (!isOpen) return;
-    setForm(buildEmptyForm());
-    setActiveTab("contact");
-    setMode("self-report");
+    setCurrentStepIndex(0);
+    setReferralMode("referral");
+    setIntakeMode("self-report");
+    setOnboardingMode("self-report");
+    setIntakeForm(EMPTY_INTAKE_FORM);
+    setOnboardingForm(buildEmptyOnboardingForm());
     setCaseData(null);
+    setCreatedCaseId(null);
+    setCompletedSteps(/* @__PURE__ */ new Set());
     if (caseId == null) return;
     void window.psygil.cases.get({ case_id: caseId }).then((res) => {
       if (res.status === "success") setCaseData(res.data);
     });
+    void window.psygil.intake.get({ case_id: caseId }).then((res) => {
+      if (res.status !== "success" || res.data == null) return;
+      const partial = intakeRowToForm(res.data);
+      setIntakeForm((prev) => ({
+        ...prev,
+        referral: { ...prev.referral, ...partial.referral ?? {} }
+      }));
+      const rt = res.data.referral_type;
+      if (rt === "walk-in" || rt === "self") setReferralMode("walkin");
+      else setReferralMode("referral");
+      setCompletedSteps((p) => /* @__PURE__ */ new Set([...p, 0, 1]));
+    });
     void window.psygil.onboarding.get({ case_id: caseId }).then((res) => {
       if (res.status !== "success") return;
-      setForm((prev) => {
+      setOnboardingForm((prev) => {
         const next = { ...prev };
+        const loadedSections = /* @__PURE__ */ new Set();
         for (const row of res.data) {
-          const tab = TABS.find((t) => t.key === row.section);
-          if (!tab) continue;
+          const step = STEPS.find((s) => s.onboardingSection === row.section);
+          if (!step || !step.onboardingSection) continue;
+          loadedSections.add(row.section);
           let content = {};
           try {
             content = JSON.parse(row.content);
           } catch {
-            const firstField = tab.fields[0]?.key ?? "content";
+            const firstField = "content";
             content = { [firstField]: row.content };
           }
           next[row.section] = {
@@ -26136,6 +29449,8 @@ function OnboardingModal({
             clinician_notes: row.clinician_notes ?? ""
           };
         }
+        const completedOnboardingSteps = Array.from(loadedSections).map((section) => STEPS.find((s) => s.onboardingSection === section)?.index).filter((idx) => idx != null);
+        setCompletedSteps((p) => /* @__PURE__ */ new Set([...p, ...completedOnboardingSteps]));
         return next;
       });
     });
@@ -26148,150 +29463,253 @@ function OnboardingModal({
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen, onClose]);
-  const updateField = reactExports.useCallback((section, field, value) => {
-    setForm((prev) => ({
+  const updateContactField = reactExports.useCallback((k, v) => {
+    setIntakeForm((p) => ({ ...p, contact: { ...p.contact, [k]: v } }));
+  }, []);
+  const updateReferralField = reactExports.useCallback((k, v) => {
+    setIntakeForm((p) => ({ ...p, referral: { ...p.referral, [k]: v } }));
+  }, []);
+  const updateOnboardingField = reactExports.useCallback((section, field, value) => {
+    setOnboardingForm((prev) => ({
       ...prev,
       [section]: { ...prev[section], [field]: value }
     }));
   }, []);
-  const saveSection = reactExports.useCallback(
-    async (section, status) => {
-      if (caseId == null) return;
-      const sectionData = form[section];
+  const saveIntakeData = reactExports.useCallback(
+    async (targetCaseId) => {
+      const resp = await window.psygil.intake.save({
+        case_id: targetCaseId,
+        data: {
+          referral_type: mapToIpcReferralType(referralMode, intakeForm.referral.referringPartyType),
+          referral_source: intakeForm.referral.referringPartyName || void 0,
+          eval_type: intakeForm.referral.evalType || void 0,
+          presenting_complaint: intakeForm.referral.reasonForReferral || void 0,
+          jurisdiction: intakeForm.referral.caseNumber || void 0,
+          charges: intakeForm.referral.charges || void 0,
+          attorney_name: intakeForm.referral.prosecutionAttorney || void 0,
+          report_deadline: intakeForm.referral.courtDeadline || void 0,
+          status: "draft"
+        }
+      });
+      return resp?.status === "success";
+    },
+    [intakeForm, referralMode]
+  );
+  const saveOnboardingSection = reactExports.useCallback(
+    async (targetCaseId, section) => {
+      const sectionData = onboardingForm[section];
       const { clinician_notes, ...fieldValues } = sectionData;
-      await window.psygil.onboarding.save({
-        case_id: caseId,
+      const resp = await window.psygil.onboarding.save({
+        case_id: targetCaseId,
         section,
         data: {
           content: JSON.stringify(fieldValues),
           clinician_notes: clinician_notes || void 0,
-          status
+          status: "draft"
         }
       });
+      return resp?.status === "success";
     },
-    [caseId, form]
+    [onboardingForm]
   );
   const handleSaveDraft = reactExports.useCallback(async () => {
+    if (saving || effectiveCaseId == null) return;
     setSaving(true);
+    setError(null);
     try {
-      await saveSection(activeTab, "draft");
+      if (currentStep.type === "intake") {
+        await saveIntakeData(effectiveCaseId);
+      } else if (currentStep.onboardingSections) {
+        for (const section of currentStep.onboardingSections) {
+          await saveOnboardingSection(effectiveCaseId, section);
+        }
+      } else if (currentStep.onboardingSection) {
+        await saveOnboardingSection(effectiveCaseId, currentStep.onboardingSection);
+      }
+    } catch {
+      setError("Failed to save draft.");
     } finally {
       setSaving(false);
     }
-  }, [activeTab, saveSection]);
+  }, [saving, effectiveCaseId, currentStep, saveIntakeData, saveOnboardingSection]);
   const handleSaveAndContinue = reactExports.useCallback(async () => {
+    if (saving) return;
     setSaving(true);
+    setError(null);
     try {
-      const idx = TABS.findIndex((t) => t.key === activeTab);
-      const isLast = idx === TABS.length - 1;
-      await saveSection(activeTab, isLast ? "complete" : "draft");
-      if (isLast) {
-        onSaved?.();
+      let targetCaseId = effectiveCaseId;
+      const isLastStep2 = currentStepIndex === STEPS.length - 1;
+      if (targetCaseId == null) {
+        const firstName = intakeForm.contact.firstName.trim();
+        const lastName = intakeForm.contact.lastName.trim();
+        if (!firstName || !lastName) {
+          setError("First and last name are required to create a case.");
+          setSaving(false);
+          return;
+        }
+        const caseNumber = generateCaseNumber();
+        const createResp = await window.psygil?.cases?.create?.({
+          case_number: caseNumber,
+          primary_clinician_user_id: 1,
+          examinee_first_name: firstName,
+          examinee_last_name: lastName,
+          examinee_dob: intakeForm.contact.dob || void 0,
+          examinee_gender: intakeForm.contact.gender || void 0,
+          evaluation_type: intakeForm.referral.evalType || void 0,
+          referral_source: intakeForm.referral.referringPartyName || void 0,
+          evaluation_questions: intakeForm.referral.reasonForReferral || void 0
+        });
+        if (createResp?.status !== "success") {
+          setError(createResp?.message ?? "Failed to create case.");
+          setSaving(false);
+          return;
+        }
+        const newCase = createResp.data;
+        targetCaseId = newCase.case_id;
+        setCreatedCaseId(newCase.case_id);
+        setCaseData(newCase);
+      }
+      if (currentStep.type === "intake") {
+        const ok = await saveIntakeData(targetCaseId);
+        if (!ok) {
+          setError("Failed to save intake.");
+          setSaving(false);
+          return;
+        }
+      } else if (currentStep.onboardingSections) {
+        for (const section of currentStep.onboardingSections) {
+          const ok = await saveOnboardingSection(targetCaseId, section);
+          if (!ok) {
+            setError(`Failed to save ${section} section.`);
+            setSaving(false);
+            return;
+          }
+        }
+      } else if (currentStep.onboardingSection) {
+        const ok = await saveOnboardingSection(targetCaseId, currentStep.onboardingSection);
+        if (!ok) {
+          setError("Failed to save section.");
+          setSaving(false);
+          return;
+        }
+      }
+      setCompletedSteps((p) => /* @__PURE__ */ new Set([...p, currentStepIndex]));
+      if (isLastStep2) {
+        if (targetCaseId != null) {
+          try {
+            const evalType = intakeForm.referral.evalType;
+            if (evalType) {
+              await window.psygil?.cases?.update?.({
+                case_id: targetCaseId,
+                evaluation_type: evalType
+              });
+            }
+            await window.psygil?.pipeline?.setStage?.({
+              caseId: targetCaseId,
+              stage: "testing"
+            });
+            console.log(`[intake] Completed intake for case ${targetCaseId} — advanced to testing`);
+          } catch (err) {
+            console.error("[intake] Post-completion updates failed (non-fatal):", err);
+          }
+        }
+        onSaved?.(caseData);
         onClose();
       } else {
-        setActiveTab(TABS[idx + 1].key);
+        setCurrentStepIndex(currentStepIndex + 1);
       }
+    } catch (err) {
+      setError("An error occurred.");
     } finally {
       setSaving(false);
     }
-  }, [activeTab, saveSection, onClose, onSaved]);
+  }, [saving, currentStepIndex, currentStep, effectiveCaseId, intakeForm, caseData, saveIntakeData, saveOnboardingSection, onClose, onSaved]);
   if (!isOpen) return null;
-  const currentTabIdx = TABS.findIndex((t) => t.key === activeTab);
-  const currentTab = TABS[currentTabIdx];
-  const isLastTab = currentTabIdx === TABS.length - 1;
-  const isClinician = mode === "clinician";
+  const age = calcAge(intakeForm.contact.dob);
+  const isLastStep = currentStepIndex === STEPS.length - 1;
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: overlayStyle, onClick: onClose, children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: containerStyle, onClick: (e) => e.stopPropagation(), children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: headerStyle, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { flex: 1 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 2 }, children: "Patient Onboarding — Biopsychosocial History" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "var(--text-secondary)" }, children: "Self-report or referral-report form. All fields are narrative text entry." })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 2 }, children: isEditMode ? "Edit Intake & Onboarding" : "New Intake & Onboarding Wizard" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { fontSize: 11, color: "var(--text-secondary)" }, children: [
+          "Step ",
+          currentStep.number,
+          " of ",
+          STEPS.length,
+          " — ",
+          currentStep.phase === "intake" ? "Administrative Information" : "Patient History"
+        ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, style: closeButtonStyle, "aria-label": "Close", children: "×" })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: fidelityBoxStyle, children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontWeight: 600, color: "var(--accent)" }, children: "Data Fidelity Protocol: " }),
-      "Patient-reported information will be cleaned for grammar and spelling, then translated to clinical language for the case overview. Every reported element is preserved — nothing is omitted. The clinician verifies and annotates during the initial interview."
+      "Information will be cleaned for grammar and spelling, then translated to clinical language for the case overview. Every element is preserved. The clinician verifies and annotates during the initial interview."
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: tabBarContainerStyle, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 2, marginRight: 20, flexShrink: 0 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          ModeButton,
-          {
-            label: "Patient Self-Report",
-            active: mode === "self-report",
-            onClick: () => setMode("self-report")
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          ModeButton,
-          {
-            label: "Clinician Interview Review",
-            active: mode === "clinician",
-            onClick: () => setMode("clinician")
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", overflow: "auto", gap: 0 }, children: TABS.map((tab, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: stepTabBarStyle, children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", overflow: "auto", gap: 0, flex: 1 }, children: STEPS.map((step, idx) => {
+      const isActive = idx === currentStepIndex;
+      const isCompleted = completedSteps.has(idx);
+      const isBefore = idx < currentStepIndex;
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "button",
         {
-          onClick: () => setActiveTab(tab.key),
-          style: tab.key === activeTab ? activeTabStyle : inactiveTabStyle,
+          onClick: () => setCurrentStepIndex(idx),
+          style: isActive ? activeStepTabStyle : inactiveStepTabStyle,
+          title: step.label,
           children: [
-            idx + 1,
+            isBefore && isCompleted ? "✓" : step.number,
             ". ",
-            tab.label
+            step.label
           ]
         },
-        tab.key
-      )) })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }, children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10 }, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: sectionTitleStyle, children: currentTab.label.toUpperCase() }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: isClinician ? underReviewBadgeStyle : patientBadgeStyle, children: isClinician ? "Under Review" : "Patient-Reported" })
-      ] }),
-      currentTab.note != null && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionNoteStyle, children: currentTab.note }),
-      currentTab.key === "contact" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyGroupStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Name" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData ? `${caseData.examinee_first_name} ${caseData.examinee_last_name}` : "—" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Date of Birth" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData?.examinee_dob ?? "—" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Age" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData?.examinee_dob != null ? calcAge(caseData.examinee_dob) : "—" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Gender" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData?.examinee_gender ?? "—" })
-        ] })
-      ] }),
-      currentTab.fields.map((field) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        FieldRow,
+        step.index
+      );
+    }) }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 16, flex: 1, overflowY: "auto" }, children: [
+      currentStep.type === "intake" && currentStep.intakeField === "contact" && /* @__PURE__ */ jsxRuntimeExports.jsx(IntakeContactAndInsuranceStep, { contact: intakeForm.contact, age, onContactUpdate: updateContactField }),
+      currentStep.type === "intake" && currentStep.intakeField === "referral" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        IntakeReferralStep,
         {
-          field,
-          value: form[activeTab][field.key] ?? "",
-          onChange: (val) => updateField(activeTab, field.key, val)
-        },
-        field.key
-      )),
-      isClinician && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinicianBoxStyle, children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { ...labelStyle, color: "var(--accent)", display: "block", marginBottom: 6 }, children: "Clinician Verification Notes" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "textarea",
-          {
-            style: { ...textareaStyle, minHeight: 72 },
-            rows: 3,
-            value: form[activeTab].clinician_notes ?? "",
-            onChange: (e) => updateField(activeTab, "clinician_notes", e.target.value),
-            placeholder: "Clinical observations, discrepancies, follow-up items…"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 4 }, children: [
+          referralMode,
+          onReferralModeChange: setReferralMode,
+          referralData: intakeForm.referral,
+          onReferralUpdate: updateReferralField
+        }
+      ),
+      currentStep.type === "onboarding" && currentStep.onboardingSections?.includes("contact") && currentStep.onboardingSections?.includes("family") && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        DemographicsFamilyStep,
+        {
+          contactData: onboardingForm.contact,
+          familyData: onboardingForm.family,
+          onContactUpdate: (field, value) => updateOnboardingField("contact", field, value),
+          onFamilyUpdate: (field, value) => updateOnboardingField("family", field, value),
+          caseData,
+          isClinician
+        }
+      ),
+      currentStep.type === "onboarding" && currentStep.onboardingSections?.includes("health") && currentStep.onboardingSections?.includes("substance") && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        MedicalSubstanceStep,
+        {
+          healthData: onboardingForm.health,
+          substanceData: onboardingForm.substance,
+          onHealthUpdate: (field, value) => updateOnboardingField("health", field, value),
+          onSubstanceUpdate: (field, value) => updateOnboardingField("substance", field, value),
+          isClinician
+        }
+      ),
+      currentStep.type === "onboarding" && !currentStep.onboardingSections && currentStep.onboardingSection && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        OnboardingStep,
+        {
+          section: currentStep.onboardingSection,
+          sectionLabel: currentStep.label,
+          sectionData: onboardingForm[currentStep.onboardingSection],
+          onUpdate: (field, value) => updateOnboardingField(currentStep.onboardingSection, field, value),
+          caseData,
+          isClinician
+        }
+      ),
+      error && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "#d32f2f", fontSize: 13, padding: "8px 12px", background: "#ffebee", borderRadius: 4 }, children: error }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", justifyContent: "space-between", gap: 10, paddingTop: 4 }, children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
@@ -26301,89 +29719,1070 @@ function OnboardingModal({
             children: "Save Draft"
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            onClick: () => void handleSaveAndContinue(),
-            style: primaryButtonStyle,
-            disabled: saving,
-            children: isLastTab ? "Complete Onboarding ✓" : "Save & Continue →"
-          }
-        )
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 10 }, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setCurrentStepIndex(Math.max(0, currentStepIndex - 1)),
+              style: secondaryButtonStyle,
+              disabled: currentStepIndex === 0 || saving,
+              children: "Back"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => void handleSaveAndContinue(),
+              style: primaryButtonStyle,
+              disabled: saving,
+              children: isLastStep ? "Complete Intake ✓" : "Save & Continue →"
+            }
+          )
+        ] })
       ] })
     ] })
   ] }) });
 }
-function FieldRow({
-  field,
-  value,
-  onChange
-}) {
-  const isMultiline = field.rows > 1;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 4 }, children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: labelStyle, children: [
-      field.label,
-      field.hint != null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { marginLeft: 6, fontSize: 10, color: "var(--text-secondary)", fontWeight: 400, letterSpacing: 0 }, children: [
-        "(",
-        field.hint,
-        ")"
+function IntakeContactAndInsuranceStep({ contact, age, onContactUpdate }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Contact Information" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Last Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.lastName,
+            onChange: (e) => onContactUpdate("lastName", e.target.value),
+            placeholder: "Last name"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "First Name", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.firstName,
+            onChange: (e) => onContactUpdate("firstName", e.target.value),
+            placeholder: "First name"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "MI", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.middleInitial,
+            onChange: (e) => onContactUpdate("middleInitial", e.target.value),
+            maxLength: 1,
+            placeholder: "M"
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Date of Birth", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "date",
+            style: inputStyle,
+            value: contact.dob,
+            onChange: (e) => onContactUpdate("dob", e.target.value)
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Age", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: { ...inputStyle, background: "var(--panel)", color: "var(--text-secondary)" },
+            value: age,
+            readOnly: true,
+            placeholder: "—"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Gender", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            style: inputStyle,
+            value: contact.gender,
+            onChange: (e) => onContactUpdate("gender", e.target.value),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+              GENDER_OPTIONS.map((g) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: g, children: g }, g))
+            ]
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Street Address", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.streetAddress,
+            onChange: (e) => onContactUpdate("streetAddress", e.target.value),
+            placeholder: "123 Main St"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "City", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.city,
+            onChange: (e) => onContactUpdate("city", e.target.value),
+            placeholder: "City"
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "State", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            style: inputStyle,
+            value: contact.state,
+            onChange: (e) => onContactUpdate("state", e.target.value),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+              US_STATES.map((s) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: s, children: s }, s))
+            ]
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "ZIP", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.zip,
+            onChange: (e) => onContactUpdate("zip", e.target.value),
+            placeholder: "80901"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Phone", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.phone,
+            onChange: (e) => onContactUpdate("phone", e.target.value),
+            placeholder: "(555) 555-5555"
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Email", flex: 3, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            type: "email",
+            value: contact.email,
+            onChange: (e) => onContactUpdate("email", e.target.value),
+            placeholder: "patient@example.com"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Preferred Contact Method", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            style: inputStyle,
+            value: contact.preferredContact,
+            onChange: (e) => onContactUpdate("preferredContact", e.target.value),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Phone" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Email" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Text" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { children: "Mail" })
+            ]
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Emergency Contact Name", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.emergencyContactName,
+            onChange: (e) => onContactUpdate("emergencyContactName", e.target.value),
+            placeholder: "Full name"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Relationship", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.emergencyContactRelationship,
+            onChange: (e) => onContactUpdate("emergencyContactRelationship", e.target.value),
+            placeholder: "Spouse, Parent…"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Emergency Phone", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.emergencyContactPhone,
+            onChange: (e) => onContactUpdate("emergencyContactPhone", e.target.value),
+            placeholder: "(555) 555-5555"
+          }
+        ) })
       ] })
     ] }),
-    isMultiline ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "textarea",
-      {
-        style: textareaStyle,
-        rows: field.rows,
-        value,
-        onChange: (e) => onChange(e.target.value),
-        placeholder: field.placeholder
-      }
-    ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "input",
-      {
-        type: "text",
-        style: inputStyle,
-        value,
-        onChange: (e) => onChange(e.target.value),
-        placeholder: field.placeholder
-      }
-    )
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Insurance & Billing" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Insurance Carrier", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.insuranceCarrier || "",
+            onChange: (e) => onContactUpdate("insuranceCarrier", e.target.value),
+            placeholder: "Aetna, BCBS, etc."
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Policy / Member ID", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.policyMemberId || "",
+            onChange: (e) => onContactUpdate("policyMemberId", e.target.value),
+            placeholder: "Member ID"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Group Number", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.groupNumber || "",
+            onChange: (e) => onContactUpdate("groupNumber", e.target.value),
+            placeholder: "Group #"
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Policyholder Name (if not patient)", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: contact.policyholderName || "",
+            onChange: (e) => onContactUpdate("policyholderName", e.target.value),
+            placeholder: "Full name"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Relationship to Patient", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            style: inputStyle,
+            value: contact.relationshipToPatient || "",
+            onChange: (e) => onContactUpdate("relationshipToPatient", e.target.value),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+              INSURANCE_RELATIONSHIP.map((r) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: r, children: r }, r))
+            ]
+          }
+        ) })
+      ] })
+    ] })
   ] });
 }
-function ModeButton({
-  label,
-  active: active2,
-  onClick
+function IntakeReferralStep({
+  referralMode,
+  onReferralModeChange,
+  referralData,
+  onReferralUpdate
 }) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "button",
-    {
-      onClick,
-      style: {
-        background: active2 ? "var(--accent)" : "var(--panel)",
-        color: active2 ? "#ffffff" : "var(--text-secondary)",
-        border: active2 ? "1px solid var(--accent)" : "1px solid var(--border)",
-        borderRadius: 4,
-        padding: "4px 12px",
-        fontSize: 11,
-        fontWeight: 500,
-        cursor: "pointer",
-        fontFamily: "inherit",
-        whiteSpace: "nowrap",
-        transition: "background 0.15s, color 0.15s"
-      },
-      children: label
+  const [parsing, setParsing] = reactExports.useState(false);
+  const [parsedFile, setParsedFile] = reactExports.useState(null);
+  const [parseError, setParseError] = reactExports.useState(null);
+  const handleBrowseReferral = reactExports.useCallback(async () => {
+    setParsing(true);
+    setParseError(null);
+    try {
+      const resp = await window.psygil.referral.parseDoc();
+      if (resp.status === "error") {
+        if (resp.error === "cancelled") {
+          setParsing(false);
+          return;
+        }
+        setParseError(resp.error ?? "Failed to parse document");
+        setParsing(false);
+        return;
+      }
+      const fields = resp.data;
+      if (!fields) {
+        setParsing(false);
+        return;
+      }
+      const fieldKeys = [
+        "caseNumber",
+        "judgeAssignedCourt",
+        "defenseCounselName",
+        "prosecutionAttorney",
+        "referringPartyName",
+        "referringPartyType",
+        "referringPartyPhone",
+        "evalType",
+        "charges",
+        "reasonForReferral",
+        "courtDeadline"
+      ];
+      for (const key2 of fieldKeys) {
+        if (fields[key2]) {
+          onReferralUpdate(key2, fields[key2]);
+        }
+      }
+      setParsedFile(fields._fileName ?? "document");
+    } catch (err) {
+      setParseError(err?.message ?? "Unexpected error");
+    } finally {
+      setParsing(false);
     }
-  );
+  }, [onReferralUpdate, referralData]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: importBoxStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 12, flex: 1 }, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: () => void handleBrowseReferral(),
+            disabled: parsing,
+            style: browseButtonStyle,
+            children: parsing ? "Parsing…" : "Browse Referral Document"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 12, color: "var(--text-secondary)" }, children: parsedFile ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          "Imported: ",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { style: { color: "var(--text)" }, children: parsedFile }),
+          " — fields auto-filled below"
+        ] }) : "Upload a .docx or .pdf referral and auto-fill the fields below, or enter data manually." })
+      ] }),
+      parseError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: 11, color: "#d32f2f", marginTop: 4 }, children: parseError })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", gap: 24, alignItems: "center", marginBottom: 8 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: labelStyle, children: "Type" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: radioLabelStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "radio",
+            name: "referralMode",
+            value: "referral",
+            checked: referralMode === "referral",
+            onChange: () => onReferralModeChange("referral"),
+            style: { marginRight: 6 }
+          }
+        ),
+        "Referral"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { style: radioLabelStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "radio",
+            name: "referralMode",
+            value: "walkin",
+            checked: referralMode === "walkin",
+            onChange: () => onReferralModeChange("walkin"),
+            style: { marginRight: 6 }
+          }
+        ),
+        "Walk-in / Self-Referred"
+      ] })
+    ] }),
+    referralMode === "referral" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Referring Party" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Type", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" }, children: REFERRING_PARTY_TYPES.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: () => onReferralUpdate("referringPartyType", t),
+            style: referralData.referringPartyType === t ? activeChipStyle : inactiveChipStyle,
+            children: t
+          },
+          t
+        )) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Name / Office", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: referralData.referringPartyName,
+            onChange: (e) => onReferralUpdate("referringPartyName", e.target.value),
+            placeholder: "Name or office"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Address", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            style: inputStyle,
+            value: referralData.referringPartyAddress,
+            onChange: (e) => onReferralUpdate("referringPartyAddress", e.target.value),
+            placeholder: "Street address"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Phone", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle,
+              value: referralData.referringPartyPhone,
+              onChange: (e) => onReferralUpdate("referringPartyPhone", e.target.value),
+              placeholder: "(555) 555-5555"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Referring Party Email", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle,
+              type: "email",
+              value: referralData.referringPartyEmail,
+              onChange: (e) => onReferralUpdate("referringPartyEmail", e.target.value),
+              placeholder: "email@example.com"
+            }
+          ) })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Court & Attorney" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Court / Case Number", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle,
+              value: referralData.caseNumber,
+              onChange: (e) => onReferralUpdate("caseNumber", e.target.value),
+              placeholder: "Case #"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Judge / Assigned Court", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle,
+              value: referralData.judgeAssignedCourt,
+              onChange: (e) => onReferralUpdate("judgeAssignedCourt", e.target.value),
+              placeholder: "Hon. Smith / District Court"
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Defense Counsel Name", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle,
+              value: referralData.defenseCounselName,
+              onChange: (e) => onReferralUpdate("defenseCounselName", e.target.value),
+              placeholder: "Attorney name"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Defense Phone", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle,
+              value: referralData.defenseCounselPhone,
+              onChange: (e) => onReferralUpdate("defenseCounselPhone", e.target.value),
+              placeholder: "(555) 555-5555"
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Prosecution / Referring Attorney", flex: 2, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle,
+              value: referralData.prosecutionAttorney,
+              onChange: (e) => onReferralUpdate("prosecutionAttorney", e.target.value),
+              placeholder: "Attorney name"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Prosecution Phone", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              style: inputStyle,
+              value: referralData.prosecutionPhone,
+              onChange: (e) => onReferralUpdate("prosecutionPhone", e.target.value),
+              placeholder: "(555) 555-5555"
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Court Deadline / Due Date", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "date",
+            style: { ...inputStyle, maxWidth: 200 },
+            value: referralData.courtDeadline,
+            onChange: (e) => onReferralUpdate("courtDeadline", e.target.value)
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Evaluation & Documents" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Evaluation Type", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "select",
+          {
+            style: { ...inputStyle, maxWidth: 280 },
+            value: referralData.evalType,
+            onChange: (e) => onReferralUpdate("evalType", e.target.value),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select evaluation type…" }),
+              EVAL_TYPE_OPTIONS.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: t, children: t }, t))
+            ]
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Reason for Referral / Evaluation Requested", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: { ...textareaStyle, minHeight: 72, resize: "vertical" },
+            value: referralData.reasonForReferral,
+            onChange: (e) => onReferralUpdate("reasonForReferral", e.target.value),
+            placeholder: "Describe the evaluation being requested…"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Complaint / Charges / Legal Matter", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: { ...textareaStyle, minHeight: 72, resize: "vertical" },
+            value: referralData.charges,
+            onChange: (e) => onReferralUpdate("charges", e.target.value),
+            placeholder: "List charges or legal matter…"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Supporting Documents Received", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+            value: referralData.supportingDocuments,
+            onChange: (e) => onReferralUpdate("supportingDocuments", e.target.value),
+            placeholder: "Police report, prior evals, medical records…"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Additional Notes", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+            value: referralData.additionalNotes,
+            onChange: (e) => onReferralUpdate("additionalNotes", e.target.value),
+            placeholder: "Any other relevant information…"
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Legal History" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Prior Arrests & Convictions", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+            value: referralData.arrestsConvictions,
+            onChange: (e) => onReferralUpdate("arrestsConvictions", e.target.value),
+            placeholder: "Prior arrests, charges, and convictions…"
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Incarceration History", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "textarea",
+            {
+              style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+              value: referralData.incarcerationHistory,
+              onChange: (e) => onReferralUpdate("incarcerationHistory", e.target.value),
+              placeholder: "Prior incarceration, duration, facility…"
+            }
+          ) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Probation / Parole", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "textarea",
+            {
+              style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+              value: referralData.probationParole,
+              onChange: (e) => onReferralUpdate("probationParole", e.target.value),
+              placeholder: "Current or prior probation/parole status…"
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Protective / Restraining Orders", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+            value: referralData.protectiveOrders,
+            onChange: (e) => onReferralUpdate("protectiveOrders", e.target.value),
+            placeholder: "Active or prior protective orders…"
+          }
+        ) })
+      ] })
+    ] })
+  ] });
 }
-function calcAge(dob) {
-  const birth = new Date(dob);
-  if (isNaN(birth.getTime())) return "—";
-  const now2 = /* @__PURE__ */ new Date();
-  let age = now2.getFullYear() - birth.getFullYear();
-  const m = now2.getMonth() - birth.getMonth();
-  if (m < 0 || m === 0 && now2.getDate() < birth.getDate()) age--;
-  return String(age);
+const LIVING_SITUATION_OPTIONS = ["Own Home", "Renting", "With Family", "With Roommates", "Homeless/Shelter", "Assisted Living", "Group Home", "Incarcerated", "Other"];
+function DemographicsFamilyStep({
+  contactData,
+  familyData,
+  onContactUpdate,
+  onFamilyUpdate,
+  caseData,
+  isClinician
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.8 }, children: "DEMOGRAPHICS & FAMILY" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: isClinician ? underReviewBadgeStyle : patientBadgeStyle, children: isClinician ? "Under Review" : "Patient-Reported" })
+    ] }),
+    caseData && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyGroupStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Name" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: `${caseData.examinee_first_name} ${caseData.examinee_last_name}` })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "DOB" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData.examinee_dob ?? "—" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Gender" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData.examinee_gender ?? "—" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Demographics" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Marital / Relationship Status", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "select",
+        {
+          style: inputStyle,
+          value: contactData.marital_status ?? "",
+          onChange: (e) => onContactUpdate("marital_status", e.target.value),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+            MARITAL_STATUS_OPTIONS.map((o) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: o, children: o }, o))
+          ]
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Dependents / Children", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          style: inputStyle,
+          value: contactData.dependents ?? "",
+          onChange: (e) => onContactUpdate("dependents", e.target.value),
+          placeholder: "Number and ages"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Living Situation", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "select",
+        {
+          style: inputStyle,
+          value: contactData.living_situation ?? "",
+          onChange: (e) => onContactUpdate("living_situation", e.target.value),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+            LIVING_SITUATION_OPTIONS.map((o) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: o, children: o }, o))
+          ]
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Primary Language", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "select",
+        {
+          style: inputStyle,
+          value: contactData.primary_language ?? "",
+          onChange: (e) => onContactUpdate("primary_language", e.target.value),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+            LANGUAGES.map((o) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: o, children: o }, o))
+          ]
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Education & Employment" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Highest Education", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "select",
+        {
+          style: inputStyle,
+          value: familyData.highest_education ?? "",
+          onChange: (e) => onFamilyUpdate("highest_education", e.target.value),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+            EDUCATION_OPTIONS.map((o) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: o, children: o }, o))
+          ]
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Employment Status", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "select",
+        {
+          style: inputStyle,
+          value: familyData.employment_status ?? "",
+          onChange: (e) => onFamilyUpdate("employment_status", e.target.value),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", children: "Select..." }),
+            EMPLOYMENT_STATUS_OPTIONS.map((o) => /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: o, children: o }, o))
+          ]
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Schools Attended", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          style: inputStyle,
+          value: familyData.schools_attended ?? "",
+          onChange: (e) => onFamilyUpdate("schools_attended", e.target.value),
+          placeholder: "Schools, colleges, programs…"
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Current / Recent Employer & Role", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          style: inputStyle,
+          value: familyData.current_employer ?? "",
+          onChange: (e) => onFamilyUpdate("current_employer", e.target.value),
+          placeholder: "Employer — role"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Academic Experience", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+          value: familyData.academic_experience ?? "",
+          onChange: (e) => onFamilyUpdate("academic_experience", e.target.value),
+          placeholder: "Academic performance, challenges, special education…"
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Work History", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+          value: familyData.work_history ?? "",
+          onChange: (e) => onFamilyUpdate("work_history", e.target.value),
+          placeholder: "Employment history, gaps, issues…"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Military Service", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        style: inputStyle,
+        value: familyData.military_service ?? "",
+        onChange: (e) => onFamilyUpdate("military_service", e.target.value),
+        placeholder: "Branch, dates, discharge status — or N/A"
+      }
+    ) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Family History" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Family of Origin", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        style: { ...textareaStyle, minHeight: 72, resize: "vertical" },
+        value: familyData.family_of_origin ?? "",
+        onChange: (e) => onFamilyUpdate("family_of_origin", e.target.value),
+        placeholder: "Parents, siblings, upbringing, household composition…"
+      }
+    ) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Family Mental Health History", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+          value: familyData.family_mental_health ?? "",
+          onChange: (e) => onFamilyUpdate("family_mental_health", e.target.value),
+          placeholder: "Family history of mental health conditions…"
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Family Medical History", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+          value: familyData.family_medical_history ?? "",
+          onChange: (e) => onFamilyUpdate("family_medical_history", e.target.value),
+          placeholder: "Family history of medical conditions…"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Current Family Relationships", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+        value: familyData.current_family_relationships ?? "",
+        onChange: (e) => onFamilyUpdate("current_family_relationships", e.target.value),
+        placeholder: "Current relationships, support system, conflicts…"
+      }
+    ) }),
+    isClinician && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinicianBoxStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { ...labelStyle, color: "var(--accent)", display: "block", marginBottom: 6 }, children: "Clinician Verification Notes" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 72 },
+          value: contactData.clinician_notes ?? "",
+          onChange: (e) => onContactUpdate("clinician_notes", e.target.value),
+          placeholder: "Clinical observations, discrepancies, follow-up items…"
+        }
+      )
+    ] })
+  ] });
+}
+function MedicalSubstanceStep({
+  healthData,
+  substanceData,
+  onHealthUpdate,
+  onSubstanceUpdate,
+  isClinician
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.8 }, children: "MEDICAL & SUBSTANCE USE" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: isClinician ? underReviewBadgeStyle : patientBadgeStyle, children: isClinician ? "Under Review" : "Patient-Reported" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Medical History" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Current Medical Conditions", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+        value: healthData.medical_conditions ?? "",
+        onChange: (e) => onHealthUpdate("medical_conditions", e.target.value),
+        placeholder: "Describe current medical conditions…"
+      }
+    ) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Current Medications", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+          value: healthData.current_medications ?? "",
+          onChange: (e) => onHealthUpdate("current_medications", e.target.value),
+          placeholder: "Medication, dose, prescriber…"
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Surgeries & Hospitalizations", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+          value: healthData.surgeries_hospitalizations ?? "",
+          onChange: (e) => onHealthUpdate("surgeries_hospitalizations", e.target.value),
+          placeholder: "Prior surgeries, hospitalizations…"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Head Injuries / TBI", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+          value: healthData.head_injuries ?? "",
+          onChange: (e) => onHealthUpdate("head_injuries", e.target.value),
+          placeholder: "Head injuries, LOC, TBI history…"
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Sleep Quality & Disturbance", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "input",
+        {
+          style: inputStyle,
+          value: healthData.sleep_quality ?? "",
+          onChange: (e) => onHealthUpdate("sleep_quality", e.target.value),
+          placeholder: "Hours, quality, disturbances…"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Appetite & Weight Changes", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        style: inputStyle,
+        value: healthData.appetite_weight ?? "",
+        onChange: (e) => onHealthUpdate("appetite_weight", e.target.value),
+        placeholder: "Recent changes in appetite or weight…"
+      }
+    ) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Mental Health History" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Previous Treatment", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+          value: healthData.previous_treatment ?? "",
+          onChange: (e) => onHealthUpdate("previous_treatment", e.target.value),
+          placeholder: "Prior therapy, counseling, inpatient…"
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Previous Diagnoses", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 64, resize: "vertical" },
+          value: healthData.previous_diagnoses ?? "",
+          onChange: (e) => onHealthUpdate("previous_diagnoses", e.target.value),
+          placeholder: "Prior psychiatric or psychological diagnoses…"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Psychiatric Medications — Past & Present", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+        value: healthData.psych_medications ?? "",
+        onChange: (e) => onHealthUpdate("psych_medications", e.target.value),
+        placeholder: "Current and prior psychiatric medications…"
+      }
+    ) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "History of Self-Harm or Suicidal Thoughts", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+          value: healthData.self_harm_history ?? "",
+          onChange: (e) => onHealthUpdate("self_harm_history", e.target.value),
+          placeholder: "Describe history, frequency, most recent…"
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "History of Violence or Harm to Others", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+          value: healthData.violence_history ?? "",
+          onChange: (e) => onHealthUpdate("violence_history", e.target.value),
+          placeholder: "Describe history, context, most recent…"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: sectionHeaderStyle, children: "Substance Use" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: rowStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Alcohol Use", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+          value: substanceData.alcohol_use ?? "",
+          onChange: (e) => onSubstanceUpdate("alcohol_use", e.target.value),
+          placeholder: "Frequency, amount, history…"
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Drug / Substance Use", flex: 1, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+          value: substanceData.drug_use ?? "",
+          onChange: (e) => onSubstanceUpdate("drug_use", e.target.value),
+          placeholder: "Substances, frequency, route…"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(Field, { label: "Substance Use Treatment History", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "textarea",
+      {
+        style: { ...textareaStyle, minHeight: 56, resize: "vertical" },
+        value: substanceData.substance_treatment ?? "",
+        onChange: (e) => onSubstanceUpdate("substance_treatment", e.target.value),
+        placeholder: "Prior treatment, rehab, detox, duration…"
+      }
+    ) }),
+    isClinician && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinicianBoxStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { ...labelStyle, color: "var(--accent)", display: "block", marginBottom: 6 }, children: "Clinician Verification Notes" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 72 },
+          value: healthData.clinician_notes ?? "",
+          onChange: (e) => onHealthUpdate("clinician_notes", e.target.value),
+          placeholder: "Clinical observations, discrepancies, follow-up items…"
+        }
+      )
+    ] })
+  ] });
+}
+function OnboardingStep({
+  section,
+  sectionLabel,
+  sectionData,
+  onUpdate,
+  caseData,
+  isClinician
+}) {
+  const fieldMap = {
+    contact: ["marital_status", "dependents", "living_situation", "primary_language"],
+    complaints: ["primary_complaint", "secondary_concerns", "onset_timeline"],
+    family: ["family_of_origin", "family_mental_health", "family_medical_history", "current_family_relationships", "highest_education", "schools_attended", "academic_experience", "employment_status", "current_employer", "work_history", "military_service"],
+    health: ["medical_conditions", "current_medications", "surgeries_hospitalizations", "head_injuries", "sleep_quality", "appetite_weight", "previous_treatment", "previous_diagnoses", "psych_medications", "self_harm_history", "violence_history"],
+    substance: ["alcohol_use", "drug_use", "substance_treatment"],
+    recent: ["events_circumstances", "current_stressors", "goals_evaluation"]
+  };
+  const fieldLabels = {
+    marital_status: "Marital / Relationship Status",
+    dependents: "Dependents / Children",
+    living_situation: "Current Living Situation",
+    primary_language: "Primary Language",
+    primary_complaint: "Primary Complaint — Describe in Detail",
+    secondary_concerns: "Secondary Concerns",
+    onset_timeline: "Onset & Timeline",
+    family_of_origin: "Family of Origin",
+    family_mental_health: "Family Mental Health History",
+    family_medical_history: "Family Medical History",
+    current_family_relationships: "Current Family Relationships",
+    highest_education: "Highest Level of Education",
+    schools_attended: "Schools Attended",
+    academic_experience: "Academic Experience",
+    employment_status: "Current Employment Status",
+    current_employer: "Current / Most Recent Employer & Role",
+    work_history: "Work History Summary",
+    military_service: "Military Service",
+    medical_conditions: "Current Medical Conditions",
+    current_medications: "Current Medications",
+    surgeries_hospitalizations: "Surgeries & Hospitalizations",
+    head_injuries: "Head Injuries / Traumatic Brain Injury",
+    sleep_quality: "Sleep Quality & Disturbance",
+    appetite_weight: "Appetite & Weight Changes",
+    previous_treatment: "Previous Mental Health Treatment",
+    previous_diagnoses: "Previous Diagnoses",
+    psych_medications: "Psychiatric Medications Past & Present",
+    self_harm_history: "History of Self-Harm or Suicidal Thoughts",
+    violence_history: "History of Violence or Harm to Others",
+    alcohol_use: "Alcohol Use",
+    drug_use: "Drug / Substance Use",
+    substance_treatment: "Treatment for Substance Use",
+    arrests_convictions: "Prior Arrests & Convictions",
+    incarceration_history: "Incarceration History",
+    probation_parole: "Probation / Parole",
+    protective_orders: "Protective Orders / Restraining Orders",
+    events_circumstances: "Describe the Events or Circumstances",
+    current_stressors: "Current Stressors",
+    goals_evaluation: "Goals for This Evaluation"
+  };
+  const fields = fieldMap[section] || [];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: sectionStyle, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { fontSize: 13, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.8 }, children: sectionLabel.toUpperCase() }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: isClinician ? underReviewBadgeStyle : patientBadgeStyle, children: isClinician ? "Under Review" : "Patient-Reported" })
+    ] }),
+    section === "contact" && caseData && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyGroupStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Name" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: `${caseData.examinee_first_name} ${caseData.examinee_last_name}` })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Date of Birth" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData.examinee_dob ?? "—" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Age" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData.examinee_dob ? calcAge(caseData.examinee_dob) : "—" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: readOnlyRowStyle, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyLabelStyle, children: "Gender" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: readOnlyValueStyle, children: caseData.examinee_gender ?? "—" })
+      ] })
+    ] }),
+    fields.map((field) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: labelStyle, children: fieldLabels[field] || field }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: field.includes("primary_complaint") || field.includes("events_circumstances") ? 120 : 72 },
+          value: sectionData[field] ?? "",
+          onChange: (e) => onUpdate(field, e.target.value),
+          placeholder: `Enter ${fieldLabels[field] || field}…`
+        }
+      )
+    ] }, field)),
+    isClinician && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: clinicianBoxStyle, children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: { ...labelStyle, color: "var(--accent)", display: "block", marginBottom: 6 }, children: "Clinician Verification Notes" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          style: { ...textareaStyle, minHeight: 72 },
+          rows: 3,
+          value: sectionData.clinician_notes ?? "",
+          onChange: (e) => onUpdate("clinician_notes", e.target.value),
+          placeholder: "Clinical observations, discrepancies, follow-up items…"
+        }
+      )
+    ] })
+  ] });
+}
+function Field({ label, flex = 1, children }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 2, flex, marginTop: 10 }, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("label", { style: labelStyle, children: label }),
+    children
+  ] });
 }
 const overlayStyle = {
   position: "fixed",
@@ -26398,10 +30797,8 @@ const containerStyle = {
   background: "var(--panel)",
   border: "1px solid var(--border)",
   borderRadius: 8,
-  maxWidth: 860,
-  width: "92%",
-  maxHeight: "calc(100vh - 64px)",
-  overflowY: "auto",
+  width: "min(920px, 92vw)",
+  height: "calc(100vh - 80px)",
   display: "flex",
   flexDirection: "column"
 };
@@ -26437,7 +30834,7 @@ const fidelityBoxStyle = {
   color: "var(--text-secondary)",
   lineHeight: 1.55
 };
-const tabBarContainerStyle = {
+const stepTabBarStyle = {
   position: "sticky",
   top: 57,
   background: "var(--panel)",
@@ -26446,68 +30843,109 @@ const tabBarContainerStyle = {
   padding: "10px 24px 0",
   borderBottom: "1px solid var(--border)",
   zIndex: 2,
-  flexWrap: "wrap",
-  gap: 8,
-  marginTop: 12
+  overflow: "hidden"
 };
-const activeTabStyle = {
+const activeStepTabStyle = {
   background: "none",
   border: "none",
   borderBottom: "2px solid var(--accent)",
   color: "var(--accent)",
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 600,
-  padding: "6px 10px",
+  padding: "6px 8px",
   cursor: "pointer",
   fontFamily: "inherit",
   whiteSpace: "nowrap",
   letterSpacing: 0.2
 };
-const inactiveTabStyle = {
+const inactiveStepTabStyle = {
   background: "none",
   border: "none",
   borderBottom: "2px solid transparent",
   color: "var(--text-secondary)",
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 500,
-  padding: "6px 10px",
+  padding: "6px 8px",
   cursor: "pointer",
   fontFamily: "inherit",
   whiteSpace: "nowrap",
   letterSpacing: 0.2
 };
-const sectionTitleStyle = {
-  fontSize: 13,
+const sectionStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4
+};
+const sectionHeaderStyle = {
+  fontSize: 11,
   fontWeight: 600,
   color: "var(--accent)",
+  textTransform: "uppercase",
   letterSpacing: 0.8,
-  textTransform: "uppercase"
+  marginTop: 14,
+  marginBottom: 4,
+  paddingBottom: 6,
+  borderBottom: "1px solid var(--border)"
 };
-const patientBadgeStyle = {
-  fontSize: 10,
-  fontWeight: 600,
-  background: "#fff3cd",
-  color: "#856404",
-  padding: "2px 8px",
+const rowStyle = {
+  display: "flex",
+  gap: 12
+};
+const activeChipStyle = {
+  background: "var(--accent)",
+  color: "#ffffff",
+  border: "1px solid var(--accent)",
   borderRadius: 4,
-  letterSpacing: 0.3
+  padding: "4px 12px",
+  fontSize: 11,
+  fontWeight: 500,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  whiteSpace: "nowrap"
 };
-const underReviewBadgeStyle = {
-  fontSize: 10,
-  fontWeight: 600,
-  background: "#fff3cd",
-  color: "#856404",
-  padding: "2px 8px",
+const inactiveChipStyle = {
+  background: "var(--panel)",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
   borderRadius: 4,
-  letterSpacing: 0.3
+  padding: "4px 12px",
+  fontSize: 11,
+  fontWeight: 500,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  whiteSpace: "nowrap"
 };
-const sectionNoteStyle = {
-  fontSize: 11.5,
+const labelStyle = {
+  fontSize: 11,
+  fontWeight: 500,
   color: "var(--text-secondary)",
+  textTransform: "uppercase",
+  letterSpacing: 0.5
+};
+const inputStyle = {
   background: "var(--bg)",
   border: "1px solid var(--border)",
   borderRadius: 4,
-  padding: "6px 10px",
+  padding: "7px 10px",
+  fontSize: 13,
+  color: "var(--text)",
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  fontFamily: "inherit"
+};
+const textareaStyle = {
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "7px 10px",
+  fontSize: 13,
+  color: "var(--text)",
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
+  resize: "vertical",
   lineHeight: 1.5
 };
 const readOnlyGroupStyle = {
@@ -26517,7 +30955,8 @@ const readOnlyGroupStyle = {
   background: "var(--bg)",
   border: "1px solid var(--border)",
   borderRadius: 4,
-  padding: "10px 14px"
+  padding: "10px 14px",
+  marginBottom: 12
 };
 const readOnlyRowStyle = {
   display: "flex",
@@ -26541,38 +30980,53 @@ const clinicianBoxStyle = {
   padding: "8px 12px",
   borderRadius: "0 4px 4px 0"
 };
-const labelStyle = {
-  fontSize: 11,
-  fontWeight: 500,
-  color: "var(--text-secondary)",
-  textTransform: "uppercase",
-  letterSpacing: 0.5
-};
-const textareaStyle = {
-  background: "var(--bg)",
-  border: "1px solid var(--border)",
+const patientBadgeStyle = {
+  fontSize: 10,
+  fontWeight: 600,
+  background: "#fff3cd",
+  color: "#856404",
+  padding: "2px 8px",
   borderRadius: 4,
-  padding: "7px 10px",
-  fontSize: 13,
-  color: "var(--text)",
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
+  letterSpacing: 0.3
+};
+const underReviewBadgeStyle = {
+  fontSize: 10,
+  fontWeight: 600,
+  background: "#fff3cd",
+  color: "#856404",
+  padding: "2px 8px",
+  borderRadius: 4,
+  letterSpacing: 0.3
+};
+const importBoxStyle = {
+  display: "flex",
+  flexDirection: "column",
+  padding: "10px 14px",
+  background: "var(--bg)",
+  border: "1px dashed var(--border)",
+  borderRadius: 6,
+  marginBottom: 6
+};
+const browseButtonStyle = {
+  background: "var(--panel)",
+  color: "var(--accent)",
+  border: "1px solid var(--accent)",
+  borderRadius: 4,
+  padding: "6px 16px",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
   fontFamily: "inherit",
-  resize: "vertical",
-  lineHeight: 1.5
+  whiteSpace: "nowrap",
+  flexShrink: 0
 };
-const inputStyle = {
-  background: "var(--bg)",
-  border: "1px solid var(--border)",
-  borderRadius: 4,
-  padding: "7px 10px",
-  fontSize: 13,
+const radioLabelStyle = {
+  display: "flex",
+  alignItems: "center",
+  fontSize: 12,
   color: "var(--text)",
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
-  fontFamily: "inherit"
+  cursor: "pointer",
+  gap: 4
 };
 const primaryButtonStyle = {
   background: "var(--accent)",
@@ -27929,7 +32383,6 @@ function App() {
   const [leftWidth, setLeftWidth] = reactExports.useState(() => loadWidth(STORAGE_KEY_LEFT_W, DEFAULT_LEFT));
   const [rightWidth, setRightWidth] = reactExports.useState(() => loadWidth(STORAGE_KEY_RIGHT_W, DEFAULT_RIGHT));
   const [showIntake, setShowIntake] = reactExports.useState(false);
-  const [showOnboarding, setShowOnboarding] = reactExports.useState(false);
   const [showSetup, setShowSetup] = reactExports.useState(false);
   const [showDocUpload, setShowDocUpload] = reactExports.useState(false);
   const [docUploadCaseId, setDocUploadCaseId] = reactExports.useState(null);
@@ -28063,7 +32516,6 @@ function App() {
           {
             onCycleTheme: cycleTheme,
             onOpenIntake: handleNewCase,
-            onOpenOnboarding: () => setShowOnboarding(true),
             onSetup: () => setShowSetup(true)
           }
         ),
@@ -28143,7 +32595,7 @@ function App() {
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(Statusbar, {}),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
-          IntakeModal,
+          IntakeOnboardingModal,
           {
             isOpen: showIntake,
             onClose: () => setShowIntake(false),
@@ -28151,7 +32603,6 @@ function App() {
             onSaved: handleCaseSaved
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(OnboardingModal, { isOpen: showOnboarding, onClose: () => setShowOnboarding(false) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           SetupModal,
           {

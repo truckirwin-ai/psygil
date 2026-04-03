@@ -35,7 +35,7 @@
 // =============================================================================
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import type { CaseRow, FolderNode } from '../../../../shared/types'
+import type { CaseRow, FolderNode, ResourceItem, ResourceCategory } from '../../../../shared/types'
 import type { Tab } from '../../types/tabs'
 
 // ---------------------------------------------------------------------------
@@ -452,6 +452,23 @@ export default function LeftColumn({
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const filterRef = useRef<HTMLDivElement>(null)
 
+  // Draggable splitter between tree and resources
+  const SPLIT_STORAGE_KEY = 'psygil:left-column-split'
+  const DEFAULT_SPLIT = 0.6 // 60% tree, 40% resources
+  const [splitRatio, setSplitRatio] = useState<number>(() => {
+    try {
+      const stored = globalThis.sessionStorage?.getItem?.(SPLIT_STORAGE_KEY)
+        ?? globalThis.localStorage?.getItem?.(SPLIT_STORAGE_KEY)
+      if (stored) {
+        const val = parseFloat(stored)
+        if (!isNaN(val) && val >= 0.2 && val <= 0.85) return val
+      }
+    } catch { /* ignore */ }
+    return DEFAULT_SPLIT
+  })
+  const [isDraggingSplit, setIsDraggingSplit] = useState(false)
+  const columnRef = useRef<HTMLDivElement>(null)
+
   // Close filter dropdown when clicking outside
   useEffect(() => {
     if (!showFilterMenu) return
@@ -463,6 +480,42 @@ export default function LeftColumn({
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [showFilterMenu])
+
+  // Splitter drag logic — persists position on release
+  useEffect(() => {
+    if (!isDraggingSplit) return
+    const onMove = (e: MouseEvent) => {
+      const col = columnRef.current
+      if (!col) return
+      const rect = col.getBoundingClientRect()
+      // Subtract the 32px CASES header from the available space
+      const headerHeight = 32
+      const available = rect.height - headerHeight
+      const y = e.clientY - rect.top - headerHeight
+      const ratio = Math.min(0.85, Math.max(0.2, y / available))
+      setSplitRatio(ratio)
+    }
+    const onUp = () => {
+      setIsDraggingSplit(false)
+      // Persist to both session and local storage
+      try {
+        const val = splitRatio.toFixed(4)
+        globalThis.sessionStorage?.setItem?.(SPLIT_STORAGE_KEY, val)
+        globalThis.localStorage?.setItem?.(SPLIT_STORAGE_KEY, val)
+      } catch { /* ignore */ }
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    // Prevent text selection while dragging
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'row-resize'
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+    }
+  }, [isDraggingSplit, splitRatio])
 
   // =========================================================================
   // DATA LOADING
@@ -642,6 +695,7 @@ export default function LeftColumn({
 
   return (
     <div
+      ref={columnRef}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -832,123 +886,353 @@ export default function LeftColumn({
         </button>
       </div>
 
-      {/* Tree container */}
+      {/* Splittable area: tree (top) + resources (bottom) */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+        {/* Tree container — takes splitRatio of available space */}
+        <div
+          style={{
+            flex: `0 0 ${splitRatio * 100}%`,
+            overflowY: 'auto',
+            padding: '4px 0',
+            minHeight: 0,
+          }}
+        >
+          {loading ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+                color: 'var(--text-secondary)',
+                fontSize: 13,
+              }}
+            >
+              Loading…
+            </div>
+          ) : (
+            <div>
+              {treeData.map((node) => (
+                <TreeNodeComponent
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  onOpenTab={onOpenTab}
+                  activeNodeId={activeNodeId}
+                  onSetActive={setActiveNodeId}
+                  onNodeClick={handleNodeClick}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Draggable splitter handle */}
+        <div
+          onMouseDown={(e) => { e.preventDefault(); setIsDraggingSplit(true) }}
+          style={{
+            flexShrink: 0,
+            height: 5,
+            cursor: 'row-resize',
+            background: isDraggingSplit ? 'var(--accent)' : 'var(--border)',
+            transition: isDraggingSplit ? 'none' : 'background 0.15s',
+            position: 'relative',
+            zIndex: 10,
+          }}
+          onMouseEnter={(e) => { if (!isDraggingSplit) e.currentTarget.style.background = 'var(--accent)' }}
+          onMouseLeave={(e) => { if (!isDraggingSplit) e.currentTarget.style.background = 'var(--border)' }}
+        />
+
+        {/* Resources panel — takes remaining space */}
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <ResourcesPanel onOpenTab={onOpenTab} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// ResourcesPanel — Upload dropdown + categorized file list
+// =============================================================================
+
+const RESOURCE_CATEGORIES: { key: ResourceCategory; label: string; icon: string; desc: string }[] = [
+  { key: 'writing-samples', label: 'Writing Samples', icon: '✍', desc: 'Your own writing for voice & style analysis' },
+  { key: 'templates', label: 'Templates', icon: '📋', desc: 'Report templates, court reports, company docs' },
+  { key: 'documentation', label: 'Documentation', icon: '📚', desc: 'DSM, state guidelines, testing manuals' },
+]
+
+function ResourcesPanel({ onOpenTab }: { readonly onOpenTab: (tab: Tab) => void }): React.JSX.Element {
+  const [resources, setResources] = useState<readonly ResourceItem[]>([])
+  const [showUploadMenu, setShowUploadMenu] = useState(false)
+  const [expandedCategory, setExpandedCategory] = useState<ResourceCategory | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const uploadMenuRef = useRef<HTMLDivElement>(null)
+
+  // Load resources on mount
+  const loadResources = useCallback(async () => {
+    try {
+      const resp = await window.psygil?.resources?.list?.({})
+      if (resp?.status === 'success') {
+        setResources(resp.data)
+      }
+    } catch (err) {
+      console.error('[ResourcesPanel] Failed to load resources:', err)
+    }
+  }, [])
+
+  useEffect(() => { loadResources() }, [loadResources])
+
+  // Close upload dropdown on outside click
+  useEffect(() => {
+    if (!showUploadMenu) return
+    const handler = (e: MouseEvent) => {
+      if (uploadMenuRef.current && !uploadMenuRef.current.contains(e.target as Node)) {
+        setShowUploadMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showUploadMenu])
+
+  const handleUpload = useCallback(async (category: ResourceCategory) => {
+    setShowUploadMenu(false)
+    setUploading(true)
+    try {
+      const resp = await window.psygil?.resources?.upload?.({ category })
+      if (resp?.status === 'success') {
+        const { imported, phiStripped } = resp.data
+        if (imported.length > 0) {
+          console.log(`[Resources] Uploaded ${imported.length} files to ${category}, stripped ${phiStripped} PHI instances`)
+          setExpandedCategory(category)
+          await loadResources()
+        }
+      }
+    } catch (err) {
+      console.error('[Resources] Upload failed:', err)
+    } finally {
+      setUploading(false)
+    }
+  }, [loadResources])
+
+  const handleDelete = useCallback(async (item: ResourceItem) => {
+    try {
+      await window.psygil?.resources?.delete?.({ id: item.id, storedPath: item.storedPath })
+      await loadResources()
+    } catch (err) {
+      console.error('[Resources] Delete failed:', err)
+    }
+  }, [loadResources])
+
+  const handleOpen = useCallback((item: ResourceItem) => {
+    const tabId = `resource:${item.storedPath}`
+    onOpenTab({
+      id: tabId,
+      title: item.originalFilename,
+      type: 'resource',
+      filePath: item.storedPath,
+    })
+  }, [onOpenTab])
+
+  // Group resources by category
+  const grouped = useMemo(() => {
+    const map: Record<string, ResourceItem[]> = { 'writing-samples': [], 'templates': [], 'documentation': [] }
+    for (const r of resources) {
+      if (map[r.category]) map[r.category].push(r)
+    }
+    return map
+  }, [resources])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Header with upload button */}
       <div
+        className="panel-header"
         style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '4px 0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 32,
+          padding: '0 12px',
+          background: 'var(--panel)',
+          borderBottom: '1px solid var(--border)',
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+          color: 'var(--text-secondary)',
+          userSelect: 'none',
         }}
       >
-        {loading ? (
-          <div
+        <span>RESOURCES</span>
+        <div ref={uploadMenuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowUploadMenu(!showUploadMenu)}
+            disabled={uploading}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              color: 'var(--text-secondary)',
-              fontSize: 13,
+              background: 'none',
+              border: 'none',
+              color: uploading ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+              cursor: uploading ? 'wait' : 'pointer',
+              fontSize: 14,
+              lineHeight: 1,
+              padding: '2px 4px',
+              borderRadius: 3,
+              transition: 'color 0.15s, background 0.15s',
             }}
+            onMouseEnter={(e) => { if (!uploading) { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'var(--hover)' } }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'none' }}
+            title="Upload resource document"
           >
-            Loading…
-          </div>
-        ) : (
-          <div>
-            {treeData.map((node) => (
-              <TreeNodeComponent
-                key={node.id}
-                node={node}
-                depth={0}
-                onOpenTab={onOpenTab}
-                activeNodeId={activeNodeId}
-                onSetActive={setActiveNodeId}
-                onNodeClick={handleNodeClick}
-              />
-            ))}
-          </div>
-        )}
+            {uploading ? '↻' : '+'}
+          </button>
+
+          {/* Upload category dropdown */}
+          {showUploadMenu && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: 4,
+                width: 260,
+                background: 'var(--panel)',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                zIndex: 1000,
+                overflow: 'hidden',
+              }}
+            >
+              <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 11, color: 'var(--text-secondary)', textTransform: 'none', fontWeight: 500, letterSpacing: 0 }}>
+                Upload as...
+              </div>
+              {RESOURCE_CATEGORIES.map((cat) => (
+                <div
+                  key={cat.key}
+                  onClick={() => handleUpload(cat.key)}
+                  style={{
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'none', letterSpacing: 0 }}>
+                    {cat.icon} {cat.label}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2, textTransform: 'none', letterSpacing: 0 }}>
+                    {cat.desc}
+                  </div>
+                </div>
+              ))}
+              <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'none', letterSpacing: 0, fontStyle: 'italic' }}>
+                PHI is automatically stripped before AI processing
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Resources panel */}
-      <div
-        style={{
-          borderTop: '1px solid var(--border)',
-          flexShrink: 0,
-        }}
-      >
-        <div
-          className="panel-header"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            height: 32,
-            padding: '0 12px',
-            background: 'var(--panel)',
-            borderBottom: '1px solid var(--border)',
-            fontSize: 11,
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            color: 'var(--text-secondary)',
-            userSelect: 'none',
-          }}
-        >
-          RESOURCES
-        </div>
-        <div
-          style={{
-            padding: '8px 12px',
-            fontSize: 12,
-            color: 'var(--text-secondary)',
-          }}
-        >
-          <div
-            style={{
-              cursor: 'pointer',
-              padding: '4px 0',
-              transition: 'color 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--accent)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-          >
-            DSM-5-TR Reference
-          </div>
-          <div
-            style={{
-              cursor: 'pointer',
-              padding: '4px 0',
-              transition: 'color 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--accent)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-          >
-            Colorado CST Statute
-          </div>
-          <div
-            style={{
-              cursor: 'pointer',
-              padding: '4px 0',
-              transition: 'color 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--accent)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-secondary)'
-            }}
-          >
-            Dusky Standard
-          </div>
-        </div>
+      {/* Category sections with file lists */}
+      <div style={{ flex: 1, overflowY: 'auto', fontSize: 12, minHeight: 0 }}>
+        {RESOURCE_CATEGORIES.map((cat) => {
+          const items = grouped[cat.key] || []
+          const isExpanded = expandedCategory === cat.key
+          return (
+            <div key={cat.key}>
+              {/* Category header — clickable to expand/collapse */}
+              <div
+                onClick={() => setExpandedCategory(isExpanded ? null : cat.key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 12px',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  transition: 'color 0.15s, background 0.15s',
+                  userSelect: 'none',
+                  borderBottom: '1px solid var(--border)',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+              >
+                <span style={{ fontSize: 10, fontFamily: 'monospace', width: 12, textAlign: 'center' }}>
+                  {isExpanded ? '▾' : '▸'}
+                </span>
+                <span>{cat.icon}</span>
+                <span style={{ flex: 1, fontWeight: 500 }}>{cat.label}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', minWidth: 16, textAlign: 'right' }}>
+                  {items.length > 0 ? items.length : ''}
+                </span>
+              </div>
+
+              {/* Expanded file list */}
+              {isExpanded && (
+                <div style={{ background: 'var(--surface-1, var(--bg))' }}>
+                  {items.length === 0 ? (
+                    <div style={{ padding: '8px 12px 8px 36px', color: 'var(--text-tertiary)', fontSize: 11, fontStyle: 'italic' }}>
+                      No files uploaded
+                    </div>
+                  ) : (
+                    items.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '4px 8px 4px 36px',
+                          fontSize: 11,
+                          color: 'var(--text-secondary)',
+                          transition: 'background 0.15s',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                        onClick={() => handleOpen(item)}
+                        title={`${item.originalFilename}\n${item.phiStripped ? '⚕ PHI stripped' : ''}\nClick to open`}
+                      >
+                        <span style={{ fontSize: 11 }}>
+                          {item.originalFilename.endsWith('.pdf') ? '📕' :
+                           item.originalFilename.endsWith('.docx') || item.originalFilename.endsWith('.doc') ? '📄' :
+                           item.originalFilename.endsWith('.txt') ? '📝' : '📎'}
+                        </span>
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.originalFilename}
+                        </span>
+                        {item.phiStripped && (
+                          <span title="PHI was stripped" style={{ fontSize: 9, color: '#4caf50' }}>⚕</span>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(item) }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-tertiary)',
+                            cursor: 'pointer',
+                            fontSize: 11,
+                            padding: '0 2px',
+                            opacity: 0.5,
+                            transition: 'opacity 0.15s, color 0.15s',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#ef5350' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                          title="Remove"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

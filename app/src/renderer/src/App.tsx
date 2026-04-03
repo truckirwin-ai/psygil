@@ -5,8 +5,7 @@ import LeftColumn from './components/layout/LeftColumn'
 import CenterColumn from './components/layout/CenterColumn'
 import RightColumn from './components/layout/RightColumn'
 import VSplitter from './components/layout/VSplitter'
-import IntakeModal from './components/modals/IntakeModal'
-import OnboardingModal from './components/modals/OnboardingModal'
+import IntakeOnboardingModal from './components/modals/IntakeOnboardingModal'
 import SetupModal from './components/modals/SetupModal'
 import DocumentUploadModal from './components/modals/DocumentUploadModal'
 import ScoreImportModal from './components/modals/ScoreImportModal'
@@ -44,7 +43,6 @@ export default function App(): React.JSX.Element {
   const [leftWidth, setLeftWidth] = useState(() => loadWidth(STORAGE_KEY_LEFT_W, DEFAULT_LEFT))
   const [rightWidth, setRightWidth] = useState(() => loadWidth(STORAGE_KEY_RIGHT_W, DEFAULT_RIGHT))
   const [showIntake, setShowIntake] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(false)
   const [showSetup, setShowSetup] = useState(false)
   const [showDocUpload, setShowDocUpload] = useState(false)
   const [docUploadCaseId, setDocUploadCaseId] = useState<number | null>(null)
@@ -220,7 +218,6 @@ export default function App(): React.JSX.Element {
       <Titlebar
         onCycleTheme={cycleTheme}
         onOpenIntake={handleNewCase}
-        onOpenOnboarding={() => setShowOnboarding(true)}
         onSetup={() => setShowSetup(true)}
       />
 
@@ -292,13 +289,12 @@ export default function App(): React.JSX.Element {
 
       <Statusbar />
 
-      <IntakeModal
+      <IntakeOnboardingModal
         isOpen={showIntake}
         onClose={() => setShowIntake(false)}
         caseId={intakeEditCaseId}
         onSaved={handleCaseSaved}
       />
-      <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
       <SetupModal
         isOpen={showSetup}
         onClose={() => setShowSetup(false)}

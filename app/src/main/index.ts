@@ -93,25 +93,16 @@ app.whenReady().then(async () => {
     console.error('[main] Handler registration failed:', err)
   }
 
-  // Seed demo cases (non-blocking — UI works even if seed fails)
+  // Demo seeding — DISABLED for clean-slate testing.
+  // To re-enable: create the trigger file manually with `db:seed-demo` script.
+  // The auto-seed fallback (which re-seeded when 0 cases found) is removed
+  // to allow starting with a genuinely empty database.
   try {
     if (shouldSeedDemoCases()) {
       console.log('[main] Demo seed trigger detected — seeding 42 cases...')
       seedDemoCases()
     } else {
-      const db = getSqlite()
-      // Check if demo cases exist — workspace sync stores bare "2026-02XX", seeder stores "PSY-2026-02XX"
-      const demoCount = (db.prepare("SELECT count(*) as n FROM cases WHERE case_number LIKE '%2026-02%'").get() as { n: number }).n
-      if (demoCount === 0) {
-        console.log('[main] No demo cases found — auto-seeding 42 demo cases...')
-        createSeedTrigger()
-        seedDemoCases()
-      } else {
-        // Backfill evaluation_type for cases created by workspace sync (without types)
-        backfillDemoTypes()
-        // Backfill onboarding data for cases that were seeded before onboarding support
-        backfillOnboarding()
-      }
+      console.log('[main] No demo seed trigger — skipping demo seed.')
     }
   } catch (err) {
     console.error('[main] Demo seed failed (non-fatal):', err)
