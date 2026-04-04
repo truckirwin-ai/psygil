@@ -84,6 +84,7 @@ import {
   listDocuments,
   deleteDocument,
 } from '../documents'
+import { writeCaseDoc, syncAllCaseDocs } from '../documents/case-docs-writer'
 import {
   storeApiKey,
   retrieveApiKey,
@@ -225,6 +226,9 @@ function registerIntakeHandlers(): void {
           report_deadline: params.data.report_deadline ?? null,
           status: params.data.status ?? 'draft',
         })
+        // Fire-and-forget: regenerate intake + referral docs on disk
+        void writeCaseDoc(params.case_id, 'intake').catch(e => console.error('[case-docs] intake write failed:', e))
+        void writeCaseDoc(params.case_id, 'referral').catch(e => console.error('[case-docs] referral write failed:', e))
         return ok(row)
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to save intake'
@@ -257,6 +261,19 @@ function registerOnboardingHandlers(): void {
     (_event, params: OnboardingSaveParams): IpcResponse<PatientOnboardingRow> => {
       try {
         const row = saveOnboardingSection(params.case_id, params.section, params.data)
+        // Fire-and-forget: regenerate the corresponding document on disk
+        const sectionToTab: Record<string, 'intake' | 'referral' | 'testing' | 'interview' | 'diagnostics'> = {
+          contact: 'intake', complaints: 'intake', family: 'intake', education: 'intake',
+          health: 'intake', mental: 'intake', substance: 'intake', recent: 'intake',
+          legal: 'referral', referral_notes: 'referral',
+          testing_notes: 'testing',
+          interview_notes: 'interview',
+          diagnostic_notes: 'diagnostics', documents_notes: 'intake',
+        }
+        const tab = sectionToTab[params.section]
+        if (tab) {
+          void writeCaseDoc(params.case_id, tab).catch(e => console.error(`[case-docs] ${tab} write failed:`, e))
+        }
         return ok(row)
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to save onboarding section'
@@ -580,6 +597,34 @@ function registerDocumentHandlers(): void {
         return ok({ filePaths: [] })
       }
       return ok({ filePaths: result.filePaths })
+    }
+  )
+
+  // Sync all case documents to disk (manual trigger or auto after batch saves)
+  ipcMain.handle(
+    'documents:syncToDisk',
+    async (_event, params: { case_id: number }): Promise<IpcResponse<{ files: string[]; errors: string[] }>> => {
+      try {
+        const result = await syncAllCaseDocs(params.case_id)
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to sync documents to disk'
+        return fail('DOCUMENTS_SYNC_FAILED', message)
+      }
+    }
+  )
+
+  // Write a single tab's document to disk
+  ipcMain.handle(
+    'documents:writeTabDoc',
+    async (_event, params: { case_id: number; tab: 'intake' | 'referral' | 'testing' | 'interview' | 'diagnostics' }): Promise<IpcResponse<string | null>> => {
+      try {
+        const filePath = await writeCaseDoc(params.case_id, params.tab)
+        return ok(filePath)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to write tab document'
+        return fail('DOCUMENT_WRITE_FAILED', message)
+      }
     }
   )
 }

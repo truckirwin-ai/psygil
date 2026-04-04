@@ -61,6 +61,8 @@ const CH = {
   DOCS_PICK_FILE: 'documents:pickFile',
   DOCS_PICK_FILES: 'documents:pickFiles',
   DOCS_PICK_FILES_FROM: 'documents:pickFilesFrom',
+  DOCS_SYNC_TO_DISK: 'documents:syncToDisk',
+  DOCS_WRITE_TAB_DOC: 'documents:writeTabDoc',
   PII_REDACT: 'pii:redact',
   PII_REHYDRATE: 'pii:rehydrate',
   PII_DESTROY: 'pii:destroy',
@@ -132,6 +134,10 @@ const api: PsygilApi = {
     pickFilesFrom: (params: { defaultPath?: string; title?: string; extensions?: string[] }) =>
       ipcRenderer.invoke(CH.DOCS_PICK_FILES_FROM, params),
     getDroppedFilePath: (file: File) => webUtils.getPathForFile(file),
+    syncToDisk: (params: { case_id: number }) =>
+      ipcRenderer.invoke(CH.DOCS_SYNC_TO_DISK, params),
+    writeTabDoc: (params: { case_id: number; tab: 'intake' | 'referral' | 'testing' | 'interview' | 'diagnostics' }) =>
+      ipcRenderer.invoke(CH.DOCS_WRITE_TAB_DOC, params),
   },
 
   pii: {

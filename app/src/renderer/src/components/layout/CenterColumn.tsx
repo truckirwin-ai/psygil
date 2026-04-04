@@ -4464,6 +4464,8 @@ function DiagnosticsSubTab({
   const [reportBuilding, setReportBuilding] = useState(false)
   const [addedConditions, setAddedConditions] = useState<DiagCondition[]>([])
   const [showAddDropdown, setShowAddDropdown] = useState(false)
+  const [expandedConditions, setExpandedConditions] = useState<Record<string, boolean>>({})
+  const [hoveredCondition, setHoveredCondition] = useState<string | null>(null)
 
   const parsedOb = useMemo(() => {
     const map: Record<string, Record<string, string>> = {}
@@ -4860,36 +4862,117 @@ function DiagnosticsSubTab({
         const statusColor = status === 'complete' ? '#2e7d32' : status === 'ruled_out' ? '#e65100' : status === 'declined' ? '#6a6a6a' : '#c62828'
         const statusIcon = status === 'complete' ? '●' : status === 'ruled_out' ? '✕' : status === 'declined' ? '○' : '◌'
         const statusLabel = status === 'complete' ? 'Formulated' : status === 'ruled_out' ? 'Ruled Out' : status === 'declined' ? 'No comments' : 'Pending'
-        return (
-        <div key={cond.name} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--border)', opacity: status === 'ruled_out' ? 0.65 : 1 }}>
-          {/* Condition header */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-            <span style={{ color: statusColor, fontSize: 11, flexShrink: 0 }} title={statusLabel}>{statusIcon}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{cond.name}</span>
-            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{cond.dsmCode}</span>
-            <span style={{ fontSize: 10, color: statusColor, marginLeft: 'auto', flexShrink: 0 }}>{statusLabel}</span>
-          </div>
+        const isExpanded = !!expandedConditions[cond.name]
+        const isHovered = hoveredCondition === cond.name
 
-          {/* Three-column: Why + Case Data | DSM + Contradicting | Formulation */}
-          <div style={threeColGrid}>
-            <div>
-              <div style={clinNoteLabelStyle}>Why Considered</div>
-              <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55, marginBottom: 8 }}>{cond.relevance}</div>
-              <div style={clinNoteLabelStyle}>Case Data</div>
-              <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55 }}>{cond.dataSummary}</div>
+        // Build narrative summary: 1-2 sentences from relevance, then evidence bullets from dataSummary
+        const narrativeSummary = summaryNote(cond.relevance) ?? cond.relevance.split(/[.;]\s/)[0]
+        const evidenceParts = cond.dataSummary.split(/[.;]\s+/).map(s => s.trim().replace(/\.$/, '')).filter(Boolean)
+
+        return (
+        <div
+          key={cond.name}
+          style={{
+            marginBottom: 4, borderBottom: '1px solid var(--border)',
+            opacity: status === 'ruled_out' ? 0.65 : 1,
+          }}
+        >
+          {/* ── 60/40 split: Considerations left, Clinical Notes right ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: 16 }}>
+
+            {/* ════ LEFT 60%: Condition summary + expandable details ════ */}
+            <div
+              onMouseEnter={() => setHoveredCondition(cond.name)}
+              onMouseLeave={() => setHoveredCondition(null)}
+              style={{ transition: 'background 0.15s', background: isHovered && !isExpanded ? 'rgba(128,128,128,0.04)' : 'transparent', borderRadius: 4 }}
+            >
+              {/* Clickable summary header */}
+              <div
+                onClick={() => setExpandedConditions(prev => ({ ...prev, [cond.name]: !prev[cond.name] }))}
+                style={{ cursor: 'pointer', padding: '8px 0', userSelect: 'none' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ color: statusColor, fontSize: 11, flexShrink: 0 }} title={statusLabel}>{statusIcon}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', transition: 'transform 0.2s', display: 'inline-block', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0, lineHeight: 1 }}>&#9656;</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{cond.name}</span>
+                  <span style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{cond.dsmCode}</span>
+                  <span style={{ fontSize: 10, color: statusColor, marginLeft: 'auto', flexShrink: 0, fontWeight: 600 }}>{statusLabel}</span>
+                </div>
+
+                {/* Narrative summary + evidence bullets */}
+                <div style={{ marginLeft: 34, marginTop: 3 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>
+                    {narrativeSummary}
+                  </div>
+                  {evidenceParts.length > 0 && (
+                    <ul style={{ margin: '3px 0 0', paddingLeft: 14, listStyleType: 'disc' }}>
+                      {evidenceParts.slice(0, 3).map((item, i) => (
+                        <li key={i} style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4, marginBottom: 1 }}>
+                          {item.length > 80 ? item.slice(0, 77) + '...' : item}
+                        </li>
+                      ))}
+                      {evidenceParts.length > 3 && (
+                        <li style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontStyle: 'italic', listStyleType: 'none', marginLeft: -14 }}>
+                          +{evidenceParts.length - 3} more...
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Hover tooltip: full details — only when collapsed */}
+                {isHovered && !isExpanded && (
+                  <div style={{
+                    marginLeft: 34, marginTop: 6, padding: '10px 12px',
+                    background: '#dce8f5', border: '1px solid #a8c4e0',
+                    borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    fontSize: 11.5, lineHeight: 1.5, color: '#1a2332',
+                    pointerEvents: 'none',
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: '#4a6a8a', marginBottom: 4, letterSpacing: '0.04em' }}>Why Considered</div>
+                    <div style={{ marginBottom: 6 }}>{cond.relevance}</div>
+                    <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: '#4a6a8a', marginBottom: 4, letterSpacing: '0.04em' }}>Case Data</div>
+                    <div style={{ marginBottom: 6 }}>{cond.dataSummary}</div>
+                    <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: '#4a6a8a', marginBottom: 4, letterSpacing: '0.04em' }}>DSM-5-TR Reference</div>
+                    <div style={{ marginBottom: cond.contradictingData ? 6 : 0 }}>{cond.dsmExcerpt}</div>
+                    {cond.contradictingData && (
+                      <>
+                        <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: '#c62828', marginBottom: 4, letterSpacing: '0.04em' }}>Contradicting / Rule-Out</div>
+                        <div>{cond.contradictingData}</div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Expanded detail panel */}
+              {isExpanded && (
+                <div style={{ paddingBottom: 12, paddingTop: 4, marginLeft: 34 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div>
+                      <div style={clinNoteLabelStyle}>Why Considered</div>
+                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55, marginBottom: 8 }}>{cond.relevance}</div>
+                      <div style={clinNoteLabelStyle}>Case Data</div>
+                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55 }}>{cond.dataSummary}</div>
+                    </div>
+                    <div>
+                      <div style={clinNoteLabelStyle}>DSM-5-TR Reference</div>
+                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55, marginBottom: 8 }}>{cond.dsmExcerpt}</div>
+                      {cond.contradictingData ? (
+                        <>
+                          <div style={{ ...clinNoteLabelStyle, color: '#c62828' }}>Contradicting / Rule-Out</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>{cond.contradictingData}</div>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div>
-              <div style={clinNoteLabelStyle}>DSM-5-TR Reference</div>
-              <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55, marginBottom: 8 }}>{cond.dsmExcerpt}</div>
-              {cond.contradictingData ? (
-                <>
-                  <div style={{ ...clinNoteLabelStyle, color: '#c62828' }}>Contradicting / Rule-Out</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>{cond.contradictingData}</div>
-                </>
-              ) : null}
-            </div>
-            <div style={{ ...clinNotesColumnStyle, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ ...clinNoteLabelStyle, marginTop: 0, paddingTop: 4, flexShrink: 0 }}>Clinician Formulation</div>
+
+            {/* ════ RIGHT 40%: Clinician Formulation — always visible ════ */}
+            <div style={{ ...clinNotesColumnStyle, display: 'flex', flexDirection: 'column', padding: '8px 12px 12px' }}>
+              <div style={{ ...clinNoteLabelStyle, marginTop: 0, flexShrink: 0 }}>Clinician Formulation</div>
               <select
                 value={
                   ruledOutConditions[cond.name] ? '__ruleout__' :
@@ -4898,7 +4981,6 @@ function DiagnosticsSubTab({
                 }
                 onChange={(e) => {
                   const val = e.target.value
-                  // Reset all flags first
                   const clearFlags = () => {
                     setDeclinedConditions(prev => ({ ...prev, [cond.name]: false }))
                     setRuledOutConditions(prev => ({ ...prev, [cond.name]: false }))
@@ -4935,18 +5017,18 @@ function DiagnosticsSubTab({
                   marginBottom: 4, cursor: 'pointer', flexShrink: 0,
                 }}
               >
-                <option value="">— Select formulation template —</option>
+                <option value="">-- Select formulation template --</option>
                 {cond.templateOptions.map((tpl, idx) => (
                   <option key={idx} value={idx}>{tpl.title}</option>
                 ))}
                 <option value="__decline__">No additional comments</option>
-                <option value="__ruleout__">⊘ Rule Out</option>
-                <option value="__delete__">✕ DELETE</option>
+                <option value="__ruleout__">Rule Out</option>
+                <option value="__delete__">DELETE</option>
               </select>
               {ruledOutConditions[cond.name] ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div style={{ padding: '6px 8px', fontSize: 11, color: '#e65100', fontWeight: 600, background: '#fff3e0', border: '1px solid #ffcc80', borderRadius: 4 }}>
-                    ⊘ RULED OUT
+                    RULED OUT
                   </div>
                   <textarea
                     value={clinicianNotes[cond.name] ?? ''}
@@ -4960,14 +5042,15 @@ function DiagnosticsSubTab({
                   No additional clinician comments for this condition.
                 </div>
               ) : (
-              <textarea
-                value={clinicianNotes[cond.name] ?? ''}
-                onChange={(e) => handleNoteChange(cond.name, e.target.value)}
-                placeholder="Clinical notes for this condition..."
-                style={{ ...diagNoteStyle, flex: 1, minHeight: 120 }}
-              />
+                <textarea
+                  value={clinicianNotes[cond.name] ?? ''}
+                  onChange={(e) => handleNoteChange(cond.name, e.target.value)}
+                  placeholder="Clinical notes for this condition..."
+                  style={{ ...diagNoteStyle, flex: 1, minHeight: 100 }}
+                />
               )}
             </div>
+
           </div>
         </div>
         )

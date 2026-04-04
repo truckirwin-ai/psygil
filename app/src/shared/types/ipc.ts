@@ -932,6 +932,8 @@ export interface PsygilApi {
     readonly pickFiles: () => Promise<IpcResponse<PickFilesResult>>
     readonly pickFilesFrom: (params: { defaultPath?: string; title?: string; extensions?: string[] }) => Promise<IpcResponse<PickFilesResult>>
     readonly getDroppedFilePath: (file: File) => string
+    readonly syncToDisk: (params: { case_id: number }) => Promise<IpcResponse<{ files: string[]; errors: string[] }>>
+    readonly writeTabDoc: (params: { case_id: number; tab: 'intake' | 'referral' | 'testing' | 'interview' | 'diagnostics' }) => Promise<IpcResponse<string | null>>
   }
   readonly pii: {
     readonly detect: (params: PiiDetectParams) => Promise<IpcResponse<PiiDetectResult>>
