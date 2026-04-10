@@ -85,7 +85,6 @@ export function spawnTranscribeSidecar(): Promise<{ pid: number }> {
           if (msg.status === 'ready' && msg.service === 'transcription') {
             clearTimeout(timeout)
             sidecarReady = true
-            console.log(`[Transcribe] Sidecar ready, PID ${msg.pid}`)
             resolve({ pid: msg.pid })
             return
           }
@@ -93,8 +92,7 @@ export function spawnTranscribeSidecar(): Promise<{ pid: number }> {
       }
     })
 
-    child.stderr!.on('data', (chunk: Buffer) => {
-      console.log(`[Transcribe/sidecar] ${chunk.toString().trim()}`)
+    child.stderr!.on('data', (_chunk: Buffer) => {
     })
 
     child.on('error', (err) => {
@@ -108,7 +106,6 @@ export function spawnTranscribeSidecar(): Promise<{ pid: number }> {
       clearTimeout(timeout)
       transcribeSidecar = null
       sidecarReady = false
-      console.log(`[Transcribe] Sidecar exited: code=${code}, signal=${sig}`)
     })
   })
 }
@@ -164,7 +161,6 @@ function startLiveStream(sessionId: string, win: BrowserWindow): Promise<boolean
       socket.write(startCmd + '\n')
 
       liveStreams.set(sessionId, { sessionId, socket, win })
-      console.log(`[Transcribe] Live stream started: ${sessionId}`)
       resolve(true)
     })
 
@@ -359,7 +355,6 @@ function handleSaveAudio(
     writeFileSync(destPath, buffer)
 
     const stat = statSync(destPath)
-    console.log(`[Whisper] Saved audio: ${destPath} (${(stat.size / 1024).toFixed(1)} KB)`)
     return ok({ filePath: destPath, sizeBytes: stat.size })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Failed to save audio'
@@ -494,10 +489,7 @@ export function registerWhisperHandlers(): void {
   ipcMain.on('whisper:stream:audio', (_event, args) => handleStreamAudio(_event as any, args))
   ipcMain.handle('whisper:stream:stop', handleStreamStop)
 
-  console.log('[Whisper] IPC handlers registered (batch + live streaming)')
-
   // Start sidecar
-  spawnTranscribeSidecar().catch((err) => {
-    console.log(`[Whisper] Sidecar not available: ${err.message}`)
+  spawnTranscribeSidecar().catch(() => {
   })
 }

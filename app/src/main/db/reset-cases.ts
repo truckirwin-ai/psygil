@@ -49,7 +49,6 @@ const CASE_TABLES = [
   'reports',
   'writer_drafts',
   'diagnoses',
-  'gate_reviews',
   'agent_runs',
   'test_administrations',
   'documents',
@@ -64,7 +63,6 @@ const DEV_SALT = Buffer.from('psygil-kdf-salt-v1')
 
 async function main() {
   // --- 0. Derive encryption key ---
-  console.log('[reset] Deriving encryption key...')
   const keyBuffer = await argon2.hash(DEV_PASSPHRASE, {
     type: argon2.argon2id,
     memoryCost: 65536,
@@ -81,7 +79,6 @@ async function main() {
     ? ELECTRON_DB_PATH
     : join(process.cwd(), 'data', 'psygil.db')
 
-  console.log(`[reset] Opening database: ${dbPath}`)
   if (!existsSync(dbPath)) {
     console.error('[reset] Database file not found!')
     process.exit(1)
@@ -99,26 +96,20 @@ async function main() {
       )
       .get() as { n: number }
   ).n
-  console.log(`[reset] Database opened. ${tableCount} tables found.`)
-
   // --- 2. Clear all case-related tables ---
-  console.log('\n[reset] Clearing database tables...')
   sqlite.pragma('foreign_keys = OFF')
 
   for (const table of CASE_TABLES) {
     try {
-      const info = sqlite.prepare(`SELECT count(*) as n FROM ${table}`).get() as { n: number }
+      sqlite.prepare(`SELECT count(*) as n FROM ${table}`).get() as { n: number }
       sqlite.prepare(`DELETE FROM ${table}`).run()
-      console.log(`  ✓ ${table}: deleted ${info.n} rows`)
-    } catch (err: any) {
-      console.log(`  ⚠ ${table}: ${err.message}`)
+    } catch {
     }
   }
 
   sqlite.pragma('foreign_keys = ON')
 
   // --- 3. Remove case folders from workspace ---
-  console.log('\n[reset] Cleaning workspace folders...')
 
   // Check config.json for custom workspace path
   if (existsSync(CONFIG_PATH)) {
@@ -126,7 +117,6 @@ async function main() {
       const config = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'))
       if (config.workspacePath && !WORKSPACE_PATHS.includes(config.workspacePath)) {
         WORKSPACE_PATHS.push(config.workspacePath)
-        console.log(`  [config] Custom workspace: ${config.workspacePath}`)
       }
     } catch {
       // ignore parse errors
@@ -135,7 +125,6 @@ async function main() {
 
   for (const wsPath of WORKSPACE_PATHS) {
     if (!existsSync(wsPath)) {
-      console.log(`  - ${wsPath} (not found, skipping)`)
       continue
     }
 
@@ -148,14 +137,11 @@ async function main() {
 
       const fullPath = join(wsPath, entry.name)
       rmSync(fullPath, { recursive: true, force: true })
-      console.log(`  ✓ Removed: ${entry.name}`)
       removed++
     }
-    console.log(`  [${wsPath}] Removed ${removed} case folders`)
   }
 
   sqlite.close()
-  console.log('\n[reset] Done. All cases deleted. Relaunch the app to verify.\n')
 }
 
 main().catch((err) => {

@@ -342,7 +342,6 @@ export function backfillDemoTypes(): number {
   }
 
   if (updated > 0) {
-    console.log(`[seed] Backfilled evaluation_type for ${updated} demo cases`)
   }
   return updated
 }
@@ -426,14 +425,11 @@ export function backfillOnboarding(): number {
     }
   }
 
-  if (intakeFilled > 0) console.log(`[seed] Backfilled intake data for ${intakeFilled} demo cases`)
-  if (obFilled > 0) console.log(`[seed] Backfilled onboarding data for ${obFilled} demo cases`)
   return intakeFilled + obFilled
 }
 
 export function seedDemoCases(): void {
   if (!existsSync(TRIGGER)) return
-  console.log('[seed] Starting comprehensive demo seed (42 cases)...')
 
   const sqlite = getSqlite()
   const now = new Date().toISOString()
@@ -445,7 +441,6 @@ export function seedDemoCases(): void {
   }
   // Ensure workspace root + system subfolders exist
   createFolderStructure(wsPath)
-  console.log(`[seed] Workspace: ${wsPath}`)
 
   // ── Ensure demo clinician user exists ──
   const existingUser = sqlite.prepare('SELECT user_id FROM users WHERE user_id = 1').get()
@@ -454,7 +449,6 @@ export function seedDemoCases(): void {
       INSERT INTO users (user_id, email, full_name, role, credentials, license_number, state_licensed, is_active, created_at)
       VALUES (1, 'truck@psygil.com', 'Dr. Truck Irwin, Psy.D.', 'psychologist', 'Psy.D., ABPP', 'PSY-CO-12345', 'CO', 1, '2026-01-01')
     `).run()
-    console.log('[seed] Created clinician user (user_id=1)')
   }
 
   // Prepared statements
@@ -805,7 +799,6 @@ export function seedDemoCases(): void {
   })
 
   seedTransaction()
-  console.log(`[seed] Inserted ${inserted}/${CASES.length} demo cases with full supporting data`)
 
   // Seed _Resources folders (writing samples, templates, documentation)
   try {

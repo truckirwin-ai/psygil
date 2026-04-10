@@ -241,45 +241,7 @@ export const testAdministrations = sqliteTable('test_administrations', {
 ])
 
 // ============================================================================
-// 5. WORKFLOW & GATE SYSTEM
-// ============================================================================
-
-export const gateReviews = sqliteTable('gate_reviews', {
-  gate_review_id: integer('gate_review_id').primaryKey({ autoIncrement: true }),
-  case_id: integer('case_id').notNull().references(() => cases.case_id, { onDelete: 'cascade' }),
-  gate_number: integer('gate_number').notNull(), // CHECK: 1 | 2 | 3
-  gate_purpose: text('gate_purpose').notNull(),
-  reviewer_user_id: integer('reviewer_user_id').notNull().references(() => users.user_id),
-  review_date: text('review_date').notNull().default(sql`CURRENT_DATE`),
-  review_status: text('review_status').notNull().default('pending'), // CHECK: pending | in_progress | completed | requires_revision
-  notes: text('notes'),
-}, (table) => [
-  uniqueIndex('idx_gate_reviews_case_gate').on(table.case_id, table.gate_number),
-  index('idx_gate_reviews_case_id').on(table.case_id),
-  index('idx_gate_reviews_gate_number').on(table.gate_number),
-  index('idx_gate_reviews_review_status').on(table.review_status),
-])
-
-export const gateDecisions = sqliteTable('gate_decisions', {
-  decision_id: integer('decision_id').primaryKey({ autoIncrement: true }),
-  gate_review_id: integer('gate_review_id').notNull().references(() => gateReviews.gate_review_id, { onDelete: 'cascade' }),
-  case_id: integer('case_id').notNull().references(() => cases.case_id, { onDelete: 'cascade' }),
-  decision_type: text('decision_type').notNull(), // CHECK: data_confirmed | diagnosis_selected | diagnosis_ruled_out | attestation | other
-  subject_entity_type: text('subject_entity_type'),
-  subject_entity_id: integer('subject_entity_id'),
-  actor_user_id: integer('actor_user_id').notNull().references(() => users.user_id),
-  decision_rationale: text('decision_rationale'),
-  decision_date: text('decision_date').notNull().default(sql`CURRENT_DATE`),
-  is_final: integer('is_final', { mode: 'boolean' }).default(false),
-}, (table) => [
-  index('idx_gate_decisions_gate_review_id').on(table.gate_review_id),
-  index('idx_gate_decisions_case_id').on(table.case_id),
-  index('idx_gate_decisions_decision_type').on(table.decision_type),
-  index('idx_gate_decisions_actor_user_id').on(table.actor_user_id),
-])
-
-// ============================================================================
-// 6. DIAGNOSES (CLINICIAN-SELECTED ONLY)
+// 5. DIAGNOSES (CLINICIAN-SELECTED ONLY)
 // ============================================================================
 
 export const diagnoses = sqliteTable('diagnoses', {

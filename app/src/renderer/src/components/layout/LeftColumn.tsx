@@ -35,7 +35,7 @@
 // =============================================================================
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import type { CaseRow, FolderNode, ResourceItem, ResourceCategory } from '../../../../shared/types'
+import type { CaseRow, FolderNode } from '../../../../shared/types'
 import type { Tab } from '../../types/tabs'
 
 // ---------------------------------------------------------------------------
@@ -992,9 +992,9 @@ export default function LeftColumn({
           onMouseLeave={(e) => { if (!isDraggingSplit) e.currentTarget.style.background = 'var(--border)' }}
         />
 
-        {/* Resources panel, takes remaining space */}
+        {/* Admin Assistant chat, takes remaining space */}
         <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <ResourcesPanel onOpenTab={onOpenTab} />
+          <AdminAssistantPanel cases={cases} />
         </div>
       </div>
     </div>
@@ -1002,110 +1002,104 @@ export default function LeftColumn({
 }
 
 // =============================================================================
-// ResourcesPanel, Upload dropdown + categorized file list
+// AdminAssistantPanel, General-purpose AI chat for practice management
 // =============================================================================
 
-const RESOURCE_CATEGORIES: { key: ResourceCategory; label: string; icon: string; desc: string }[] = [
-  { key: 'writing-samples', label: 'Writing Samples', icon: '✍', desc: 'Your own writing for voice & style analysis' },
-  { key: 'templates', label: 'Templates', icon: '📋', desc: 'Report templates, court reports, company docs' },
-  { key: 'documentation', label: 'Documentation', icon: '📚', desc: 'DSM, state guidelines, testing manuals' },
-]
+interface ChatMessage {
+  readonly role: 'user' | 'assistant'
+  readonly text: string
+}
 
-function ResourcesPanel({ onOpenTab }: { readonly onOpenTab: (tab: Tab) => void }): React.JSX.Element {
-  const [resources, setResources] = useState<readonly ResourceItem[]>([])
-  const [showUploadMenu, setShowUploadMenu] = useState(false)
-  const [expandedCategory, setExpandedCategory] = useState<ResourceCategory | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const uploadMenuRef = useRef<HTMLDivElement>(null)
+const ADMIN_WELCOME = 'I have access to your full caseload. Ask me which cases need attention, what to focus on this week, or for practice analytics.'
 
-  // Load resources on mount
-  const loadResources = useCallback(async () => {
-    try {
-      const resp = await window.psygil?.resources?.list?.({})
-      if (resp?.status === 'success') {
-        setResources(resp.data)
-      }
-    } catch (err) {
-      console.error('[ResourcesPanel] Failed to load resources:', err)
+function AdminAssistantPanel({ cases }: { readonly cases: readonly CaseRow[] }): React.JSX.Element {
+  const [messages, setMessages] = useState<readonly ChatMessage[]>([
+    { role: 'assistant', text: ADMIN_WELCOME },
+  ])
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Build system prompt with caseload context
+  const systemPrompt = useMemo(() => {
+    const lines: string[] = [
+      'You are the Admin Assistant for Psygil, a forensic psychology practice management platform.',
+      'You have read access to all case files in the system. Use the case data below to answer questions about caseload, scheduling, priorities, and analytics.',
+      '',
+      'CAPABILITIES:',
+      '- Caseload analysis: which cases need attention, overdue items, bottlenecks',
+      '- Schedule guidance: what to focus on this week',
+      '- Pipeline analytics: stage distribution, throughput',
+      '- Case prioritization: urgency based on deadlines, stage, evaluation type',
+      '- Practice metrics: case volume, completion rates, type distribution',
+      '',
+      'RULES:',
+      '- Be concise and actionable. Use bullet points.',
+      '- Reference specific cases by name and case number.',
+      '- Today is ' + new Date().toISOString().split('T')[0],
+      '',
+      '=== CURRENT CASELOAD (' + cases.length + ' cases) ===',
+    ]
+    for (const c of cases) {
+      lines.push(
+        `- ${c.examinee_last_name}, ${c.examinee_first_name} (#${c.case_number}) | ${c.evaluation_type} | Stage: ${c.workflow_current_stage} | Status: ${c.case_status}`
+      )
     }
-  }, [])
+    return lines.join('\n')
+  }, [cases])
 
-  useEffect(() => { loadResources() }, [loadResources])
-
-  // Close upload dropdown on outside click
+  // Auto-scroll on new messages
   useEffect(() => {
-    if (!showUploadMenu) return
-    const handler = (e: MouseEvent) => {
-      if (uploadMenuRef.current && !uploadMenuRef.current.contains(e.target as Node)) {
-        setShowUploadMenu(false)
-      }
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [showUploadMenu])
+  }, [messages])
 
-  const handleUpload = useCallback(async (category: ResourceCategory) => {
-    setShowUploadMenu(false)
-    setUploading(true)
+  const handleSend = useCallback(async () => {
+    const text = input.trim()
+    if (!text || sending) return
+
+    setInput('')
+    setMessages((prev) => [...prev, { role: 'user', text }])
+    setSending(true)
+
     try {
-      // Writing samples: open Settings tab where the staged upload modal lives
-      if (category === 'writing-samples') {
-        onOpenTab({
-          id: 'settings',
-          title: 'Settings',
-          type: 'settings',
-        })
-        setUploading(false)
-        return
+      const response = await window.psygil.ai.complete({
+        systemPrompt,
+        userMessage: text,
+      })
+
+      if (response.status === 'success') {
+        setMessages((prev) => [...prev, { role: 'assistant', text: response.data.content }])
       } else {
-        const resp = await window.psygil?.resources?.upload?.({ category })
-        if (resp?.status === 'success') {
-          const { imported, phiStripped } = resp.data
-          if (imported.length > 0) {
-            console.log(`[Resources] Uploaded ${imported.length} files to ${category}, stripped ${phiStripped} PHI instances`)
-            setExpandedCategory(category)
-            await loadResources()
-          }
-        }
+        setMessages((prev) => [...prev, { role: 'assistant', text: 'Error: ' + response.message }])
       }
-    } catch (err) {
-      console.error('[Resources] Upload failed:', err)
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', text: 'Could not reach AI. Check your API key in Settings.' },
+      ])
     } finally {
-      setUploading(false)
+      setSending(false)
+      inputRef.current?.focus()
     }
-  }, [loadResources])
+  }, [input, sending, systemPrompt])
 
-  const handleDelete = useCallback(async (item: ResourceItem) => {
-    try {
-      await window.psygil?.resources?.delete?.({ id: item.id, storedPath: item.storedPath })
-      await loadResources()
-    } catch (err) {
-      console.error('[Resources] Delete failed:', err)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
     }
-  }, [loadResources])
+  }, [handleSend])
 
-  const handleOpen = useCallback((item: ResourceItem) => {
-    const tabId = `resource:${item.storedPath}`
-    onOpenTab({
-      id: tabId,
-      title: item.originalFilename,
-      type: 'resource',
-      filePath: item.storedPath,
-    })
-  }, [onOpenTab])
-
-  // Group resources by category
-  const grouped = useMemo(() => {
-    const map: Record<string, ResourceItem[]> = { 'writing-samples': [], 'templates': [], 'documentation': [] }
-    for (const r of resources) {
-      if (map[r.category]) map[r.category].push(r)
-    }
-    return map
-  }, [resources])
+  const handleClear = useCallback(() => {
+    setMessages([{ role: 'assistant', text: ADMIN_WELCOME }])
+  }, [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Header with upload button */}
+      {/* Header */}
       <div
         className="panel-header"
         style={{
@@ -1124,175 +1118,112 @@ function ResourcesPanel({ onOpenTab }: { readonly onOpenTab: (tab: Tab) => void 
           userSelect: 'none',
         }}
       >
-        <span>RESOURCES</span>
-        <div ref={uploadMenuRef} style={{ position: 'relative' }}>
-          <button
-            onClick={() => setShowUploadMenu(!showUploadMenu)}
-            disabled={uploading}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: uploading ? 'var(--text-tertiary)' : 'var(--text-secondary)',
-              cursor: uploading ? 'wait' : 'pointer',
-              fontSize: 14,
-              lineHeight: 1,
-              padding: '2px 4px',
-              borderRadius: 3,
-              transition: 'color 0.15s, background 0.15s',
-            }}
-            onMouseEnter={(e) => { if (!uploading) { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'var(--hover)' } }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'none' }}
-            title="Upload resource document"
-          >
-            {uploading ? '↻' : '+'}
-          </button>
-
-          {/* Upload category dropdown */}
-          {showUploadMenu && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: 4,
-                width: 260,
-                background: 'var(--panel)',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                zIndex: 1000,
-                overflow: 'hidden',
-              }}
-            >
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 11, color: 'var(--text-secondary)', textTransform: 'none', fontWeight: 500, letterSpacing: 0 }}>
-                Upload as...
-              </div>
-              {RESOURCE_CATEGORIES.map((cat) => (
-                <div
-                  key={cat.key}
-                  onClick={() => handleUpload(cat.key)}
-                  style={{
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    transition: 'background 0.15s',
-                    borderBottom: '1px solid var(--border)',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                >
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'none', letterSpacing: 0 }}>
-                    {cat.icon} {cat.label}
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2, textTransform: 'none', letterSpacing: 0 }}>
-                    {cat.desc}
-                  </div>
-                </div>
-              ))}
-              <div style={{ padding: '6px 12px', fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'none', letterSpacing: 0, fontStyle: 'italic' }}>
-                PHI is automatically stripped before AI processing
-              </div>
-            </div>
-          )}
-        </div>
+        <span>ADMIN ASSISTANT</span>
+        <button
+          onClick={handleClear}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontSize: 11,
+            padding: '2px 4px',
+            borderRadius: 3,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+          title="Clear chat"
+        >
+          Clear
+        </button>
       </div>
 
-      {/* Category sections with file lists */}
-      <div style={{ flex: 1, overflowY: 'auto', fontSize: 12, minHeight: 0 }}>
-        {RESOURCE_CATEGORIES.map((cat) => {
-          const items = grouped[cat.key] || []
-          const isExpanded = expandedCategory === cat.key
-          return (
-            <div key={cat.key}>
-              {/* Category header, clickable to expand/collapse */}
-              <div
-                onClick={() => setExpandedCategory(isExpanded ? null : cat.key)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '5px 12px',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)',
-                  transition: 'color 0.15s, background 0.15s',
-                  userSelect: 'none',
-                  borderBottom: '1px solid var(--border)',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-              >
-                <span style={{ fontSize: 14, fontFamily: 'monospace', width: 18, textAlign: 'center', lineHeight: 1 }}>
-                  {isExpanded ? '▾' : '▸'}
-                </span>
-                <span>{cat.icon}</span>
-                <span style={{ flex: 1, fontWeight: 500 }}>{cat.label}</span>
-                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', minWidth: 16, textAlign: 'right' }}>
-                  {items.length > 0 ? items.length : ''}
-                </span>
-              </div>
+      {/* Messages */}
+      <div
+        ref={scrollRef}
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '8px 10px',
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            style={{
+              fontSize: 12,
+              lineHeight: 1.45,
+              color: msg.role === 'user' ? 'var(--text)' : 'var(--text-secondary)',
+              background: msg.role === 'user' ? 'var(--highlight)' : 'transparent',
+              borderRadius: 4,
+              padding: msg.role === 'user' ? '6px 8px' : '2px 0',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {msg.text}
+          </div>
+        ))}
+        {sending && (
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+            Thinking...
+          </div>
+        )}
+      </div>
 
-              {/* Expanded file list */}
-              {isExpanded && (
-                <div style={{ background: 'var(--surface-1, var(--bg))' }}>
-                  {items.length === 0 ? (
-                    <div style={{ padding: '8px 12px 8px 36px', color: 'var(--text-tertiary)', fontSize: 11, fontStyle: 'italic' }}>
-                      No files uploaded
-                    </div>
-                  ) : (
-                    items.map((item) => (
-                      <div
-                        key={item.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '4px 8px 4px 36px',
-                          fontSize: 11,
-                          color: 'var(--text-secondary)',
-                          transition: 'background 0.15s',
-                          cursor: 'pointer',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                        onClick={() => handleOpen(item)}
-                        title={`${item.originalFilename}\n${item.phiStripped ? '⚕ PHI stripped' : ''}\nClick to open`}
-                      >
-                        <span style={{ fontSize: 11 }}>
-                          {item.originalFilename.endsWith('.pdf') ? '📕' :
-                           item.originalFilename.endsWith('.docx') || item.originalFilename.endsWith('.doc') ? '📄' :
-                           item.originalFilename.endsWith('.txt') ? '📝' : '📎'}
-                        </span>
-                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.originalFilename}
-                        </span>
-                        {item.phiStripped && (
-                          <span title="PHI was stripped" style={{ fontSize: 9, color: '#4caf50' }}>⚕</span>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(item) }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--text-tertiary)',
-                            cursor: 'pointer',
-                            fontSize: 11,
-                            padding: '0 2px',
-                            opacity: 0.5,
-                            transition: 'opacity 0.15s, color 0.15s',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#ef5350' }}
-                          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
-                          title="Remove"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
+      {/* Input */}
+      <div style={{
+        borderTop: '1px solid var(--border)',
+        padding: '6px 8px',
+        display: 'flex',
+        gap: 4,
+        background: 'var(--panel)',
+      }}>
+        <textarea
+          ref={inputRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask about your caseload..."
+          rows={1}
+          style={{
+            flex: 1,
+            resize: 'none',
+            border: '1px solid var(--border)',
+            borderRadius: 4,
+            padding: '5px 8px',
+            fontSize: 12,
+            lineHeight: 1.4,
+            background: 'var(--bg)',
+            color: 'var(--text)',
+            outline: 'none',
+            fontFamily: 'inherit',
+            minHeight: 28,
+            maxHeight: 80,
+          }}
+        />
+        <button
+          onClick={handleSend}
+          disabled={sending || !input.trim()}
+          style={{
+            background: sending || !input.trim() ? 'var(--border)' : 'var(--accent)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 4,
+            padding: '0 10px',
+            fontSize: 12,
+            cursor: sending || !input.trim() ? 'default' : 'pointer',
+            flexShrink: 0,
+            height: 28,
+            alignSelf: 'flex-end',
+          }}
+        >
+          Send
+        </button>
       </div>
     </div>
   )

@@ -137,14 +137,10 @@ export async function startDocumentServer(): Promise<{ port: number; jwtSecret: 
   }
 
   // Container not running, pull image and start
-  console.log('[onlyoffice] Starting container...')
   try {
-    // Pull the image
-    console.log('[onlyoffice] Pulling image...')
     await execFileAsync('docker', ['pull', IMAGE])
 
     // Create volume for fonts if not exists
-    console.log('[onlyoffice] Ensuring volume exists...')
     try {
       await execFileAsync('docker', ['volume', 'create', 'psygil-oo-fonts'])
     } catch {
@@ -152,7 +148,6 @@ export async function startDocumentServer(): Promise<{ port: number; jwtSecret: 
     }
 
     // Start the container
-    console.log('[onlyoffice] Starting container...')
     await execFileAsync('docker', [
       'run',
       '-d',
@@ -166,14 +161,12 @@ export async function startDocumentServer(): Promise<{ port: number; jwtSecret: 
     ])
 
     // Wait for health
-    console.log('[onlyoffice] Waiting for health check...')
     await waitForHealthCheck()
 
     // Generate and store JWT secret
     const secret = generateJwtSecret()
     storeSecret(secret)
 
-    console.log('[onlyoffice] Container started and healthy')
     return { port: PORT, jwtSecret: secret }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -191,9 +184,7 @@ export async function stopDocumentServer(): Promise<void> {
       return
     }
 
-    console.log('[onlyoffice] Stopping container...')
     await execFileAsync('docker', ['stop', CONTAINER_NAME])
-    console.log('[onlyoffice] Container stopped')
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     throw new Error(`Failed to stop OnlyOffice container: ${message}`)

@@ -214,8 +214,6 @@ export function syncWorkspaceToDB(wsPath: string): void {
     return
   }
 
-  console.log('[workspace-sync] Scanning:', wsPath)
-
   // Ensure a default clinician user exists (user_id = 1)
   const existingUser = db.prepare('SELECT user_id FROM users WHERE user_id = 1').get()
   if (!existingUser) {
@@ -312,7 +310,6 @@ export function syncWorkspaceToDB(wsPath: string): void {
       // INSERT, new case folder discovered on disk
       try {
         insertCase.run(caseNumber, firstName, lastName.trim(), scan.inferredStatus, scan.inferredStage, fullPath)
-        console.log('[workspace-sync] Indexed:', entry)
         synced++
       } catch (e) {
         console.error('[workspace-sync] Failed to index', entry, (e as Error).message)
@@ -330,19 +327,9 @@ export function syncWorkspaceToDB(wsPath: string): void {
     if (dbCase.folder_path && !existsSync(dbCase.folder_path)) {
       db.prepare('DELETE FROM cases WHERE case_id = ?').run(dbCase.case_id)
       orphansRemoved++
-      console.log(`[workspace-sync] Orphan removed: ${dbCase.case_number} (${dbCase.folder_path})`)
     }
   }
 
-  if (synced > 0) console.log(`[workspace-sync] Indexed ${synced} new case folders`)
-  if (updated > 0) console.log(`[workspace-sync] Updated ${updated} case folders from filesystem`)
-  if (orphansRemoved > 0) console.log(`[workspace-sync] Removed ${orphansRemoved} orphan DB records`)
-  if (malformed.length > 0) {
-    console.log(`[workspace-sync] ${malformed.length} malformed folder(s) detected:`)
-    for (const m of malformed) {
-      console.log(`  - ${m.name} (${m.reason})`)
-    }
-  }
 }
 
 /**
@@ -369,7 +356,6 @@ export function syncSingleCase(caseFolderPath: string): void {
   // If the folder was deleted, remove the DB record, filesystem is truth
   if (!existsSync(caseFolderPath)) {
     db.prepare('DELETE FROM cases WHERE case_number = ?').run(caseNumber)
-    console.log(`[workspace-sync] ${caseNumber} folder deleted, removed from DB`)
     return
   }
 
@@ -391,7 +377,6 @@ export function syncSingleCase(caseFolderPath: string): void {
         last_modified = date('now')
       WHERE case_id = ?
     `).run(scan.inferredStage, scan.inferredStatus, existing.case_id)
-    console.log(`[workspace-sync] ${caseNumber} updated: ${existing.workflow_current_stage} → ${scan.inferredStage}, ${existing.case_status} → ${scan.inferredStatus}`)
   }
 }
 
@@ -534,7 +519,6 @@ export function watchWorkspace(root: string): void {
 
   const broadcastRefresh = (): void => {
     const windows = BrowserWindow.getAllWindows()
-    console.log(`[watcher] broadcasting refresh to ${windows.length} window(s)`)
     for (const win of windows) {
       if (!win.isDestroyed()) {
         win.webContents.send('workspace:file-changed', { event: 'sync-complete', path: root })
@@ -553,7 +537,6 @@ export function watchWorkspace(root: string): void {
 
     if (syncTimer) clearTimeout(syncTimer)
     syncTimer = setTimeout(() => {
-      console.log(`[watcher] syncing ${pendingCaseFolders.size} case folder(s)`)
       for (const cfp of pendingCaseFolders) {
         syncSingleCase(cfp)
       }
@@ -566,7 +549,6 @@ export function watchWorkspace(root: string): void {
   }
 
   watcher.on('ready', () => {
-    console.log('[watcher] Ready, watching for changes')
   })
 
   watcher.on('error', (err) => {
@@ -574,19 +556,15 @@ export function watchWorkspace(root: string): void {
   })
 
   watcher.on('add', (filePath) => {
-    console.log(`[watcher] add: ${filePath}`)
     scheduleSync(filePath)
   })
   watcher.on('change', (filePath) => {
-    console.log(`[watcher] change: ${filePath}`)
     scheduleSync(filePath)
   })
   watcher.on('unlink', (filePath) => {
-    console.log(`[watcher] unlink: ${filePath}`)
     scheduleSync(filePath)
   })
   watcher.on('addDir', (dirPath) => {
-    console.log(`[watcher] addDir: ${dirPath}`)
     // If a new top-level folder was added, do a full sync (might be a new case)
     const parentDir = dirPath.split('/').slice(0, -1).join('/')
     if (parentDir === root) {
@@ -597,7 +575,6 @@ export function watchWorkspace(root: string): void {
     }
   })
   watcher.on('unlinkDir', (dirPath) => {
-    console.log(`[watcher] unlinkDir: ${dirPath}`)
     // If a top-level folder was removed, do a full sync (handles orphan cleanup)
     const parentDir = dirPath.split('/').slice(0, -1).join('/')
     if (parentDir === root) {

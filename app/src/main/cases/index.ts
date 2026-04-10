@@ -131,7 +131,6 @@ export function updateCase(params: CasesUpdateParams): CaseRow {
   const sql = `UPDATE cases SET ${setClauses.join(', ')} WHERE case_id = @case_id`
   sqlite.prepare(sql).run(values)
 
-  console.log(`[cases] Updated case ${params.case_id}: ${setClauses.join(', ')}`)
   return getCaseById(params.case_id)!
 }
 
@@ -289,7 +288,6 @@ export function saveIntake(caseId: number, data: Omit<PatientIntakeRow, 'intake_
     sqlite.prepare(
       "UPDATE cases SET evaluation_type = ?, last_modified = datetime('now') WHERE case_id = ?"
     ).run(data.eval_type, caseId)
-    console.log(`[cases] Synced evaluation_type to '${data.eval_type}' for case ${caseId}`)
   }
 
   return getIntake(caseId)!

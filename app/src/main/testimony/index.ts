@@ -151,8 +151,6 @@ export async function prepareTestimonyPackage(caseId: number): Promise<Testimony
   await fsPromises.writeFile(auditPath, auditCsv, 'utf-8')
   files.push('audit_trail.csv')
 
-  console.log(`[testimony] Prepared package: ${exportDir}`)
-
   return {
     exportDir,
     files,

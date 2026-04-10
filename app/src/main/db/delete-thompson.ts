@@ -37,7 +37,6 @@ const CHILD_TABLES = [
   'reports',
   'writer_drafts',
   'diagnoses',
-  'gate_reviews',
   'agent_runs',
   'test_administrations',
   'documents',
@@ -58,7 +57,6 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  console.log('[delete-thompson] deriving encryption key...')
   const keyBuffer = (await argon2.hash(DEV_PASSPHRASE, {
     type: argon2.argon2id,
     memoryCost: 65536,
@@ -82,7 +80,6 @@ async function main(): Promise<void> {
       )
       .get() as { n: number }
   ).n
-  console.log(`[delete-thompson] DB opened. ${tableCount} tables.`)
 
   // Find Thompson cases via patient_intake (cases table doesn't carry the
   // patient name directly in this schema). LIKE is case-insensitive on
@@ -99,18 +96,11 @@ async function main(): Promise<void> {
     .all() as CaseRow[]
 
   if (thompsonCases.length === 0) {
-    console.log('[delete-thompson] No Thompson cases found. Nothing to do.')
     sqlite.close()
     return
   }
 
-  console.log(`[delete-thompson] Found ${thompsonCases.length} Thompson case(s):`)
-  for (const row of thompsonCases) {
-    console.log(`  • case_id=${row.case_id}  ${row.patient_first_name ?? '?'} ${row.patient_last_name ?? '?'}`)
-  }
-
   if (DRY_RUN) {
-    console.log('[delete-thompson] --dry-run set; no changes made.')
     sqlite.close()
     return
   }
@@ -129,16 +119,13 @@ async function main(): Promise<void> {
           sqlite
             .prepare(`DELETE FROM ${table} WHERE case_id IN (${placeholders})`)
             .run(...caseIds)
-          console.log(`  ✓ ${table}: deleted ${info.n} row(s)`)
         }
-      } catch (err) {
-        console.log(`  ⚠ ${table}: ${(err as Error).message}`)
+      } catch {
       }
     }
     const casesDeleted = sqlite
       .prepare(`DELETE FROM cases WHERE case_id IN (${placeholders})`)
       .run(...caseIds)
-    console.log(`  ✓ cases: deleted ${casesDeleted.changes} row(s)`)
   })
   tx()
   sqlite.pragma('foreign_keys = ON')
@@ -152,10 +139,7 @@ async function main(): Promise<void> {
         WHERE LOWER(pi.last_name) = 'thompson'`,
     )
     .get() as { n: number }
-  console.log(`[delete-thompson] Remaining Thompson cases: ${remaining.n}`)
-
   sqlite.close()
-  console.log('[delete-thompson] Done. Relaunch the app to verify the UI is clean.')
 }
 
 main().catch((err) => {

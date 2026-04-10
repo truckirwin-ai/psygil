@@ -14,10 +14,12 @@ import type {
   DiagnosticianRunParams, DiagnosticianRunResult, DiagnosticianGetResultParams,
   WriterRunParams, WriterRunResult, WriterGetResultParams,
   EditorRunParams, EditorRunResult, EditorGetResultParams,
+  PsychometricianRunParams, PsychometricianRunResult, PsychometricianGetResultParams,
 } from '../../shared/types'
 import { runAgent, isValidAgentType, type AgentConfig } from './runner'
 import { retrieveApiKey } from '../ai/key-storage'
 import { runIngestorAgent, getLatestIngestorResult } from './ingestor'
+import { runPsychometricianAgent, getLatestPsychometricianResult } from './psychometrician'
 import { runDiagnosticianAgent, getLatestDiagnosticianResult } from './diagnostician'
 import { runWriterAgent, getLatestWriterResult } from './writer'
 import { runEditorAgent, getLatestEditorResult } from './editor'
@@ -281,6 +283,50 @@ export function registerAgentHandlers(): void {
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to get ingestor result'
         return fail('INGESTOR_GET_FAILED', message)
+      }
+    }
+  )
+
+  // -----------------------------------------------------------------------
+  // Psychometrician handlers
+  // -----------------------------------------------------------------------
+
+  ipcMain.handle(
+    'psychometrician:run',
+    async (
+      _event: Electron.IpcMainInvokeEvent,
+      params: PsychometricianRunParams
+    ): Promise<IpcResponse<PsychometricianRunResult>> => {
+      try {
+        const result = await runPsychometricianAgent(params.caseId)
+        return ok({
+          operationId: result.operationId,
+          caseId: result.caseId,
+          status: result.status,
+          result: result.result,
+          error: result.error,
+          tokenUsage: result.tokenUsage,
+          durationMs: result.durationMs,
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Psychometrician failed'
+        return fail('PSYCHOMETRICIAN_RUN_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'psychometrician:getResult',
+    (_event: Electron.IpcMainInvokeEvent, params: PsychometricianGetResultParams): IpcResponse<unknown> => {
+      try {
+        const result = getLatestPsychometricianResult(params.caseId)
+        if (!result) {
+          return fail('NO_RESULT', 'No psychometrician result found for this case')
+        }
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get psychometrician result'
+        return fail('PSYCHOMETRICIAN_GET_FAILED', message)
       }
     }
   )

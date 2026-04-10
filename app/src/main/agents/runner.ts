@@ -1,7 +1,7 @@
 /**
  * Psygil Agent Runner Framework
  *
- * Generic agent executor shared by all 4 agents (Ingestor, Diagnostician, Writer, Editor).
+ * Generic agent executor shared by all 5 agents (Ingestor, Psychometrician, Diagnostician, Writer, Editor).
  * Coordinates the PII redaction → Claude API → rehydration pipeline.
  *
  * The runner lives in the main process and calls sidecar functions directly (not via IPC).
@@ -15,7 +15,7 @@ import { redact, rehydrate, destroyMap } from '../pii/pii_detector'
 // Types
 // ---------------------------------------------------------------------------
 
-export type AgentType = 'ingestor' | 'diagnostician' | 'writer' | 'editor'
+export type AgentType = 'ingestor' | 'psychometrician' | 'diagnostician' | 'writer' | 'editor'
 
 /**
  * Configuration for running an agent.
@@ -180,7 +180,7 @@ export async function runAgent<T = unknown>(
 export function isValidAgentType(value: unknown): value is AgentType {
   return (
     typeof value === 'string' &&
-    ['ingestor', 'diagnostician', 'writer', 'editor'].includes(value)
+    ['ingestor', 'psychometrician', 'diagnostician', 'writer', 'editor'].includes(value)
   )
 }
 

@@ -386,36 +386,7 @@ function createTestSchema(db: InstanceType<typeof import('better-sqlite3')>): vo
       created_at TEXT NOT NULL DEFAULT (date('now'))
     );
 
-    -- 13. Gate Reviews
-    CREATE TABLE IF NOT EXISTS gate_reviews (
-      gate_review_id INTEGER PRIMARY KEY AUTOINCREMENT,
-      case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
-      gate_number INTEGER NOT NULL CHECK (gate_number IN (1, 2, 3)),
-      gate_purpose TEXT NOT NULL,
-      reviewer_user_id INTEGER NOT NULL REFERENCES users(user_id),
-      review_date TEXT NOT NULL DEFAULT (date('now')),
-      review_status TEXT NOT NULL DEFAULT 'pending'
-        CHECK (review_status IN ('pending', 'in_progress', 'completed', 'requires_revision')),
-      notes TEXT,
-      UNIQUE (case_id, gate_number)
-    );
-
-    -- 14. Gate Decisions
-    CREATE TABLE IF NOT EXISTS gate_decisions (
-      decision_id INTEGER PRIMARY KEY AUTOINCREMENT,
-      gate_review_id INTEGER NOT NULL REFERENCES gate_reviews(gate_review_id) ON DELETE CASCADE,
-      case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
-      decision_type TEXT NOT NULL
-        CHECK (decision_type IN ('data_confirmed', 'diagnosis_selected', 'diagnosis_ruled_out', 'attestation', 'other')),
-      subject_entity_type TEXT,
-      subject_entity_id INTEGER,
-      actor_user_id INTEGER NOT NULL REFERENCES users(user_id),
-      decision_rationale TEXT,
-      decision_date TEXT NOT NULL DEFAULT (date('now')),
-      is_final INTEGER DEFAULT 0
-    );
-
-    -- 15. Diagnoses
+    -- 13. Diagnoses
     CREATE TABLE IF NOT EXISTS diagnoses (
       diagnosis_record_id INTEGER PRIMARY KEY AUTOINCREMENT,
       case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
@@ -434,7 +405,7 @@ function createTestSchema(db: InstanceType<typeof import('better-sqlite3')>): vo
       agent_run_id INTEGER PRIMARY KEY AUTOINCREMENT,
       case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
       agent_type TEXT NOT NULL
-        CHECK (agent_type IN ('diagnostician', 'writer', 'validator', 'ingestor', 'editor')),
+        CHECK (agent_type IN ('diagnostician', 'writer', 'validator', 'ingestor', 'psychometrician', 'editor')),
       agent_version TEXT,
       input_hash TEXT,
       input_summary TEXT,

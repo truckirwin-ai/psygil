@@ -159,7 +159,6 @@ export function runMigrations(sqlite: InstanceType<typeof Database>): void {
   for (const migration of MIGRATIONS) {
     if (applied.has(migration.id)) continue
 
-    console.log(`[migrations] Applying: ${migration.id}, ${migration.description}`)
     const tx = sqlite.transaction(() => {
       if (migration.id === '007_six_stage_pipeline') {
         // SQLite doesn't support ALTER COLUMN, so we recreate the table with updated CHECK.
@@ -264,7 +263,6 @@ export function runMigrations(sqlite: InstanceType<typeof Database>): void {
           CREATE INDEX IF NOT EXISTS idx_data_confirmation_case_id ON data_confirmation(case_id);
         `)
 
-        console.log('[migrations] Migrated workflow_current_stage to 6-stage pipeline')
       } else if (migration.id === '006_update_prototype_case_stages') {
         // Update each prototype case with correct stage, eval_type, referral_source, and charges
         const cols = (sqlite.pragma('table_info(cases)') as Array<{ name: string }>).map((c) => c.name)
@@ -315,7 +313,6 @@ export function runMigrations(sqlite: InstanceType<typeof Database>): void {
             CREATE INDEX IF NOT EXISTS idx_patient_intake_case_id ON patient_intake(case_id);
             CREATE INDEX IF NOT EXISTS idx_patient_intake_status ON patient_intake(status);
           `)
-          console.log('[migrations] Expanded patient_intake referral types')
         }
       } else {
         sqlite.exec(migration.sql)
@@ -326,6 +323,5 @@ export function runMigrations(sqlite: InstanceType<typeof Database>): void {
       )
     })
     tx()
-    console.log(`[migrations] Applied: ${migration.id}`)
   }
 }

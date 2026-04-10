@@ -84,7 +84,6 @@ export async function generateReportDocx(
   // Write to file
   await fsPromises.writeFile(filePath, bytes)
 
-  console.log('[docx-generator] Generated:', filePath)
   return { filePath, version }
 }
 

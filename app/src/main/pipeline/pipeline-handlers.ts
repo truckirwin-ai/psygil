@@ -40,7 +40,6 @@ function fail(error_code: string, message: string): IpcResponse<never> {
 // Broadcast a cases:changed event so renderer can refresh kanban/lists
 function broadcastCasesChanged(caseId: number, newStage: string, previousStage: string): void {
   const windows = BrowserWindow.getAllWindows()
-  console.log(`[pipeline] broadcasting cases:changed to ${windows.length} window(s) (case ${caseId}: ${previousStage} → ${newStage})`)
   for (const win of windows) {
     if (!win.isDestroyed()) {
       win.webContents.send('cases:changed', { caseId, newStage, previousStage })
@@ -120,7 +119,6 @@ function handlePipelineSetStage(
     db.prepare('UPDATE cases SET workflow_current_stage = ?, case_status = ?, last_modified = datetime(\'now\') WHERE case_id = ?')
       .run(params.stage, newStatus, params.caseId)
 
-    console.log(`[pipeline] Stage set: case ${params.caseId} ${previousStage} → ${params.stage}`)
     broadcastCasesChanged(params.caseId, params.stage, previousStage)
     return ok({ success: true, newStage: params.stage, previousStage })
   } catch (error) {
@@ -161,6 +159,4 @@ export function registerPipelineHandlers(): void {
   ipcMain.handle('pipeline:advance', handlePipelineAdvance)
   ipcMain.handle('pipeline:set-stage', handlePipelineSetStage)
   ipcMain.handle('pipeline:conditions', handlePipelineConditions)
-
-  console.log('[pipeline] IPC handlers registered: pipeline:check, pipeline:advance, pipeline:set-stage, pipeline:conditions')
 }

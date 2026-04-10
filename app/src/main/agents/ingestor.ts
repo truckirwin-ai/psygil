@@ -289,7 +289,7 @@ function saveIngestorResult(
       CREATE TABLE IF NOT EXISTS agent_results (
         result_id INTEGER PRIMARY KEY AUTOINCREMENT,
         case_id INTEGER NOT NULL REFERENCES cases(case_id),
-        agent_type TEXT NOT NULL CHECK(agent_type IN ('ingestor', 'diagnostician', 'writer', 'editor')),
+        agent_type TEXT NOT NULL CHECK(agent_type IN ('ingestor', 'psychometrician', 'diagnostician', 'writer', 'editor')),
         operation_id TEXT NOT NULL,
         result_json TEXT NOT NULL,
         version TEXT NOT NULL DEFAULT '1.0',

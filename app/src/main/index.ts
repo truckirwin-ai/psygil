@@ -152,10 +152,8 @@ app.whenReady().then(async () => {
   // to allow starting with a genuinely empty database.
   try {
     if (shouldSeedDemoCases()) {
-      console.log('[main] Demo seed trigger detected, seeding 42 cases...')
       seedDemoCases()
     } else {
-      console.log('[main] No demo seed trigger, skipping demo seed.')
     }
   } catch (err) {
     console.error('[main] Demo seed failed (non-fatal):', err)
@@ -169,16 +167,7 @@ app.whenReady().then(async () => {
       const wsPath = loadWorkspacePath()
       if (wsPath !== null) {
         const overwrite = process.env['PSYGIL_SEED_OVERWRITE'] === '1'
-        console.log(
-          `[main] PSYGIL_SEED_REALISTIC=1, seeding 10 realistic cases into ${wsPath} (overwrite=${String(overwrite)})`,
-        )
-        const results = seedRealisticCases({ projectRoot: wsPath, overwrite })
-        for (const r of results) {
-          console.log(
-            `  ${r.caseNumber.padEnd(18)} stage=${r.stage.padEnd(12)} docs=${r.documentsWritten} skipped=${r.documentsSkipped}`,
-          )
-        }
-        console.log(`[main] Realistic case seeding complete: ${results.length} cases.`)
+        seedRealisticCases({ projectRoot: wsPath, overwrite })
       } else {
         console.warn('[main] PSYGIL_SEED_REALISTIC set but no workspace path configured.')
       }

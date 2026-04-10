@@ -184,13 +184,11 @@ const STAGE_MAP: Record<string, string> = {
 }
 
 async function main() {
-  console.log('[demo-seed] Initializing database...')
   await initDb()
   const db = getSqlite()
 
   // Ensure demo workspace exists
   ensureFolder(DEMO_WORKSPACE)
-  console.log(`[demo-seed] Demo workspace: ${DEMO_WORKSPACE}`)
 
   // Ensure a demo user exists (user_id=1)
   const existingUser = db.prepare('SELECT user_id FROM users WHERE user_id = 1').get()
@@ -199,7 +197,6 @@ async function main() {
       INSERT INTO users (user_id, email, full_name, role, credentials, is_active, created_at)
       VALUES (1, 'demo@psygil.com', 'Dr. Demo Clinician', 'psychologist', 'Ph.D., ABPP', 1, CURRENT_DATE)
     `).run()
-    console.log('[demo-seed] Created demo user (user_id=1)')
   }
 
   let inserted = 0
@@ -209,7 +206,6 @@ async function main() {
     // Check if case already exists
     const existing = db.prepare('SELECT case_id FROM cases WHERE case_number = ?').get(c.case_number)
     if (existing) {
-      console.log(`[demo-seed] Skip (exists): ${c.case_number}`)
       skipped++
       continue
     }
@@ -254,13 +250,9 @@ async function main() {
       )
     }
 
-    console.log(`[demo-seed] Inserted: ${c.case_number}, ${c.last}, ${c.first} (${c.eval_type} / ${c.status})`)
     inserted++
   }
 
-  console.log(`\n[demo-seed] Done. Inserted: ${inserted}, Skipped: ${skipped}`)
-  console.log(`[demo-seed] Demo workspace: ${DEMO_WORKSPACE}`)
-  console.log(`[demo-seed] Point Psygil to this folder on first launch to see demo cases.\n`)
 }
 
 main().catch(err => {

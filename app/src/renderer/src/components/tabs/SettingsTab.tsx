@@ -507,7 +507,6 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
   // Step 3: Transition to Stage 2 (PII removal via Presidio)
   // Step 4: Transition to Stage 3 (voice/style analysis)
   const startUploadPipeline = useCallback(async () => {
-    console.log('[WritingSamples] Pipeline started, opening file picker...')
     // Pick files FIRST via the OS dialog, before showing our modal.
     let selectedPaths: string[] = []
     try {
@@ -515,13 +514,10 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
         title: 'Select Writing Samples for Voice Analysis',
         extensions: ['docx', 'doc', 'pdf', 'txt', 'rtf', 'md'],
       })
-      console.log('[WritingSamples] pickFilesFrom response:', pickResp)
       if (pickResp.status !== 'success' || !pickResp.data?.filePaths || pickResp.data.filePaths.length === 0) {
-        console.log('[WritingSamples] No files selected or cancelled')
         return
       }
       selectedPaths = [...pickResp.data.filePaths]
-      console.log('[WritingSamples] Selected paths:', selectedPaths)
     } catch (pickErr) {
       console.error('[WritingSamples] File picker error:', pickErr)
       return
@@ -534,7 +530,6 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
     })
 
     // Now show the modal at Stage 1 with the selected files
-    console.log('[WritingSamples] Showing modal with', selectedFilenames.length, 'files')
     setPipeline({
       ...INITIAL_PIPELINE,
       stage: 'uploading',

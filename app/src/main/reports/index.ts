@@ -130,7 +130,6 @@ export async function generateSealedPdf(docxPath: string, outputPath: string): P
       docxPath
     ], { timeout: 30000 })
 
-    console.log('[reports] PDF generated via LibreOffice:', outputPath)
   } catch (error) {
     console.warn('[reports] LibreOffice conversion failed:', error)
     console.warn('[reports] Falling back: PDF conversion must be done manually')
@@ -200,7 +199,6 @@ export function submitAttestation(params: AttestationParams): SubmitAttestationR
   const content = fs.readFileSync(draftDocxPath)
   fs.writeFileSync(finalDocxPath, content)
 
-  console.log('[reports] Copied final DOCX:', finalDocxPath)
 
   // 4. Generate PDF from the DOCX
   let pdfPath: string | null = null

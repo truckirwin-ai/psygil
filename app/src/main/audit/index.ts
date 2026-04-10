@@ -76,8 +76,6 @@ export function logAuditEntry(params: AuditEntry): number {
 
   const auditLogId = (result.lastInsertRowid ?? 0) as number
 
-  console.log(`[audit] Logged: case_id=${params.caseId}, action=${params.actionType}, audit_log_id=${auditLogId}`)
-
   return auditLogId
 }
 

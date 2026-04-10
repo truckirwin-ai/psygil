@@ -85,7 +85,6 @@ export async function checkForUpdates(): Promise<{
     })
 
     if (!res.ok) {
-      console.log('[updater] No update available (HTTP', res.status, ')')
       return { available: false }
     }
 
@@ -100,7 +99,6 @@ export async function checkForUpdates(): Promise<{
     const platformInfo = manifest.platforms[platformKey] ?? manifest.platforms[platform]
 
     if (!platformInfo) {
-      console.log(`[updater] No update for platform ${platformKey}`)
       return { available: false }
     }
 
@@ -110,7 +108,6 @@ export async function checkForUpdates(): Promise<{
       return { available: false }
     }
 
-    console.log(`[updater] Update available: ${currentVersion} → ${manifest.version}`)
     return {
       available: true,
       version: manifest.version,
@@ -172,7 +169,6 @@ export async function downloadUpdate(version: string): Promise<string | null> {
       return null
     }
 
-    console.log('[updater] Download verified:', downloadPath)
     return downloadPath
   } catch (err) {
     console.error('[updater] Download failed:', (err as Error).message)

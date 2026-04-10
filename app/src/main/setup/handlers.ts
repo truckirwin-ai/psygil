@@ -468,14 +468,7 @@ export function registerSetupHandlers(): void {
         // So in dev we log instructions and leave the DB alone; the user
         // can Cmd+R the renderer and will see the old data until they
         // manually restart `npm run dev`. Tell them clearly.
-        const isDev = !app.isPackaged
-        if (isDev) {
-          console.log(
-            '[setup] Setup complete. Dev mode detected, skipping auto-relaunch.\n' +
-              '         Restart `npm run dev` to pick up the new project root\n' +
-              '         and see the clean database.',
-          )
-        } else {
+        if (app.isPackaged) {
           setTimeout(() => {
             try {
               app.relaunch()

@@ -28,6 +28,8 @@ import type {
   WriterGetResultParams,
   EditorRunParams,
   EditorGetResultParams,
+  PsychometricianRunParams,
+  PsychometricianGetResultParams,
   PipelineCheckParams,
   PipelineAdvanceParams,
   PipelineSetStageParams,
@@ -227,6 +229,11 @@ const api: PsygilApi = {
   editor: {
     run: (params: EditorRunParams) => ipcRenderer.invoke('editor:run', params),
     getResult: (params: EditorGetResultParams) => ipcRenderer.invoke('editor:getResult', params),
+  },
+
+  psychometrician: {
+    run: (params: PsychometricianRunParams) => ipcRenderer.invoke('psychometrician:run', params),
+    getResult: (params: PsychometricianGetResultParams) => ipcRenderer.invoke('psychometrician:getResult', params),
   },
 
   pipeline: {

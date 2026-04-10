@@ -516,7 +516,6 @@ export default function IntakeOnboardingModal({
               caseId: targetCaseId,
               stage: 'testing',
             })
-            console.log(`[intake] Completed intake for case ${targetCaseId}, advanced to testing`)
           } catch (err) {
             console.error('[intake] Post-completion updates failed (non-fatal):', err)
           }

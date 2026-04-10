@@ -1622,7 +1622,6 @@ export function seedResources(workspacePath: string): number {
     } catch { return false }
   }
   if (hasRealDocs(writingSamplesDir) || hasRealDocs(templatesDir) || hasRealDocs(documentationDir)) {
-    console.log('[seed] Resources already seeded, skipping')
     return 0
   }
 
@@ -1643,6 +1642,5 @@ export function seedResources(workspacePath: string): number {
     count++
   }
 
-  console.log(`[seed] Seeded ${count} resource files across 3 categories`)
   return count
 }

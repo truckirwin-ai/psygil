@@ -144,7 +144,6 @@ function registerCasesHandlers(): void {
     (_event, _params?: CasesListParams): IpcResponse<CasesListResult> => {
       try {
         const cases = listCases()
-        console.log('[cases:list] returning', cases.length, 'cases')
         return ok({ cases, total: cases.length })
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to list cases'
@@ -646,7 +645,7 @@ function registerPiiHandlers(): void {
   // sidecar is ready, instead of silently freezing.
   spawnSidecar()
     .then((info) => {
-      console.log(`[PII] Sidecar ready, PID ${info.pid}`)
+      void info
     })
     .catch((err: Error) => {
       console.warn(
@@ -908,7 +907,6 @@ function registerOnlyOfficeHandlers(): void {
     async (): Promise<IpcResponse<{ port: number; jwtSecret: string }>> => {
       try {
         const result = await startDocumentServer()
-        console.log('[onlyoffice:start] Document Server started on port', result.port)
         return ok(result)
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to start Document Server'
@@ -923,7 +921,6 @@ function registerOnlyOfficeHandlers(): void {
     async (): Promise<IpcResponse<void>> => {
       try {
         await stopDocumentServer()
-        console.log('[onlyoffice:stop] Document Server stopped')
         return ok(undefined)
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to stop Document Server'
@@ -987,7 +984,6 @@ function registerOnlyOfficeHandlers(): void {
 
         // Generate docx
         const result = await generateReportDocx(params.caseId, writerOutput, editorOutput)
-        console.log('[onlyoffice:generateDocx] Generated:', result.filePath)
         return ok(result)
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to generate DOCX'
@@ -1266,7 +1262,6 @@ function registerReportHandlers(): void {
 
         const buffer = await Pkr.toBuffer(doc)
         writeFileSync(filePath, buffer)
-        console.log('[report:exportAndOpen] Saved:', filePath)
 
         // Open in default application (MS Word)
         void shell.openPath(filePath)
@@ -2067,7 +2062,6 @@ function registerResourcesHandlers(): void {
           })
         }
 
-        console.log(`[resources:upload] Imported ${imported.length} files to ${params.category}, stripped ${totalPhiStripped} PHI instances`)
         return ok({ imported, phiStripped: totalPhiStripped })
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Resource upload failed'
@@ -2379,7 +2373,6 @@ function registerResourcesHandlers(): void {
               // We keep them as-is because the Writer Agent only needs the structure
               // and voice, not the specific placeholder format.
 
-              console.log(`[resources:uploadWritingSample] Presidio stripped ${entityCount} PHI entities from ${originalFilename}:`, typeBreakdown)
             } catch (redactErr) {
               console.warn(`[resources:uploadWritingSample] Presidio redaction failed for ${originalFilename}, falling back to regex:`, redactErr)
               // Destroy map on error too, in case it was partially created
@@ -2436,7 +2429,6 @@ function registerResourcesHandlers(): void {
           })
         }
 
-        console.log(`[resources:uploadWritingSample] Processed ${imported.length} files, stripped ${totalPhiStripped} total PHI entities (sidecar=${sidecarAvailable})`)
         return ok({ imported, reports, totalPhiStripped, sidecarAvailable })
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Writing sample upload failed'

@@ -96,7 +96,6 @@ async function writeDocx(children: any[], filePath: string): Promise<void> {
   const doc = new Document({ sections: [{ children }] })
   const buf = await Packer.toBuffer(doc)
   await fsPromises.writeFile(filePath, buf)
-  console.log(`[case-docs] Wrote: ${filePath}`)
 }
 
 // ---------------------------------------------------------------------------

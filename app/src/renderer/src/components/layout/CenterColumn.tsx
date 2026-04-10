@@ -2888,9 +2888,6 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
         try {
           const resp = await window.psygil.whisper.streamStart({ sessionId })
           liveStreamActiveRef.current = resp.status === 'success'
-          if (liveStreamActiveRef.current) {
-            console.log(`[Audio] Live stream started for session ${sessionId}`)
-          }
         } catch (err) {
           console.warn('[Audio] Live stream start failed:', err)
           liveStreamActiveRef.current = false
@@ -2922,9 +2919,6 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
             const b64 = float32ToBase64(pcmCopy)
 
             pcmChunkCountRef.current += 1
-            if (pcmChunkCountRef.current <= 3 || pcmChunkCountRef.current % 20 === 0) {
-              console.log(`[Audio] PCM chunk #${pcmChunkCountRef.current}: ${pcmCopy.length} samples, ${b64.length} b64 chars`)
-            }
 
             window.psygil?.whisper?.streamAudio({
               sessionId: activeSessionIdForStreamRef.current ?? '',
@@ -2936,7 +2930,6 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
           scriptNode.connect(pcmCtx.destination) // must connect to keep node alive
           pcmAudioContextRef.current = pcmCtx
           pcmScriptNodeRef.current = scriptNode
-          console.log(`[Audio] PCM ScriptProcessorNode started at ${pcmCtx.sampleRate} Hz`)
         } catch (err) {
           console.warn('[Audio] ScriptProcessor setup failed, live transcription may not work:', err)
         }
@@ -3029,7 +3022,6 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
       })
 
       if (resp.status === 'success') {
-        console.log(`[Audio] Saved: ${resp.data.filePath} (${(resp.data.sizeBytes / 1024).toFixed(1)} KB)`)
         return resp.data.filePath
       }
       console.error('[Audio] Save failed:', resp.error)
@@ -3115,7 +3107,6 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
   useEffect(() => {
     const whisper = window.psygil?.whisper
     if (!whisper?.onLiveText) {
-      console.log('[InterviewsSubTab] Live transcription listener not available (rebuild needed)')
       return
     }
     const off = whisper.onLiveText((data) => {
@@ -3207,7 +3198,6 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
           pendingTextRef.current = ''
           pendingTimestampRef.current = ''
         }
-        console.log(`[Transcribe] Final transcript for ${data.sessionId}: ${data.text.length} chars`)
       } else if (data.type === 'error') {
         setSessions((prev) => prev.map((s) => {
           if (s.id !== data.sessionId) return s
@@ -3223,9 +3213,7 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
    * Runs in the background after recording stops, does not block the UI.
    */
   const generateSessionSummary = useCallback(async (sessionId: string, transcript: string) => {
-    console.log(`[Summary] generateSessionSummary called for ${sessionId}, transcript length: ${transcript?.length ?? 0}`)
     if (!transcript || transcript.trim().length < 40) {
-      console.log('[Summary] Transcript too short for summary generation, skipping')
       return
     }
 
@@ -3233,7 +3221,6 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
     const patientName = caseRow.patient_name ?? 'the patient'
     const evalType = caseRow.evaluation_type ?? 'forensic psychological evaluation'
 
-    console.log(`[Summary] Calling Claude API for session ${sessionId}...`)
     try {
       const resp = await window.psygil.ai.complete({
         systemPrompt: `You are a forensic psychology clinical assistant. Generate a concise, professional interview session summary from the provided transcript. The summary should be written in clinical language appropriate for a forensic psychological evaluation report.
@@ -3256,7 +3243,6 @@ Generate the clinical interview session summary.`,
         maxTokens: 1024,
       })
 
-      console.log(`[Summary] Claude API response status: ${resp.status}`, resp)
       if (resp.status === 'success' && resp.data?.content) {
         setSessions((prev) => {
           const updated = prev.map((s) =>
@@ -3266,7 +3252,6 @@ Generate the clinical interview session summary.`,
           void saveInterviewData(updated)
           return updated
         })
-        console.log(`[Summary] Generated summary for session ${sessionId} (${resp.data.content.length} chars)`)
       } else {
         // AI call failed, set a fallback message so the spinner stops
         console.warn('[Summary] AI completion failed:', resp)
@@ -3349,7 +3334,6 @@ Generate the clinical interview session summary.`,
       .replace(/^\[[\d:]+\]\s*/gm, '')  // remove [MM:SS] prefixes
       .replace(/^\[Audio .*\]$/gm, '')   // remove [Audio saved: ...] lines
       .trim()
-    console.log(`[Summary] Sending transcript to Claude (${cleanTranscript.length} chars)`)
     generateSessionSummary(sessionId, cleanTranscript)
   }, [activeSession, stopMediaCapture, saveAudioFile, generateSessionSummary])
 

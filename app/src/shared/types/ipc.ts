@@ -605,6 +605,31 @@ export interface EditorGetResultParams {
 }
 
 // ---------------------------------------------------------------------------
+// Psychometrician Agent
+// ---------------------------------------------------------------------------
+
+export interface PsychometricianRunParams {
+  readonly caseId: number
+}
+
+export interface PsychometricianRunResult {
+  readonly operationId: string
+  readonly caseId: number
+  readonly status: 'success' | 'error'
+  readonly result?: unknown
+  readonly error?: string
+  readonly tokenUsage?: {
+    readonly input: number
+    readonly output: number
+  }
+  readonly durationMs: number
+}
+
+export interface PsychometricianGetResultParams {
+  readonly caseId: number
+}
+
+// ---------------------------------------------------------------------------
 // Pipeline Stage Advancement
 // ---------------------------------------------------------------------------
 
@@ -1278,6 +1303,10 @@ export interface PsygilApi {
   readonly editor: {
     readonly run: (params: EditorRunParams) => Promise<IpcResponse<EditorRunResult>>
     readonly getResult: (params: EditorGetResultParams) => Promise<IpcResponse<unknown>>
+  }
+  readonly psychometrician: {
+    readonly run: (params: PsychometricianRunParams) => Promise<IpcResponse<PsychometricianRunResult>>
+    readonly getResult: (params: PsychometricianGetResultParams) => Promise<IpcResponse<unknown>>
   }
   readonly pipeline: {
     readonly check: (params: PipelineCheckParams) => Promise<IpcResponse<PipelineCheckResult>>

@@ -82,15 +82,9 @@ SELECT
     c.case_id,
     c.case_number,
     c.workflow_current_stage,
-    COALESCE(g1.review_status, 'pending') AS gate_1_status,
-    COALESCE(g2.review_status, 'pending') AS gate_2_status,
-    COALESCE(g3.review_status, 'pending') AS gate_3_status,
     COUNT(DISTINCT r.report_id) AS report_count,
     MAX(CASE WHEN r.status = 'finalized' THEN r.finalized_at END) AS last_finalization_date
 FROM cases c
-LEFT JOIN gate_reviews g1 ON c.case_id = g1.case_id AND g1.gate_number = 1
-LEFT JOIN gate_reviews g2 ON c.case_id = g2.case_id AND g2.gate_number = 2
-LEFT JOIN gate_reviews g3 ON c.case_id = g3.case_id AND g3.gate_number = 3
 LEFT JOIN reports r ON c.case_id = r.case_id
 GROUP BY c.case_id;
 
@@ -104,15 +98,12 @@ SELECT
     u.full_name AS clinician_name,
     COUNT(DISTINCT t.test_admin_id) AS test_count,
     COUNT(DISTINCT d.document_id) AS document_count,
-    g2.review_status,
-    g2.reviewer_user_id,
     c.created_at
 FROM cases c
 LEFT JOIN users u ON c.primary_clinician_user_id = u.user_id
 LEFT JOIN test_administrations t ON c.case_id = t.case_id
 LEFT JOIN documents d ON c.case_id = d.case_id
-LEFT JOIN gate_reviews g2 ON c.case_id = g2.case_id AND g2.gate_number = 2
-WHERE c.workflow_current_stage = 'gate_2'
+WHERE c.workflow_current_stage = 'diagnostics'
 GROUP BY c.case_id;
 
 CREATE VIEW IF NOT EXISTS v_finalization_queue AS
@@ -211,17 +202,6 @@ BEGIN
     UPDATE cases SET last_modified = CURRENT_DATE WHERE case_id = NEW.case_id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS tr_gate_review_audit
-AFTER UPDATE ON gate_reviews
-FOR EACH ROW
-WHEN NEW.review_status = 'completed' AND OLD.review_status != 'completed'
-BEGIN
-    INSERT INTO audit_log (case_id, action_type, actor_user_id, details)
-    VALUES (
-        NEW.case_id,
-        'gate_completed',
-        NEW.reviewer_user_id,
-        'Gate ' || NEW.gate_number || ' completed with status: ' || NEW.review_status
     );
 END;
 
@@ -298,7 +278,7 @@ END;
 CREATE TABLE IF NOT EXISTS agent_results (
     result_id INTEGER PRIMARY KEY AUTOINCREMENT,
     case_id INTEGER NOT NULL REFERENCES cases(case_id),
-    agent_type TEXT NOT NULL CHECK(agent_type IN ('ingestor', 'diagnostician', 'writer', 'editor')),
+    agent_type TEXT NOT NULL CHECK(agent_type IN ('ingestor', 'psychometrician', 'diagnostician', 'writer', 'editor')),
     operation_id TEXT NOT NULL,
     result_json TEXT NOT NULL,
     version TEXT NOT NULL DEFAULT '1.0',
@@ -312,8 +292,6 @@ CREATE INDEX IF NOT EXISTS idx_agent_results_case
 
 async function main(): Promise<void> {
   const dbPath = getDefaultDbPath()
-  console.log(`[migrate] Opening database at: ${dbPath}`)
-
   const { sqlite } = await initDatabase(undefined, dbPath)
 
   // Step 1: Create tables directly from schema if they don't exist
@@ -322,39 +300,13 @@ async function main(): Promise<void> {
     .get() as { cnt: number }
 
   if (tableCount.cnt === 0) {
-    console.log('[migrate] No tables found, creating schema from raw SQL...')
     createTablesFromSchema(sqlite)
-    console.log('[migrate] Base tables created')
-  } else {
-    console.log(`[migrate] Found ${tableCount.cnt} existing tables`)
   }
 
   // Step 3: Apply FTS5, views, triggers via raw SQL
-  console.log('[migrate] Applying FTS5 virtual tables, views, and triggers...')
   sqlite.exec(POST_MIGRATION_SQL)
-  console.log('[migrate] Post-migration SQL applied')
-
-  // Verify
-  const allTables = sqlite
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-    .all() as Array<{ name: string }>
-  console.log(`[migrate] Total tables: ${allTables.length}`)
-  allTables.forEach((t) => console.log(`  - ${t.name}`))
-
-  const allViews = sqlite
-    .prepare("SELECT name FROM sqlite_master WHERE type='view' ORDER BY name")
-    .all() as Array<{ name: string }>
-  console.log(`[migrate] Total views: ${allViews.length}`)
-  allViews.forEach((v) => console.log(`  - ${v.name}`))
-
-  const allTriggers = sqlite
-    .prepare("SELECT name FROM sqlite_master WHERE type='trigger' ORDER BY name")
-    .all() as Array<{ name: string }>
-  console.log(`[migrate] Total triggers: ${allTriggers.length}`)
-  allTriggers.forEach((t) => console.log(`  - ${t.name}`))
 
   sqlite.close()
-  console.log('[migrate] Done.')
 }
 
 /**
@@ -613,43 +565,7 @@ function createTablesFromSchema(sqlite: ReturnType<typeof import('better-sqlite3
     CREATE INDEX IF NOT EXISTS idx_test_administrations_instrument_id ON test_administrations(instrument_id);
     CREATE INDEX IF NOT EXISTS idx_test_administrations_administration_date ON test_administrations(administration_date);
 
-    -- 13. Gate Reviews
-    CREATE TABLE IF NOT EXISTS gate_reviews (
-      gate_review_id INTEGER PRIMARY KEY AUTOINCREMENT,
-      case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
-      gate_number INTEGER NOT NULL CHECK (gate_number IN (1, 2, 3)),
-      gate_purpose TEXT NOT NULL,
-      reviewer_user_id INTEGER NOT NULL REFERENCES users(user_id),
-      review_date TEXT NOT NULL DEFAULT (date('now')),
-      review_status TEXT NOT NULL DEFAULT 'pending'
-        CHECK (review_status IN ('pending', 'in_progress', 'completed', 'requires_revision')),
-      notes TEXT,
-      UNIQUE (case_id, gate_number)
-    );
-    CREATE INDEX IF NOT EXISTS idx_gate_reviews_case_id ON gate_reviews(case_id);
-    CREATE INDEX IF NOT EXISTS idx_gate_reviews_gate_number ON gate_reviews(gate_number);
-    CREATE INDEX IF NOT EXISTS idx_gate_reviews_review_status ON gate_reviews(review_status);
-
-    -- 14. Gate Decisions
-    CREATE TABLE IF NOT EXISTS gate_decisions (
-      decision_id INTEGER PRIMARY KEY AUTOINCREMENT,
-      gate_review_id INTEGER NOT NULL REFERENCES gate_reviews(gate_review_id) ON DELETE CASCADE,
-      case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
-      decision_type TEXT NOT NULL
-        CHECK (decision_type IN ('data_confirmed', 'diagnosis_selected', 'diagnosis_ruled_out', 'attestation', 'other')),
-      subject_entity_type TEXT,
-      subject_entity_id INTEGER,
-      actor_user_id INTEGER NOT NULL REFERENCES users(user_id),
-      decision_rationale TEXT,
-      decision_date TEXT NOT NULL DEFAULT (date('now')),
-      is_final INTEGER DEFAULT 0
-    );
-    CREATE INDEX IF NOT EXISTS idx_gate_decisions_gate_review_id ON gate_decisions(gate_review_id);
-    CREATE INDEX IF NOT EXISTS idx_gate_decisions_case_id ON gate_decisions(case_id);
-    CREATE INDEX IF NOT EXISTS idx_gate_decisions_decision_type ON gate_decisions(decision_type);
-    CREATE INDEX IF NOT EXISTS idx_gate_decisions_actor_user_id ON gate_decisions(actor_user_id);
-
-    -- 15. Diagnoses (CLINICIAN-SELECTED ONLY)
+    -- 13. Diagnoses (CLINICIAN-SELECTED ONLY)
     CREATE TABLE IF NOT EXISTS diagnoses (
       diagnosis_record_id INTEGER PRIMARY KEY AUTOINCREMENT,
       case_id INTEGER NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
