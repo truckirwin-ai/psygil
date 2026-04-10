@@ -169,7 +169,7 @@ export function resetTestDb(): void {
     try {
       testDb.exec(`DELETE FROM ${name}`)
     } catch (err) {
-      // Some tables may be views or virtual tables — skip them
+      // Some tables may be views or virtual tables, skip them
     }
   }
 

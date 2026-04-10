@@ -60,7 +60,7 @@ Judge, Denver District Court`,
     id: 'hospital-records',
     name: 'Denver Health Medical Center Records',
     type: 'Medical Records',
-    date: 'Jun 15, 2024 – Jan 10, 2025',
+    date: 'Jun 15, 2024, Jan 10, 2025',
     content: `DENVER HEALTH MEDICAL CENTER
 PSYCHIATRIC ADMISSION RECORDS
 
@@ -87,7 +87,7 @@ Discharge Medications: Risperidone 2mg daily, Benztropine 1mg daily PRN
 ADMISSION 2: September 18, 2024
 Duration: 18 days (Discharged October 6, 2024)
 
-Chief Complaint: Readmission — relapse of psychotic symptoms after medication non-compliance
+Chief Complaint: Readmission, relapse of psychotic symptoms after medication non-compliance
 
 Clinical Notes:
 Patient stopped taking Risperidone approximately 2 weeks after discharge from first admission. Presents again with auditory hallucinations, paranoid ideation, and disorganized thinking. States that "agents are monitoring me and controlling my thoughts."
@@ -102,7 +102,7 @@ Discharge Plan: Community mental health referral, medication compliance educatio
 ADMISSION 3: January 8, 2025
 Duration: 15 days (Discharged January 23, 2025)
 
-Chief Complaint: Admission via Denver Police Department in custody — assault incident
+Chief Complaint: Admission via Denver Police Department in custody, assault incident
 
 Clinical Notes:
 Patient arrested January 15, 2025 after assault. At time of arrest, patient displaying acute psychotic symptoms. States he believed his victim was "involved in the conspiracy." Medical clearance completed; no medical contraindications to psychiatric care.
@@ -111,7 +111,7 @@ Medications: Continued Risperidone 3mg daily; added Lorazepam PRN for agitation`
   },
   'police-report': {
     id: 'police-report',
-    name: 'Police Report — Incident #2025-DPD-48721',
+    name: 'Police Report, Incident #2025-DPD-48721',
     type: 'Law Enforcement',
     date: 'Jan 15, 2026',
     content: `DENVER POLICE DEPARTMENT
@@ -151,7 +151,7 @@ DISPOSITION: Arrested and transported to Denver County Jail. Medical clearance c
     id: 'jail-medical',
     name: 'Denver County Jail Medical Records',
     type: 'Custodial Medical',
-    date: 'Feb 1 – Mar 15, 2026',
+    date: 'Feb 1, Mar 15, 2026',
     content: `DENVER COUNTY JAIL
 MEDICAL RECORD
 
@@ -160,7 +160,7 @@ INMATE #: J-87624
 DATE ADMITTED: January 15, 2026
 
 MEDICAL HISTORY:
-Psychiatric disorder — previously diagnosed psychotic disorder
+Psychiatric disorder, previously diagnosed psychotic disorder
 
 MEDICATIONS:
 Risperidone 4mg daily (increased from 3mg due to breakthrough symptoms)
@@ -183,14 +183,14 @@ Mar 12, 2026: Evaluation by Dr. Irwin for competency assessment. Inmate cooperat
 const INTERVIEW_SESSIONS: Record<string, Document> = {
   'session-1': {
     id: 'session-1',
-    name: 'Session 1 — Initial Interview',
+    name: 'Session 1, Initial Interview',
     type: 'Clinical Interview',
     date: 'Mar 8, 2026',
     duration: '2.5 hours',
     content: `CLINICAL INTERVIEW SESSION 1
-Marcus D. Johnson — CST Evaluation
+Marcus D. Johnson, CST Evaluation
 Date: March 8, 2026
-Time: 10:00 AM – 12:30 PM
+Time: 10:00 AM, 12:30 PM
 Duration: 2.5 hours
 Evaluator: Truck Irwin, Psy.D.
 
@@ -220,14 +220,14 @@ Johnson agreed to continue with testing. Signed consent form after notification 
   },
   'session-2': {
     id: 'session-2',
-    name: 'Session 2 — Psychological Testing',
+    name: 'Session 2, Psychological Testing',
     type: 'Clinical Interview',
     date: 'Mar 10, 2026',
     duration: '2.0 hours',
     content: `CLINICAL INTERVIEW SESSION 2
-Marcus D. Johnson — Psychological Testing Session
+Marcus D. Johnson, Psychological Testing Session
 Date: March 10, 2026
-Time: 1:00 PM – 3:00 PM
+Time: 1:00 PM, 3:00 PM
 Duration: 2.0 hours
 Evaluator: Truck Irwin, Psy.D.
 Psychometrist: J. Torres
@@ -255,14 +255,14 @@ Session concluded at 3:00 PM. Patient scheduled for cognitive testing (WAIS-V) o
   },
   'session-3': {
     id: 'session-3',
-    name: 'Session 3 — Cognitive Testing',
+    name: 'Session 3, Cognitive Testing',
     type: 'Clinical Interview',
     date: 'Mar 12, 2026',
     duration: '2.0 hours',
     content: `CLINICAL INTERVIEW SESSION 3
-Marcus D. Johnson — Cognitive Testing & Effort Assessment
+Marcus D. Johnson, Cognitive Testing & Effort Assessment
 Date: March 12, 2026
-Time: 1:00 PM – 3:00 PM
+Time: 1:00 PM, 3:00 PM
 Duration: 2.0 hours
 Evaluator: Truck Irwin, Psy.D.
 Psychometrist: J. Torres
@@ -277,7 +277,7 @@ COGNITIVE TESTING (WAIS-V):
 Patient worked through verbal and visual tasks systematically. Performance on verbal tasks appeared lower than visual tasks (observation confirmed by scores: VCI=78 vs. VSI=88). Patient occasionally made comments like "This is hard" or "I don't know" when uncertain.
 
 EFFORT TESTING (TOMM):
-Patient understood instructions easily. Trial 1: 42/50. Trial 2: 48/50 (PASS — well above cut score of 45). This performance indicates genuine memory functioning and adequate effort on testing.
+Patient understood instructions easily. Trial 1: 42/50. Trial 2: 48/50 (PASS, well above cut score of 45). This performance indicates genuine memory functioning and adequate effort on testing.
 
 SYMPTOM VALIDITY (SIRS-2):
 Patient endorsed various symptoms when asked structured questions. All eight primary SIRS-2 scales fell within "Honest" classification range, indicating genuine reported symptoms rather than fabrication.

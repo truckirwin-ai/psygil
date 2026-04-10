@@ -1,5 +1,5 @@
 /**
- * Drizzle ORM schema for Psygil — matches SQL spec docs 01 + 01a exactly.
+ * Drizzle ORM schema for Psygil, matches SQL spec docs 01 + 01a exactly.
  * All 29 tables (24 base + 5 addendum) defined here for type-safe queries.
  * FTS5 virtual tables, views, and triggers are applied via raw SQL migration.
  */
@@ -588,7 +588,7 @@ export const caseAssignments = sqliteTable('case_assignments', {
 ])
 
 // ============================================================================
-// 30. DIAGNOSTIC DECISIONS — ██ DOCTOR ALWAYS DIAGNOSES ██
+// 30. DIAGNOSTIC DECISIONS, ██ DOCTOR ALWAYS DIAGNOSES ██
 // ============================================================================
 
 export const diagnosticDecisions = sqliteTable('diagnostic_decisions', {

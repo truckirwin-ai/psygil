@@ -16,7 +16,7 @@
 import { createHash, createVerify } from 'crypto'
 import { readFileSync } from 'fs'
 
-// Ed25519 public key — embedded in the app binary.
+// Ed25519 public key, embedded in the app binary.
 // The private key is kept in CI secrets only.
 // Generate with: openssl genpkey -algorithm Ed25519 -out private.pem
 //                openssl pkey -in private.pem -pubout -out public.pem
@@ -24,7 +24,7 @@ const ED25519_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAPLACE_HOLDER_KEY_REPLACE_DURING_CI_BUILD_0000000=
 -----END PUBLIC KEY-----`
 
-// Update server URL — set via environment or defaults
+// Update server URL, set via environment or defaults
 const UPDATE_SERVER_URL = process.env.PSYGIL_UPDATE_URL || 'https://updates.psygil.com'
 
 const CHECK_DELAY_MS = 30_000 // 30 seconds after launch
@@ -106,7 +106,7 @@ export async function checkForUpdates(): Promise<{
 
     // Verify the signature of the manifest's SHA-256 hash
     if (!verifySignature(platformInfo.sha256, platformInfo.signature)) {
-      console.error('[updater] SECURITY: Update signature verification FAILED — rejecting update')
+      console.error('[updater] SECURITY: Update signature verification FAILED, rejecting update')
       return { available: false }
     }
 
@@ -158,7 +158,7 @@ export async function downloadUpdate(version: string): Promise<string | null> {
     // Verify SHA-256 hash
     const computedHash = hashFile(downloadPath)
     if (computedHash !== platformInfo.sha256) {
-      console.error('[updater] SECURITY: Download hash mismatch — rejecting')
+      console.error('[updater] SECURITY: Download hash mismatch, rejecting')
       const { unlinkSync } = await import('fs')
       unlinkSync(downloadPath)
       return null
@@ -166,7 +166,7 @@ export async function downloadUpdate(version: string): Promise<string | null> {
 
     // Verify Ed25519 signature
     if (!verifySignature(computedHash, platformInfo.signature)) {
-      console.error('[updater] SECURITY: Download signature verification FAILED — rejecting')
+      console.error('[updater] SECURITY: Download signature verification FAILED, rejecting')
       const { unlinkSync } = await import('fs')
       unlinkSync(downloadPath)
       return null

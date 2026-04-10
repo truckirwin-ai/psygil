@@ -1,4 +1,4 @@
-// Auth module — session state manager.
+// Auth module, session state manager.
 // Holds in-memory auth state in the main process and exposes it to other modules.
 
 import { safeStorage } from 'electron'
@@ -35,10 +35,10 @@ let currentSession: AuthSession | null = null
 
 function encryptAndStore(key: string, value: string): void {
   if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('Encryption not available — cannot store tokens securely')
+    throw new Error('Encryption not available, cannot store tokens securely')
   }
   const encrypted = safeStorage.encryptString(value)
-  // Store in memory map — in production this would go to a keychain-backed store.
+  // Store in memory map, in production this would go to a keychain-backed store.
   // For now, we use a simple Map as a buffer (tokens survive in memory only for
   // the current session; safeStorage encrypts the bytes but we need a file to persist).
   tokenStore.set(key, encrypted)

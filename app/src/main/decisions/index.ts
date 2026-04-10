@@ -1,8 +1,8 @@
 /**
- * Diagnostic Decision Persistence — Sprint 7.3
+ * Diagnostic Decision Persistence, Sprint 7.3
  *
  * ██ DOCTOR ALWAYS DIAGNOSES ██
- * These are the clinician's diagnostic decisions — NOT AI recommendations.
+ * These are the clinician's diagnostic decisions, NOT AI recommendations.
  * The AI presents evidence; the clinician decides.
  *
  * Table: diagnostic_decisions
@@ -112,4 +112,65 @@ export function deleteDecision(caseId: number, diagnosisKey: string): boolean {
     WHERE case_id = ? AND diagnosis_key = ?
   `).run(caseId, diagnosisKey)
   return result.changes > 0
+}
+
+// ---------------------------------------------------------------------------
+// Clinical Formulation, one free-text narrative per case
+// ---------------------------------------------------------------------------
+
+export interface ClinicalFormulationRow {
+  readonly formulation_id: number
+  readonly case_id: number
+  readonly formulation_text: string
+  readonly updated_at: string
+}
+
+export interface SaveFormulationParams {
+  readonly case_id: number
+  readonly formulation_text: string
+}
+
+function ensureFormulationTable(): void {
+  const sqlite = getSqlite()
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS clinical_formulations (
+      formulation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      case_id INTEGER NOT NULL REFERENCES cases(case_id),
+      formulation_text TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(case_id)
+    )
+  `)
+}
+
+/**
+ * Upsert the clinical formulation for a case.
+ */
+export function saveFormulation(params: SaveFormulationParams): ClinicalFormulationRow {
+  ensureFormulationTable()
+  const sqlite = getSqlite()
+
+  sqlite.prepare(`
+    INSERT INTO clinical_formulations (case_id, formulation_text)
+    VALUES (?, ?)
+    ON CONFLICT(case_id) DO UPDATE SET
+      formulation_text = excluded.formulation_text,
+      updated_at = datetime('now')
+  `).run(params.case_id, params.formulation_text)
+
+  return sqlite.prepare(`
+    SELECT * FROM clinical_formulations WHERE case_id = ?
+  `).get(params.case_id) as ClinicalFormulationRow
+}
+
+/**
+ * Get the clinical formulation for a case. Returns null if not yet saved.
+ */
+export function getFormulation(caseId: number): ClinicalFormulationRow | null {
+  ensureFormulationTable()
+  const sqlite = getSqlite()
+  const row = sqlite.prepare(`
+    SELECT * FROM clinical_formulations WHERE case_id = ?
+  `).get(caseId)
+  return (row as ClinicalFormulationRow) ?? null
 }

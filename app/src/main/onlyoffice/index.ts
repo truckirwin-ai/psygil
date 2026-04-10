@@ -136,7 +136,7 @@ export async function startDocumentServer(): Promise<{ port: number; jwtSecret: 
     }
   }
 
-  // Container not running — pull image and start
+  // Container not running, pull image and start
   console.log('[onlyoffice] Starting container...')
   try {
     // Pull the image

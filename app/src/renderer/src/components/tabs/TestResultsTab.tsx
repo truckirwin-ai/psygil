@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import styles from './TestResultsTab.module.css'
 
 interface TestResultsTabProps {
   caseId: number
+  onImportScores?: (caseId: number) => void
 }
 
 interface TestScore {
@@ -20,6 +21,76 @@ interface InstrumentData {
   date: string
   scores: TestScore[][]
   clinical?: string
+}
+
+// Shape returned by window.psygil.testScores.list()
+interface DbScoreRow {
+  score_id: number
+  case_id: number
+  instrument_name: string
+  instrument_abbrev: string
+  administration_date: string
+  data_entry_method: string
+  scores_json: string
+  validity_scores_json: string
+  clinical_narrative: string
+  notes: string
+}
+
+interface DbScoreEntry {
+  scale_name: string
+  raw_score?: number | string
+  t_score?: number
+  percentile?: number | string
+  scaled_score?: number | string
+  interpretation?: string
+  is_elevated?: boolean
+}
+
+// Transform a DB row into the InstrumentData shape used for rendering
+function transformDbRow(row: DbScoreRow): InstrumentData {
+  const parseEntries = (json: string): DbScoreEntry[] => {
+    try {
+      return JSON.parse(json) as DbScoreEntry[]
+    } catch {
+      return []
+    }
+  }
+
+  const validityEntries = parseEntries(row.validity_scores_json)
+  const scoreEntries = parseEntries(row.scores_json)
+
+  const toTestScore = (e: DbScoreEntry): TestScore => ({
+    scale: e.scale_name,
+    tScore: e.t_score,
+    score: e.scaled_score ?? e.raw_score,
+    interpretation: e.interpretation ?? '',
+    isElevated: e.is_elevated ?? false,
+  })
+
+  const sections: TestScore[][] = []
+  if (validityEntries.length > 0) {
+    sections.push(validityEntries.map(toTestScore))
+  }
+  if (scoreEntries.length > 0) {
+    sections.push(scoreEntries.map(toTestScore))
+  }
+
+  const dateStr = row.administration_date
+    ? new Date(row.administration_date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'Unknown date'
+
+  return {
+    name: row.instrument_name,
+    abbrev: row.instrument_abbrev,
+    date: dateStr,
+    scores: sections,
+    clinical: row.clinical_narrative || undefined,
+  }
 }
 
 // Demo test data for Johnson case (c001)
@@ -137,7 +208,7 @@ const JOHNSON_TESTS: Record<string, InstrumentData> = {
     scores: [
       [
         { scale: 'Trial 1', score: '42/50', interpretation: 'Adequate performance' },
-        { scale: 'Trial 2', score: '48/50', interpretation: 'PASS — Above cut score', isElevated: true },
+        { scale: 'Trial 2', score: '48/50', interpretation: 'PASS, Above cut score', isElevated: true },
       ],
     ],
     clinical: 'No indication of feigned memory impairment. Performance well above cut score (45) indicates genuine memory functioning and adequate effort.',
@@ -162,10 +233,47 @@ const JOHNSON_TESTS: Record<string, InstrumentData> = {
   },
 }
 
-const TestResultsTab: React.FC<TestResultsTabProps> = ({ caseId }) => {
+const TestResultsTab: React.FC<TestResultsTabProps> = ({ caseId, onImportScores }) => {
   const [activeInstrument, setActiveInstrument] = useState<string>('summary')
+  const [dbInstruments, setDbInstruments] = useState<InstrumentData[] | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const isJohnson = caseId === 1 || caseId === 0
+
+  // Load real test scores from the database
+  useEffect(() => {
+    if (isJohnson) return // demo case uses hardcoded data
+
+    let cancelled = false
+    setLoading(true)
+    setDbInstruments(null)
+
+    void (async () => {
+      try {
+        const resp = await window.psygil?.testScores?.list?.({ case_id: caseId })
+        if (cancelled) return
+        const rows = resp?.status === 'success' && Array.isArray(resp.data) ? resp.data : null
+        if (rows && rows.length > 0) {
+          setDbInstruments((rows as DbScoreRow[]).map(transformDbRow))
+        } else {
+          setDbInstruments([])
+        }
+      } catch {
+        if (!cancelled) setDbInstruments([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [caseId, isJohnson])
+
+  // Build instrument list for sub-tabs
+  const instrumentKeys: string[] = isJohnson
+    ? Object.keys(JOHNSON_TESTS)
+    : (dbInstruments ?? []).map((_, i) => String(i))
+
+  const hasRealData = !isJohnson && dbInstruments != null && dbInstruments.length > 0
 
   return (
     <div className={styles.testResultsTab}>
@@ -211,98 +319,185 @@ const TestResultsTab: React.FC<TestResultsTabProps> = ({ caseId }) => {
             </button>
           </>
         )}
+        {hasRealData && instrumentKeys.map((key, idx) => (
+          <button
+            key={key}
+            className={`${styles.subTab} ${activeInstrument === key ? styles.active : ''}`}
+            onClick={() => setActiveInstrument(key)}
+          >
+            {dbInstruments![idx].name}
+          </button>
+        ))}
       </div>
 
       {/* Summary tab */}
-      {activeInstrument === 'summary' && <SummaryPane isJohnson={isJohnson} />}
+      {activeInstrument === 'summary' && (
+        <SummaryPane
+          isJohnson={isJohnson}
+          loading={loading}
+          dbInstruments={dbInstruments}
+          caseId={caseId}
+          onImportScores={onImportScores}
+        />
+      )}
 
-      {/* Per-instrument tabs */}
+      {/* Demo case: per-instrument tabs */}
       {isJohnson && activeInstrument in JOHNSON_TESTS && (
         <InstrumentPane data={JOHNSON_TESTS[activeInstrument]} />
       )}
 
-      {/* Placeholder for non-Johnson cases */}
-      {!isJohnson && activeInstrument !== 'summary' && (
-        <div className={styles.placeholder}>
-          <p>Test results data not yet available for this case.</p>
-        </div>
-      )}
+      {/* Real data: per-instrument tabs */}
+      {hasRealData && activeInstrument !== 'summary' && (() => {
+        const idx = instrumentKeys.indexOf(activeInstrument)
+        return idx >= 0 ? <InstrumentPane data={dbInstruments![idx]} /> : null
+      })()}
     </div>
   )
 }
 
 interface SummaryPaneProps {
   isJohnson: boolean
+  loading: boolean
+  dbInstruments: InstrumentData[] | null
+  caseId: number
+  onImportScores?: (caseId: number) => void
 }
 
-const SummaryPane: React.FC<SummaryPaneProps> = ({ isJohnson }) => {
-  if (!isJohnson) {
+const SummaryPane: React.FC<SummaryPaneProps> = ({
+  isJohnson,
+  loading,
+  dbInstruments,
+  caseId,
+  onImportScores,
+}) => {
+  if (isJohnson) {
     return (
-      <div className={styles.placeholder}>
-        <p>Test results summary pending. Check back after testing phase.</p>
+      <div className={styles.pane}>
+        <h2>Test Results Summary</h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '16px' }}>
+          Johnson, Marcus D., CST Evaluation
+        </p>
+
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Instrument</th>
+              <th>Status</th>
+              <th>Validity</th>
+              <th>Key Findings</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>MMPI-3</td>
+              <td>Complete</td>
+              <td className={styles.valid}>Valid</td>
+              <td>Schizophrenia-consistent profile (THD=75T, RC6=72T, RC8=78T)</td>
+            </tr>
+            <tr>
+              <td>PAI</td>
+              <td>Complete</td>
+              <td className={styles.valid}>Valid</td>
+              <td>Elevated SCZ (72T) and PAR (68T)</td>
+            </tr>
+            <tr>
+              <td>WAIS-V</td>
+              <td>Complete</td>
+              <td className={styles.valid}>Valid</td>
+              <td>Low-average IQ (FSIQ=82), verbal weakness (VCI=78)</td>
+            </tr>
+            <tr className={styles.elevatedRow}>
+              <td>TOMM</td>
+              <td>Complete</td>
+              <td className={styles.valid}>Valid Effort</td>
+              <td>No malingering (Trial 2: 48/50, pass)</td>
+            </tr>
+            <tr>
+              <td>SIRS-2</td>
+              <td>Complete</td>
+              <td className={styles.valid}>Honest</td>
+              <td>All scales in honest range, no symptom fabrication</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2 style={{ marginTop: '24px' }}>Interpretation</h2>
+        <div className={styles.card}>
+          <p>
+            All test instruments converge on a diagnosis of <strong>Schizophrenia, First Episode, Currently in Acute Episode</strong>.
+            Personality testing (MMPI-3, PAI) shows prominent thought disturbance and persecutory ideation. Cognitive testing (WAIS-V)
+            shows low-average functioning with particular weakness in verbal comprehension. Validity and effort measures confirm genuine
+            responding and adequate effort across all instruments.
+          </p>
+        </div>
       </div>
     )
   }
 
+  if (loading) {
+    return (
+      <div className={styles.placeholder}>
+        <p>Loading test results...</p>
+      </div>
+    )
+  }
+
+  // No data yet, show empty state with import prompt
+  if (dbInstruments == null || dbInstruments.length === 0) {
+    return (
+      <div className={styles.placeholder}>
+        <div>
+          <p style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '8px' }}>
+            No test results recorded yet
+          </p>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            Import scores from publisher PDFs or enter manually
+          </p>
+          {onImportScores && (
+            <button
+              onClick={() => onImportScores(caseId)}
+              style={{
+                padding: '6px 16px',
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '13px',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontWeight: 500,
+              }}
+            >
+              Import Scores
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Real data summary table
   return (
     <div className={styles.pane}>
       <h2>Test Results Summary</h2>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '16px' }}>
-        Johnson, Marcus D. — CST Evaluation
-      </p>
-
       <table className={styles.table}>
         <thead>
           <tr>
             <th>Instrument</th>
-            <th>Status</th>
-            <th>Validity</th>
-            <th>Key Findings</th>
+            <th>Administered</th>
+            <th>Scales</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>MMPI-3</td>
-            <td>Complete</td>
-            <td className={styles.valid}>Valid</td>
-            <td>Schizophrenia-consistent profile (THD=75T, RC6=72T, RC8=78T)</td>
-          </tr>
-          <tr>
-            <td>PAI</td>
-            <td>Complete</td>
-            <td className={styles.valid}>Valid</td>
-            <td>Elevated SCZ (72T) and PAR (68T)</td>
-          </tr>
-          <tr>
-            <td>WAIS-V</td>
-            <td>Complete</td>
-            <td className={styles.valid}>Valid</td>
-            <td>Low-average IQ (FSIQ=82), verbal weakness (VCI=78)</td>
-          </tr>
-          <tr className={styles.elevatedRow}>
-            <td>TOMM</td>
-            <td>Complete</td>
-            <td className={styles.valid}>Valid Effort</td>
-            <td>No malingering (Trial 2: 48/50, pass)</td>
-          </tr>
-          <tr>
-            <td>SIRS-2</td>
-            <td>Complete</td>
-            <td className={styles.valid}>Honest</td>
-            <td>All scales in honest range — no symptom fabrication</td>
-          </tr>
+          {dbInstruments.map((inst, idx) => (
+            <tr key={idx}>
+              <td>{inst.name}</td>
+              <td>{inst.date}</td>
+              <td>{inst.scores.reduce((sum, section) => sum + section.length, 0)} scales</td>
+            </tr>
+          ))}
         </tbody>
       </table>
-
-      <h2 style={{ marginTop: '24px' }}>Interpretation</h2>
-      <div className={styles.card}>
-        <p>
-          All test instruments converge on a diagnosis of <strong>Schizophrenia, First Episode, Currently in Acute Episode</strong>.
-          Personality testing (MMPI-3, PAI) shows prominent thought disturbance and persecutory ideation. Cognitive testing (WAIS-V)
-          shows low-average functioning with particular weakness in verbal comprehension. Validity and effort measures confirm genuine
-          responding and adequate effort across all instruments.
-        </p>
-      </div>
     </div>
   )
 }
@@ -333,7 +528,14 @@ const InstrumentPane: React.FC<InstrumentPaneProps> = ({ data }) => {
         } else if (data.name === 'WAIS-V') {
           if (sectionIdx === 0) sectionTitle = 'Composite Scores'
           else if (sectionIdx === 1) sectionTitle = 'Primary Subtests (Scaled Scores)'
+        } else if (sectionIdx === 0 && section.length > 0) {
+          // For DB-loaded instruments: first section is validity if it came from validity_scores_json
+          sectionTitle = 'Validity Scales'
+        } else if (sectionIdx === 1) {
+          sectionTitle = 'Clinical Scales'
         }
+
+        if (section.length === 0) return null
 
         return (
           <div key={sectionIdx}>
@@ -342,7 +544,7 @@ const InstrumentPane: React.FC<InstrumentPaneProps> = ({ data }) => {
               <thead>
                 <tr>
                   <th>Scale</th>
-                  {section[0].abbrev && <th>Abbrev</th>}
+                  {section[0].abbrev !== undefined && <th>Abbrev</th>}
                   {section[0].tScore !== undefined && <th>T-Score</th>}
                   {section[0].score !== undefined && <th>Score</th>}
                   <th>Interpretation</th>
@@ -352,9 +554,9 @@ const InstrumentPane: React.FC<InstrumentPaneProps> = ({ data }) => {
                 {section.map((row, rowIdx) => (
                   <tr key={rowIdx} className={row.isElevated ? styles.elevatedRow : ''}>
                     <td>{row.scale}</td>
-                    {section[0].abbrev && <td>{row.abbrev || ''}</td>}
-                    {section[0].tScore !== undefined && <td>{row.tScore || ''}</td>}
-                    {section[0].score !== undefined && <td>{row.score || ''}</td>}
+                    {section[0].abbrev !== undefined && <td>{row.abbrev ?? ''}</td>}
+                    {section[0].tScore !== undefined && <td>{row.tScore ?? ''}</td>}
+                    {section[0].score !== undefined && <td>{row.score ?? ''}</td>}
                     <td>{row.interpretation}</td>
                   </tr>
                 ))}

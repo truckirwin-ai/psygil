@@ -24,8 +24,88 @@
  */
 
 const { execSync } = require('child_process')
-const { rmSync, existsSync } = require('fs')
+const { rmSync, existsSync, lstatSync, mkdirSync, writeFileSync } = require('fs')
 const { join } = require('path')
+
+// drizzle-orm/better-sqlite3 hard-requires the literal package name
+// `better-sqlite3` at runtime. We use the SQLCipher fork
+// `better-sqlite3-multiple-ciphers`, so we install a tiny shim package at
+// node_modules/better-sqlite3 that re-exports the fork. This must be a REAL
+// directory (not a symlink) so it survives electron-builder's asar packaging.
+function installBetterSqlite3Shim() {
+  const root = join(__dirname, '..', 'node_modules')
+  const shimDir = join(root, 'better-sqlite3')
+
+  // Remove any pre-existing symlink or stale shim
+  try {
+    const stat = lstatSync(shimDir)
+    if (stat.isSymbolicLink()) {
+      console.log('[rebuild-clean] Removing better-sqlite3 symlink (will replace with shim package)')
+      rmSync(shimDir, { force: true })
+    } else if (stat.isDirectory()) {
+      // Only remove if it looks like our shim (has marker file). Never blow
+      // away a real install of better-sqlite3 if one snuck in.
+      const marker = join(shimDir, '.psygil-shim')
+      if (existsSync(marker)) {
+        rmSync(shimDir, { recursive: true, force: true })
+      } else {
+        console.log('[rebuild-clean] better-sqlite3 already present and is not our shim — leaving alone')
+        return
+      }
+    }
+  } catch {
+    // doesn't exist
+  }
+
+  mkdirSync(shimDir, { recursive: true })
+  writeFileSync(
+    join(shimDir, 'package.json'),
+    JSON.stringify(
+      {
+        name: 'better-sqlite3',
+        version: '0.0.0-psygil-shim',
+        main: 'index.js',
+        description: 'Shim that re-exports better-sqlite3-multiple-ciphers so drizzle-orm can resolve it.',
+        license: 'MIT',
+      },
+      null,
+      2,
+    ) + '\n',
+  )
+  writeFileSync(
+    join(shimDir, 'index.js'),
+    "module.exports = require('better-sqlite3-multiple-ciphers')\n",
+  )
+  writeFileSync(join(shimDir, '.psygil-shim'), 'do not delete\n')
+  console.log('[rebuild-clean] Installed better-sqlite3 shim package -> better-sqlite3-multiple-ciphers')
+}
+
+// pnpm with hoisted layout sometimes creates a self-referencing symlink
+// inside better-sqlite3-multiple-ciphers (better-sqlite3-multiple-ciphers/
+// better-sqlite3-multiple-ciphers -> better-sqlite3-multiple-ciphers).
+// This causes ELOOP errors when electron-builder walks node_modules.
+// Remove it preemptively before any build step touches the directory.
+function removeSelfSymlinks() {
+  const candidates = [
+    'better-sqlite3-multiple-ciphers/better-sqlite3-multiple-ciphers',
+  ]
+  const root = join(__dirname, '..', 'node_modules')
+  for (const rel of candidates) {
+    const full = join(root, rel)
+    try {
+      const stat = lstatSync(full)
+      if (stat.isSymbolicLink()) {
+        console.log(`[rebuild-clean] Removing self-symlink ${rel}`)
+        rmSync(full, { force: true })
+      }
+    } catch {
+      // Doesn't exist — nothing to do
+    }
+  }
+}
+
+removeSelfSymlinks()
+installBetterSqlite3Shim()
 
 const NATIVE_MODULES = [
   'better-sqlite3-multiple-ciphers',

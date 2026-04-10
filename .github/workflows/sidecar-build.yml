@@ -1,0 +1,140 @@
+# =============================================================================
+# Build the Psygil Python Sidecar across all supported platforms
+# =============================================================================
+#
+# Triggers:
+#   - On push to main when sidecar/** changes
+#   - On manual workflow_dispatch (so a release engineer can produce
+#     bundles on demand)
+#
+# Outputs:
+#   - One artifact per platform: psygil-sidecar-<platform>.tar.gz
+#   - The Electron release workflow downloads these and stages them into
+#     app/resources/sidecar/<platform>/ before running electron-builder
+#
+# Notes:
+#   - PyInstaller cannot cross-compile, so each platform builds on its
+#     native runner.
+#   - macOS arm64 and macOS x64 are separate jobs since GitHub no longer
+#     provides Intel macOS runners by default; the matrix covers both.
+#   - We do NOT codesign in this workflow. Codesigning happens in the
+#     release workflow which has access to Developer ID secrets.
+# =============================================================================
+
+name: Build sidecar binaries
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sidecar/**'
+      - '.github/workflows/sidecar-build.yml'
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: 'Python version to build with'
+        required: false
+        default: '3.11'
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: darwin-arm64
+            runner: macos-14
+            platform_dir: darwin
+          - target: darwin-x64
+            runner: macos-13
+            platform_dir: darwin
+          - target: linux-x64
+            runner: ubuntu-22.04
+            platform_dir: linux
+          - target: win32-x64
+            runner: windows-2022
+            platform_dir: win32
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version || '3.11' }}
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~/AppData/Local/pip/Cache
+          key: pip-${{ runner.os }}-${{ hashFiles('sidecar/requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Install build prerequisites (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Build sidecar (POSIX)
+        if: runner.os != 'Windows'
+        run: bash sidecar/build.sh --no-venv
+        env:
+          PYTHON: python
+
+      - name: Build sidecar (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: bash sidecar/build.sh --no-venv
+        env:
+          PYTHON: python
+
+      - name: Verify staged binary exists
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ls -la "app/resources/sidecar/${{ matrix.platform_dir }}/psygil-sidecar/psygil-sidecar.exe"
+          else
+            ls -la "app/resources/sidecar/${{ matrix.platform_dir }}/psygil-sidecar/psygil-sidecar"
+          fi
+
+      - name: Package staged bundle
+        shell: bash
+        run: |
+          cd "app/resources/sidecar/${{ matrix.platform_dir }}"
+          tar -czf "psygil-sidecar-${{ matrix.target }}.tar.gz" psygil-sidecar
+          du -sh "psygil-sidecar-${{ matrix.target }}.tar.gz"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: psygil-sidecar-${{ matrix.target }}
+          path: app/resources/sidecar/${{ matrix.platform_dir }}/psygil-sidecar-${{ matrix.target }}.tar.gz
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Smoke test from artifact (POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          BIN="app/resources/sidecar/${{ matrix.platform_dir }}/psygil-sidecar/psygil-sidecar"
+          OUTLOG=$(mktemp)
+          ( "$BIN" >"$OUTLOG" 2>&1 & echo $! > "$OUTLOG.pid" )
+          sleep 5
+          PID=$(cat "$OUTLOG.pid" 2>/dev/null || true)
+          if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+            kill "$PID" 2>/dev/null || true
+          fi
+          if grep -q '"status":"ready"' "$OUTLOG"; then
+            echo "Smoke test passed."
+          else
+            echo "Smoke test failed. Output:"
+            cat "$OUTLOG"
+            exit 1
+          fi

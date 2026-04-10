@@ -6,10 +6,10 @@
  * the generic agent runner to produce a structured case record.
  *
  * Pipeline:
- *   1. getCaseById() — load case metadata
- *   2. listDocuments() — load all uploaded documents + their indexed_content
+ *   1. getCaseById(), load case metadata
+ *   2. listDocuments(), load all uploaded documents + their indexed_content
  *   3. Build ingestor input JSON per spec
- *   4. runAgent() — PII redact → Claude → rehydrate → structured JSON
+ *   4. runAgent(), PII redact → Claude → rehydrate → structured JSON
  *   5. Save structured case record to DB (agent_results table)
  *   6. Return result to caller
  *
@@ -23,7 +23,7 @@ import { retrieveApiKey } from '../ai/key-storage'
 import { runAgent, type AgentConfig, type AgentResult } from './runner'
 
 // ---------------------------------------------------------------------------
-// Ingestor system prompt — from docs/engineering/03_agent_prompt_specs.md
+// Ingestor system prompt, from docs/engineering/03_agent_prompt_specs.md
 // ---------------------------------------------------------------------------
 
 const INGESTOR_SYSTEM_PROMPT = `You are the Ingestor Agent for Psygil, an AI assistant for forensic and clinical psychologists. Your role is to parse raw case materials and extract structured data into a standardized case record.
@@ -255,7 +255,7 @@ export async function runIngestorAgent(caseId: number): Promise<AgentResult<Inge
       saveIngestorResult(caseId, result.operationId, result.result)
     } catch (e) {
       console.error('[ingestor] Failed to save result to DB:', (e as Error).message)
-      // Don't fail the whole operation — the result is still returned
+      // Don't fail the whole operation, the result is still returned
     }
   }
 
@@ -263,7 +263,7 @@ export async function runIngestorAgent(caseId: number): Promise<AgentResult<Inge
 }
 
 // ---------------------------------------------------------------------------
-// Persistence — save structured ingestor output to the DB
+// Persistence, save structured ingestor output to the DB
 // ---------------------------------------------------------------------------
 
 /**
@@ -301,6 +301,16 @@ function saveIngestorResult(
       CREATE INDEX IF NOT EXISTS idx_agent_results_case
         ON agent_results(case_id, agent_type)
     `)
+  } else {
+    // Ensure legacy tables have the columns we need
+    const cols = (sqlite.prepare("PRAGMA table_info(agent_results)").all()) as Array<{ name: string }>
+    const colNames = new Set(cols.map((c) => c.name))
+    if (!colNames.has('operation_id')) {
+      try { sqlite.exec(`ALTER TABLE agent_results ADD COLUMN operation_id TEXT`) } catch {}
+    }
+    if (!colNames.has('version')) {
+      try { sqlite.exec(`ALTER TABLE agent_results ADD COLUMN version TEXT DEFAULT '1.0'`) } catch {}
+    }
   }
 
   sqlite.prepare(`

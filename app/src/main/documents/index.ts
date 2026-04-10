@@ -1,5 +1,5 @@
 /**
- * Document service — file ingestion, text extraction, and metadata storage.
+ * Document service, file ingestion, text extraction, and metadata storage.
  * Source of truth: docs/engineering/26_Workspace_Folder_Architecture.md
  *
  * STORAGE RULE (doc 26, LOCKED):
@@ -37,12 +37,29 @@ type CaseSubfolder = (typeof VALID_SUBFOLDERS)[number]
 async function extractText(filePath: string, mimeType: string): Promise<string | null> {
   try {
     if (mimeType === 'application/pdf') {
-      // pdf-parse expects a Buffer
-      const pdfModule = await import('pdf-parse')
-      const pdfParse = (pdfModule as any).default ?? pdfModule
+      // pdf-parse v2 exposes a PDFParse class. The old callable default
+      // export is gone, so dynamic-import the named export and instantiate.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfParseModule = (await import('pdf-parse')) as any
+      const PDFParseCtor = pdfParseModule.PDFParse ?? pdfParseModule.default?.PDFParse
+      if (typeof PDFParseCtor !== 'function') {
+        console.error('[documents] pdf-parse PDFParse class not available')
+        return null
+      }
       const buffer = readFileSync(filePath)
-      const result = await pdfParse(buffer)
-      return result.text || null
+      const parser = new PDFParseCtor({ data: buffer })
+      const parsed = await parser.getText()
+      if (typeof parsed.text === 'string' && parsed.text.length > 0) {
+        return parsed.text
+      }
+      // Some builds return { pages: [{ text }] } instead of a flat text field
+      if (Array.isArray(parsed.pages)) {
+        const combined = parsed.pages
+          .map((p: { text?: string }) => (typeof p.text === 'string' ? p.text : ''))
+          .join('\n')
+        return combined.length > 0 ? combined : null
+      }
+      return null
     }
 
     if (
@@ -54,9 +71,16 @@ async function extractText(filePath: string, mimeType: string): Promise<string |
       return result.value || null
     }
 
-    // Plain text files — read directly
+    // Plain text, markdown, csv, read directly
     if (mimeType.startsWith('text/')) {
       return readFileSync(filePath, 'utf-8')
+    }
+
+    // Rich Text Format, strip control groups to get readable text.
+    // Good enough for indexing and PII scanning; not a full RTF renderer.
+    if (mimeType === 'application/rtf' || mimeType === 'text/rtf') {
+      const raw = readFileSync(filePath, 'utf-8')
+      return stripRtf(raw)
     }
 
     return null
@@ -64,6 +88,29 @@ async function extractText(filePath: string, mimeType: string): Promise<string |
     console.error(`[documents] Text extraction failed for ${filePath}:`, err)
     return null
   }
+}
+
+/**
+ * Minimal RTF → plain text converter. Removes control words, groups, and
+ * escape sequences so the result is readable and scannable by the PII
+ * pipeline. Does not attempt to preserve formatting.
+ */
+function stripRtf(rtf: string): string {
+  let out = rtf
+  // Replace \par and \line with newlines
+  out = out.replace(/\\par[d]?/g, '\n')
+  out = out.replace(/\\line/g, '\n')
+  // Hex escapes like \'e9
+  out = out.replace(/\\'[0-9a-fA-F]{2}/g, '')
+  // Unicode escapes like \u233?
+  out = out.replace(/\\u-?\d+\??/g, '')
+  // Control words (\word or \word123) possibly followed by a space
+  out = out.replace(/\\[a-zA-Z]+-?\d* ?/g, '')
+  // Braces
+  out = out.replace(/[{}]/g, '')
+  // Collapse runs of whitespace but preserve newlines
+  out = out.replace(/[ \t]+/g, ' ').replace(/\n /g, '\n').trim()
+  return out
 }
 
 // ---------------------------------------------------------------------------
@@ -79,6 +126,8 @@ function mimeFromExt(filePath: string): string {
     '.txt': 'text/plain',
     '.csv': 'text/csv',
     '.rtf': 'application/rtf',
+    '.md': 'text/markdown',
+    '.markdown': 'text/markdown',
     '.vtt': 'text/vtt',
     '.json': 'application/json',
   }
@@ -142,7 +191,7 @@ export async function ingestFile(
     mkdirSync(destDir, { recursive: true })
   }
 
-  // Copy file into workspace (don't move — leave original intact)
+  // Copy file into workspace (don't move, leave original intact)
   copyFileSync(filePath, destPath)
 
   const stat = statSync(destPath)
@@ -183,6 +232,90 @@ export async function ingestFile(
 }
 
 /**
+ * Register an existing file already present in the workspace as a
+ * document for the given case. Unlike `ingestFile`, this does NOT copy
+ * the file, it expects the file to already live at `filePath`. Used
+ * by the auto-generated case docs (Patient_Intake.docx, Referral_Information.docx,
+ * etc.) so the Ingestor agent can find them via `listDocuments`.
+ *
+ * Idempotent: if a row for (case_id, file_path) already exists, the
+ * metadata and indexed_content are refreshed in place rather than
+ * producing a duplicate row.
+ */
+export async function registerExistingDocument(
+  caseId: number,
+  filePath: string,
+  uploadedByUserId: number = 1,
+): Promise<DocumentRow> {
+  if (!existsSync(filePath)) {
+    throw new Error(`registerExistingDocument: file does not exist: ${filePath}`)
+  }
+
+  const fileName = basename(filePath)
+  const stat = statSync(filePath)
+  const mime = mimeFromExt(filePath)
+  const docType = docTypeFromExt(filePath)
+  const extractedText = await extractText(filePath, mime)
+
+  const sqlite = getSqlite()
+
+  // Check for an existing row for (case_id, file_path), avoid duplicates
+  // when an auto-generated doc is regenerated on every save.
+  const existing = sqlite
+    .prepare('SELECT document_id FROM documents WHERE case_id = ? AND file_path = ? LIMIT 1')
+    .get(caseId, filePath) as { document_id: number } | undefined
+
+  if (existing) {
+    sqlite
+      .prepare(
+        `UPDATE documents SET
+           document_type = @document_type,
+           original_filename = @original_filename,
+           file_size_bytes = @file_size_bytes,
+           mime_type = @mime_type,
+           indexed_content = @indexed_content
+         WHERE document_id = @document_id`,
+      )
+      .run({
+        document_id: existing.document_id,
+        document_type: docType,
+        original_filename: fileName,
+        file_size_bytes: stat.size,
+        mime_type: mime,
+        indexed_content: extractedText,
+      })
+    return getDocument(existing.document_id)!
+  }
+
+  const result = sqlite
+    .prepare(
+      `INSERT INTO documents (
+         case_id, document_type, original_filename, file_path,
+         file_size_bytes, mime_type, uploaded_by_user_id,
+         description, indexed_content
+       ) VALUES (
+         @case_id, @document_type, @original_filename, @file_path,
+         @file_size_bytes, @mime_type, @uploaded_by_user_id,
+         @description, @indexed_content
+       )`,
+    )
+    .run({
+      case_id: caseId,
+      document_type: docType,
+      original_filename: fileName,
+      file_path: filePath,
+      file_size_bytes: stat.size,
+      mime_type: mime,
+      uploaded_by_user_id: uploadedByUserId,
+      description: null,
+      indexed_content: extractedText,
+    })
+
+  const docId = Number(result.lastInsertRowid)
+  return getDocument(docId)!
+}
+
+/**
  * Get a single document by ID.
  */
 export function getDocument(docId: number): DocumentRow | null {
@@ -206,7 +339,7 @@ export function listDocuments(caseId: number): readonly DocumentRow[] {
 
 /**
  * Delete a document: remove DB record. File on disk is left intact
- * (per doc 26 — Psygil never moves or deletes files in the workspace folder).
+ * (per doc 26, Psygil never moves or deletes files in the workspace folder).
  */
 export function deleteDocument(docId: number): void {
   const sqlite = getSqlite()

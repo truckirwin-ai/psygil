@@ -27,7 +27,7 @@ function generateCodeChallenge(verifier: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// JWT payload decoder (no verification — Auth0 already validated)
+// JWT payload decoder (no verification, Auth0 already validated)
 // ---------------------------------------------------------------------------
 
 interface IdTokenPayload {

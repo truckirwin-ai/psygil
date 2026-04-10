@@ -225,7 +225,7 @@ function buildDocumentSections(writerOutput: WriterOutput, editorOutput?: Editor
           new Paragraph({
             children: [
               new TextRun({
-                text: '⚠️ AI DRAFT — CLINICIAN REVIEW REQUIRED',
+                text: '⚠️ AI DRAFT, CLINICIAN REVIEW REQUIRED',
                 bold: true,
                 color: 'FF6B35',
               }),

@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
- * DiagnosticsTab (Gate 2) — Sprint 7.2
+ * DiagnosticsTab (Gate 2), Sprint 7.2
  *
- * ██ CRITICAL PRINCIPLE: DOCTOR ALWAYS DIAGNOSES — NEVER THE AI ██
+ * ██ CRITICAL PRINCIPLE: DOCTOR ALWAYS DIAGNOSES, NEVER THE AI ██
  *
  * Loads DiagnosticianOutput from agent_results and displays:
  * - Validity assessment (always shown first)
  * - Diagnostic evidence map (each diagnosis as an expandable card)
  * - Differential comparisons
  * - Psycho-legal analysis (forensic) or functional impairment (clinical)
- * - Individual accept/reject/defer per diagnosis — NO "ACCEPT ALL"
+ * - Individual accept/reject/defer per diagnosis, NO "ACCEPT ALL"
  * - Clinical formulation text area
  *
  * DATA FLOW:
@@ -93,6 +93,163 @@ const btnBase: React.CSSProperties = {
 }
 
 // ---------------------------------------------------------------------------
+// DSM-5-TR Reference Panel
+// ---------------------------------------------------------------------------
+
+interface CatalogRow {
+  readonly diagnosis_id: number
+  readonly code: string
+  readonly dsm5tr_code: string
+  readonly name: string
+  readonly description: string
+  readonly category: string
+}
+
+interface Dsm5TrReferencePanelProps {
+  /** Called when the user clicks a result, inserts "[CODE] Name" at cursor */
+  readonly onInsert?: (text: string) => void
+}
+
+const Dsm5TrReferencePanel: React.FC<Dsm5TrReferencePanelProps> = ({ onInsert }) => {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<CatalogRow[]>([])
+  const [searching, setSearching] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const search = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setResults([])
+      return
+    }
+    setSearching(true)
+    try {
+      const res = await window.psygil.diagnosisCatalog.search({ query: q, limit: 25 })
+      if (res.status === 'success') {
+        setResults(res.data as CatalogRow[])
+      } else {
+        setResults([])
+      }
+    } catch {
+      setResults([])
+    } finally {
+      setSearching(false)
+    }
+  }, [])
+
+  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value
+    setQuery(q)
+    if (debounceRef.current !== null) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => { void search(q) }, 300)
+  }
+
+  const handleResultClick = (row: CatalogRow) => {
+    const text = `${row.code} ${row.name}`
+    if (onInsert) {
+      onInsert(text)
+    } else {
+      void navigator.clipboard.writeText(text)
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: '16px', border: '1px solid var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
+      {/* Toggle header */}
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        style={{
+          width: '100%',
+          padding: '8px 12px',
+          background: 'var(--highlight)',
+          border: 'none',
+          borderBottom: open ? '1px solid var(--border)' : 'none',
+          textAlign: 'left',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          color: 'var(--text)',
+          fontSize: '12px',
+          fontWeight: 600,
+        }}
+      >
+        <span>DSM-5-TR Reference</span>
+        <span style={{ color: 'var(--text-secondary)' }}>{open ? '▾' : '▸'}</span>
+      </button>
+
+      {/* Collapsible body */}
+      {open && (
+        <div style={{ padding: '8px 12px 10px' }}>
+          <input
+            type="text"
+            value={query}
+            onChange={handleQueryChange}
+            placeholder="Search by code, name, or DSM specifier..."
+            style={{
+              width: '100%',
+              padding: '6px 8px',
+              border: '1px solid var(--border)',
+              borderRadius: '4px',
+              background: 'var(--bg)',
+              color: 'var(--text)',
+              fontFamily: 'inherit',
+              fontSize: '12px',
+              marginBottom: '6px',
+            }}
+          />
+          {searching && (
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', padding: '4px 0' }}>
+              Searching...
+            </div>
+          )}
+          {!searching && results.length === 0 && query.trim().length > 0 && (
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', padding: '4px 0' }}>
+              No results for &ldquo;{query}&rdquo;
+            </div>
+          )}
+          {results.length > 0 && (
+            <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+              {results.map((row) => (
+                <button
+                  key={row.diagnosis_id}
+                  onClick={() => handleResultClick(row)}
+                  title={row.description || row.name}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '5px 6px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: '1px solid var(--border)',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    color: 'var(--text)',
+                    lineHeight: '1.4',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--highlight)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                >
+                  <span style={{ fontFamily: 'monospace', color: 'var(--accent)', marginRight: '6px' }}>{row.code}</span>
+                  <span style={{ fontWeight: 500 }}>{row.name}</span>
+                  <span style={{ color: 'var(--text-secondary)', marginLeft: '6px' }}>, {row.category}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {results.length === 0 && !query.trim() && (
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', padding: '4px 0' }}>
+              Type a code (F32, F43) or name to search the DSM-5-TR catalog. Click a result to insert.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -100,19 +257,50 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
   const [diagOutput, setDiagOutput] = useState<DiagnosticianOutput | null>(null)
   const [decisions, setDecisions] = useState<DiagnosticDecision[]>([])
   const [formulation, setFormulation] = useState('')
+  const [formulationSaved, setFormulationSaved] = useState(false)
   const [expandedDiags, setExpandedDiags] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const formulationRef = useRef<HTMLTextAreaElement | null>(null)
+
+  // Insert DSM-5-TR catalog text at cursor position in formulation textarea
+  const handleInsertFromCatalog = useCallback((text: string) => {
+    const ta = formulationRef.current
+    if (!ta) {
+      void navigator.clipboard.writeText(text)
+      return
+    }
+    const start = ta.selectionStart ?? formulation.length
+    const end = ta.selectionEnd ?? formulation.length
+    const before = formulation.slice(0, start)
+    const after = formulation.slice(end)
+    const separator = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
+    const inserted = `${before}${separator}${text}${after}`
+    setFormulation(inserted)
+    setFormulationSaved(false)
+    // Restore focus and cursor after state update
+    requestAnimationFrame(() => {
+      ta.focus()
+      const newPos = start + separator.length + text.length
+      ta.setSelectionRange(newPos, newPos)
+    })
+  }, [formulation])
 
   // Load diagnostician output AND any existing decisions
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
-        const [diagRes, decisionsRes] = await Promise.all([
+        const [diagRes, decisionsRes, formulationRes] = await Promise.all([
           window.psygil.diagnostician.getResult({ caseId }),
           window.psygil.diagnosticDecisions.list({ case_id: caseId }),
+          window.psygil.clinicalFormulation.get({ case_id: caseId }),
         ])
         if (cancelled) return
+
+        // Restore saved formulation text
+        if (formulationRes.status === 'success' && formulationRes.data) {
+          setFormulation(formulationRes.data.formulation_text)
+        }
 
         // Build saved decisions lookup
         const savedMap = new Map<string, { decision: 'render' | 'rule_out' | 'defer'; notes: string }>()
@@ -192,19 +380,19 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
   if (!diagOutput) {
     return (
       <div style={{ padding: '20px 24px' }}>
-        <h1 style={{ fontSize: '16px', marginBottom: '16px' }}>Diagnostics — Clinical Formulation</h1>
+        <h1 style={{ fontSize: '16px', marginBottom: '16px' }}>Diagnostics, Clinical Formulation</h1>
 
         {/* RED WARNING BANNER */}
         <div style={{ background: '#f44336', color: 'white', padding: '16px', borderRadius: '4px', marginBottom: '20px', border: '4px solid #d32f2f' }}>
           <p style={{ fontWeight: 600, fontSize: '14px', margin: '0 0 8px 0' }}>
-            ⚠ DOCTOR ALWAYS DIAGNOSES — Never the AI
+            ⚠ DOCTOR ALWAYS DIAGNOSES, Never the AI
           </p>
           <p style={{ fontSize: '13px', margin: '0', lineHeight: '1.5' }}>
-            All diagnostic decisions are your responsibility. The AI presents evidence — you decide.
+            All diagnostic decisions are your responsibility. The AI presents evidence, you decide.
           </p>
         </div>
 
-        <div style={{ padding: '24px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '4px', textAlign: 'center' }}>
+        <div style={{ padding: '24px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '4px', textAlign: 'center', marginBottom: '20px' }}>
           <div style={{ fontSize: '14px', color: 'var(--text)', marginBottom: '8px' }}>
             No diagnostic analysis available yet.
           </div>
@@ -213,6 +401,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
             The Ingestor must be run first.
           </div>
         </div>
+
+        {/* Reference panel is available even before agent runs */}
+        <Dsm5TrReferencePanel />
       </div>
     )
   }
@@ -253,12 +444,12 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
 
   return (
     <div style={{ padding: '20px 24px', height: '100%', overflow: 'auto' }}>
-      <h1 style={{ fontSize: '16px', marginBottom: '16px' }}>Diagnostics — Clinical Formulation</h1>
+      <h1 style={{ fontSize: '16px', marginBottom: '16px' }}>Diagnostics, Clinical Formulation</h1>
 
       {/* ██ RED WARNING BANNER ██ */}
       <div style={{ background: '#f44336', color: 'white', padding: '16px', borderRadius: '4px', marginBottom: '20px', border: '4px solid #d32f2f' }}>
         <p style={{ fontWeight: 600, fontSize: '14px', margin: '0 0 8px 0' }}>
-          ⚠ DOCTOR ALWAYS DIAGNOSES — Never the AI
+          ⚠ DOCTOR ALWAYS DIAGNOSES, Never the AI
         </p>
         <p style={{ fontSize: '13px', margin: '0', lineHeight: '1.5' }}>
           You are the clinician. All diagnostic decisions are your responsibility.
@@ -301,7 +492,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
             Validity & Effort Assessment
           </div>
           <div style={{ fontSize: '11px', color: '#558b2f', marginTop: '4px' }}>
-            Processed first — determines interpretability of all test data
+            Processed first, determines interpretability of all test data
           </div>
         </div>
         <div style={cardBodyStyle}>
@@ -383,14 +574,14 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
 
         return (
           <div key={diagKey} style={{ ...cardStyle, borderColor, borderWidth: decision?.decision ? '2px' : '1px' }}>
-            {/* Diagnosis header — click to expand */}
+            {/* Diagnosis header, click to expand */}
             <div
               style={{ ...cardHeaderStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               onClick={() => toggleExpand(diagKey)}
             >
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
-                  {String(diag.icd_code || '')} — {diagKey.replace(/_/g, ' ')}
+                  {String(diag.icd_code || '')}, {diagKey.replace(/_/g, ' ')}
                 </div>
                 {diag.functional_impact && (
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -477,7 +668,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                   </div>
                 )}
 
-                {/* ██ DECISION CONTROLS — NO "ACCEPT ALL" ██ */}
+                {/* ██ DECISION CONTROLS, NO "ACCEPT ALL" ██ */}
                 <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '4px', marginTop: '12px' }}>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', marginBottom: '8px' }}>
                     Your Decision:
@@ -651,11 +842,15 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
         </>
       )}
 
+      {/* ===== DSM-5-TR REFERENCE ===== */}
+      <Dsm5TrReferencePanel onInsert={handleInsertFromCatalog} />
+
       {/* ===== CLINICAL FORMULATION ===== */}
       <h2 style={sectionHeader}>Clinical Formulation</h2>
       <textarea
+        ref={formulationRef}
         value={formulation}
-        onChange={(e) => setFormulation(e.target.value)}
+        onChange={(e) => { setFormulation(e.target.value); setFormulationSaved(false) }}
         placeholder="Enter your clinical formulation and rationale for diagnostic decisions. This is the clinician's authoritative narrative."
         style={{
           width: '100%',
@@ -698,11 +893,22 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                 diagnosis_key: d.diagnosisKey,
               })
             }
-            console.log(`[DiagnosticsTab] Saved ${toSave.length} decisions for case ${caseId}`)
+            // Persist clinical formulation
+            await window.psygil.clinicalFormulation.save({
+              case_id: caseId,
+              formulation_text: formulation,
+            })
+            setFormulationSaved(true)
+            setTimeout(() => setFormulationSaved(false), 3000)
           }}
         >
           Save Diagnostic Decisions
         </button>
+        {formulationSaved && (
+          <span style={{ fontSize: '12px', color: '#4caf50', alignSelf: 'center' }}>
+            Saved
+          </span>
+        )}
         {undecided > 0 && (
           <span style={{ fontSize: '12px', color: '#e65100', alignSelf: 'center' }}>
             {undecided} diagnosis{undecided > 1 ? 'es' : ''} still undecided

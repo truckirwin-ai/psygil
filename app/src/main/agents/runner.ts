@@ -115,10 +115,17 @@ export async function runAgent<T = unknown>(
     const rehydrationResult = await rehydrate(claudeResponse.content, operationId)
     const fullText = rehydrationResult.fullText
 
-    // 5. Parse rehydrated text as JSON (if valid JSON)
+    // 5. Parse rehydrated text as JSON. Claude often wraps JSON in
+    // ```json ... ``` fences; strip those before parsing so downstream
+    // consumers always see structured objects rather than raw strings.
     let parsedResult: T
+    const stripFences = (raw: string): string => {
+      const trimmed = raw.trim()
+      const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
+      return fenced ? fenced[1].trim() : trimmed
+    }
     try {
-      parsedResult = JSON.parse(fullText) as T
+      parsedResult = JSON.parse(stripFences(fullText)) as T
     } catch {
       // If not valid JSON, treat the full text as the result
       parsedResult = fullText as unknown as T

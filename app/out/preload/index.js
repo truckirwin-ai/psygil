@@ -23,6 +23,8 @@ const CH = {
   DOCS_PICK_FILE: "documents:pickFile",
   DOCS_PICK_FILES: "documents:pickFiles",
   DOCS_PICK_FILES_FROM: "documents:pickFilesFrom",
+  DOCS_SYNC_TO_DISK: "documents:syncToDisk",
+  DOCS_WRITE_TAB_DOC: "documents:writeTabDoc",
   PII_REDACT: "pii:redact",
   PII_REHYDRATE: "pii:rehydrate",
   PII_DESTROY: "pii:destroy",
@@ -51,7 +53,21 @@ const api = {
     get: (params) => electron.ipcRenderer.invoke(CH.CASES_GET, params),
     create: (params) => electron.ipcRenderer.invoke(CH.CASES_CREATE, params),
     update: (params) => electron.ipcRenderer.invoke(CH.CASES_UPDATE, params),
-    archive: (params) => electron.ipcRenderer.invoke(CH.CASES_ARCHIVE, params)
+    archive: (params) => electron.ipcRenderer.invoke(CH.CASES_ARCHIVE, params),
+    onChanged: (callback) => {
+      const wrapped = (_event, data) => {
+        callback(data);
+      };
+      electron.ipcRenderer.on("cases:changed", wrapped);
+      return wrapped;
+    },
+    offChanged: (wrapped) => {
+      if (wrapped) {
+        electron.ipcRenderer.removeListener("cases:changed", wrapped);
+      } else {
+        electron.ipcRenderer.removeAllListeners("cases:changed");
+      }
+    }
   },
   intake: {
     save: (params) => electron.ipcRenderer.invoke(CH.INTAKE_SAVE, params),
@@ -81,7 +97,9 @@ const api = {
     pickFile: () => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILE),
     pickFiles: () => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILES),
     pickFilesFrom: (params) => electron.ipcRenderer.invoke(CH.DOCS_PICK_FILES_FROM, params),
-    getDroppedFilePath: (file) => electron.webUtils.getPathForFile(file)
+    getDroppedFilePath: (file) => electron.webUtils.getPathForFile(file),
+    syncToDisk: (params) => electron.ipcRenderer.invoke(CH.DOCS_SYNC_TO_DISK, params),
+    writeTabDoc: (params) => electron.ipcRenderer.invoke(CH.DOCS_WRITE_TAB_DOC, params)
   },
   pii: {
     detect: (params) => electron.ipcRenderer.invoke("pii:detect", params),
@@ -159,6 +177,15 @@ const api = {
     list: (params) => electron.ipcRenderer.invoke("diagnosticDecision:list", params),
     delete: (params) => electron.ipcRenderer.invoke("diagnosticDecision:delete", params)
   },
+  testScores: {
+    save: (params) => electron.ipcRenderer.invoke("testScores:save", params),
+    list: (params) => electron.ipcRenderer.invoke("testScores:list", params),
+    delete: (params) => electron.ipcRenderer.invoke("testScores:delete", params)
+  },
+  clinicalFormulation: {
+    save: (params) => electron.ipcRenderer.invoke("clinicalFormulation:save", params),
+    get: (params) => electron.ipcRenderer.invoke("clinicalFormulation:get", params)
+  },
   dataConfirmation: {
     save: (args) => electron.ipcRenderer.invoke(CH.DATA_CONFIRMATION_SAVE, args),
     get: (args) => electron.ipcRenderer.invoke(CH.DATA_CONFIRMATION_GET, args)
@@ -184,6 +211,16 @@ const api = {
     exportAndOpen: (args) => electron.ipcRenderer.invoke("report:exportAndOpen", args),
     loadTemplate: () => electron.ipcRenderer.invoke("report:loadTemplate")
   },
+  templates: {
+    analyze: (args) => electron.ipcRenderer.invoke("templates:analyze", args),
+    save: (args) => electron.ipcRenderer.invoke("templates:save", args),
+    list: (args) => electron.ipcRenderer.invoke("templates:list", args),
+    get: (args) => electron.ipcRenderer.invoke("templates:get", args),
+    delete: (args) => electron.ipcRenderer.invoke("templates:delete", args),
+    open: (args) => electron.ipcRenderer.invoke("templates:open", args),
+    setLastUsed: (args) => electron.ipcRenderer.invoke("templates:setLastUsed", args),
+    getLastUsed: (args) => electron.ipcRenderer.invoke("templates:getLastUsed", args)
+  },
   audit: {
     log: (args) => electron.ipcRenderer.invoke("audit:log", args),
     getTrail: (args) => electron.ipcRenderer.invoke("audit:getTrail", args),
@@ -200,7 +237,12 @@ const api = {
     list: (args) => electron.ipcRenderer.invoke("resources:list", args),
     delete: (args) => electron.ipcRenderer.invoke("resources:delete", args),
     open: (args) => electron.ipcRenderer.invoke("resources:open", args),
-    read: (args) => electron.ipcRenderer.invoke("resources:read", args)
+    read: (args) => electron.ipcRenderer.invoke("resources:read", args),
+    uploadWritingSample: (args) => electron.ipcRenderer.invoke("resources:uploadWritingSample", args),
+    previewCleaned: (args) => electron.ipcRenderer.invoke("resources:previewCleaned", args),
+    analyzeStyle: (args) => electron.ipcRenderer.invoke("resources:analyzeStyle", args),
+    getStyleProfile: () => electron.ipcRenderer.invoke("resources:getStyleProfile"),
+    recalculateStyleProfile: () => electron.ipcRenderer.invoke("resources:recalculateStyleProfile")
   },
   whisper: {
     saveAudio: (args) => electron.ipcRenderer.invoke("whisper:saveAudio", args),
@@ -221,6 +263,33 @@ const api = {
         electron.ipcRenderer.removeListener("whisper:liveText", wrapped);
       };
     }
+  },
+  diagnosisCatalog: {
+    search: (params) => electron.ipcRenderer.invoke("diagnosisCatalog:search", params),
+    list: (params) => electron.ipcRenderer.invoke("diagnosisCatalog:list", params)
+  },
+  testHarness: {
+    list: () => electron.ipcRenderer.invoke("testHarness:list"),
+    run: (params) => electron.ipcRenderer.invoke("testHarness:run", params),
+    runAll: () => electron.ipcRenderer.invoke("testHarness:runAll")
+  },
+  setup: {
+    getConfig: () => electron.ipcRenderer.invoke("setup:getConfig"),
+    reset: () => electron.ipcRenderer.invoke("setup:reset"),
+    advance: (params) => electron.ipcRenderer.invoke("setup:advance", params),
+    validateLicense: (params) => electron.ipcRenderer.invoke("setup:validateLicense", params),
+    saveLicense: (params) => electron.ipcRenderer.invoke("setup:saveLicense", params),
+    validateStoragePath: (params) => electron.ipcRenderer.invoke("setup:validateStoragePath", params),
+    pickStorageFolder: () => electron.ipcRenderer.invoke("setup:pickStorageFolder"),
+    getDefaultStoragePath: () => electron.ipcRenderer.invoke("setup:getDefaultStoragePath"),
+    provisionStorage: (params) => electron.ipcRenderer.invoke("setup:provisionStorage", params),
+    savePractice: (params) => electron.ipcRenderer.invoke("setup:savePractice", params),
+    saveAi: (params) => electron.ipcRenderer.invoke("setup:saveAi", params),
+    saveAppearance: (params) => electron.ipcRenderer.invoke("setup:saveAppearance", params),
+    saveClinical: (params) => electron.ipcRenderer.invoke("setup:saveClinical", params),
+    provisionTemplates: (params) => electron.ipcRenderer.invoke("setup:provisionTemplates", params),
+    getSupportedEvalTypes: () => electron.ipcRenderer.invoke("setup:getSupportedEvalTypes"),
+    complete: () => electron.ipcRenderer.invoke("setup:complete")
   }
 };
 electron.contextBridge.exposeInMainWorld("psygil", api);

@@ -187,7 +187,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
   if (loading) {
     return (
       <div style={{ padding: '20px 24px' }}>
-        <h1>Audit Trail — Case #{caseId}</h1>
+        <h1>Audit Trail, Case #{caseId}</h1>
         <div
           style={{
             background: 'var(--highlight)',
@@ -205,7 +205,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
 
   return (
     <div style={{ padding: '20px 24px' }}>
-      <h1>Audit Trail — Case #{caseId}</h1>
+      <h1>Audit Trail, Case #{caseId}</h1>
 
       {/* ERROR BANNER */}
       {error && (

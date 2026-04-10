@@ -1,4 +1,4 @@
-// Auth0 configuration — loaded from environment variables.
+// Auth0 configuration, loaded from environment variables.
 // NEVER hardcode credentials. Use a .env file in development.
 
 export interface Auth0Config {

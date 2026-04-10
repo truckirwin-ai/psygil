@@ -5,7 +5,7 @@
  * Uses the same ok()/fail() pattern as other handler files.
  */
 
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import type { IpcResponse } from '../../shared/types'
 import { getSqlite } from '../db/connection'
 import {
@@ -35,6 +35,17 @@ function ok<T>(data: T): IpcResponse<T> {
 
 function fail(error_code: string, message: string): IpcResponse<never> {
   return { status: 'error', error_code, message }
+}
+
+// Broadcast a cases:changed event so renderer can refresh kanban/lists
+function broadcastCasesChanged(caseId: number, newStage: string, previousStage: string): void {
+  const windows = BrowserWindow.getAllWindows()
+  console.log(`[pipeline] broadcasting cases:changed to ${windows.length} window(s) (case ${caseId}: ${previousStage} → ${newStage})`)
+  for (const win of windows) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('cases:changed', { caseId, newStage, previousStage })
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -79,6 +90,10 @@ function handlePipelineAdvance(
       previousStage: result.previousStage,
     }
 
+    if (result.success && result.newStage) {
+      broadcastCasesChanged(params.caseId, result.newStage, result.previousStage ?? '')
+    }
+
     return ok(advanceResult)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -106,6 +121,7 @@ function handlePipelineSetStage(
       .run(params.stage, newStatus, params.caseId)
 
     console.log(`[pipeline] Stage set: case ${params.caseId} ${previousStage} → ${params.stage}`)
+    broadcastCasesChanged(params.caseId, params.stage, previousStage)
     return ok({ success: true, newStage: params.stage, previousStage })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

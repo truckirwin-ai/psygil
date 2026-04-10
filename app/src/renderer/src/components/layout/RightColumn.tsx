@@ -1,11 +1,15 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import type { Tab } from '../../types/ui'
-import type { AgentStatusResult } from '../../../../shared/types/ipc'
+import type { CaseRow, AgentStatusResult } from '../../../../shared/types/ipc'
 import HSplitter from './HSplitter'
 
 export interface RightColumnProps {
   readonly activeCaseId: number | null
   readonly onOpenTab: (tab: Tab) => void
+  readonly onCycleTheme: () => void
+  readonly cases: CaseRow[]
+  readonly activeTabType: string | null
+  readonly hideHeader?: boolean
 }
 
 interface AgentStatus {
@@ -28,8 +32,15 @@ const AGENT_PREREQUISITES: Record<AgentName, AgentName[]> = {
 export default function RightColumn({
   activeCaseId,
   onOpenTab,
+  onCycleTheme,
+  cases,
+  activeTabType,
+  hideHeader,
 }: RightColumnProps): React.JSX.Element {
-  const [contextHeight, setContextHeight] = useState<number | null>(null)
+  const isDashboard = activeTabType === 'dashboard'
+  // Split ratio: 0..1, proportion of space given to the upper context panel. Default 50/50.
+  const [splitRatio, setSplitRatio] = useState(0.5)
+  const columnRef = useRef<HTMLDivElement>(null)
   const [chatMessages, setChatMessages] = useState<
     Array<{ type: 'assistant' | 'user'; text: string }>
   >([{ type: 'assistant', text: 'How can I help with your evaluation? I can draft sections, suggest language, check citations, or review for Daubert compliance.' }])
@@ -73,7 +84,7 @@ export default function RightColumn({
         editor: edt.status === 'success',
       })
     } catch {
-      // Swallow — results just stay false
+      // Swallow, results just stay false
     }
   }, [activeCaseId])
 
@@ -83,20 +94,81 @@ export default function RightColumn({
   }, [refreshAgentResults])
 
   const handleResize = useCallback((delta: number) => {
-    setContextHeight((prev) => {
-      const current = prev ?? 280
-      return Math.max(100, current + delta)
+    const container = columnRef.current
+    if (!container) return
+    const totalHeight = container.clientHeight
+    if (totalHeight <= 0) return
+    setSplitRatio((prev) => {
+      const newRatio = prev + delta / totalHeight
+      return Math.max(0.15, Math.min(0.85, newRatio))
     })
   }, [])
+
+  // Build a summary of all cases for the Admin Assistant context
+  const casesSummary = useMemo(() => {
+    if (!cases.length) return 'No cases in the system.'
+    const stageCounts: Record<string, number> = {}
+    const typeCounts: Record<string, number> = {}
+    const lines: string[] = []
+    for (const c of cases) {
+      const stage = c.workflow_current_stage ?? 'onboarding'
+      stageCounts[stage] = (stageCounts[stage] ?? 0) + 1
+      const etype = c.evaluation_type ?? 'Untyped'
+      typeCounts[etype] = (typeCounts[etype] ?? 0) + 1
+      const name = `${c.examinee_last_name ?? '?'}, ${(c.examinee_first_name ?? '?').charAt(0)}.`
+      const created = c.created_at ? c.created_at.split('T')[0] : ','
+      lines.push(`- Case ${c.case_number}: ${name} | Type: ${etype} | Stage: ${stage} | Created: ${created}`)
+    }
+    const overview = [
+      `Total cases: ${cases.length}`,
+      `By stage: ${Object.entries(stageCounts).map(([s, n]) => `${s} (${n})`).join(', ')}`,
+      `By type: ${Object.entries(typeCounts).map(([t, n]) => `${t} (${n})`).join(', ')}`,
+      '',
+      'Case list:',
+      ...lines,
+    ]
+    return overview.join('\n')
+  }, [cases])
+
+  const adminSystemPrompt = useMemo(() => [
+    'You are the Admin Assistant for Psygil, a forensic psychology practice management platform.',
+    'You have read access to all case files in the system. Use the case data below to answer questions about caseload, scheduling, priorities, and analytics.',
+    '',
+    'CAPABILITIES:',
+    '- Caseload analysis: which cases need attention, overdue items, bottlenecks',
+    '- Schedule guidance: what to focus on this week (testing, interviews, report writing)',
+    '- Pipeline analytics: stage distribution, throughput, average time per stage',
+    '- Case prioritization: urgency based on deadlines, stage, and evaluation type',
+    '- Practice metrics: case volume, completion rates, type distribution',
+    '',
+    'RULES:',
+    '- Be concise and actionable. Use bullet points.',
+    '- When recommending priorities, explain the reasoning.',
+    '- Reference specific cases by name and case number.',
+    '- Today\'s date is ' + new Date().toISOString().split('T')[0],
+    '',
+    '=== CURRENT CASELOAD ===',
+    casesSummary,
+  ].join('\n'), [casesSummary])
+
+  const writingSystemPrompt = 'You are a writing assistant for forensic psychology evaluation reports. Help draft sections, check citations, suggest language, and review for Daubert compliance. Provide concise, professional responses.'
+
+  const adminWelcome = 'Good morning. I have access to your full caseload. Ask me which cases need attention, what to focus on this week, or for practice analytics.'
+  const writingWelcome = 'How can I help with your evaluation? I can draft sections, suggest language, check citations, or review for Daubert compliance.'
+
+  const assistantLabel = isDashboard ? 'ADMIN ASSISTANT' : 'WRITING ASSISTANT'
+  const assistantPlaceholder = isDashboard
+    ? 'e.g. "Which cases need attention?" or "What should I focus on this week?"'
+    : 'Ask the writing assistant...'
 
   const handleClearChat = useCallback(() => {
     setChatMessages([
       {
         type: 'assistant',
-        text: 'How can I help with your evaluation? I can draft sections, suggest language, check citations, or review for Daubert compliance.',
+        text: isDashboard ? adminWelcome : writingWelcome,
       },
     ])
-  }, [])
+  }, [isDashboard])
 
   const handleSendChat = useCallback(async () => {
     if (!chatInput.trim()) return
@@ -106,8 +178,10 @@ export default function RightColumn({
     setChatMessages((prev) => [...prev, { type: 'user', text: userMessage }])
 
     try {
+      const systemPrompt = isDashboard ? adminSystemPrompt : writingSystemPrompt
+
       const response = await window.psygil.ai.complete({
-        systemPrompt: 'You are a writing assistant for forensic psychology evaluation reports. Help draft sections, check citations, suggest language, and review for Daubert compliance. Provide concise, professional responses.',
+        systemPrompt,
         userMessage,
       })
 
@@ -128,7 +202,7 @@ export default function RightColumn({
         },
       ])
     }
-  }, [chatInput])
+  }, [chatInput, isDashboard, adminSystemPrompt])
 
   // Poll agent status every 2 seconds
   useEffect(() => {
@@ -160,7 +234,7 @@ export default function RightColumn({
   }, [refreshAgentResults])
 
   // -------------------------------------------------------------------------
-  // Generic agent runner — cascade-aware
+  // Generic agent runner, cascade-aware
   // -------------------------------------------------------------------------
 
   const handleRunAgent = useCallback(async (agent: AgentName) => {
@@ -204,6 +278,7 @@ export default function RightColumn({
 
   return (
     <div
+      ref={columnRef}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -212,19 +287,55 @@ export default function RightColumn({
         overflow: 'hidden',
       }}
     >
-      {/* Context panel — upper, flex or explicit height */}
+      {/* Context panel, upper, uses splitRatio of available space */}
       <div
         style={{
-          flex: contextHeight == null ? 1 : undefined,
-          height: contextHeight ?? undefined,
+          flex: `${splitRatio} 0 0`,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          minHeight: 0,
         }}
       >
-        <div className="panel-header">
-          <span>CONTEXT</span>
-        </div>
+        {!hideHeader && (
+          <div className="panel-header" style={{ justifyContent: 'flex-end', gap: 10 }}>
+            <button
+              aria-label="Settings"
+              style={{
+                width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer',
+                fontSize: 18, padding: 0,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
+              &#9881;
+            </button>
+            <button
+              aria-label="Theme"
+              onClick={onCycleTheme}
+              style={{
+                width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer',
+                fontSize: 18, padding: 0,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+            >
+              &#9728;
+            </button>
+            <div style={{
+              width: 24, height: 24, borderRadius: '50%', background: 'var(--accent)',
+              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 600, flexShrink: 0,
+            }}>
+              TI
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+              Dr. Irwin
+            </span>
+          </div>
+        )}
         <div style={{ flex: 1, overflowY: 'auto', padding: 0 }}>
           {/* Case Notes */}
           <ContextSection title="Case Notes">
@@ -269,7 +380,7 @@ export default function RightColumn({
                   <strong>Court Deadline:</strong> Apr 15, 2026 (26 days)
                 </p>
                 <p style={{ marginBottom: 6, fontSize: 12 }}>
-                  <strong>Next Action:</strong> Complete Diagnostics — clinical formulation
+                  <strong>Next Action:</strong> Complete Diagnostics, clinical formulation
                 </p>
               </div>
             ) : (
@@ -334,13 +445,14 @@ export default function RightColumn({
       {/* Horizontal splitter */}
       <HSplitter onResize={handleResize} />
 
-      {/* Writing Assistant — lower, flex: 0 0 280px */}
+      {/* Admin / Writing Assistant, lower, uses remaining space */}
       <div
         style={{
-          flex: '0 0 280px',
+          flex: `${1 - splitRatio} 0 0`,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          minHeight: 0,
         }}
       >
         <div
@@ -351,7 +463,7 @@ export default function RightColumn({
             alignItems: 'center',
           }}
         >
-          <span>WRITING ASSISTANT</span>
+          <span>{assistantLabel}</span>
           <button
             onClick={handleClearChat}
             className="panel-hdr-btn"
@@ -440,7 +552,7 @@ export default function RightColumn({
                 fontWeight: 600,
               }}
             >
-              Writing Assistant
+              {isDashboard ? 'Admin Assistant' : 'Writing Assistant'}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
@@ -453,7 +565,7 @@ export default function RightColumn({
                   handleSendChat()
                 }
               }}
-              placeholder="Ask the writing assistant..."
+              placeholder={assistantPlaceholder}
               rows={3}
               style={{
                 flex: 1,
@@ -649,7 +761,7 @@ function AgentStatusRow({
       />
       {/* Agent name */}
       <span style={{ color: 'var(--text)', flex: 1, minWidth: 0 }}>{name}</span>
-      {/* Status details — right-aligned */}
+      {/* Status details, right-aligned */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)' }}>
         {agentStatus.status === 'running' && (
           <span>{elapsedTime}</span>

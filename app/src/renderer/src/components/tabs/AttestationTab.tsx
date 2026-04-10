@@ -265,7 +265,7 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
           }}
         >
           <p style={{ fontWeight: 600, fontSize: '14px', margin: '0' }}>
-            ✓ ALL REQUIREMENTS MET — Ready for Attestation
+            ✓ ALL REQUIREMENTS MET, Ready for Attestation
           </p>
         </div>
       )}

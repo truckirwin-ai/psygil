@@ -6,7 +6,7 @@
  *
  * CRITICAL PRINCIPLE: Stage advancement NEVER happens automatically without
  * the clinician's knowledge. The check function SUGGESTS advancement; the
- * advance function CONFIRMS it. The DOCTOR ALWAYS DIAGNOSES — diagnostics
+ * advance function CONFIRMS it. The DOCTOR ALWAYS DIAGNOSES, diagnostics
  * stage cannot be skipped or auto-completed.
  */
 
@@ -62,37 +62,46 @@ const ADVANCEMENT_CONDITIONS: Record<
 
     // Data confirmation gate: required categories must be confirmed/corrected
     if (!isDataConfirmationComplete(caseRow.case_id)) {
-      return { canAdvance: false, reason: 'Data confirmation incomplete — review extracted data before advancing' }
+      return { canAdvance: false, reason: 'Data confirmation incomplete, review extracted data before advancing' }
     }
 
     return { canAdvance: true, reason: 'Intake complete, documents uploaded, and data confirmed' }
   },
 
   testing: (caseRow: CaseRow) => {
-    // Testing → Interview: At least 1 test result document exists in Testing subfolder
+    // Testing → Interview: At least 1 test result document (type 'score_report' or file in Testing folder)
+    // OR at least one row in test_scores table (manual entry counts as test data).
     const documents = listDocuments(caseRow.case_id)
     const testingDocs = documents.filter(
       (d) =>
-        d.document_type === 'test_score_report' ||
-        d.document_type === 'test_battery' ||
-        d.document_type === 'standardized_test',
+        d.document_type === 'score_report' ||
+        (d.file_path && d.file_path.includes('/Testing/')),
     )
 
-    if (testingDocs.length === 0) {
-      return { canAdvance: false, reason: 'No test result documents found' }
+    if (testingDocs.length > 0) {
+      return { canAdvance: true, reason: 'Test results documented' }
     }
 
-    return { canAdvance: true, reason: 'Test results documented' }
+    // Fallback: check test_scores table for manual entries
+    const sqlite = getSqlite()
+    const scoreCount = (sqlite
+      .prepare('SELECT count(*) as n FROM test_scores WHERE case_id = ?')
+      .get(caseRow.case_id) as { n: number }).n
+    if (scoreCount > 0) {
+      return { canAdvance: true, reason: 'Test scores entered' }
+    }
+
+    return { canAdvance: false, reason: 'No test result documents or scores found' }
   },
 
   interview: (caseRow: CaseRow) => {
-    // Interview → Diagnostics: At least 1 interview document exists AND ingestor agent has been run
+    // Interview → Diagnostics: At least 1 interview document (type 'transcript_vtt' or file in Interviews folder)
+    // AND ingestor agent has been run.
     const documents = listDocuments(caseRow.case_id)
     const interviewDocs = documents.filter(
       (d) =>
-        d.document_type === 'interview_notes' ||
         d.document_type === 'transcript_vtt' ||
-        d.document_type === 'behavioral_observation',
+        (d.file_path && d.file_path.includes('/Interviews/')),
     )
 
     if (interviewDocs.length === 0) {
@@ -134,7 +143,7 @@ const ADVANCEMENT_CONDITIONS: Record<
     }
 
     // Check if at least one diagnostic decision has been made
-    // (This would be in a clinical_decisions table or similar — for now, check via agent_results content)
+    // (This would be in a clinical_decisions table or similar, for now, check via agent_results content)
     // We infer that if diagnostician ran, decisions exist. Could enhance with explicit tracking.
     return { canAdvance: true, reason: 'Diagnostician complete and decisions recorded' }
   },
@@ -169,11 +178,11 @@ const ADVANCEMENT_CONDITIONS: Record<
       return { canAdvance: false, reason: 'Editor agent has not been run yet' }
     }
 
-    // Check if attestation has been recorded (via audit_log with action_type='report_signed')
+    // Check if attestation has been recorded (via audit_log with action_type='attestation_signed')
     const attestationExists = sqlite
       .prepare(
         `SELECT audit_log_id FROM audit_log
-         WHERE case_id = ? AND action_type = 'report_signed'
+         WHERE case_id = ? AND action_type = 'attestation_signed'
          LIMIT 1`,
       )
       .get(caseRow.case_id) as { audit_log_id?: number } | undefined
@@ -186,7 +195,7 @@ const ADVANCEMENT_CONDITIONS: Record<
   },
 
   complete: (_caseRow: CaseRow) => {
-    // Complete is the final stage — cannot advance further
+    // Complete is the final stage, cannot advance further
     return { canAdvance: false, reason: 'Case is already complete' }
   },
 }
@@ -234,8 +243,8 @@ export function checkStageAdvancement(caseId: number): StageAdvancementCheck {
   }
   let currentStage: PipelineStage = (LEGACY_MAP[rawStage] ?? rawStage) as PipelineStage
 
-  // Verify it's a valid stage
-  if (!STAGE_ORDER[currentStage]) {
+  // Verify it's a valid stage (use `undefined` check, not falsiness, STAGE_ORDER['onboarding'] === 0)
+  if (STAGE_ORDER[currentStage] === undefined) {
     currentStage = 'onboarding'
   }
 
@@ -338,7 +347,7 @@ export function advanceStage(caseId: number): StageAdvancementResult {
     }
   } catch (e) {
     console.error('[pipeline] Failed to log stage advancement:', (e as Error).message)
-    // Don't fail the operation — DB update succeeded
+    // Don't fail the operation, DB update succeeded
   }
 
   return {
@@ -376,7 +385,7 @@ export function getStageConditions(stage: PipelineStage): readonly string[] {
       'Clinician must attest to the report accuracy',
     ],
     complete: [
-      'Case is complete — no further advancement possible',
+      'Case is complete, no further advancement possible',
     ],
   }
 

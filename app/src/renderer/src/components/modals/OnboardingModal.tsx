@@ -50,13 +50,13 @@ const TABS: readonly TabDef[] = [
       {
         key: 'marital_status',
         label: 'Marital / Relationship Status',
-        placeholder: 'Describe current marital or relationship status…',
+        placeholder: 'Describe current marital or relationship status...',
         rows: 1,
       },
       {
         key: 'dependents',
         label: 'Dependents / Children',
-        placeholder: 'Names and ages of children or other dependents…',
+        placeholder: 'Names and ages of children or other dependents...',
         rows: 2,
       },
       {
@@ -68,7 +68,7 @@ const TABS: readonly TabDef[] = [
       {
         key: 'primary_language',
         label: 'Primary Language',
-        placeholder: 'Primary language spoken at home…',
+        placeholder: 'Primary language spoken at home...',
         rows: 1,
       },
     ],
@@ -76,18 +76,18 @@ const TABS: readonly TabDef[] = [
   {
     key: 'complaints',
     label: 'Complaints',
-    note: 'Narrative responses only — no checklists. Reduces over-reporting bias.',
+    note: 'Narrative responses only, no checklists. Reduces over-reporting bias.',
     fields: [
       {
         key: 'primary_complaint',
-        label: 'Primary Complaint — Describe in Detail',
-        placeholder: 'Describe the primary concern in your own words…',
+        label: 'Primary Complaint, Describe in Detail',
+        placeholder: 'Describe the primary concern in your own words...',
         rows: 4,
       },
       {
         key: 'secondary_concerns',
         label: 'Secondary Concerns',
-        placeholder: 'Any other concerns or symptoms you want to mention…',
+        placeholder: 'Any other concerns or symptoms you want to mention...',
         rows: 3,
       },
       {
@@ -105,7 +105,7 @@ const TABS: readonly TabDef[] = [
       {
         key: 'family_of_origin',
         label: 'Family of Origin',
-        placeholder: 'Describe your upbringing, parents, siblings, household growing up…',
+        placeholder: 'Describe your upbringing, parents, siblings, household growing up...',
         rows: 3,
       },
       {
@@ -117,13 +117,13 @@ const TABS: readonly TabDef[] = [
       {
         key: 'family_medical_history',
         label: 'Family Medical History',
-        placeholder: 'Significant medical conditions in immediate or extended family…',
+        placeholder: 'Significant medical conditions in immediate or extended family...',
         rows: 2,
       },
       {
         key: 'current_family_relationships',
         label: 'Current Family Relationships',
-        placeholder: 'Describe your current relationships with family members…',
+        placeholder: 'Describe your current relationships with family members...',
         rows: 2,
       },
     ],
@@ -135,37 +135,37 @@ const TABS: readonly TabDef[] = [
       {
         key: 'highest_education',
         label: 'Highest Level of Education',
-        placeholder: "e.g. High school diploma, GED, some college, bachelor's degree…",
+        placeholder: "e.g. High school diploma, GED, some college, bachelor's degree...",
         rows: 1,
       },
       {
         key: 'schools_attended',
         label: 'Schools Attended',
-        placeholder: 'List schools attended and approximate years…',
+        placeholder: 'List schools attended and approximate years...',
         rows: 1,
       },
       {
         key: 'academic_experience',
         label: 'Academic Experience',
-        placeholder: 'Describe your overall experience in school — strengths, struggles, notable events…',
+        placeholder: 'Describe your overall experience in school, strengths, struggles, notable events...',
         rows: 2,
       },
       {
         key: 'employment_status',
         label: 'Current Employment Status',
-        placeholder: 'Employed, unemployed, disabled, retired, student…',
+        placeholder: 'Employed, unemployed, disabled, retired, student...',
         rows: 1,
       },
       {
         key: 'current_employer',
         label: 'Current / Most Recent Employer & Role',
-        placeholder: 'Employer name and your role or job title…',
+        placeholder: 'Employer name and your role or job title...',
         rows: 1,
       },
       {
         key: 'work_history',
         label: 'Work History Summary',
-        placeholder: 'Summarize your work history, including gaps or significant changes…',
+        placeholder: 'Summarize your work history, including gaps or significant changes...',
         rows: 3,
       },
       {
@@ -184,31 +184,31 @@ const TABS: readonly TabDef[] = [
       {
         key: 'medical_conditions',
         label: 'Current Medical Conditions',
-        placeholder: 'List any active medical diagnoses or ongoing health concerns…',
+        placeholder: 'List any active medical diagnoses or ongoing health concerns...',
         rows: 2,
       },
       {
         key: 'current_medications',
         label: 'Current Medications',
-        placeholder: 'Medication name, dosage, prescriber, and purpose for each…',
+        placeholder: 'Medication name, dosage, prescriber, and purpose for each...',
         rows: 2,
       },
       {
         key: 'surgeries_hospitalizations',
         label: 'Surgeries & Hospitalizations',
-        placeholder: 'Any past surgeries, hospitalizations, or significant medical procedures…',
+        placeholder: 'Any past surgeries, hospitalizations, or significant medical procedures...',
         rows: 2,
       },
       {
         key: 'head_injuries',
         label: 'Head Injuries / Traumatic Brain Injury',
-        placeholder: 'Any history of head injuries, concussions, or TBI…',
+        placeholder: 'Any history of head injuries, concussions, or TBI...',
         rows: 2,
       },
       {
         key: 'sleep_quality',
         label: 'Sleep Quality & Disturbance',
-        placeholder: 'Describe your typical sleep patterns and any difficulties…',
+        placeholder: 'Describe your typical sleep patterns and any difficulties...',
         rows: 1,
       },
       {
@@ -226,31 +226,31 @@ const TABS: readonly TabDef[] = [
       {
         key: 'previous_treatment',
         label: 'Previous Mental Health Treatment',
-        placeholder: 'Describe any past therapy, counseling, or psychiatric care…',
+        placeholder: 'Describe any past therapy, counseling, or psychiatric care...',
         rows: 3,
       },
       {
         key: 'previous_diagnoses',
         label: 'Previous Diagnoses',
-        placeholder: 'Any mental health diagnoses you have received in the past…',
+        placeholder: 'Any mental health diagnoses you have received in the past...',
         rows: 2,
       },
       {
         key: 'psych_medications',
         label: 'Psychiatric Medications Past & Present',
-        placeholder: 'List psychiatric medications you have taken, including current ones…',
+        placeholder: 'List psychiatric medications you have taken, including current ones...',
         rows: 2,
       },
       {
         key: 'self_harm_history',
         label: 'History of Self-Harm or Suicidal Thoughts',
-        placeholder: 'Any history of self-harm, suicidal thoughts, or attempts…',
+        placeholder: 'Any history of self-harm, suicidal thoughts, or attempts...',
         rows: 2,
       },
       {
         key: 'violence_history',
         label: 'History of Violence or Harm to Others',
-        placeholder: 'Any history of violent behavior or causing harm to others…',
+        placeholder: 'Any history of violent behavior or causing harm to others...',
         rows: 2,
       },
     ],
@@ -262,19 +262,19 @@ const TABS: readonly TabDef[] = [
       {
         key: 'alcohol_use',
         label: 'Alcohol Use',
-        placeholder: 'Describe your alcohol use — frequency, amount, patterns, impact…',
+        placeholder: 'Describe your alcohol use, frequency, amount, patterns, impact...',
         rows: 2,
       },
       {
         key: 'drug_use',
         label: 'Drug / Substance Use',
-        placeholder: 'Describe any use of illicit drugs, marijuana, or misuse of prescriptions…',
+        placeholder: 'Describe any use of illicit drugs, marijuana, or misuse of prescriptions...',
         rows: 3,
       },
       {
         key: 'substance_treatment',
         label: 'Treatment for Substance Use',
-        placeholder: 'Any past or current treatment programs for substance use…',
+        placeholder: 'Any past or current treatment programs for substance use...',
         rows: 2,
       },
     ],
@@ -286,25 +286,25 @@ const TABS: readonly TabDef[] = [
       {
         key: 'arrests_convictions',
         label: 'Prior Arrests & Convictions',
-        placeholder: 'List prior arrests and convictions, including dates and outcomes…',
+        placeholder: 'List prior arrests and convictions, including dates and outcomes...',
         rows: 3,
       },
       {
         key: 'incarceration_history',
         label: 'Incarceration History',
-        placeholder: 'Any periods of incarceration — facility, dates, reason…',
+        placeholder: 'Any periods of incarceration, facility, dates, reason...',
         rows: 2,
       },
       {
         key: 'probation_parole',
         label: 'Probation / Parole',
-        placeholder: 'Current or past probation or parole status and conditions…',
+        placeholder: 'Current or past probation or parole status and conditions...',
         rows: 2,
       },
       {
         key: 'protective_orders',
         label: 'Protective Orders / Restraining Orders',
-        placeholder: 'Any active or prior protective or restraining orders…',
+        placeholder: 'Any active or prior protective or restraining orders...',
         rows: 2,
       },
     ],
@@ -316,7 +316,7 @@ const TABS: readonly TabDef[] = [
       {
         key: 'events_circumstances',
         label: 'Describe the Events or Circumstances',
-        placeholder: 'Describe what happened leading up to this evaluation…',
+        placeholder: 'Describe what happened leading up to this evaluation...',
         rows: 5,
       },
       {
@@ -488,7 +488,7 @@ export default function OnboardingModal({
         <div style={headerStyle}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
-              Patient Onboarding — Biopsychosocial History
+              Patient Onboarding, Biopsychosocial History
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
               Self-report or referral-report form. All fields are narrative text entry.
@@ -503,7 +503,7 @@ export default function OnboardingModal({
         <div style={fidelityBoxStyle}>
           <span style={{ fontWeight: 600, color: 'var(--accent)' }}>Data Fidelity Protocol: </span>
           Patient-reported information will be cleaned for grammar and spelling, then translated to
-          clinical language for the case overview. Every reported element is preserved — nothing is
+          clinical language for the case overview. Every reported element is preserved, nothing is
           omitted. The clinician verifies and annotates during the initial interview.
         </div>
 
@@ -561,24 +561,24 @@ export default function OnboardingModal({
                 <span style={readOnlyValueStyle}>
                   {caseData
                     ? `${caseData.examinee_first_name} ${caseData.examinee_last_name}`
-                    : '—'}
+                    : ','}
                 </span>
               </div>
               <div style={readOnlyRowStyle}>
                 <span style={readOnlyLabelStyle}>Date of Birth</span>
-                <span style={readOnlyValueStyle}>{caseData?.examinee_dob ?? '—'}</span>
+                <span style={readOnlyValueStyle}>{caseData?.examinee_dob ?? ','}</span>
               </div>
               <div style={readOnlyRowStyle}>
                 <span style={readOnlyLabelStyle}>Age</span>
                 <span style={readOnlyValueStyle}>
                   {caseData?.examinee_dob != null
                     ? calcAge(caseData.examinee_dob)
-                    : '—'}
+                    : ','}
                 </span>
               </div>
               <div style={readOnlyRowStyle}>
                 <span style={readOnlyLabelStyle}>Gender</span>
-                <span style={readOnlyValueStyle}>{caseData?.examinee_gender ?? '—'}</span>
+                <span style={readOnlyValueStyle}>{caseData?.examinee_gender ?? ','}</span>
               </div>
             </div>
           )}
@@ -604,7 +604,7 @@ export default function OnboardingModal({
                 rows={3}
                 value={form[activeTab].clinician_notes ?? ''}
                 onChange={(e) => updateField(activeTab, 'clinician_notes', e.target.value)}
-                placeholder="Clinical observations, discrepancies, follow-up items…"
+                placeholder="Clinical observations, discrepancies, follow-up items..."
               />
             </div>
           )}
@@ -719,7 +719,7 @@ function ModeButton({
 
 function calcAge(dob: string): string {
   const birth = new Date(dob)
-  if (isNaN(birth.getTime())) return '—'
+  if (isNaN(birth.getTime())) return ','
   const now = new Date()
   let age = now.getFullYear() - birth.getFullYear()
   const m = now.getMonth() - birth.getMonth()

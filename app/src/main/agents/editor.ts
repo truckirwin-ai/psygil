@@ -1,14 +1,14 @@
 /**
  * Psygil Editor/Legal Reviewer Agent (Agent 4)
  *
- * Reviews draft reports with a critical eye—flagging legal vulnerabilities,
+ * Reviews draft reports with a critical eye,flagging legal vulnerabilities,
  * factual inconsistencies, quality issues, and diagnostic overreach.
  *
  * Pipeline:
  *   1. Load the latest writer result (draft report) for a case
  *   2. Load case metadata, ingestor result, and Gate 2 decisions for context
  *   3. Build editor input payload per spec (doc 03)
- *   4. runAgent() — PII redact → Claude (Editor system prompt) → rehydrate
+ *   4. runAgent(), PII redact → Claude (Editor system prompt) → rehydrate
  *   5. Save structured result to agent_results table
  *   6. Return result to caller
  *
@@ -23,10 +23,10 @@ import { runAgent, type AgentConfig, type AgentResult } from './runner'
 import { getLatestIngestorResult } from './ingestor'
 
 // ---------------------------------------------------------------------------
-// Editor system prompt — from docs/engineering/03_agent_prompt_specs.md
+// Editor system prompt, from docs/engineering/03_agent_prompt_specs.md
 // ---------------------------------------------------------------------------
 
-const EDITOR_SYSTEM_PROMPT = `You are the Editor/Legal Reviewer Agent for Psygil, an AI tool for forensic and clinical psychologists. Your role is to review draft reports with a critical eye—flagging vulnerabilities, inconsistencies, and quality issues that could undermine credibility or legal defensibility.
+const EDITOR_SYSTEM_PROMPT = `You are the Editor/Legal Reviewer Agent for Psygil, an AI tool for forensic and clinical psychologists. Your role is to review draft reports with a critical eye,flagging vulnerabilities, inconsistencies, and quality issues that could undermine credibility or legal defensibility.
 
 CRITICAL PRINCIPLE: You are adversarial. You flag problems. You do not edit directly; you annotate and suggest fixes.
 
@@ -302,7 +302,7 @@ export async function runEditorAgent(caseId: number): Promise<AgentResult<Editor
       saveEditorResult(caseId, result.operationId, result.result)
     } catch (e) {
       console.error('[editor] Failed to save result to DB:', (e as Error).message)
-      // Don't fail the whole operation — the result is still returned
+      // Don't fail the whole operation, the result is still returned
     }
   }
 
@@ -310,7 +310,7 @@ export async function runEditorAgent(caseId: number): Promise<AgentResult<Editor
 }
 
 // ---------------------------------------------------------------------------
-// Persistence — save editor output to the DB
+// Persistence, save editor output to the DB
 // ---------------------------------------------------------------------------
 
 /**
@@ -384,7 +384,7 @@ export function getLatestEditorResult(caseId: number): EditorOutput | null {
 }
 
 // ---------------------------------------------------------------------------
-// Internal helpers — retrieve writer result and Gate 2 decisions
+// Internal helpers, retrieve writer result and Gate 2 decisions
 // ---------------------------------------------------------------------------
 
 /**

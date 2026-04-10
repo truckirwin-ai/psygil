@@ -1,5 +1,5 @@
 /**
- * Psygil PII Detector — TypeScript client for Presidio + spaCy via Python sidecar.
+ * Psygil PII Detector, TypeScript client for Presidio + spaCy via Python sidecar.
  *
  * Communicates with the Python sidecar (Process 4) over a Unix domain socket
  * using JSON-RPC 2.0. The sidecar runs Presidio AnalyzerEngine with the
@@ -97,7 +97,7 @@ export async function detect(text: string): Promise<readonly PiiEntity[]> {
 /**
  * Detect PII entities in multiple text strings (batch mode).
  *
- * More efficient than calling detect() in a loop — sends all texts
+ * More efficient than calling detect() in a loop, sends all texts
  * in a single JSON-RPC call to the sidecar.
  */
 export async function batchDetect(texts: readonly string[]): Promise<readonly (readonly PiiEntity[])[]> {

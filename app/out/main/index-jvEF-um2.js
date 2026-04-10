@@ -68,7 +68,7 @@ async function checkForUpdates() {
       return { available: false };
     }
     if (!verifySignature(platformInfo.sha256, platformInfo.signature)) {
-      console.error("[updater] SECURITY: Update signature verification FAILED — rejecting update");
+      console.error("[updater] SECURITY: Update signature verification FAILED, rejecting update");
       return { available: false };
     }
     console.log(`[updater] Update available: ${currentVersion} → ${manifest.version}`);
@@ -104,13 +104,13 @@ async function downloadUpdate(version) {
     writeFileSync(downloadPath, buffer);
     const computedHash = hashFile(downloadPath);
     if (computedHash !== platformInfo.sha256) {
-      console.error("[updater] SECURITY: Download hash mismatch — rejecting");
+      console.error("[updater] SECURITY: Download hash mismatch, rejecting");
       const { unlinkSync } = await import("fs");
       unlinkSync(downloadPath);
       return null;
     }
     if (!verifySignature(computedHash, platformInfo.signature)) {
-      console.error("[updater] SECURITY: Download signature verification FAILED — rejecting");
+      console.error("[updater] SECURITY: Download signature verification FAILED, rejecting");
       const { unlinkSync } = await import("fs");
       unlinkSync(downloadPath);
       return null;

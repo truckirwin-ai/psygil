@@ -32,7 +32,7 @@ export type PipelineStage =
   | 'complete'
 
 // ---------------------------------------------------------------------------
-// Cases — DB row shape (matches cases table + folder_path column)
+// Cases, DB row shape (matches cases table + folder_path column)
 // ---------------------------------------------------------------------------
 
 export interface CaseRow {
@@ -93,12 +93,12 @@ export interface CasesGetParams {
 
 export type CasesGetResult = CaseRow
 
-// cases.create — reuse CreateCaseParams
+// cases.create, reuse CreateCaseParams
 export type CasesCreateParams = CreateCaseParams
 
 export type CasesCreateResult = CaseRow
 
-// cases.update — partial update of mutable case fields
+// cases.update, partial update of mutable case fields
 export interface CasesUpdateParams {
   readonly case_id: number
   readonly evaluation_type?: string | null
@@ -650,7 +650,7 @@ export interface PipelineConditionsResult {
 }
 
 // ---------------------------------------------------------------------------
-// Data Confirmation — Gate for Onboarding stage
+// Data Confirmation, Gate for Onboarding stage
 // ---------------------------------------------------------------------------
 
 export interface DataConfirmationSaveParams {
@@ -673,7 +673,60 @@ export interface DataConfirmationGetResult {
 }
 
 // ---------------------------------------------------------------------------
-// Diagnostic Decisions — ██ DOCTOR ALWAYS DIAGNOSES ██
+// Test Scores
+// ---------------------------------------------------------------------------
+
+export interface TestScoreEntry {
+  readonly scale_name: string
+  readonly raw_score?: number
+  readonly t_score?: number
+  readonly percentile?: number
+  readonly scaled_score?: number
+  readonly interpretation?: string
+  readonly is_elevated?: boolean
+}
+
+export interface TestScoreSaveParams {
+  readonly case_id: number
+  readonly instrument_name: string
+  readonly instrument_abbrev: string
+  readonly administration_date: string
+  readonly data_entry_method: 'manual' | 'pdf_extraction'
+  readonly scores: readonly TestScoreEntry[]
+  readonly validity_scores?: readonly TestScoreEntry[]
+  readonly clinical_narrative?: string
+  readonly notes?: string
+}
+
+export interface TestScoreListParams {
+  readonly case_id: number
+}
+
+// ---------------------------------------------------------------------------
+// Diagnosis Catalog, DSM-5-TR reference lookup
+// ---------------------------------------------------------------------------
+
+export interface DiagnosisCatalogRow {
+  readonly diagnosis_id: number
+  readonly code: string
+  readonly dsm5tr_code: string
+  readonly name: string
+  readonly description: string
+  readonly category: string
+  readonly is_builtin: number
+}
+
+export interface DiagnosisCatalogSearchParams {
+  readonly query: string
+  readonly limit?: number
+}
+
+export interface DiagnosisCatalogListParams {
+  readonly category?: string
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic Decisions, ██ DOCTOR ALWAYS DIAGNOSES ██
 // ---------------------------------------------------------------------------
 
 export interface DiagnosticDecisionSaveParams {
@@ -704,6 +757,26 @@ export interface DiagnosticDecisionListParams {
 export interface DiagnosticDecisionDeleteParams {
   readonly case_id: number
   readonly diagnosis_key: string
+}
+
+// ---------------------------------------------------------------------------
+// Clinical Formulation, clinician's authoritative narrative per case
+// ---------------------------------------------------------------------------
+
+export interface ClinicalFormulationRow {
+  readonly formulation_id: number
+  readonly case_id: number
+  readonly formulation_text: string
+  readonly updated_at: string
+}
+
+export interface ClinicalFormulationSaveParams {
+  readonly case_id: number
+  readonly formulation_text: string
+}
+
+export interface ClinicalFormulationGetParams {
+  readonly case_id: number
 }
 
 // ---------------------------------------------------------------------------
@@ -891,7 +964,223 @@ export interface ResourceOpenParams {
 }
 
 // ---------------------------------------------------------------------------
-// Preload API shape — exposed as window.psygil
+// Writing Sample upload with Presidio PII pipeline
+// ---------------------------------------------------------------------------
+
+/** Per-file PHI detection report returned after Presidio processing */
+export interface WritingSamplePhiReport {
+  readonly filename: string
+  readonly originalSize: number
+  readonly cleanedSize: number
+  /** Total PHI entities detected and redacted */
+  readonly entityCount: number
+  /** Breakdown by HIPAA category: { PERSON: 12, DATE_TIME: 5, ... } */
+  readonly typeBreakdown: Record<string, number>
+  /** Whether the sidecar was used (true) or fell back to regex (false) */
+  readonly presidioUsed: boolean
+  /** Path to the cleaned file in _cleaned/ */
+  readonly cleanedPath: string
+  /** Short excerpt of the cleaned text (first 500 chars) for preview */
+  readonly cleanedPreview: string
+}
+
+export interface WritingSampleUploadParams {
+  readonly filePaths?: readonly string[]
+}
+
+export interface WritingSampleUploadResult {
+  readonly imported: readonly ResourceItem[]
+  readonly reports: readonly WritingSamplePhiReport[]
+  /** Total PHI entities stripped across all files */
+  readonly totalPhiStripped: number
+  /** Whether the Presidio sidecar was available */
+  readonly sidecarAvailable: boolean
+}
+
+/** Voice/style analysis result for a single writing sample */
+export interface VoiceStyleProfile {
+  readonly filename: string
+  /** Average sentence length in words */
+  readonly avgSentenceLength: number
+  /** Median sentence length in words */
+  readonly medianSentenceLength: number
+  /** Total word count */
+  readonly wordCount: number
+  /** Total sentence count */
+  readonly sentenceCount: number
+  /** Paragraph count */
+  readonly paragraphCount: number
+  /** Average paragraph length in sentences */
+  readonly avgParagraphLength: number
+  /** Vocabulary richness: unique words / total words */
+  readonly vocabularyRichness: number
+  /** Top 20 most-used clinical/forensic terms */
+  readonly topTerms: readonly { term: string; count: number }[]
+  /** Hedging phrases found (e.g., "appears to", "is consistent with") */
+  readonly hedgingPhrases: readonly { phrase: string; count: number }[]
+  /** Person reference: percentage of first-person vs third-person */
+  readonly personReference: { firstPerson: number; thirdPerson: number }
+  /** Tense distribution: past vs present */
+  readonly tenseDistribution: { past: number; present: number }
+  /** Detected section headings */
+  readonly sectionHeadings: readonly string[]
+  /** Formality score: 0 (conversational) to 1 (highly formal) */
+  readonly formalityScore: number
+}
+
+export interface WritingSampleAnalyzeParams {
+  readonly storedPaths: readonly string[]
+}
+
+export interface WritingSampleAnalyzeResult {
+  readonly profiles: readonly VoiceStyleProfile[]
+  /** Aggregate across all samples */
+  readonly aggregate: {
+    readonly avgSentenceLength: number
+    readonly vocabularyRichness: number
+    readonly formalityScore: number
+    readonly topTerms: readonly { term: string; count: number }[]
+    readonly hedgingPhrases: readonly { phrase: string; count: number }[]
+    readonly sampleCount: number
+    readonly totalWordCount: number
+    readonly personReference: { firstPerson: number; thirdPerson: number }
+    readonly tenseDistribution: { past: number; present: number }
+    readonly sectionHeadings: readonly string[]
+  }
+}
+
+/** Persisted voice/style profile saved to .style-profile.json in the workspace */
+export interface PersistedStyleProfile {
+  readonly version: 1
+  readonly updatedAt: string
+  readonly sampleCount: number
+  readonly totalWordCount: number
+  readonly avgSentenceLength: number
+  readonly vocabularyRichness: number
+  readonly formalityScore: number
+  readonly topTerms: readonly { term: string; count: number }[]
+  readonly hedgingPhrases: readonly { phrase: string; count: number }[]
+  readonly personReference: { firstPerson: number; thirdPerson: number }
+  readonly tenseDistribution: { past: number; present: number }
+  readonly sectionHeadings: readonly string[]
+}
+
+export interface WritingSamplePreviewParams {
+  readonly storedPath: string
+}
+
+export interface WritingSamplePreviewResult {
+  /** The cleaned (de-identified) text content */
+  readonly cleanedText: string
+  /** The original text (for side-by-side comparison, stays local) */
+  readonly originalText: string
+  /** PHI entities found during the original redaction */
+  readonly entityCount: number
+  readonly typeBreakdown: Record<string, number>
+}
+
+// ---------------------------------------------------------------------------
+// Report Templates (custom uploaded + built-in)
+// ---------------------------------------------------------------------------
+
+/** Formatting config extracted from a .docx template */
+export interface TemplateFormattingConfig {
+  readonly margins: { top: number; bottom: number; left: number; right: number }
+  readonly fontFamily: string
+  readonly fontSize: number
+  readonly lineSpacing: number
+  readonly headingFont: string
+  readonly headingSize: number
+  readonly headerContent: string
+  readonly footerContent: string
+}
+
+/** A single section in a parsed template */
+export interface TemplateSectionProfile {
+  readonly heading: string
+  readonly contentType: 'narrative' | 'table' | 'list' | 'mixed'
+  readonly exampleProse: string
+  readonly estimatedLength: 'brief' | 'moderate' | 'extensive'
+  readonly order: number
+}
+
+/** Full template profile stored as JSON sidecar */
+export interface TemplateProfile {
+  readonly version: 1
+  readonly id: string
+  readonly name: string
+  readonly evalType: string
+  readonly source: 'builtin' | 'custom'
+  readonly createdAt: string
+  readonly formatting: TemplateFormattingConfig
+  readonly sections: readonly TemplateSectionProfile[]
+  readonly sectionCount: number
+  readonly docxPath: string | null
+}
+
+/** Params for template upload (step 1: analyze) */
+export interface TemplateAnalyzeParams {
+  readonly filePath?: string
+}
+
+/** Result from template analysis before confirmation */
+export interface TemplateAnalyzeResult {
+  readonly detectedEvalType: string
+  readonly suggestedName: string
+  readonly formatting: TemplateFormattingConfig
+  readonly sections: readonly TemplateSectionProfile[]
+  readonly cleanedText: string
+  readonly phiStripped: number
+  readonly tempDocxPath: string
+}
+
+/** Params for saving a confirmed template */
+export interface TemplateSaveParams {
+  readonly tempDocxPath: string
+  readonly name: string
+  readonly evalType: string
+  readonly formatting: TemplateFormattingConfig
+  readonly sections: readonly TemplateSectionProfile[]
+}
+
+/** Saved template summary (for listing) */
+export interface TemplateSummary {
+  readonly id: string
+  readonly name: string
+  readonly evalType: string
+  readonly source: 'builtin' | 'custom'
+  readonly sectionCount: number
+  readonly createdAt: string
+  readonly docxPath: string | null
+}
+
+export interface TemplateListParams {
+  readonly evalType?: string
+}
+
+export interface TemplateGetParams {
+  readonly id: string
+}
+
+export interface TemplateDeleteParams {
+  readonly id: string
+}
+
+export interface TemplateOpenParams {
+  readonly id: string
+}
+
+export interface TemplateSetLastUsedParams {
+  readonly evalType: string
+  readonly templateId: string
+}
+
+export interface TemplateGetLastUsedParams {
+  readonly evalType: string
+}
+
+// ---------------------------------------------------------------------------
+// Preload API shape, exposed as window.psygil
 // ---------------------------------------------------------------------------
 
 export interface PsygilApi {
@@ -902,6 +1191,8 @@ export interface PsygilApi {
     readonly create: (params: CasesCreateParams) => Promise<IpcResponse<CasesCreateResult>>
     readonly update: (params: CasesUpdateParams) => Promise<IpcResponse<CasesUpdateResult>>
     readonly archive: (params: CasesArchiveParams) => Promise<IpcResponse<CasesArchiveResult>>
+    readonly onChanged: (callback: (data: { caseId: number; newStage: string; previousStage: string }) => void) => (...args: unknown[]) => void
+    readonly offChanged: (wrapped?: (...args: unknown[]) => void) => void
   }
   readonly intake: {
     readonly save: (params: IntakeSaveParams) => Promise<IpcResponse<PatientIntakeRow>>
@@ -999,6 +1290,15 @@ export interface PsygilApi {
     readonly list: (params: DiagnosticDecisionListParams) => Promise<IpcResponse<readonly DiagnosticDecisionRow[]>>
     readonly delete: (params: DiagnosticDecisionDeleteParams) => Promise<IpcResponse<void>>
   }
+  readonly testScores: {
+    readonly save: (params: TestScoreSaveParams) => Promise<IpcResponse<unknown>>
+    readonly list: (params: TestScoreListParams) => Promise<IpcResponse<readonly unknown[]>>
+    readonly delete: (params: { id: number }) => Promise<IpcResponse<void>>
+  }
+  readonly clinicalFormulation: {
+    readonly save: (params: ClinicalFormulationSaveParams) => Promise<IpcResponse<ClinicalFormulationRow>>
+    readonly get: (params: ClinicalFormulationGetParams) => Promise<IpcResponse<ClinicalFormulationRow | null>>
+  }
   readonly dataConfirmation: {
     readonly save: (args: { caseId: number; categoryId: string; status: string; notes: string }) => Promise<IpcResponse<{ status: string }>>
     readonly get: (args: { caseId: number }) => Promise<IpcResponse<DataConfirmationGetResult>>
@@ -1020,6 +1320,24 @@ export interface PsygilApi {
     readonly exportAndOpen: (args: { caseId: number; fullName: string; evalType: string; sections: { title: string; body: string }[] }) => Promise<IpcResponse<{ filePath: string }>>
     readonly loadTemplate: () => Promise<IpcResponse<{ sections: { title: string; body: string }[] }>>
   }
+  readonly templates: {
+    /** Step 1: Upload and analyze a .docx report, strip PHI, detect eval type and sections */
+    readonly analyze: (args: TemplateAnalyzeParams) => Promise<IpcResponse<TemplateAnalyzeResult>>
+    /** Step 2: Save the analyzed template with user-confirmed name and eval type */
+    readonly save: (args: TemplateSaveParams) => Promise<IpcResponse<TemplateProfile>>
+    /** List all templates (built-in + custom), optionally filtered by eval type */
+    readonly list: (args?: TemplateListParams) => Promise<IpcResponse<readonly TemplateSummary[]>>
+    /** Get full template profile by ID */
+    readonly get: (args: TemplateGetParams) => Promise<IpcResponse<TemplateProfile>>
+    /** Delete a template */
+    readonly delete: (args: TemplateDeleteParams) => Promise<IpcResponse<void>>
+    /** Open the template's cleaned .docx in the system default app */
+    readonly open: (args: TemplateOpenParams) => Promise<IpcResponse<void>>
+    /** Record which template was last used for an eval type */
+    readonly setLastUsed: (args: TemplateSetLastUsedParams) => Promise<IpcResponse<void>>
+    /** Get the last used template ID for an eval type */
+    readonly getLastUsed: (args: TemplateGetLastUsedParams) => Promise<IpcResponse<string | null>>
+  }
   readonly audit: {
     readonly log: (args: AuditLogParams) => Promise<IpcResponse<AuditLogResult>>
     readonly getTrail: (args: AuditGetTrailParams) => Promise<IpcResponse<AuditGetTrailResult>>
@@ -1039,6 +1357,16 @@ export interface PsygilApi {
     readonly delete: (args: ResourceDeleteParams) => Promise<IpcResponse<void>>
     readonly open: (args: ResourceOpenParams) => Promise<IpcResponse<void>>
     readonly read: (args: ResourceOpenParams) => Promise<IpcResponse<{ content: string; redacted: string; encoding: 'text' | 'html' | 'pdf-base64' | 'base64'; mimeType: string; phiCount: number }>>
+    /** Upload writing samples with Presidio NER-based PHI stripping (18 HIPAA identifiers) */
+    readonly uploadWritingSample: (args: WritingSampleUploadParams) => Promise<IpcResponse<WritingSampleUploadResult>>
+    /** Preview a cleaned writing sample alongside original (both stay local, never sent to AI) */
+    readonly previewCleaned: (args: WritingSamplePreviewParams) => Promise<IpcResponse<WritingSamplePreviewResult>>
+    /** Analyze de-identified writing samples for voice and vocabulary style */
+    readonly analyzeStyle: (args: WritingSampleAnalyzeParams) => Promise<IpcResponse<WritingSampleAnalyzeResult>>
+    /** Load persisted voice/style profile from disk (null if none exists) */
+    readonly getStyleProfile: () => Promise<IpcResponse<PersistedStyleProfile | null>>
+    /** Recompute voice/style profile across ALL cleaned writing samples and persist to disk */
+    readonly recalculateStyleProfile: () => Promise<IpcResponse<WritingSampleAnalyzeResult>>
   }
   readonly whisper: {
     /** Save an audio blob (base64-encoded) to the case's Interviews folder */
@@ -1056,6 +1384,16 @@ export interface PsygilApi {
     /** Listen for live transcription text (partial chunks + final) */
     readonly onLiveText: (callback: (data: { sessionId: string; text: string; type: 'partial' | 'final' | 'error' }) => void) => () => void
   }
+  readonly diagnosisCatalog: {
+    readonly search: (params: DiagnosisCatalogSearchParams) => Promise<IpcResponse<readonly DiagnosisCatalogRow[]>>
+    readonly list: (params?: DiagnosisCatalogListParams) => Promise<IpcResponse<readonly DiagnosisCatalogRow[]>>
+  }
+  readonly testHarness: {
+    readonly list: () => Promise<IpcResponse<readonly { id: string; name: string; description: string; stopAtStage: string | null; stepCount: number }[]>>
+    readonly run: (params: { manifestId: string }) => Promise<IpcResponse<unknown>>
+    readonly runAll: () => Promise<IpcResponse<unknown>>
+  }
+  readonly setup: import('./setup').SetupApi
 }
 
 // Augment the global Window interface for renderer usage

@@ -41,7 +41,7 @@ function getCaseFolderPath(caseId: number, workspacePath?: string): string {
 // ============================================================================
 
 function generateCaseSummary(caseRow: CaseRow, auditTrail: any[]): string {
-  const summary = `# Case Summary — ${caseRow.case_number}
+  const summary = `# Case Summary, ${caseRow.case_number}
 
 ## Examinee Information
 - **Name:** ${caseRow.examinee_first_name} ${caseRow.examinee_last_name}

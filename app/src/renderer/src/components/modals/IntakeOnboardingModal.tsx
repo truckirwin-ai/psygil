@@ -191,7 +191,7 @@ function generateCaseNumber(): string {
 function calcAge(dob: string): string {
   if (!dob) return ''
   const birth = new Date(dob)
-  if (isNaN(birth.getTime())) return '—'
+  if (isNaN(birth.getTime())) return ','
   const today = new Date()
   let age = today.getFullYear() - birth.getFullYear()
   const m = today.getMonth() - birth.getMonth()
@@ -516,7 +516,7 @@ export default function IntakeOnboardingModal({
               caseId: targetCaseId,
               stage: 'testing',
             })
-            console.log(`[intake] Completed intake for case ${targetCaseId} — advanced to testing`)
+            console.log(`[intake] Completed intake for case ${targetCaseId}, advanced to testing`)
           } catch (err) {
             console.error('[intake] Post-completion updates failed (non-fatal):', err)
           }
@@ -550,7 +550,7 @@ export default function IntakeOnboardingModal({
               {isEditMode ? 'Edit Intake & Onboarding' : 'New Intake & Onboarding Wizard'}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-              Step {currentStep.number} of {STEPS.length} — {currentStep.phase === 'intake' ? 'Administrative Information' : 'Patient History'}
+              Step {currentStep.number} of {STEPS.length}, {currentStep.phase === 'intake' ? 'Administrative Information' : 'Patient History'}
             </div>
           </div>
           <button onClick={onClose} style={closeButtonStyle} aria-label="Close">
@@ -603,7 +603,7 @@ export default function IntakeOnboardingModal({
             />
           )}
 
-          {/* ONBOARDING STEPS — merged Demographics & Family */}
+          {/* ONBOARDING STEPS, merged Demographics & Family */}
           {currentStep.type === 'onboarding' && currentStep.onboardingSections?.includes('contact') && currentStep.onboardingSections?.includes('family') && (
             <DemographicsFamilyStep
               contactData={onboardingForm.contact}
@@ -615,7 +615,7 @@ export default function IntakeOnboardingModal({
             />
           )}
 
-          {/* ONBOARDING STEPS — merged Medical & Substance */}
+          {/* ONBOARDING STEPS, merged Medical & Substance */}
           {currentStep.type === 'onboarding' && currentStep.onboardingSections?.includes('health') && currentStep.onboardingSections?.includes('substance') && (
             <MedicalSubstanceStep
               healthData={onboardingForm.health}
@@ -626,7 +626,7 @@ export default function IntakeOnboardingModal({
             />
           )}
 
-          {/* ONBOARDING STEPS — single-section (Complaints, Recent Events) */}
+          {/* ONBOARDING STEPS, single-section (Complaints, Recent Events) */}
           {currentStep.type === 'onboarding' && !currentStep.onboardingSections && currentStep.onboardingSection && (
             <OnboardingStep
               section={currentStep.onboardingSection}
@@ -717,7 +717,7 @@ function IntakeContactAndInsuranceStep({ contact, age, onContactUpdate }: Intake
           </Field>
           <Field label="Age" flex={1}>
             <input style={{ ...inputStyle, background: 'var(--panel)', color: 'var(--text-secondary)' }}
-              value={age} readOnly placeholder="—" />
+              value={age} readOnly placeholder="," />
           </Field>
           <Field label="Gender" flex={2}>
             <select style={inputStyle} value={contact.gender}
@@ -781,7 +781,7 @@ function IntakeContactAndInsuranceStep({ contact, age, onContactUpdate }: Intake
           </Field>
           <Field label="Relationship" flex={1}>
             <input style={inputStyle} value={contact.emergencyContactRelationship}
-              onChange={(e) => onContactUpdate('emergencyContactRelationship', e.target.value)} placeholder="Spouse, Parent…" />
+              onChange={(e) => onContactUpdate('emergencyContactRelationship', e.target.value)} placeholder="Spouse, Parent..." />
           </Field>
           <Field label="Emergency Phone" flex={2}>
             <input style={inputStyle} value={contact.emergencyContactPhone}
@@ -834,7 +834,7 @@ function IntakeContactAndInsuranceStep({ contact, age, onContactUpdate }: Intake
 }
 
 // ---------------------------------------------------------------------------
-// Intake Referral Step (FLATTENED — no sub-tabs)
+// Intake Referral Step (FLATTENED, no sub-tabs)
 // ---------------------------------------------------------------------------
 
 interface IntakeReferralStepProps {
@@ -861,7 +861,7 @@ function IntakeReferralStep({
       const resp = await window.psygil.referral.parseDoc()
       if (resp.status === 'error') {
         if (resp.error === 'cancelled') {
-          // User cancelled the file picker — no error to show
+          // User cancelled the file picker, no error to show
           setParsing(false)
           return
         }
@@ -906,11 +906,11 @@ function IntakeReferralStep({
             disabled={parsing}
             style={browseButtonStyle}
           >
-            {parsing ? 'Parsing…' : 'Browse Referral Document'}
+            {parsing ? 'Parsing...' : 'Browse Referral Document'}
           </button>
           <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {parsedFile
-              ? <>Imported: <strong style={{ color: 'var(--text)' }}>{parsedFile}</strong> — fields auto-filled below</>
+              ? <>Imported: <strong style={{ color: 'var(--text)' }}>{parsedFile}</strong>, fields auto-filled below</>
               : 'Upload a .docx or .pdf referral and auto-fill the fields below, or enter data manually.'}
           </span>
         </div>
@@ -1056,7 +1056,7 @@ function IntakeReferralStep({
               <select style={{ ...inputStyle, maxWidth: 280 }}
                 value={referralData.evalType}
                 onChange={(e) => onReferralUpdate('evalType', e.target.value)}>
-                <option value="">Select evaluation type…</option>
+                <option value="">Select evaluation type...</option>
                 {EVAL_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </Field>
@@ -1065,28 +1065,28 @@ function IntakeReferralStep({
               <textarea style={{ ...textareaStyle, minHeight: 72, resize: 'vertical' }}
                 value={referralData.reasonForReferral}
                 onChange={(e) => onReferralUpdate('reasonForReferral', e.target.value)}
-                placeholder="Describe the evaluation being requested…" />
+                placeholder="Describe the evaluation being requested..." />
             </Field>
 
             <Field label="Complaint / Charges / Legal Matter">
               <textarea style={{ ...textareaStyle, minHeight: 72, resize: 'vertical' }}
                 value={referralData.charges}
                 onChange={(e) => onReferralUpdate('charges', e.target.value)}
-                placeholder="List charges or legal matter…" />
+                placeholder="List charges or legal matter..." />
             </Field>
 
             <Field label="Supporting Documents Received">
               <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
                 value={referralData.supportingDocuments}
                 onChange={(e) => onReferralUpdate('supportingDocuments', e.target.value)}
-                placeholder="Police report, prior evals, medical records…" />
+                placeholder="Police report, prior evals, medical records..." />
             </Field>
 
             <Field label="Additional Notes">
               <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
                 value={referralData.additionalNotes}
                 onChange={(e) => onReferralUpdate('additionalNotes', e.target.value)}
-                placeholder="Any other relevant information…" />
+                placeholder="Any other relevant information..." />
             </Field>
           </div>
 
@@ -1100,7 +1100,7 @@ function IntakeReferralStep({
               <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
                 value={referralData.arrestsConvictions}
                 onChange={(e) => onReferralUpdate('arrestsConvictions', e.target.value)}
-                placeholder="Prior arrests, charges, and convictions…" />
+                placeholder="Prior arrests, charges, and convictions..." />
             </Field>
 
             <div style={rowStyle}>
@@ -1108,13 +1108,13 @@ function IntakeReferralStep({
                 <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
                   value={referralData.incarcerationHistory}
                   onChange={(e) => onReferralUpdate('incarcerationHistory', e.target.value)}
-                  placeholder="Prior incarceration, duration, facility…" />
+                  placeholder="Prior incarceration, duration, facility..." />
               </Field>
               <Field label="Probation / Parole" flex={1}>
                 <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
                   value={referralData.probationParole}
                   onChange={(e) => onReferralUpdate('probationParole', e.target.value)}
-                  placeholder="Current or prior probation/parole status…" />
+                  placeholder="Current or prior probation/parole status..." />
               </Field>
             </div>
 
@@ -1122,7 +1122,7 @@ function IntakeReferralStep({
               <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
                 value={referralData.protectiveOrders}
                 onChange={(e) => onReferralUpdate('protectiveOrders', e.target.value)}
-                placeholder="Active or prior protective orders…" />
+                placeholder="Active or prior protective orders..." />
             </Field>
           </div>
         </>
@@ -1132,7 +1132,7 @@ function IntakeReferralStep({
 }
 
 // ---------------------------------------------------------------------------
-// Demographics & Family (merged step — contact + family onboarding sections)
+// Demographics & Family (merged step, contact + family onboarding sections)
 // Uses columns and dropdowns for structured fields, textareas for narratives.
 // ---------------------------------------------------------------------------
 
@@ -1170,16 +1170,16 @@ function DemographicsFamilyStep({
           </div>
           <div style={readOnlyRowStyle}>
             <span style={readOnlyLabelStyle}>DOB</span>
-            <span style={readOnlyValueStyle}>{caseData.examinee_dob ?? '—'}</span>
+            <span style={readOnlyValueStyle}>{caseData.examinee_dob ?? ','}</span>
           </div>
           <div style={readOnlyRowStyle}>
             <span style={readOnlyLabelStyle}>Gender</span>
-            <span style={readOnlyValueStyle}>{caseData.examinee_gender ?? '—'}</span>
+            <span style={readOnlyValueStyle}>{caseData.examinee_gender ?? ','}</span>
           </div>
         </div>
       )}
 
-      {/* DEMOGRAPHICS — structured fields in columns */}
+      {/* DEMOGRAPHICS, structured fields in columns */}
       <div style={sectionHeaderStyle}>Demographics</div>
       <div style={rowStyle}>
         <Field label="Marital / Relationship Status" flex={1}>
@@ -1213,7 +1213,7 @@ function DemographicsFamilyStep({
         </Field>
       </div>
 
-      {/* EDUCATION & EMPLOYMENT — structured */}
+      {/* EDUCATION & EMPLOYMENT, structured */}
       <div style={sectionHeaderStyle}>Education & Employment</div>
       <div style={rowStyle}>
         <Field label="Highest Education" flex={1}>
@@ -1236,12 +1236,12 @@ function DemographicsFamilyStep({
         <Field label="Schools Attended" flex={1}>
           <input style={inputStyle} value={familyData.schools_attended ?? ''}
             onChange={(e) => onFamilyUpdate('schools_attended', e.target.value)}
-            placeholder="Schools, colleges, programs…" />
+            placeholder="Schools, colleges, programs..." />
         </Field>
         <Field label="Current / Recent Employer & Role" flex={1}>
           <input style={inputStyle} value={familyData.current_employer ?? ''}
             onChange={(e) => onFamilyUpdate('current_employer', e.target.value)}
-            placeholder="Employer — role" />
+            placeholder="Employer, role" />
         </Field>
       </div>
 
@@ -1250,29 +1250,29 @@ function DemographicsFamilyStep({
           <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
             value={familyData.academic_experience ?? ''}
             onChange={(e) => onFamilyUpdate('academic_experience', e.target.value)}
-            placeholder="Academic performance, challenges, special education…" />
+            placeholder="Academic performance, challenges, special education..." />
         </Field>
         <Field label="Work History" flex={1}>
           <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
             value={familyData.work_history ?? ''}
             onChange={(e) => onFamilyUpdate('work_history', e.target.value)}
-            placeholder="Employment history, gaps, issues…" />
+            placeholder="Employment history, gaps, issues..." />
         </Field>
       </div>
 
       <Field label="Military Service">
         <input style={inputStyle} value={familyData.military_service ?? ''}
           onChange={(e) => onFamilyUpdate('military_service', e.target.value)}
-          placeholder="Branch, dates, discharge status — or N/A" />
+          placeholder="Branch, dates, discharge status, or N/A" />
       </Field>
 
-      {/* FAMILY — narrative fields */}
+      {/* FAMILY, narrative fields */}
       <div style={sectionHeaderStyle}>Family History</div>
       <Field label="Family of Origin">
         <textarea style={{ ...textareaStyle, minHeight: 72, resize: 'vertical' }}
           value={familyData.family_of_origin ?? ''}
           onChange={(e) => onFamilyUpdate('family_of_origin', e.target.value)}
-          placeholder="Parents, siblings, upbringing, household composition…" />
+          placeholder="Parents, siblings, upbringing, household composition..." />
       </Field>
 
       <div style={rowStyle}>
@@ -1280,13 +1280,13 @@ function DemographicsFamilyStep({
           <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
             value={familyData.family_mental_health ?? ''}
             onChange={(e) => onFamilyUpdate('family_mental_health', e.target.value)}
-            placeholder="Family history of mental health conditions…" />
+            placeholder="Family history of mental health conditions..." />
         </Field>
         <Field label="Family Medical History" flex={1}>
           <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
             value={familyData.family_medical_history ?? ''}
             onChange={(e) => onFamilyUpdate('family_medical_history', e.target.value)}
-            placeholder="Family history of medical conditions…" />
+            placeholder="Family history of medical conditions..." />
         </Field>
       </div>
 
@@ -1294,7 +1294,7 @@ function DemographicsFamilyStep({
         <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
           value={familyData.current_family_relationships ?? ''}
           onChange={(e) => onFamilyUpdate('current_family_relationships', e.target.value)}
-          placeholder="Current relationships, support system, conflicts…" />
+          placeholder="Current relationships, support system, conflicts..." />
       </Field>
 
       {/* Clinician notes */}
@@ -1307,7 +1307,7 @@ function DemographicsFamilyStep({
             style={{ ...textareaStyle, minHeight: 72 }}
             value={contactData.clinician_notes ?? ''}
             onChange={(e) => onContactUpdate('clinician_notes', e.target.value)}
-            placeholder="Clinical observations, discrepancies, follow-up items…"
+            placeholder="Clinical observations, discrepancies, follow-up items..."
           />
         </div>
       )}
@@ -1316,7 +1316,7 @@ function DemographicsFamilyStep({
 }
 
 // ---------------------------------------------------------------------------
-// Medical & Substance Use (merged step — health + substance onboarding sections)
+// Medical & Substance Use (merged step, health + substance onboarding sections)
 // All narrative text inputs per over-reporting prevention principle.
 // ---------------------------------------------------------------------------
 
@@ -1349,7 +1349,7 @@ function MedicalSubstanceStep({
         <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
           value={healthData.medical_conditions ?? ''}
           onChange={(e) => onHealthUpdate('medical_conditions', e.target.value)}
-          placeholder="Describe current medical conditions…" />
+          placeholder="Describe current medical conditions..." />
       </Field>
 
       <div style={rowStyle}>
@@ -1357,13 +1357,13 @@ function MedicalSubstanceStep({
           <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
             value={healthData.current_medications ?? ''}
             onChange={(e) => onHealthUpdate('current_medications', e.target.value)}
-            placeholder="Medication, dose, prescriber…" />
+            placeholder="Medication, dose, prescriber..." />
         </Field>
         <Field label="Surgeries & Hospitalizations" flex={1}>
           <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
             value={healthData.surgeries_hospitalizations ?? ''}
             onChange={(e) => onHealthUpdate('surgeries_hospitalizations', e.target.value)}
-            placeholder="Prior surgeries, hospitalizations…" />
+            placeholder="Prior surgeries, hospitalizations..." />
         </Field>
       </div>
 
@@ -1372,19 +1372,19 @@ function MedicalSubstanceStep({
           <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
             value={healthData.head_injuries ?? ''}
             onChange={(e) => onHealthUpdate('head_injuries', e.target.value)}
-            placeholder="Head injuries, LOC, TBI history…" />
+            placeholder="Head injuries, LOC, TBI history..." />
         </Field>
         <Field label="Sleep Quality & Disturbance" flex={1}>
           <input style={inputStyle} value={healthData.sleep_quality ?? ''}
             onChange={(e) => onHealthUpdate('sleep_quality', e.target.value)}
-            placeholder="Hours, quality, disturbances…" />
+            placeholder="Hours, quality, disturbances..." />
         </Field>
       </div>
 
       <Field label="Appetite & Weight Changes">
         <input style={inputStyle} value={healthData.appetite_weight ?? ''}
           onChange={(e) => onHealthUpdate('appetite_weight', e.target.value)}
-          placeholder="Recent changes in appetite or weight…" />
+          placeholder="Recent changes in appetite or weight..." />
       </Field>
 
       {/* MENTAL HEALTH */}
@@ -1395,21 +1395,21 @@ function MedicalSubstanceStep({
           <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
             value={healthData.previous_treatment ?? ''}
             onChange={(e) => onHealthUpdate('previous_treatment', e.target.value)}
-            placeholder="Prior therapy, counseling, inpatient…" />
+            placeholder="Prior therapy, counseling, inpatient..." />
         </Field>
         <Field label="Previous Diagnoses" flex={1}>
           <textarea style={{ ...textareaStyle, minHeight: 64, resize: 'vertical' }}
             value={healthData.previous_diagnoses ?? ''}
             onChange={(e) => onHealthUpdate('previous_diagnoses', e.target.value)}
-            placeholder="Prior psychiatric or psychological diagnoses…" />
+            placeholder="Prior psychiatric or psychological diagnoses..." />
         </Field>
       </div>
 
-      <Field label="Psychiatric Medications — Past & Present">
+      <Field label="Psychiatric Medications, Past & Present">
         <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
           value={healthData.psych_medications ?? ''}
           onChange={(e) => onHealthUpdate('psych_medications', e.target.value)}
-          placeholder="Current and prior psychiatric medications…" />
+          placeholder="Current and prior psychiatric medications..." />
       </Field>
 
       <div style={rowStyle}>
@@ -1417,13 +1417,13 @@ function MedicalSubstanceStep({
           <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
             value={healthData.self_harm_history ?? ''}
             onChange={(e) => onHealthUpdate('self_harm_history', e.target.value)}
-            placeholder="Describe history, frequency, most recent…" />
+            placeholder="Describe history, frequency, most recent..." />
         </Field>
         <Field label="History of Violence or Harm to Others" flex={1}>
           <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
             value={healthData.violence_history ?? ''}
             onChange={(e) => onHealthUpdate('violence_history', e.target.value)}
-            placeholder="Describe history, context, most recent…" />
+            placeholder="Describe history, context, most recent..." />
         </Field>
       </div>
 
@@ -1435,13 +1435,13 @@ function MedicalSubstanceStep({
           <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
             value={substanceData.alcohol_use ?? ''}
             onChange={(e) => onSubstanceUpdate('alcohol_use', e.target.value)}
-            placeholder="Frequency, amount, history…" />
+            placeholder="Frequency, amount, history..." />
         </Field>
         <Field label="Drug / Substance Use" flex={1}>
           <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
             value={substanceData.drug_use ?? ''}
             onChange={(e) => onSubstanceUpdate('drug_use', e.target.value)}
-            placeholder="Substances, frequency, route…" />
+            placeholder="Substances, frequency, route..." />
         </Field>
       </div>
 
@@ -1449,7 +1449,7 @@ function MedicalSubstanceStep({
         <textarea style={{ ...textareaStyle, minHeight: 56, resize: 'vertical' }}
           value={substanceData.substance_treatment ?? ''}
           onChange={(e) => onSubstanceUpdate('substance_treatment', e.target.value)}
-          placeholder="Prior treatment, rehab, detox, duration…" />
+          placeholder="Prior treatment, rehab, detox, duration..." />
       </Field>
 
       {/* Clinician notes */}
@@ -1462,7 +1462,7 @@ function MedicalSubstanceStep({
             style={{ ...textareaStyle, minHeight: 72 }}
             value={healthData.clinician_notes ?? ''}
             onChange={(e) => onHealthUpdate('clinician_notes', e.target.value)}
-            placeholder="Clinical observations, discrepancies, follow-up items…"
+            placeholder="Clinical observations, discrepancies, follow-up items..."
           />
         </div>
       )}
@@ -1471,7 +1471,7 @@ function MedicalSubstanceStep({
 }
 
 // ---------------------------------------------------------------------------
-// Onboarding Step (generic — used for Complaints and Recent Events)
+// Onboarding Step (generic, used for Complaints and Recent Events)
 // ---------------------------------------------------------------------------
 
 interface OnboardingStepProps {
@@ -1505,7 +1505,7 @@ function OnboardingStep({
     dependents: 'Dependents / Children',
     living_situation: 'Current Living Situation',
     primary_language: 'Primary Language',
-    primary_complaint: 'Primary Complaint — Describe in Detail',
+    primary_complaint: 'Primary Complaint, Describe in Detail',
     secondary_concerns: 'Secondary Concerns',
     onset_timeline: 'Onset & Timeline',
     family_of_origin: 'Family of Origin',
@@ -1566,17 +1566,17 @@ function OnboardingStep({
           </div>
           <div style={readOnlyRowStyle}>
             <span style={readOnlyLabelStyle}>Date of Birth</span>
-            <span style={readOnlyValueStyle}>{caseData.examinee_dob ?? '—'}</span>
+            <span style={readOnlyValueStyle}>{caseData.examinee_dob ?? ','}</span>
           </div>
           <div style={readOnlyRowStyle}>
             <span style={readOnlyLabelStyle}>Age</span>
             <span style={readOnlyValueStyle}>
-              {caseData.examinee_dob ? calcAge(caseData.examinee_dob) : '—'}
+              {caseData.examinee_dob ? calcAge(caseData.examinee_dob) : ','}
             </span>
           </div>
           <div style={readOnlyRowStyle}>
             <span style={readOnlyLabelStyle}>Gender</span>
-            <span style={readOnlyValueStyle}>{caseData.examinee_gender ?? '—'}</span>
+            <span style={readOnlyValueStyle}>{caseData.examinee_gender ?? ','}</span>
           </div>
         </div>
       )}
@@ -1589,7 +1589,7 @@ function OnboardingStep({
             style={{ ...textareaStyle, minHeight: field.includes('primary_complaint') || field.includes('events_circumstances') ? 120 : 72 }}
             value={sectionData[field] ?? ''}
             onChange={(e) => onUpdate(field, e.target.value)}
-            placeholder={`Enter ${fieldLabels[field] || field}…`}
+            placeholder={`Enter ${fieldLabels[field] || field}...`}
           />
         </div>
       ))}
@@ -1605,7 +1605,7 @@ function OnboardingStep({
             rows={3}
             value={sectionData.clinician_notes ?? ''}
             onChange={(e) => onUpdate('clinician_notes', e.target.value)}
-            placeholder="Clinical observations, discrepancies, follow-up items…"
+            placeholder="Clinical observations, discrepancies, follow-up items..."
           />
         </div>
       )}

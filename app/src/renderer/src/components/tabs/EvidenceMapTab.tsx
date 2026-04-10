@@ -113,7 +113,7 @@ const EvidenceMapTab: React.FC<EvidenceMapTabProps> = ({ caseId }) => {
 
   return (
     <div className={styles.evidenceMapTab}>
-      <h1>Evidence Map — Diagnosis × Source</h1>
+      <h1>Evidence Map, Diagnosis × Source</h1>
       <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '24px' }}>
         Visual convergence of test instruments, clinical interviews, and collateral records toward diagnostic impressions.
       </p>
@@ -156,7 +156,7 @@ const EvidenceMapTab: React.FC<EvidenceMapTabProps> = ({ caseId }) => {
                       {row.mmpi3 && <div>{row.mmpi3}</div>}
                       {row.pai && <div>{row.pai}</div>}
                     </td>
-                    <td>{row.interview || '—'}</td>
+                    <td>{row.interview || ','}</td>
                     <td className={styles.collateral}>
                       {row.medicalRecords && <div>{row.medicalRecords}</div>}
                       {row.hospitalNotes && <div>{row.hospitalNotes}</div>}
@@ -176,7 +176,7 @@ const EvidenceMapTab: React.FC<EvidenceMapTabProps> = ({ caseId }) => {
           <div className={styles.coherenceRow}>
             <span className={styles.coherenceLabel}>Test Pattern Consistency:</span>
             <span className={styles.coherenceValue}>
-              MMPI-3 (THD=75T, RC6=72T, RC8=78T) ↔ PAI (SCZ=72T, PAR=68T) — Both indicate schizophrenia spectrum
+              MMPI-3 (THD=75T, RC6=72T, RC8=78T) ↔ PAI (SCZ=72T, PAR=68T), Both indicate schizophrenia spectrum
             </span>
           </div>
           <div className={styles.coherenceRow}>

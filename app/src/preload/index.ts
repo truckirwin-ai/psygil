@@ -35,9 +35,15 @@ import type {
   DiagnosticDecisionSaveParams,
   DiagnosticDecisionListParams,
   DiagnosticDecisionDeleteParams,
+  ClinicalFormulationSaveParams,
+  ClinicalFormulationGetParams,
+  TestScoreSaveParams,
+  TestScoreListParams,
+  DiagnosisCatalogSearchParams,
+  DiagnosisCatalogListParams,
 } from '../shared/types'
 
-// IPC channel constants — must match main/ipc/handlers.ts
+// IPC channel constants, must match main/ipc/handlers.ts
 const CH = {
   CASES_LIST: 'cases:list',
   CASES_GET: 'cases:get',
@@ -86,8 +92,7 @@ const CH = {
 } as const
 
 // Typed API exposed to the renderer as window.psygil.
-// The renderer has NO access to Node.js, ipcRenderer, or require —
-// only the methods explicitly listed here.
+// The renderer has NO access to Node.js, ipcRenderer, or require, // only the methods explicitly listed here.
 const api: PsygilApi = {
   platform: process.platform,
 
@@ -96,7 +101,19 @@ const api: PsygilApi = {
     get: (params) => ipcRenderer.invoke(CH.CASES_GET, params),
     create: (params) => ipcRenderer.invoke(CH.CASES_CREATE, params),
     update: (params: CasesUpdateParams) => ipcRenderer.invoke(CH.CASES_UPDATE, params),
-    archive: (params) => ipcRenderer.invoke(CH.CASES_ARCHIVE, params)
+    archive: (params) => ipcRenderer.invoke(CH.CASES_ARCHIVE, params),
+    onChanged: (callback: (data: { caseId: number; newStage: string; previousStage: string }) => void) => {
+      const wrapped = (_event: Electron.IpcRendererEvent, data: { caseId: number; newStage: string; previousStage: string }): void => { callback(data) }
+      ipcRenderer.on('cases:changed', wrapped)
+      return wrapped
+    },
+    offChanged: (wrapped?: (...args: unknown[]) => void) => {
+      if (wrapped) {
+        ipcRenderer.removeListener('cases:changed', wrapped as never)
+      } else {
+        ipcRenderer.removeAllListeners('cases:changed')
+      }
+    },
   },
 
   intake: {
@@ -225,6 +242,17 @@ const api: PsygilApi = {
     delete: (params: DiagnosticDecisionDeleteParams) => ipcRenderer.invoke('diagnosticDecision:delete', params),
   },
 
+  testScores: {
+    save: (params: TestScoreSaveParams) => ipcRenderer.invoke('testScores:save', params),
+    list: (params: TestScoreListParams) => ipcRenderer.invoke('testScores:list', params),
+    delete: (params: { id: number }) => ipcRenderer.invoke('testScores:delete', params),
+  },
+
+  clinicalFormulation: {
+    save: (params: ClinicalFormulationSaveParams) => ipcRenderer.invoke('clinicalFormulation:save', params),
+    get: (params: ClinicalFormulationGetParams) => ipcRenderer.invoke('clinicalFormulation:get', params),
+  },
+
   dataConfirmation: {
     save: (args: { caseId: number; categoryId: string; status: string; notes: string }) => ipcRenderer.invoke(CH.DATA_CONFIRMATION_SAVE, args),
     get: (args: { caseId: number }) => ipcRenderer.invoke(CH.DATA_CONFIRMATION_GET, args),
@@ -254,6 +282,17 @@ const api: PsygilApi = {
     loadTemplate: () => ipcRenderer.invoke('report:loadTemplate'),
   },
 
+  templates: {
+    analyze: (args) => ipcRenderer.invoke('templates:analyze', args),
+    save: (args) => ipcRenderer.invoke('templates:save', args),
+    list: (args) => ipcRenderer.invoke('templates:list', args),
+    get: (args) => ipcRenderer.invoke('templates:get', args),
+    delete: (args) => ipcRenderer.invoke('templates:delete', args),
+    open: (args) => ipcRenderer.invoke('templates:open', args),
+    setLastUsed: (args) => ipcRenderer.invoke('templates:setLastUsed', args),
+    getLastUsed: (args) => ipcRenderer.invoke('templates:getLastUsed', args),
+  },
+
   audit: {
     log: (args: { caseId: number; actionType: string; actorType: 'clinician' | 'ai_agent' | 'system'; actorId?: string; details: Record<string, unknown>; relatedEntityType?: string; relatedEntityId?: number }) => ipcRenderer.invoke('audit:log', args),
     getTrail: (args: { caseId: number }) => ipcRenderer.invoke('audit:getTrail', args),
@@ -274,6 +313,11 @@ const api: PsygilApi = {
     delete: (args: { id: string; storedPath: string }) => ipcRenderer.invoke('resources:delete', args),
     open: (args: { storedPath: string }) => ipcRenderer.invoke('resources:open', args),
     read: (args: { storedPath: string }) => ipcRenderer.invoke('resources:read', args),
+    uploadWritingSample: (args: { filePaths?: string[] }) => ipcRenderer.invoke('resources:uploadWritingSample', args),
+    previewCleaned: (args: { storedPath: string }) => ipcRenderer.invoke('resources:previewCleaned', args),
+    analyzeStyle: (args: { storedPaths: string[] }) => ipcRenderer.invoke('resources:analyzeStyle', args),
+    getStyleProfile: () => ipcRenderer.invoke('resources:getStyleProfile'),
+    recalculateStyleProfile: () => ipcRenderer.invoke('resources:recalculateStyleProfile'),
   },
 
   whisper: {
@@ -295,6 +339,36 @@ const api: PsygilApi = {
       ipcRenderer.on('whisper:liveText', wrapped)
       return () => { ipcRenderer.removeListener('whisper:liveText', wrapped) }
     },
+  },
+
+  diagnosisCatalog: {
+    search: (params: DiagnosisCatalogSearchParams) => ipcRenderer.invoke('diagnosisCatalog:search', params),
+    list: (params?: DiagnosisCatalogListParams) => ipcRenderer.invoke('diagnosisCatalog:list', params),
+  },
+
+  testHarness: {
+    list: () => ipcRenderer.invoke('testHarness:list'),
+    run: (params: { manifestId: string }) => ipcRenderer.invoke('testHarness:run', params),
+    runAll: () => ipcRenderer.invoke('testHarness:runAll'),
+  },
+
+  setup: {
+    getConfig: () => ipcRenderer.invoke('setup:getConfig'),
+    reset: () => ipcRenderer.invoke('setup:reset'),
+    advance: (params) => ipcRenderer.invoke('setup:advance', params),
+    validateLicense: (params) => ipcRenderer.invoke('setup:validateLicense', params),
+    saveLicense: (params) => ipcRenderer.invoke('setup:saveLicense', params),
+    validateStoragePath: (params) => ipcRenderer.invoke('setup:validateStoragePath', params),
+    pickStorageFolder: () => ipcRenderer.invoke('setup:pickStorageFolder'),
+    getDefaultStoragePath: () => ipcRenderer.invoke('setup:getDefaultStoragePath'),
+    provisionStorage: (params) => ipcRenderer.invoke('setup:provisionStorage', params),
+    savePractice: (params) => ipcRenderer.invoke('setup:savePractice', params),
+    saveAi: (params) => ipcRenderer.invoke('setup:saveAi', params),
+    saveAppearance: (params) => ipcRenderer.invoke('setup:saveAppearance', params),
+    saveClinical: (params) => ipcRenderer.invoke('setup:saveClinical', params),
+    provisionTemplates: (params) => ipcRenderer.invoke('setup:provisionTemplates', params),
+    getSupportedEvalTypes: () => ipcRenderer.invoke('setup:getSupportedEvalTypes'),
+    complete: () => ipcRenderer.invoke('setup:complete'),
   },
 }
 

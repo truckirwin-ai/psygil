@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 
 /**
- * OnlyOfficeEditor — Sprint 10
+ * OnlyOfficeEditor, Sprint 10
  *
  * Reusable component that embeds OnlyOffice Document Editor via iframe.
  *

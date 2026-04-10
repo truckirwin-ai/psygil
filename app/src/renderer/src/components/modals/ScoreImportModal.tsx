@@ -221,27 +221,49 @@ export default function ScoreImportModal({
     setSaveError(null)
 
     try {
-      // Write score JSON to a temp file via blob, then ingest
-      // For now, we'll use a simple approach: create a JSON blob and save via the ingest pipeline
-      // The main process will receive the file and store it
+      // Prefer the proper testScores.save IPC path (writes to testAdministrations table).
+      // Fall back to the legacy document-ingest sentinel if the API isn't wired yet.
+      if (window.psygil?.testScores?.save != null) {
+        await window.psygil.testScores.save({
+          case_id: caseId,
+          instrument_name:
+            selectedInstrument === 'other'
+              ? customInstrumentName
+              : INSTRUMENTS.find((i) => i.id === selectedInstrument)?.name ?? selectedInstrument,
+          instrument_abbrev: INSTRUMENTS.find((i) => i.id === selectedInstrument)?.abbrev ?? '',
+          administration_date: administrationDate,
+          data_entry_method: 'manual',
+          scores: scores.map((s) => ({
+            scale_name: s.scaleName,
+            raw_score: s.rawScore ? parseFloat(s.rawScore) : undefined,
+            t_score: s.tScore ? parseFloat(s.tScore) : undefined,
+            percentile: s.percentile ? parseInt(s.percentile, 10) : undefined,
+            interpretation: s.classification || undefined,
+          })),
+          validity_scores: validityScores.map((s) => ({
+            scale_name: s.scaleName,
+            raw_score: s.rawScore ? parseFloat(s.rawScore) : undefined,
+            t_score: s.tScore ? parseFloat(s.tScore) : undefined,
+            percentile: s.percentile ? parseInt(s.percentile, 10) : undefined,
+            interpretation: s.classification || undefined,
+          })),
+          notes,
+        })
+        onImportComplete?.()
+        onClose()
+        return
+      }
+
+      // Legacy fallback: serialize as a sentinel-prefixed document until the IPC
+      // handler for testScores.save is wired up in the main process.
       const jsonBlob = JSON.stringify(scoreData, null, 2)
       const fileName = `${selectedInstrument}_scores_${administrationDate}.json`
 
-      // We need to write this to a temp location. Use the workspace config path.
-      // Actually, the simplest approach: save directly via a new IPC method.
-      // For MVP, we'll log the data and use the existing ingest path with a temp file.
-
-      // Store the score data in the agent_results table as a manual score entry
-      // This keeps it accessible to the Ingestor/Diagnostician agents
       const resp = await window.psygil.documents.ingest({
         case_id: caseId,
         file_path: `__manual_score__:${fileName}:${btoa(jsonBlob)}`,
         subfolder: 'Testing',
       })
-
-      // Note: The above uses a sentinel prefix that the main process will need to handle.
-      // For Sprint 8, we'll accept that manual scores are stored as JSON documents.
-      // A proper approach would be to write to the testAdministrations table directly.
 
       if (resp.status === 'success') {
         onImportComplete?.()
@@ -775,21 +797,21 @@ function ScoreTable({
             type="text"
             value={score.rawScore}
             onChange={(e) => onUpdate(idx, 'rawScore', e.currentTarget.value, isValidity)}
-            placeholder="—"
+            placeholder=","
             style={{ ...cellStyle, width: 60, textAlign: 'center' }}
           />
           <input
             type="text"
             value={score.tScore}
             onChange={(e) => onUpdate(idx, 'tScore', e.currentTarget.value, isValidity)}
-            placeholder="—"
+            placeholder=","
             style={{ ...cellStyle, width: 60, textAlign: 'center' }}
           />
           <input
             type="text"
             value={score.percentile}
             onChange={(e) => onUpdate(idx, 'percentile', e.currentTarget.value, isValidity)}
-            placeholder="—"
+            placeholder=","
             style={{ ...cellStyle, width: 60, textAlign: 'center' }}
           />
           <input

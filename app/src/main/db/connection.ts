@@ -16,7 +16,7 @@ let handle: DbHandle | null = null
 
 /**
  * Initialize the encrypted database and run any pending migrations.
- * Safe to call multiple times — only the first call has effect.
+ * Safe to call multiple times, only the first call has effect.
  */
 export async function initDb(): Promise<void> {
   if (handle !== null) return
@@ -29,7 +29,7 @@ export async function initDb(): Promise<void> {
     .get() as { n: number }).n
 
   if (tableCount === 0) {
-    // Fresh database — run the full base migration script
+    // Fresh database, run the full base migration script
     const { runBaseMigration } = await import('./migrate')
     runBaseMigration(result.sqlite)
   }
@@ -44,19 +44,19 @@ export async function initDb(): Promise<void> {
     const { ensureViewsAndTriggers } = await import('./migrate')
     ensureViewsAndTriggers(result.sqlite)
   } catch {
-    // Non-fatal — views are convenience, not required for core functionality
+    // Non-fatal, views are convenience, not required for core functionality
     console.warn('[db] Failed to ensure views/triggers (non-fatal)')
   }
 }
 
 /** Get the Drizzle ORM instance. Throws if initDb() hasn't been called. */
 export function getDb(): PsygilDatabase {
-  if (handle === null) throw new Error('Database not initialized — call initDb() first')
+  if (handle === null) throw new Error('Database not initialized, call initDb() first')
   return handle.db
 }
 
 /** Get the raw better-sqlite3 handle. Throws if initDb() hasn't been called. */
 export function getSqlite(): InstanceType<typeof Database> {
-  if (handle === null) throw new Error('Database not initialized — call initDb() first')
+  if (handle === null) throw new Error('Database not initialized, call initDb() first')
   return handle.sqlite
 }

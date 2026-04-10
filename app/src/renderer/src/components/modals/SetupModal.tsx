@@ -1,5 +1,5 @@
 /**
- * SetupModal — workspace folder picker.
+ * SetupModal, workspace folder picker.
  *
  * Opens a system file picker (via Electron dialog on main process),
  * persists the chosen path, and triggers a workspace reload.
@@ -35,7 +35,7 @@ export default function SetupModal({ isOpen, onClose, onWorkspaceSet }: SetupMod
     try {
       const pickResp = await window.psygil?.workspace?.pickFolder?.()
       if (!pickResp || pickResp.status !== 'success' || pickResp.data === null) {
-        // User cancelled — no-op
+        // User cancelled, no-op
         setLoading(false)
         return
       }
@@ -203,7 +203,7 @@ export default function SetupModal({ isOpen, onClose, onWorkspaceSet }: SetupMod
               }}
             >
               <span style={{ fontSize: 16 }}>&#128193;</span>
-              {loading ? 'Opening…' : 'Choose Folder…'}
+              {loading ? 'Opening...' : 'Choose Folder...'}
             </button>
 
             <button

@@ -364,7 +364,7 @@ export default function DocumentUploadModal({
               {isDragOver ? 'Drop files here' : 'Drag & drop files here'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              or click to browse — PDF, DOCX, TXT, CSV, RTF
+              or click to browse, PDF, DOCX, TXT, CSV, RTF
             </div>
           </div>
 

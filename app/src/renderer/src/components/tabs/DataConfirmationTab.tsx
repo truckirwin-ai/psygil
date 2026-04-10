@@ -1,5 +1,5 @@
 /**
- * DataConfirmationTab — Gate 1: Data Confirmation
+ * DataConfirmationTab, Gate 1: Data Confirmation
  *
  * Split-view: original document text (left) + extracted data (right).
  * Clinician reviews each data category and marks it:
@@ -65,7 +65,7 @@ const STATUS_LABELS: Record<ConfirmationStatus, string> = {
 }
 
 // ---------------------------------------------------------------------------
-// Persistence key — stores confirmation state per case in localStorage
+// Persistence key, stores confirmation state per case in localStorage
 // (Will migrate to SQLite in a later sprint)
 // ---------------------------------------------------------------------------
 
@@ -336,7 +336,7 @@ export default function DataConfirmationTab({
           flexShrink: 0,
         }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-            Data Confirmation — {reviewedCount}/{DATA_CATEGORIES.length} reviewed
+            Data Confirmation, {reviewedCount}/{DATA_CATEGORIES.length} reviewed
           </div>
           <div style={{
             padding: '3px 10px',
@@ -619,7 +619,7 @@ function ConfirmationControls({
 }
 
 // ---------------------------------------------------------------------------
-// Extracted Data Display — renders structured JSON as readable cards
+// Extracted Data Display, renders structured JSON as readable cards
 // ---------------------------------------------------------------------------
 
 function ExtractedDataDisplay({ data }: { readonly data: unknown }): React.JSX.Element {
@@ -636,7 +636,7 @@ function ExtractedDataDisplay({ data }: { readonly data: unknown }): React.JSX.E
     if (data.length === 0) {
       return (
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-          Empty — no items extracted
+          Empty, no items extracted
         </div>
       )
     }
@@ -659,7 +659,7 @@ function ExtractedDataDisplay({ data }: { readonly data: unknown }): React.JSX.E
     )
   }
 
-  // Object — render as key-value pairs
+  // Object, render as key-value pairs
   if (typeof data === 'object') {
     const entries = Object.entries(data as Record<string, unknown>)
     return (
@@ -677,7 +677,7 @@ function ExtractedDataDisplay({ data }: { readonly data: unknown }): React.JSX.E
             <span style={{ color: 'var(--text)' }}>
               {typeof value === 'object' && value !== null
                 ? JSON.stringify(value, null, 2)
-                : String(value ?? '—')}
+                : String(value ?? ',')}
             </span>
           </div>
         ))}

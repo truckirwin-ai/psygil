@@ -1,4 +1,4 @@
-// Auth0 logout — clears local tokens/session and optionally redirects to
+// Auth0 logout, clears local tokens/session and optionally redirects to
 // Auth0's /v2/logout endpoint to clear the SSO session.
 
 import { BrowserWindow } from 'electron'
@@ -36,7 +36,7 @@ export function performLogout(parentWindow: BrowserWindow | null): LogoutResult 
 
     void logoutWindow.loadURL(logoutUrl.toString())
 
-    // Close after a short delay — we don't need the response
+    // Close after a short delay, we don't need the response
     setTimeout(() => {
       if (!logoutWindow.isDestroyed()) {
         logoutWindow.close()

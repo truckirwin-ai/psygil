@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import Titlebar from './components/layout/Titlebar'
 import Statusbar from './components/layout/Statusbar'
 import LeftColumn from './components/layout/LeftColumn'
-import CenterColumn from './components/layout/CenterColumn'
+import CenterColumn, { TabButton } from './components/layout/CenterColumn'
 import RightColumn from './components/layout/RightColumn'
 import VSplitter from './components/layout/VSplitter'
 import IntakeOnboardingModal from './components/modals/IntakeOnboardingModal'
 import SetupModal from './components/modals/SetupModal'
 import DocumentUploadModal from './components/modals/DocumentUploadModal'
 import ScoreImportModal from './components/modals/ScoreImportModal'
+import SetupWizard from './components/setup/SetupWizard'
 import type { Tab, TabState } from './types/tabs'
 import type { CaseRow } from '../../shared/types/ipc'
 
@@ -22,6 +22,15 @@ const STORAGE_KEY_RIGHT_W = 'psygil-right-width'
 const DEFAULT_LEFT = 280
 const DEFAULT_RIGHT = 320
 const MIN_COL = 200
+const COLLAPSED_W = 0
+const STORAGE_KEY_LEFT_COLLAPSED = 'psygil-left-collapsed'
+const STORAGE_KEY_RIGHT_COLLAPSED = 'psygil-right-collapsed'
+
+// Feature flag, Column 3 (Case Notes + AI Admin chat) is hidden in the
+// current UI. The component, IPC wiring, and state are all preserved so
+// flipping this back to `true` restores the previous behavior. The
+// titlebar buttons (Settings, Theme, avatar) are unaffected.
+const RIGHT_COLUMN_ENABLED = false
 
 function loadTheme(): Theme {
   const stored = localStorage.getItem(STORAGE_KEY_THEME)
@@ -38,10 +47,62 @@ function loadWidth(key: string, fallback: number): number {
   return fallback
 }
 
+type SetupGateState = 'unknown' | 'wizard' | 'app'
+
 export default function App(): React.JSX.Element {
+  // Setup gate: load the persisted setup state on mount and decide whether
+  // to show the SetupWizard full-screen or proceed to the main app.
+  const [setupGate, setSetupGate] = useState<SetupGateState>('unknown')
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const resp = await window.psygil.setup.getConfig()
+        if (cancelled) return
+        if (resp.status === 'success' && resp.data.config.setupState === 'complete') {
+          setSetupGate('app')
+        } else {
+          setSetupGate('wizard')
+        }
+      } catch {
+        // If the setup IPC is unreachable, fall through to the app rather
+        // than blocking the user. The app's existing fallbacks handle
+        // missing config gracefully.
+        if (!cancelled) setSetupGate('app')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleSetupComplete = useCallback(() => {
+    setSetupGate('app')
+  }, [])
+
+  // Defers an action to run after the main app has rendered. The setup
+  // wizard uses this to ask the host to open the intake modal once it
+  // has unmounted.
+  const [pendingPostSetup, setPendingPostSetup] = useState<'create-case' | null>(null)
+  const handleCreateFirstCase = useCallback(() => {
+    setPendingPostSetup('create-case')
+  }, [])
+
+  // Run the pending post-setup action once the app shell is showing
+  useEffect(() => {
+    if (setupGate !== 'app' || pendingPostSetup === null) return
+    if (pendingPostSetup === 'create-case') {
+      setIntakeEditCaseId(undefined)
+      setShowIntake(true)
+    }
+    setPendingPostSetup(null)
+  }, [setupGate, pendingPostSetup])
+
   const [theme, setTheme] = useState<Theme>(loadTheme)
   const [leftWidth, setLeftWidth] = useState(() => loadWidth(STORAGE_KEY_LEFT_W, DEFAULT_LEFT))
   const [rightWidth, setRightWidth] = useState(() => loadWidth(STORAGE_KEY_RIGHT_W, DEFAULT_RIGHT))
+  const [leftCollapsed, setLeftCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY_LEFT_COLLAPSED) === 'true')
+  const [rightCollapsed, setRightCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY_RIGHT_COLLAPSED) === 'true')
   const [showIntake, setShowIntake] = useState(false)
   const [showSetup, setShowSetup] = useState(false)
   const [showDocUpload, setShowDocUpload] = useState(false)
@@ -52,7 +113,7 @@ export default function App(): React.JSX.Element {
   // When showIntake is open in "new case" mode, no caseId. When editing, pass one.
   const [intakeEditCaseId, setIntakeEditCaseId] = useState<number | undefined>(undefined)
 
-  // Tab state — managed here, passed down to LeftColumn + CenterColumn
+  // Tab state, managed here, passed down to LeftColumn + CenterColumn
   // Dashboard is always present and pinned as the first tab
   const DASHBOARD_TAB: Tab = { id: 'dashboard', title: 'Dashboard', type: 'dashboard' }
   const [tabState, setTabState] = useState<TabState>({
@@ -63,7 +124,7 @@ export default function App(): React.JSX.Element {
   // Ref to allow LeftColumn to refresh its case list imperatively
   const refreshCasesRef = useRef<(() => void) | null>(null)
 
-  // Cases list — shared between LeftColumn and CenterColumn (Dashboard)
+  // Cases list, shared between LeftColumn and CenterColumn (Dashboard)
   const [cases, setCases] = useState<CaseRow[]>([])
 
   // Load cases on mount + when refreshed
@@ -93,11 +154,24 @@ export default function App(): React.JSX.Element {
     }
   }, [loadCases])
 
-  // Derive active case ID from active tab
-  const activeCaseId = useMemo(() => {
-    const activeTab = tabState.tabs.find((t) => t.id === tabState.activeId)
-    return activeTab?.caseId ?? null
+  // Re-fetch cases when pipeline stage changes so kanban reflects new stage
+  useEffect(() => {
+    const handler = (): void => {
+      void loadCases()
+    }
+    const wrapped = window.psygil?.cases?.onChanged?.(handler)
+    return () => {
+      window.psygil?.cases?.offChanged?.(wrapped)
+    }
+  }, [loadCases])
+
+  // Derive active case ID and tab type from active tab
+  const activeTab = useMemo(() => {
+    return tabState.tabs.find((t) => t.id === tabState.activeId) ?? null
   }, [tabState])
+
+  const activeCaseId = activeTab?.caseId ?? null
+  const activeTabType = activeTab?.type ?? null
 
   const openTab = useCallback((tab: Tab) => {
     setTabState((prev) => {
@@ -109,7 +183,7 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const closeTab = useCallback((id: string) => {
-    // Dashboard is pinned — cannot be closed
+    // Dashboard is pinned, cannot be closed
     if (id === 'dashboard') return
     setTabState((prev) => {
       const idx = prev.tabs.findIndex((t) => t.id === id)
@@ -165,6 +239,23 @@ export default function App(): React.JSX.Element {
     })
   }, [])
 
+  // Column collapse toggles
+  const toggleLeftCollapsed = useCallback(() => {
+    setLeftCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem(STORAGE_KEY_LEFT_COLLAPSED, String(next))
+      return next
+    })
+  }, [])
+
+  const toggleRightCollapsed = useCallback(() => {
+    setRightCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem(STORAGE_KEY_RIGHT_COLLAPSED, String(next))
+      return next
+    })
+  }, [])
+
   // Open new case modal (create mode)
   const handleNewCase = useCallback(() => {
     setIntakeEditCaseId(undefined)
@@ -205,6 +296,36 @@ export default function App(): React.JSX.Element {
     })
   }, [openTab])
 
+  // Gate: show wizard until setup is complete. While we're still resolving
+  // the setup state on first paint, show a blank screen to avoid flashing
+  // the main UI for a frame.
+  if (setupGate === 'unknown') {
+    return (
+      <div
+        style={{
+          height: '100vh',
+          background: 'var(--bg)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-secondary)',
+          fontSize: 14,
+        }}
+      >
+        Loading...
+      </div>
+    )
+  }
+
+  if (setupGate === 'wizard') {
+    return (
+      <SetupWizard
+        onComplete={handleSetupComplete}
+        onCreateFirstCase={handleCreateFirstCase}
+      />
+    )
+  }
+
   return (
     <div
       className="app"
@@ -215,12 +336,6 @@ export default function App(): React.JSX.Element {
         overflow: 'hidden',
       }}
     >
-      <Titlebar
-        onCycleTheme={cycleTheme}
-        onOpenIntake={handleNewCase}
-        onSetup={() => setShowSetup(true)}
-      />
-
       <div
         className="main-layout"
         style={{
@@ -230,60 +345,222 @@ export default function App(): React.JSX.Element {
         }}
       >
         {/* Left column */}
+        {!leftCollapsed && (
+          <div
+            className="left-column"
+            style={{
+              width: leftWidth,
+              minWidth: MIN_COL,
+              flexShrink: 0,
+              overflow: 'hidden',
+            }}
+          >
+            <LeftColumn
+              onOpenTab={openTab}
+              onNewCase={handleNewCase}
+              refreshRef={refreshCasesRef}
+            />
+          </div>
+        )}
+
+        {/* Left collapse/expand rail */}
         <div
-          className="left-column"
           style={{
-            width: leftWidth,
-            minWidth: MIN_COL,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: leftCollapsed ? 24 : undefined,
             flexShrink: 0,
-            overflow: 'hidden',
           }}
         >
-          <LeftColumn
-            onOpenTab={openTab}
-            onNewCase={handleNewCase}
-            refreshRef={refreshCasesRef}
-          />
+          <button
+            onClick={toggleLeftCollapsed}
+            title={leftCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--border)',
+              borderRadius: leftCollapsed ? '0 4px 4px 0' : '4px 0 0 4px',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontSize: 11,
+              padding: '6px 3px',
+              marginTop: 8,
+              lineHeight: 1,
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+          >
+            {leftCollapsed ? '▶' : '◀'}
+          </button>
         </div>
 
-        <VSplitter onResize={handleLeftResize} onResizeEnd={handleLeftResizeEnd} />
+        {!leftCollapsed && (
+          <VSplitter onResize={handleLeftResize} onResizeEnd={handleLeftResizeEnd} />
+        )}
 
-        {/* Center column */}
-        <div
-          className="center-column"
-          style={{
-            flex: 1,
-            overflow: 'hidden',
-            minWidth: 0,
-          }}
-        >
-          <CenterColumn
-            tabs={tabState.tabs}
-            activeTabId={tabState.activeId}
-            onCloseTab={closeTab}
-            onSetActiveTab={setActiveTab}
-            onEditIntake={handleEditIntake}
-            onOpenTab={openTab}
-            cases={cases}
-            onRefreshCases={loadCases}
-            onUploadDocuments={handleUploadDocuments}
-            onImportScores={handleImportScores}
-          />
-        </div>
+        {/* Center + Right area, shared title bar */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
-        <VSplitter onResize={handleRightResize} onResizeEnd={handleRightResizeEnd} />
+          {/* ── Merged title bar: tabs (left) + settings/avatar (right) ── */}
+          <div
+            style={{
+              height: 32,
+              display: 'flex',
+              alignItems: 'stretch',
+              background: 'var(--panel)',
+              borderBottom: '1px solid var(--border)',
+              flexShrink: 0,
+            }}
+          >
+            {/* Tab buttons, flex to fill */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', overflowX: 'auto', minWidth: 0 }}>
+              {tabState.tabs.length === 0 ? (
+                <span style={{ padding: '0 16px', fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic', display: 'flex', alignItems: 'center' }}>
+                  No open tabs
+                </span>
+              ) : (
+                tabState.tabs.map((tab) => (
+                  <TabButton
+                    key={tab.id}
+                    tab={tab}
+                    isActive={tab.id === tabState.activeId}
+                    onActivate={() => setActiveTab(tab.id)}
+                    onClose={() => closeTab(tab.id)}
+                  />
+                ))
+              )}
+            </div>
 
-        {/* Right column */}
-        <div
-          className="right-column"
-          style={{
-            width: rightWidth,
-            minWidth: MIN_COL,
-            flexShrink: 0,
-            overflow: 'hidden',
-          }}
-        >
-          <RightColumn activeCaseId={activeCaseId} onOpenTab={openTab} />
+            {/* Right header buttons, settings, theme, avatar */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+              gap: 10, padding: '0 12px', flexShrink: 0,
+              borderLeft: '1px solid var(--border)',
+            }}>
+              <button
+                aria-label="Settings"
+                style={{
+                  width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer',
+                  fontSize: 18, padding: 0,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+              >
+                &#9881;
+              </button>
+              <button
+                aria-label="Theme"
+                onClick={cycleTheme}
+                style={{
+                  width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer',
+                  fontSize: 18, padding: 0,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+              >
+                &#9728;
+              </button>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%', background: 'var(--accent)',
+                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 600, flexShrink: 0,
+              }}>
+                TI
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                Dr. Irwin
+              </span>
+            </div>
+          </div>
+
+          {/* ── Content row: center + splitter + rail + right ── */}
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+            {/* Center column content */}
+            <div
+              className="center-column"
+              style={{
+                flex: 1,
+                overflow: 'hidden',
+                minWidth: 0,
+              }}
+            >
+              <CenterColumn
+                tabs={tabState.tabs}
+                activeTabId={tabState.activeId}
+                onCloseTab={closeTab}
+                onSetActiveTab={setActiveTab}
+                onEditIntake={handleEditIntake}
+                onOpenTab={openTab}
+                cases={cases}
+                onRefreshCases={loadCases}
+                onUploadDocuments={handleUploadDocuments}
+                onImportScores={handleImportScores}
+                hideTabBar
+              />
+            </div>
+
+            {/* Column 3, Case Notes + AI Admin chat. Hidden behind a
+                feature flag at the top of this file. The titlebar buttons
+                (Settings, Theme, avatar) are above this block and are
+                unaffected. */}
+            {RIGHT_COLUMN_ENABLED && (
+              <>
+                {!rightCollapsed && (
+                  <VSplitter onResize={handleRightResize} onResizeEnd={handleRightResizeEnd} />
+                )}
+
+                {/* Right collapse/expand rail */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    width: rightCollapsed ? 24 : undefined,
+                    flexShrink: 0,
+                  }}
+                >
+                  <button
+                    onClick={toggleRightCollapsed}
+                    title={rightCollapsed ? 'Show panel' : 'Hide panel'}
+                    style={{
+                      background: 'var(--panel)',
+                      border: '1px solid var(--border)',
+                      borderRadius: rightCollapsed ? '4px 0 0 4px' : '0 4px 4px 0',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      padding: '6px 3px',
+                      marginTop: 8,
+                      lineHeight: 1,
+                      transition: 'color 0.15s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  >
+                    {rightCollapsed ? '◀' : '▶'}
+                  </button>
+                </div>
+
+                {/* Right column content */}
+                {!rightCollapsed && (
+                  <div
+                    className="right-column"
+                    style={{
+                      width: rightWidth,
+                      minWidth: MIN_COL,
+                      flexShrink: 0,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <RightColumn activeCaseId={activeCaseId} onOpenTab={openTab} onCycleTheme={cycleTheme} cases={cases} activeTabType={activeTabType} hideHeader />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 

@@ -7,7 +7,7 @@ import React, { useState, useCallback } from 'react'
  * - Completed stages shown in their color at 0.5 opacity with ✓ prefix
  * - Current stage in full color with ● prefix and bold styling
  * - Future stages outlined with ○ prefix
- * - "Advance" button at the end — calls pipeline:check, confirms, then pipeline:advance
+ * - "Advance" button at the end, calls pipeline:check, confirms, then pipeline:advance
  */
 
 interface PipelinePanelProps {
@@ -18,7 +18,7 @@ interface PipelinePanelProps {
   readonly onStageAdvanced?: () => void
 }
 
-// Stage colors (from design system — these are MANDATORY)
+// Stage colors (from design system, these are MANDATORY)
 const STAGE_COLORS: Record<string, string> = {
   onboarding: '#2196f3',
   testing: '#9c27b0',
@@ -91,7 +91,7 @@ export const PipelinePanel: React.FC<PipelinePanelProps> = ({
       if (resp.status === 'error') {
         setAdvanceError(resp.message)
       } else {
-        // Success — notify parent
+        // Success, notify parent
         onStageAdvanced?.()
       }
     } catch {
@@ -173,7 +173,7 @@ export const PipelinePanel: React.FC<PipelinePanelProps> = ({
           const color = STAGE_COLORS[stageKey]
 
           if (i < currentStageIdx) {
-            // Completed stage — show with ✓ and reduced opacity
+            // Completed stage, show with ✓ and reduced opacity
             return (
               <span
                 key={stageKey}
@@ -192,7 +192,7 @@ export const PipelinePanel: React.FC<PipelinePanelProps> = ({
               </span>
             )
           } else if (i === currentStageIdx) {
-            // Current stage — show with ● and bold, full color
+            // Current stage, show with ● and bold, full color
             return (
               <span
                 key={stageKey}
@@ -211,7 +211,7 @@ export const PipelinePanel: React.FC<PipelinePanelProps> = ({
               </span>
             )
           } else {
-            // Future stage — show outlined with ○
+            // Future stage, show outlined with ○
             return (
               <span
                 key={stageKey}

@@ -494,7 +494,7 @@ export default function IntakeModal({
                 </Field>
                 <Field label="Age" flex={1}>
                   <input style={{ ...inputStyle, background: 'var(--panel)', color: 'var(--text-secondary)' }}
-                    value={age} readOnly placeholder="—" />
+                    value={age} readOnly placeholder="," />
                 </Field>
                 <Field label="Gender" flex={2}>
                   <input style={inputStyle} value={form.contact.gender}
@@ -556,7 +556,7 @@ export default function IntakeModal({
                 </Field>
                 <Field label="Relationship" flex={1}>
                   <input style={inputStyle} value={form.contact.emergencyContactRelationship}
-                    onChange={(e) => updateContact('emergencyContactRelationship', e.target.value)} placeholder="Spouse, Parent…" />
+                    onChange={(e) => updateContact('emergencyContactRelationship', e.target.value)} placeholder="Spouse, Parent..." />
                 </Field>
                 <Field label="Emergency Phone" flex={2}>
                   <input style={inputStyle} value={form.contact.emergencyContactPhone}
@@ -693,7 +693,7 @@ export default function IntakeModal({
                     <select style={{ ...inputStyle, maxWidth: 280 }}
                       value={form.evalDocs.evalType}
                       onChange={(e) => updateEvalDocs('evalType', e.target.value)}>
-                      <option value="">Select evaluation type…</option>
+                      <option value="">Select evaluation type...</option>
                       {EVAL_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </Field>
@@ -701,25 +701,25 @@ export default function IntakeModal({
                     <textarea style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }}
                       value={form.evalDocs.reasonForReferral}
                       onChange={(e) => updateEvalDocs('reasonForReferral', e.target.value)}
-                      placeholder="Describe the evaluation being requested…" />
+                      placeholder="Describe the evaluation being requested..." />
                   </Field>
                   <Field label="Complaint / Charges / Legal Matter">
                     <textarea style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }}
                       value={form.evalDocs.charges}
                       onChange={(e) => updateEvalDocs('charges', e.target.value)}
-                      placeholder="List charges or legal matter…" />
+                      placeholder="List charges or legal matter..." />
                   </Field>
                   <Field label="Supporting Documents Received">
                     <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical' }}
                       value={form.evalDocs.supportingDocuments}
                       onChange={(e) => updateEvalDocs('supportingDocuments', e.target.value)}
-                      placeholder="Police report, prior evals, medical records…" />
+                      placeholder="Police report, prior evals, medical records..." />
                   </Field>
                   <Field label="Additional Notes">
                     <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical' }}
                       value={form.evalDocs.additionalNotes}
                       onChange={(e) => updateEvalDocs('additionalNotes', e.target.value)}
-                      placeholder="Any other relevant information…" />
+                      placeholder="Any other relevant information..." />
                   </Field>
                 </div>
               )}
@@ -733,31 +733,31 @@ export default function IntakeModal({
                 <textarea style={{ ...inputStyle, minHeight: 88, resize: 'vertical' }}
                   value={form.presenting.primaryComplaint}
                   onChange={(e) => updatePresenting('primaryComplaint', e.target.value)}
-                  placeholder="Describe the primary presenting concern…" />
+                  placeholder="Describe the primary presenting concern..." />
               </Field>
               <Field label="When Did These Concerns Begin?">
                 <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical' }}
                   value={form.presenting.whenBegan}
                   onChange={(e) => updatePresenting('whenBegan', e.target.value)}
-                  placeholder="Approximate onset and timeline…" />
+                  placeholder="Approximate onset and timeline..." />
               </Field>
               <Field label="Has Anything Made It Better or Worse?">
                 <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical' }}
                   value={form.presenting.betterOrWorse}
                   onChange={(e) => updatePresenting('betterOrWorse', e.target.value)}
-                  placeholder="Factors that exacerbate or alleviate symptoms…" />
+                  placeholder="Factors that exacerbate or alleviate symptoms..." />
               </Field>
               <Field label="Are You Currently Safe?">
                 <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical' }}
                   value={form.presenting.currentlySafe}
                   onChange={(e) => updatePresenting('currentlySafe', e.target.value)}
-                  placeholder="Safety screening response…" />
+                  placeholder="Safety screening response..." />
               </Field>
               <Field label="Previous Treatment or Evaluation">
                 <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical' }}
                   value={form.presenting.previousTreatment}
                   onChange={(e) => updatePresenting('previousTreatment', e.target.value)}
-                  placeholder="Prior therapy, hospitalization, or assessments…" />
+                  placeholder="Prior therapy, hospitalization, or assessments..." />
               </Field>
               <div style={rowStyle}>
                 <Field label="Who Recommended You Come In?" flex={1}>
@@ -803,7 +803,7 @@ export default function IntakeModal({
                 <Field label="Relationship to Patient" flex={1}>
                   <select style={inputStyle} value={form.insurance.relationshipToPatient}
                     onChange={(e) => updateInsurance('relationshipToPatient', e.target.value)}>
-                    <option value="">Select…</option>
+                    <option value="">Select...</option>
                     <option>Self</option>
                     <option>Spouse</option>
                     <option>Parent</option>
@@ -830,7 +830,7 @@ export default function IntakeModal({
               style={saving ? { ...primaryButtonStyle, opacity: 0.6 } : primaryButtonStyle}
               disabled={saving}
             >
-              {saving ? 'Saving…' : isEditMode ? 'Save Changes' : 'Create Case'}
+              {saving ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Case'}
             </button>
           </div>
         </div>

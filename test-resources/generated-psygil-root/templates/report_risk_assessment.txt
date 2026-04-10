@@ -1,0 +1,128 @@
+VIOLENCE RISK ASSESSMENT
+Structured Professional Judgment
+
+HEADER
+------
+Forensic Psychology Services
+1234 Grant Street, Denver, CO 80203
+Phone: (303) 555-0100
+
+CONFIDENTIAL FORENSIC PSYCHOLOGICAL EVALUATION
+
+IDENTIFYING INFORMATION
+-----------------------
+Patient Name: {{PATIENT_NAME}}
+Date of Birth: {{DATE_OF_BIRTH}}
+Case Number: {{CASE_NUMBER}}
+Referring Party: {{REFERRING_PARTY}}
+Date of Report: {{DATE_OF_REPORT}}
+Dates of Contact: {{DATES_OF_CONTACT}}
+Examiner: Dr. Jordan Whitfield, Psy.D., ABPP
+License: PSY12345 (Colorado)
+
+REFERRAL QUESTION
+-----------------
+The referring party requested an evaluation of {{PATIENT_NAME}}'s risk for future violence, the risk factors contributing to that risk, and recommended risk management strategies. The evaluation uses a structured professional judgment approach. This report does not produce a single numerical probability of violence.
+
+NOTICE OF NON-CONFIDENTIALITY
+-----------------------------
+The evaluee was informed at the outset that this evaluation is being conducted at the request of {{REFERRING_PARTY}} and that the usual rules of doctor-patient confidentiality do not apply. The evaluee was advised that information obtained during the evaluation would be included in a written report provided to the referring party and that the report may be shared with the court and other parties to the legal proceeding. The evaluee acknowledged understanding of these limits and voluntarily agreed to participate.
+
+PROCEDURES
+----------
+The following procedures were used in the preparation of this report:
+Review of records provided by the referring party
+Clinical interview with the evaluee
+Mental status examination
+Collateral interview(s) where appropriate
+Standardized psychological testing (see Test Results)
+Symptom validity and effort testing
+Administration of a validated structured professional judgment instrument (e.g., HCR-20v3 or equivalent)
+
+RECORDS REVIEWED
+----------------
+Criminal history, including juvenile and adult records
+Prior psychiatric and psychological records
+Institutional records (disciplinary, treatment, program participation)
+Prior risk assessments, if any
+Relevant collateral documents
+
+RELEVANT BACKGROUND
+-------------------
+Developmental and family history
+Educational and occupational history
+History of antisocial behavior, including age of onset, variety, and severity
+Substance use history
+Psychiatric history
+Relationship and social history
+Weapons access and history of weapon use
+
+MENTAL STATUS EXAMINATION
+-------------------------
+Appearance, behavior, cooperation, speech, mood, affect, thought process and content, perception, cognition, insight, and judgment at the time of the evaluation.
+
+TEST RESULTS
+------------
+Symptom validity, personality, and structured risk assessment instruments administered during the evaluation are summarized in the Test Results section.
+
+HISTORICAL RISK FACTORS
+-----------------------
+Prior violence and its characteristics
+Age at first violent act
+Relationship and employment instability
+Substance use problems
+Major mental disorder
+Personality disorder, especially antisocial or psychopathic features
+History of early maladjustment
+Prior supervision failure
+
+CLINICAL RISK FACTORS
+---------------------
+Current symptoms of major mental illness
+Lack of insight into illness and risk
+Negative attitudes supportive of violence
+Active symptoms consistent with the person's prior violent episodes
+Current substance use
+Response to treatment and engagement in care
+
+RISK MANAGEMENT FACTORS
+-----------------------
+Feasibility of plans the examinee has made
+Exposure to destabilizers (e.g., substances, high-risk environments, interpersonal conflict)
+Availability and acceptability of personal supports
+Likelihood of compliance with treatment and supervision
+Stressors identified for the anticipated setting
+
+FORMULATION
+-----------
+Integration of historical, clinical, and risk-management factors into a coherent account of how, when, and to whom the examinee poses risk. This includes identification of the primary drivers of risk and the circumstances under which risk is expected to rise or fall.
+
+SCENARIO PLANNING
+-----------------
+Most likely scenario for future violence, including who, where, when, and how
+Most severe plausible scenario
+Conditions under which each scenario becomes more or less likely
+
+SUMMARY RISK JUDGMENT
+---------------------
+Overall categorical judgment of risk (low, moderate, high) for the specified time frame and setting, with explicit reference to the risk factors and scenarios above. The judgment explicitly addresses the time horizon and setting requested by the referring party.
+
+RISK MANAGEMENT RECOMMENDATIONS
+-------------------------------
+Monitoring strategies
+Treatment interventions, including medication, psychotherapy, and specialty programs
+Supervision conditions
+Victim safety planning, where applicable
+Recommended re-evaluation interval
+
+SIGNATURE
+---------
+The opinions expressed in this report are held to a reasonable degree of psychological certainty based on the data reviewed and the methods described. If additional information becomes available, I reserve the right to supplement or modify these opinions.
+
+Respectfully submitted,
+
+
+_______________________________
+Dr. Jordan Whitfield, Psy.D., ABPP
+Licensed Psychologist, Colorado #PSY12345
+Date: {{DATE_OF_REPORT}}

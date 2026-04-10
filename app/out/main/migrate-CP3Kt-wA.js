@@ -38,7 +38,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS case_notes_fts USING fts5(
 );
 
 -- ============================================================================
--- VIEWS — Base schema (doc 01)
+-- VIEWS, Base schema (doc 01)
 -- ============================================================================
 
 CREATE VIEW IF NOT EXISTS v_active_cases AS
@@ -121,7 +121,7 @@ GROUP BY r.report_id
 ORDER BY r.created_at ASC;
 
 -- ============================================================================
--- VIEWS — Addendum (doc 01a)
+-- VIEWS, Addendum (doc 01a)
 -- ============================================================================
 
 CREATE VIEW IF NOT EXISTS v_user_case_assignments AS
@@ -186,7 +186,7 @@ LEFT JOIN sync_manifest sm ON c.case_id = sm.case_id
 GROUP BY c.case_id;
 
 -- ============================================================================
--- TRIGGERS — Base schema
+-- TRIGGERS, Base schema
 -- ============================================================================
 
 CREATE TRIGGER IF NOT EXISTS tr_cases_update_last_modified
@@ -242,7 +242,7 @@ BEGIN
 END;
 
 -- ============================================================================
--- TRIGGERS — Addendum
+-- TRIGGERS, Addendum
 -- ============================================================================
 
 CREATE TRIGGER IF NOT EXISTS tr_practice_config_update_timestamp
@@ -273,6 +273,26 @@ BEGIN
     AND released_at IS NULL
     AND expires_at < CURRENT_DATE;
 END;
+
+-- ============================================================================
+-- AGENT_RESULTS, shared by all 4 AI agents (ingestor, diagnostician, writer, editor)
+-- Created globally so any agent can write/read results without each having
+-- to recreate the table on first run.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS agent_results (
+    result_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id INTEGER NOT NULL REFERENCES cases(case_id),
+    agent_type TEXT NOT NULL CHECK(agent_type IN ('ingestor', 'diagnostician', 'writer', 'editor')),
+    operation_id TEXT NOT NULL,
+    result_json TEXT NOT NULL,
+    version TEXT NOT NULL DEFAULT '1.0',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(case_id, agent_type, operation_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_results_case
+    ON agent_results(case_id, agent_type);
 `;
 async function main() {
   const dbPath = index.getDefaultDbPath();
@@ -280,7 +300,7 @@ async function main() {
   const { sqlite } = await index.initDatabase(void 0, dbPath);
   const tableCount = sqlite.prepare("SELECT COUNT(*) as cnt FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts%'").get();
   if (tableCount.cnt === 0) {
-    console.log("[migrate] No tables found — creating schema from raw SQL...");
+    console.log("[migrate] No tables found, creating schema from raw SQL...");
     createTablesFromSchema(sqlite);
     console.log("[migrate] Base tables created");
   } else {

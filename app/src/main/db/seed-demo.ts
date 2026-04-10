@@ -1,12 +1,12 @@
 /**
- * DEMO DATA SEED SCRIPT — Psygil
+ * DEMO DATA SEED SCRIPT, Psygil
  *
  * Inserts 10 AI-generated (AIG) demo cases for UI development and testing.
  * All cases are tagged [AIG-DEMO] and contain no real patient data.
  *
  * Usage: npm run db:seed-demo
  *
- * Safe to run multiple times — skips cases that already exist by case_number.
+ * Safe to run multiple times, skips cases that already exist by case_number.
  */
 
 import { initDb, getSqlite } from './connection'
@@ -15,7 +15,7 @@ import { join } from 'path'
 import os from 'os'
 
 // ---------------------------------------------------------------------------
-// Demo workspace path — creates ~/Documents/Psygil Cases (Demo)/ if missing
+// Demo workspace path, creates ~/Documents/Psygil Cases (Demo)/ if missing
 // ---------------------------------------------------------------------------
 const DEMO_WORKSPACE = join(os.homedir(), 'Documents', 'Psygil Cases (Demo)')
 
@@ -29,7 +29,7 @@ function ensureFolder(p: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Demo case data — 10 cases across all 6 pipeline stages and eval types
+// Demo case data, 10 cases across all 6 pipeline stages and eval types
 // ---------------------------------------------------------------------------
 const DEMO_CASES = [
   {
@@ -94,7 +94,7 @@ const DEMO_CASES = [
     eval_type: 'CST',
     referral: 'Denver District Court',
     status: 'Onboarding',
-    questions: 'Competency to stand trial — Murder 2nd degree charge.',
+    questions: 'Competency to stand trial, Murder 2nd degree charge.',
     notes: '[AIG-DEMO] New intake. No prior psych history on file. Referral received 2026-03-20.',
   },
   {
@@ -105,7 +105,7 @@ const DEMO_CASES = [
     dob: '1990-02-14',
     gender: 'F',
     eval_type: 'PTSD',
-    referral: 'Attorney — Personal Injury',
+    referral: 'Attorney, Personal Injury',
     status: 'Testing',
     questions: 'Did the plaintiff develop PTSD as a result of the workplace incident of September 2024?',
     notes: '[AIG-DEMO] Motor vehicle accident + occupational injury. CAPS-5, PCL-5, MMPI-3 administered. Awaiting scores.',
@@ -121,7 +121,7 @@ const DEMO_CASES = [
     referral: 'Boulder County Probate Court',
     status: 'Complete',
     questions: 'Capacity for financial decisions. Is a conservatorship warranted?',
-    notes: '[AIG-DEMO] Vascular neurocognitive disorder. MoCA=14. Opinion: Lacks capacity — conservatorship recommended.',
+    notes: '[AIG-DEMO] Vascular neurocognitive disorder. MoCA=14. Opinion: Lacks capacity, conservatorship recommended.',
   },
   {
     case_number: 'AIG-2026-0008',
@@ -131,7 +131,7 @@ const DEMO_CASES = [
     dob: '1998-06-25',
     gender: 'F',
     eval_type: 'ADHD',
-    referral: 'Physician — University Health',
+    referral: 'Physician, University Health',
     status: 'Complete',
     questions: 'Does the patient meet criteria for ADHD? What accommodations are indicated?',
     notes: '[AIG-DEMO] ADHD, Combined Presentation confirmed. CAARS, CPT-3, WAIS-V. Academic + workplace accommodations recommended.',
@@ -144,7 +144,7 @@ const DEMO_CASES = [
     dob: '1975-04-03',
     gender: 'M',
     eval_type: 'Malingering',
-    referral: 'Insurance — Disability Claim',
+    referral: 'Insurance, Disability Claim',
     status: 'Diagnostics',
     questions: 'Is the claimant exaggerating or fabricating psychiatric symptoms?',
     notes: '[AIG-DEMO] MMPI-3 validity scales elevated (FBS, Fp). SIRS-2 and TOMM in progress. Feigning suspected.',
@@ -159,7 +159,7 @@ const DEMO_CASES = [
     eval_type: 'CST',
     referral: 'Adams County District Court',
     status: 'Interview',
-    questions: 'Competency to stand trial — Arson 1st degree.',
+    questions: 'Competency to stand trial, Arson 1st degree.',
     notes: '[AIG-DEMO] Schizoaffective Disorder, Bipolar type. Currently medicated. 2 interviews completed. Testing: MMPI-3, PAI, WAIS-V.',
   },
 ]
@@ -243,7 +243,7 @@ async function main() {
     const readmePath = join(casePath, '_Inbox', 'README.txt')
     if (!existsSync(readmePath)) {
       writeFileSync(readmePath,
-        `PSYGIL DEMO CASE — AI-GENERATED DATA\n` +
+        `PSYGIL DEMO CASE, AI-GENERATED DATA\n` +
         `=====================================\n` +
         `Case: ${c.case_number}\n` +
         `Patient: ${c.first} ${c.last}\n` +
@@ -254,7 +254,7 @@ async function main() {
       )
     }
 
-    console.log(`[demo-seed] Inserted: ${c.case_number} — ${c.last}, ${c.first} (${c.eval_type} / ${c.status})`)
+    console.log(`[demo-seed] Inserted: ${c.case_number}, ${c.last}, ${c.first} (${c.eval_type} / ${c.status})`)
     inserted++
   }
 

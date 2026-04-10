@@ -1,5 +1,5 @@
 /**
- * Psygil Transcription Engine — Live Streaming + Batch
+ * Psygil Transcription Engine, Live Streaming + Batch
  *
  * Live streaming architecture (like Zoom):
  *   1. Renderer: MediaRecorder captures 250ms WebM/Opus chunks

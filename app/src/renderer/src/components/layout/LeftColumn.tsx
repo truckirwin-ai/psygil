@@ -1,9 +1,9 @@
 // =============================================================================
-// LeftColumn.tsx — File Tree Panel (Column 1)
+// LeftColumn.tsx, File Tree Panel (Column 1)
 // =============================================================================
 //
 // ██████████████████████████████████████████████████████████████████████████████
-// ██  CRITICAL RULE: TREE MUST MIRROR FILESYSTEM — NEVER HARDCODE CONTENTS  ██
+// ██  CRITICAL RULE: TREE MUST MIRROR FILESYSTEM, NEVER HARDCODE CONTENTS  ██
 // ██████████████████████████████████████████████████████████████████████████████
 //
 // The directory tree in Column 1 maps 1:1 to real folders on the user's hard
@@ -17,7 +17,7 @@
 //      returns the raw FolderNode[] tree.
 //   2. We ALSO load the DB case list (window.psygil.cases.list()) to get metadata
 //      like stage colors, evaluation types, and workflow status.  This metadata is
-//      used ONLY for visual badges/colors — it does NOT affect which nodes appear.
+//      used ONLY for visual badges/colors, it does NOT affect which nodes appear.
 //   3. The chokidar file watcher in the main process broadcasts
 //      'workspace:file-changed' events whenever files are added, changed, or
 //      deleted.  We listen for those events and re-fetch the tree automatically.
@@ -109,7 +109,7 @@ function fileIcon(name: string): string {
 const CASE_FOLDER_PATTERN = /^(\d{4}-\d{4})\s+([^,]+),\s+(.+)$/
 
 // ---------------------------------------------------------------------------
-// Tree Building — from FILESYSTEM with DB metadata overlay
+// Tree Building, from FILESYSTEM with DB metadata overlay
 // ---------------------------------------------------------------------------
 // ██  This function converts FolderNode[] (from disk) into TreeNode[]       ██
 // ██  for rendering.  The DB cases list is used ONLY for color/badge data.  ██
@@ -122,7 +122,7 @@ function buildTreeFromFilesystem(
 ): TreeNode[] {
   const tree: TreeNode[] = []
 
-  // Dashboard at top (virtual — not a filesystem entry)
+  // Dashboard at top (virtual, not a filesystem entry)
   tree.push({
     id: 'dashboard',
     label: 'Dashboard',
@@ -130,22 +130,39 @@ function buildTreeFromFilesystem(
     tabType: 'dashboard',
   })
 
-  // System folders (start with _) go into a separate section
-  const systemFolders: FolderNode[] = []
+  // Case folders live under /cases/, hoist that folder's children up as
+  // top-level case nodes. Everything else (Workspace, etc.) stays where
+  // it is. Legacy workspaces with cases at the root still work.
+  // Legacy _-prefixed system folders (_Inbox, _Templates, etc.) are
+  // silently skipped; the canonical structure uses Workspace/<Category>.
   const caseFolders: FolderNode[] = []
   const otherEntries: FolderNode[] = []
 
   for (const node of fsTree) {
-    if (node.name.startsWith('_')) {
-      systemFolders.push(node)
-    } else if (node.isDirectory && CASE_FOLDER_PATTERN.test(node.name)) {
+    // Skip legacy _-prefixed system folders (no longer part of the layout)
+    if (node.name.startsWith('_')) continue
+
+    if (node.isDirectory && node.name === 'cases') {
+      for (const child of node.children ?? []) {
+        if (child.isDirectory && CASE_FOLDER_PATTERN.test(child.name)) {
+          caseFolders.push(child)
+        }
+      }
+      continue
+    }
+    if (node.isDirectory && CASE_FOLDER_PATTERN.test(node.name)) {
+      // Legacy workspaces with cases at the root
       caseFolders.push(node)
     } else {
       otherEntries.push(node)
     }
   }
 
-  // Case folders — with DB metadata overlay for colors
+  // Case folders, with DB metadata overlay for colors. Nest them under
+  // a virtual "cases" parent node so the tree mirrors the on-disk layout
+  // (projectRoot/cases/<case-folder>). Legacy workspaces with cases at the
+  // root still nest under the same parent node for visual consistency.
+  const caseChildren: TreeNode[] = []
   for (const folder of caseFolders) {
     const match = CASE_FOLDER_PATTERN.exec(folder.name)
     const caseNumber = match?.[1] ?? ''
@@ -156,14 +173,14 @@ function buildTreeFromFilesystem(
     const evalType = dbCase?.evaluation_type ?? ''
     const caseId = dbCase?.case_id
 
-    // Build label: "Johnson, M. — CST" or folder name if no DB match
+    // Build label: "Johnson, M., CST" or folder name if no DB match
     const label = dbCase
-      ? `${dbCase.examinee_last_name}, ${(dbCase.examinee_first_name ?? '').charAt(0).toUpperCase()}.${evalType ? ` — ${evalType}` : ''}`
+      ? `${dbCase.examinee_last_name}, ${(dbCase.examinee_first_name ?? '').charAt(0).toUpperCase()}.${evalType ? `, ${evalType}` : ''}`
       : folder.name
 
     const children = convertFolderChildren(folder.children ?? [], caseId)
 
-    // Add Clinical Overview as first child (virtual node — opens the overview tab)
+    // Add Clinical Overview as first child (virtual node, opens the overview tab)
     if (caseId != null) {
       children.unshift({
         id: `${caseId}-overview`,
@@ -174,7 +191,7 @@ function buildTreeFromFilesystem(
       })
     }
 
-    tree.push({
+    caseChildren.push({
       id: `case-folder:${folder.path}`,
       label,
       icon: '📁',
@@ -184,23 +201,21 @@ function buildTreeFromFilesystem(
     })
   }
 
-  // Other top-level files/folders (not cases, not system)
+  // Always show the cases parent, even when empty, so the user knows
+  // where new cases will land.
+  tree.push({
+    id: 'cases-folder',
+    label: 'Cases',
+    icon: '📁',
+    children: caseChildren,
+  })
+
+  // Other top-level files/folders (Workspace, etc.)
   for (const entry of otherEntries) {
     tree.push(convertFolderNode(entry, undefined))
   }
 
-  // System folders (_Inbox, _Templates, etc.)
-  if (systemFolders.length > 0) {
-    const sysChildren = systemFolders.map((f) => convertFolderNode(f, undefined))
-    tree.push({
-      id: 'system-folders',
-      label: 'Workspace',
-      icon: '📂',
-      children: sysChildren,
-    })
-  }
-
-  // Settings at bottom (virtual — not a filesystem entry)
+  // Settings at bottom (virtual, not a filesystem entry)
   tree.push({
     id: 'settings',
     label: 'Settings',
@@ -224,7 +239,7 @@ function convertFolderChildren(
 
 /**
  * Recursively convert a FolderNode (filesystem) into a TreeNode (UI).
- * This is a pure transform — it does NOT filter or add nodes.
+ * This is a pure transform, it does NOT filter or add nodes.
  * What's on disk is what you see.
  */
 function convertFolderNode(node: FolderNode, caseId: number | undefined): TreeNode {
@@ -335,14 +350,16 @@ function TreeNodeComponent({
           <span
             className="tree-chevron"
             style={{
-              width: 16,
-              fontSize: 10,
+              width: 20,
+              height: 20,
+              fontSize: 14,
               color: isActive ? 'white' : 'var(--text-secondary)',
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
+              borderRadius: 3,
             }}
             onClick={handleChevronClick}
             title={expanded ? 'Collapse' : 'Expand'}
@@ -352,7 +369,7 @@ function TreeNodeComponent({
         ) : (
           <span
             style={{
-              width: 16,
+              width: 20,
               flexShrink: 0,
               visibility: 'hidden',
             }}
@@ -388,7 +405,7 @@ function TreeNodeComponent({
           {node.label}
         </span>
 
-        {/* Stage color circle — only on case folder nodes */}
+        {/* Stage color circle, only on case folder nodes */}
         {node.stageColor && (
           <span
             style={{
@@ -439,9 +456,9 @@ export default function LeftColumn({
   // STATE
   // =========================================================================
 
-  // DB case metadata — used for color/badge overlay ONLY
+  // DB case metadata, used for color/badge overlay ONLY
   const [cases, setCases] = useState<readonly CaseRow[]>([])
-  // Filesystem tree — the ACTUAL source of truth for what appears in the tree
+  // Filesystem tree, the ACTUAL source of truth for what appears in the tree
   const [fsTree, setFsTree] = useState<readonly FolderNode[]>([])
   const [loading, setLoading] = useState(true)
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null)
@@ -481,7 +498,7 @@ export default function LeftColumn({
     return () => document.removeEventListener('mousedown', handler)
   }, [showFilterMenu])
 
-  // Splitter drag logic — persists position on release
+  // Splitter drag logic, persists position on release
   useEffect(() => {
     if (!isDraggingSplit) return
     const onMove = (e: MouseEvent) => {
@@ -563,7 +580,7 @@ export default function LeftColumn({
   }, [loadData])
 
   // =========================================================================
-  // FILESYSTEM WATCHER — auto-refresh tree when files change on disk
+  // FILESYSTEM WATCHER, auto-refresh tree when files change on disk
   // =========================================================================
   // When chokidar detects a change, we re-fetch the full tree.
   // This keeps the UI in perfect sync with the filesystem at all times.
@@ -582,7 +599,7 @@ export default function LeftColumn({
   }, [])
 
   // =========================================================================
-  // DB METADATA INDEX — map case_number → CaseRow for O(1) lookups
+  // DB METADATA INDEX, map case_number → CaseRow for O(1) lookups
   // =========================================================================
 
   const casesByNumber = useMemo(() => {
@@ -596,7 +613,7 @@ export default function LeftColumn({
   }, [cases])
 
   // =========================================================================
-  // TREE CONSTRUCTION — filesystem + metadata overlay
+  // TREE CONSTRUCTION, filesystem + metadata overlay
   // =========================================================================
   // buildTreeFromFilesystem() takes the raw filesystem tree and the DB case
   // index, and returns TreeNode[] for rendering.  The DB data adds colors and
@@ -605,7 +622,7 @@ export default function LeftColumn({
   const treeData = useMemo(() => {
     let tree = buildTreeFromFilesystem(fsTree, casesByNumber)
 
-    // Apply filters — these filter CASE FOLDERS by DB metadata, but
+    // Apply filters, these filter CASE FOLDERS by DB metadata, but
     // non-case entries (system folders, loose files) always show
     if (stageFilter !== 'all' || typeFilter !== 'all') {
       tree = tree.filter((node) => {
@@ -613,7 +630,7 @@ export default function LeftColumn({
         if (!node.id.startsWith('case-folder:')) return true
 
         const caseId = node.caseId
-        if (caseId == null) return true // No DB match — show it anyway
+        if (caseId == null) return true // No DB match, show it anyway
 
         const dbCase = cases.find((c) => c.case_id === caseId)
         if (!dbCase) return true
@@ -645,7 +662,7 @@ export default function LeftColumn({
   const activeFilterCount = (stageFilter !== 'all' ? 1 : 0) + (typeFilter !== 'all' ? 1 : 0)
 
   // =========================================================================
-  // NODE CLICK HANDLER — opens appropriate tab based on node type
+  // NODE CLICK HANDLER, opens appropriate tab based on node type
   // =========================================================================
 
   const handleNodeClick = useCallback(
@@ -683,8 +700,22 @@ export default function LeftColumn({
         return
       }
 
-      // For folder nodes with children, just toggle expand (handled by chevron)
-      // No-op for folders clicked on the label — they just expand/activate
+      // Case folder, clicking the label opens the Clinical Overview tab
+      if (node.id.startsWith('case-folder:') && node.caseId != null) {
+        const dbCase = cases.find((c) => c.case_id === node.caseId)
+        const title = dbCase
+          ? `${dbCase.examinee_last_name}, ${dbCase.examinee_first_name}`
+          : 'Clinical Overview'
+        onOpenTab({
+          id: `overview:${node.caseId}`,
+          title,
+          type: 'clinical-overview',
+          caseId: node.caseId,
+        })
+        return
+      }
+
+      // For other folder nodes with children, just toggle expand (handled by chevron)
     },
     [cases, onOpenTab],
   )
@@ -704,14 +735,14 @@ export default function LeftColumn({
         overflow: 'hidden',
       }}
     >
-      {/* Panel header */}
+      {/* Panel header, logo + title + actions */}
       <div
         className="panel-header"
         style={{
           display: 'flex',
           alignItems: 'center',
           height: 32,
-          padding: '0 12px',
+          padding: '0 8px',
           background: 'var(--panel)',
           borderBottom: '1px solid var(--border)',
           fontSize: 11,
@@ -724,7 +755,25 @@ export default function LeftColumn({
           gap: 6,
         }}
       >
-        <span>CASES</span>
+        {/* Psygil logo */}
+        <svg width="18" height="18" viewBox="0 0 100 100" style={{ flexShrink: 0 }}>
+          <polygon points="50,5 15,30 15,75 50,95 85,75 85,30" fill="#E8650A" />
+          <polygon points="50,5 15,30 50,50 85,30" fill="#F5A623" />
+          <polygon points="15,30 15,75 50,50" fill="#D45A00" />
+          <polygon points="85,30 85,75 50,50" fill="#D45A00" />
+          <polygon points="35,38 35,52 45,48 45,34" fill="#1a1a2e" />
+          <polygon points="55,34 55,48 65,52 65,38" fill="#1a1a2e" />
+          <circle cx="40" cy="42" r="2" fill="#ffffff" />
+          <circle cx="60" cy="42" r="2" fill="#ffffff" />
+        </svg>
+        <span style={{
+          fontSize: 13,
+          fontWeight: 700,
+          letterSpacing: 2,
+          color: 'var(--text)',
+          marginRight: 4,
+        }}>PSYGIL</span>
+        <span style={{ color: 'var(--border)', fontSize: 14, lineHeight: 1 }}>|</span>
         {/* Filter button */}
         <div ref={filterRef} style={{ position: 'relative', marginLeft: 'auto' }}>
           <button
@@ -888,7 +937,7 @@ export default function LeftColumn({
 
       {/* Splittable area: tree (top) + resources (bottom) */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-        {/* Tree container — takes splitRatio of available space */}
+        {/* Tree container, takes splitRatio of available space */}
         <div
           style={{
             flex: `0 0 ${splitRatio * 100}%`,
@@ -908,7 +957,7 @@ export default function LeftColumn({
                 fontSize: 13,
               }}
             >
-              Loading…
+              Loading...
             </div>
           ) : (
             <div>
@@ -943,7 +992,7 @@ export default function LeftColumn({
           onMouseLeave={(e) => { if (!isDraggingSplit) e.currentTarget.style.background = 'var(--border)' }}
         />
 
-        {/* Resources panel — takes remaining space */}
+        {/* Resources panel, takes remaining space */}
         <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <ResourcesPanel onOpenTab={onOpenTab} />
         </div>
@@ -953,7 +1002,7 @@ export default function LeftColumn({
 }
 
 // =============================================================================
-// ResourcesPanel — Upload dropdown + categorized file list
+// ResourcesPanel, Upload dropdown + categorized file list
 // =============================================================================
 
 const RESOURCE_CATEGORIES: { key: ResourceCategory; label: string; icon: string; desc: string }[] = [
@@ -999,13 +1048,24 @@ function ResourcesPanel({ onOpenTab }: { readonly onOpenTab: (tab: Tab) => void 
     setShowUploadMenu(false)
     setUploading(true)
     try {
-      const resp = await window.psygil?.resources?.upload?.({ category })
-      if (resp?.status === 'success') {
-        const { imported, phiStripped } = resp.data
-        if (imported.length > 0) {
-          console.log(`[Resources] Uploaded ${imported.length} files to ${category}, stripped ${phiStripped} PHI instances`)
-          setExpandedCategory(category)
-          await loadResources()
+      // Writing samples: open Settings tab where the staged upload modal lives
+      if (category === 'writing-samples') {
+        onOpenTab({
+          id: 'settings',
+          title: 'Settings',
+          type: 'settings',
+        })
+        setUploading(false)
+        return
+      } else {
+        const resp = await window.psygil?.resources?.upload?.({ category })
+        if (resp?.status === 'success') {
+          const { imported, phiStripped } = resp.data
+          if (imported.length > 0) {
+            console.log(`[Resources] Uploaded ${imported.length} files to ${category}, stripped ${phiStripped} PHI instances`)
+            setExpandedCategory(category)
+            await loadResources()
+          }
         }
       }
     } catch (err) {
@@ -1143,7 +1203,7 @@ function ResourcesPanel({ onOpenTab }: { readonly onOpenTab: (tab: Tab) => void 
           const isExpanded = expandedCategory === cat.key
           return (
             <div key={cat.key}>
-              {/* Category header — clickable to expand/collapse */}
+              {/* Category header, clickable to expand/collapse */}
               <div
                 onClick={() => setExpandedCategory(isExpanded ? null : cat.key)}
                 style={{
@@ -1160,7 +1220,7 @@ function ResourcesPanel({ onOpenTab }: { readonly onOpenTab: (tab: Tab) => void 
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
               >
-                <span style={{ fontSize: 10, fontFamily: 'monospace', width: 12, textAlign: 'center' }}>
+                <span style={{ fontSize: 14, fontFamily: 'monospace', width: 18, textAlign: 'center', lineHeight: 1 }}>
                   {isExpanded ? '▾' : '▸'}
                 </span>
                 <span>{cat.icon}</span>

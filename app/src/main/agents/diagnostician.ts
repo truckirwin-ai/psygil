@@ -2,14 +2,14 @@
  * Psygil Diagnostician Agent (Agent 6.3)
  *
  * Maps evidence from the structured case record to diagnostic criteria and
- * psycho-legal standards. The agent presents diagnostic options—it NEVER
+ * psycho-legal standards. The agent presents diagnostic options,it NEVER
  * selects or recommends diagnoses. The clinician makes diagnostic decisions.
  *
  * Pipeline:
- *   1. getLatestIngestorResult() — load structured case record from Ingestor Agent
- *   2. getCaseById() — load case metadata
+ *   1. getLatestIngestorResult(), load structured case record from Ingestor Agent
+ *   2. getCaseById(), load case metadata
  *   3. Build diagnostician input JSON per spec (case record + referral questions + eval type)
- *   4. runAgent() — PII redact → Claude → rehydrate → structured JSON
+ *   4. runAgent(), PII redact → Claude → rehydrate → structured JSON
  *   5. Save structured evidence map to DB (agent_results table)
  *   6. Return result to caller
  *
@@ -24,10 +24,10 @@ import { runAgent, type AgentConfig, type AgentResult } from './runner'
 import { getLatestIngestorResult, type IngestorOutput } from './ingestor'
 
 // ---------------------------------------------------------------------------
-// Diagnostician system prompt — from docs/engineering/03_agent_prompt_specs.md
+// Diagnostician system prompt, from docs/engineering/03_agent_prompt_specs.md
 // ---------------------------------------------------------------------------
 
-const DIAGNOSTICIAN_SYSTEM_PROMPT = `You are the Diagnostician Agent for Psygil, an AI assistant for forensic and clinical psychologists. Your role is to organize evidence against diagnostic criteria and psycho-legal standards. You present options—you do not diagnose.
+const DIAGNOSTICIAN_SYSTEM_PROMPT = `You are the Diagnostician Agent for Psygil, an AI assistant for forensic and clinical psychologists. Your role is to organize evidence against diagnostic criteria and psycho-legal standards. You present options,you do not diagnose.
 
 CRITICAL PRINCIPLE: You map evidence to criteria. The clinician decides the diagnosis.
 
@@ -87,7 +87,7 @@ A. Criterion-by-criterion analysis:
    - For each criterion (A, B, C, etc.), assess:
      * supporting_evidence: Array of case facts, test findings, behavioral observations that support this criterion. Format: {"source": "item from case record", "strength": "strong|moderate|weak"}
      * contradicting_evidence: Array of facts that argue against this criterion
-     * insufficient_data: Boolean—true if this criterion cannot be assessed with available data
+     * insufficient_data: Boolean,true if this criterion cannot be assessed with available data
      * source_citations: Array of references to case record entries (e.g., "test_administrations[0].publisher_classifications[1]")
 
 B. Onset, duration, and context:
@@ -213,9 +213,9 @@ CRITICAL OUTPUT CONSTRAINTS:
 
 1. NO field called "selected_diagnosis," "recommended_diagnosis," or "suggested_diagnosis"
 2. NO language like "the diagnosis is," "the patient meets criteria for," "we recommend," or "the clinician should consider"
-3. Every diagnosis entry has status: "evidence_presented" — NEVER "confirmed," "ruled_out," or "recommended"
+3. Every diagnosis entry has status: "evidence_presented", NEVER "confirmed," "ruled_out," or "recommended"
 4. The entire output is framed as evidence organization: "Evidence supporting MDD includes..." NOT "The patient has MDD."
-5. Differential comparisons present both sides fairly—no steering toward one diagnosis
+5. Differential comparisons present both sides fairly,no steering toward one diagnosis
 6. Probability estimates (if included) are for clinician reference only; they do not constitute a recommendation
 7. Psycho-legal analysis maps evidence to legal standards; it does not opine on legal conclusions (competency, insanity, best interests)
 
@@ -329,7 +329,7 @@ export async function runDiagnosticianAgent(caseId: number): Promise<AgentResult
       saveDiagnosticianResult(caseId, result.operationId, result.result)
     } catch (e) {
       console.error('[diagnostician] Failed to save result to DB:', (e as Error).message)
-      // Don't fail the whole operation — the result is still returned
+      // Don't fail the whole operation, the result is still returned
     }
   }
 
@@ -337,7 +337,7 @@ export async function runDiagnosticianAgent(caseId: number): Promise<AgentResult
 }
 
 // ---------------------------------------------------------------------------
-// Persistence — save structured diagnostician output to the DB
+// Persistence, save structured diagnostician output to the DB
 // ---------------------------------------------------------------------------
 
 /**

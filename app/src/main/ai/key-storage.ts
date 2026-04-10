@@ -59,10 +59,25 @@ export function storeApiKey(key: string): void {
  * Retrieve stored API key from encrypted storage.
  * Returns null if no key is stored.
  *
+ * Fallback order:
+ *   1. ANTHROPIC_API_KEY environment variable (useful for automated
+ *      test runs, the demo walkthrough script, and CI, where the
+ *      Electron process identity differs from the "real" app and
+ *      safeStorage ciphertext cannot be decrypted).
+ *   2. Encrypted file at {userData}/psygil-api-key.enc
+ *
  * @returns The decrypted API key, or null if not stored
  * @throws Error if encryption is not available or decryption fails
  */
 export function retrieveApiKey(): string | null {
+  // Env var override: bypass safeStorage entirely when the caller has
+  // explicitly provided a key. This is the supported path for the
+  // demo-walkthrough.ts script and any automated Playwright run.
+  const envKey = process.env.ANTHROPIC_API_KEY?.trim()
+  if (envKey && envKey.length > 0) {
+    return envKey
+  }
+
   checkEncryptionAvailable()
 
   const keyPath = getKeyPath()

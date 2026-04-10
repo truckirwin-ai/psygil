@@ -1,5 +1,5 @@
 // =============================================================================
-// Workspace folder management — config persistence, folder creation, file
+// Workspace folder management, config persistence, folder creation, file
 // watcher, tree builder, filesystem ↔ DB reconciliation
 // Source of truth: docs/engineering/26_Workspace_Folder_Architecture.md
 // =============================================================================
@@ -11,7 +11,7 @@
 // getWorkspaceTree() reads actual files/folders from disk via readdirSync.
 // The renderer's LeftColumn.tsx calls this via IPC to build the tree UI.
 //
-// The DB (cases table) provides METADATA OVERLAY ONLY — stage colors, eval
+// The DB (cases table) provides METADATA OVERLAY ONLY, stage colors, eval
 // types, workflow status.  It NEVER determines which nodes appear in the tree.
 //
 // If you need to change what appears in the tree: change the filesystem.
@@ -31,20 +31,20 @@ import type { FolderNode } from '../../shared/types'
 import { getSqlite } from '../db/connection'
 
 // ---------------------------------------------------------------------------
-// Constants — canonical case subfolder structure
+// Constants, canonical case subfolder structure
 // ---------------------------------------------------------------------------
 
 /**
  * Every case folder gets these subfolders. They map to the 6-stage clinical
  * pipeline and provide a predictable on-disk structure.
  *
- * _Inbox/       — Unsorted incoming files (referrals, correspondence)
- * Collateral/   — Court orders, prior records, third-party documents
- * Testing/      — Test score reports, psychometric raw data
- * Interviews/   — Clinical interview notes, behavioral observations
- * Diagnostics/  — Diagnostic formulations, differential dx notes
- * Reports/      — Draft and final reports
- * Archive/      — Superseded documents, old versions
+ * _Inbox/, Unsorted incoming files (referrals, correspondence)
+ * Collateral/, Court orders, prior records, third-party documents
+ * Testing/, Test score reports, psychometric raw data
+ * Interviews/, Clinical interview notes, behavioral observations
+ * Diagnostics/, Diagnostic formulations, differential dx notes
+ * Reports/, Draft and final reports
+ * Archive/, Superseded documents, old versions
  */
 export const CASE_SUBFOLDERS = [
   '_Inbox',
@@ -74,7 +74,7 @@ const SUBFOLDER_TO_STAGE: Record<string, Stage> = {
   'Interviews':  'interview',
   'Diagnostics': 'diagnostics',
   'Reports':     'review',  // draft reports = review stage
-  // 'Archive' doesn't map to a stage — it's housekeeping
+  // 'Archive' doesn't map to a stage, it's housekeeping
 }
 
 // Regex: "2026-0147 Johnson, Marcus D." or "2026-0147 Johnson, Marcus"
@@ -142,7 +142,7 @@ function scanCaseFolder(folderPath: string): { inferredStage: Stage; inferredSta
 
     hasSubfolders = true
 
-    // Count files in this subfolder (non-recursive — just immediate children)
+    // Count files in this subfolder (non-recursive, just immediate children)
     let subCount = 0
     try {
       const subEntries = readdirSync(entryPath)
@@ -225,9 +225,15 @@ export function syncWorkspaceToDB(wsPath: string): void {
     `).run()
   }
 
+  // Cases live under {projectRoot}/cases/ per the workspace layout.
+  // Fall back to scanning the project root directly for backward
+  // compatibility with older workspaces created before the restructure.
+  const casesRoot = join(wsPath, 'cases')
+  const scanRoot = existsSync(casesRoot) ? casesRoot : wsPath
+
   let entries: string[]
   try {
-    entries = readdirSync(wsPath)
+    entries = readdirSync(scanRoot)
   } catch {
     return
   }
@@ -259,7 +265,7 @@ export function syncWorkspaceToDB(wsPath: string): void {
     // Skip system folders (workspace-level)
     if (entry.startsWith('_') || entry.startsWith('.')) continue
 
-    const fullPath = join(wsPath, entry)
+    const fullPath = join(scanRoot, entry)
     try {
       if (!statSync(fullPath).isDirectory()) continue
     } catch {
@@ -291,7 +297,7 @@ export function syncWorkspaceToDB(wsPath: string): void {
     const existing = selectCase.get(caseNumber) as { case_id: number; workflow_current_stage: string; case_status: string } | undefined
 
     if (existing) {
-      // UPDATE — reconcile stage/status from filesystem
+      // UPDATE, reconcile stage/status from filesystem
       // Only advance stage, never regress (clinician may have manually set it)
       const currentIdx = STAGE_ORDER.indexOf(existing.workflow_current_stage as Stage)
       const inferredIdx = STAGE_ORDER.indexOf(scan.inferredStage)
@@ -303,7 +309,7 @@ export function syncWorkspaceToDB(wsPath: string): void {
         updated++
       }
     } else {
-      // INSERT — new case folder discovered on disk
+      // INSERT, new case folder discovered on disk
       try {
         insertCase.run(caseNumber, firstName, lastName.trim(), scan.inferredStatus, scan.inferredStage, fullPath)
         console.log('[workspace-sync] Indexed:', entry)
@@ -317,7 +323,7 @@ export function syncWorkspaceToDB(wsPath: string): void {
   _malformedFolders = malformed
 
   // Orphan cleanup: delete DB records for case folders that no longer exist on disk.
-  // The filesystem is the source of truth — if the folder is gone, the DB record goes.
+  // The filesystem is the source of truth, if the folder is gone, the DB record goes.
   const allDbCases = db.prepare('SELECT case_id, case_number, folder_path FROM cases').all() as { case_id: number; case_number: string; folder_path: string | null }[]
   let orphansRemoved = 0
   for (const dbCase of allDbCases) {
@@ -341,10 +347,10 @@ export function syncWorkspaceToDB(wsPath: string): void {
 
 /**
  * Targeted re-sync: reconcile a single case folder after a file change.
- * Much faster than full sync — called by chokidar on file events.
+ * Much faster than full sync, called by chokidar on file events.
  *
  * Unlike the original version which only advanced stage, this will
- * ALWAYS update the DB to match the filesystem truth — including
+ * ALWAYS update the DB to match the filesystem truth, including
  * regressing the stage when files are deleted.
  */
 export function syncSingleCase(caseFolderPath: string): void {
@@ -360,10 +366,10 @@ export function syncSingleCase(caseFolderPath: string): void {
   const [, caseNumber] = match
   if (!caseNumber) return
 
-  // If the folder was deleted, remove the DB record — filesystem is truth
+  // If the folder was deleted, remove the DB record, filesystem is truth
   if (!existsSync(caseFolderPath)) {
     db.prepare('DELETE FROM cases WHERE case_number = ?').run(caseNumber)
-    console.log(`[workspace-sync] ${caseNumber} folder deleted — removed from DB`)
+    console.log(`[workspace-sync] ${caseNumber} folder deleted, removed from DB`)
     return
   }
 
@@ -375,7 +381,7 @@ export function syncSingleCase(caseFolderPath: string): void {
   if (!existing) return  // workspace sync will handle new folders
 
   // Always reconcile stage and status to match filesystem reality.
-  // The filesystem is the source of truth — if files were deleted,
+  // The filesystem is the source of truth, if files were deleted,
   // the stage should regress accordingly.
   if (existing.workflow_current_stage !== scan.inferredStage || existing.case_status !== scan.inferredStatus) {
     db.prepare(`
@@ -410,7 +416,7 @@ export function scaffoldCaseSubfolders(caseFolderPath: string): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Config persistence — workspace path stored in userData/config.json
+// Config persistence, workspace path stored in userData/config.json
 // ---------------------------------------------------------------------------
 
 function getConfigPath(): string {
@@ -438,6 +444,23 @@ function writeConfig(config: AppConfig): void {
 }
 
 export function loadWorkspacePath(): string | null {
+  // Prefer the new setup config (psygil-setup.json) if it has a configured
+  // project root. The setup wizard writes to that file. Fall back to the
+  // legacy workspace config for backward compatibility with installs that
+  // pre-date the wizard.
+  try {
+    const setupPath = join(app.getPath('userData'), 'psygil-setup.json')
+    if (existsSync(setupPath)) {
+      const raw = readFileSync(setupPath, 'utf-8')
+      const parsed = JSON.parse(raw) as {
+        storage?: { projectRoot?: string } | null
+      }
+      const root = parsed.storage?.projectRoot
+      if (typeof root === 'string' && root.length > 0) return root
+    }
+  } catch {
+    // Fall through to legacy path
+  }
   const config = readConfig()
   return config.workspacePath ?? null
 }
@@ -448,21 +471,24 @@ export function saveWorkspacePath(p: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// Folder structure — create workspace subfolders per spec
+// Folder structure, create workspace subfolders per spec
 // ---------------------------------------------------------------------------
 
-const WORKSPACE_SUBFOLDERS = ['_Inbox', '_Templates', '_Reference', '_Shared'] as const
+/**
+ * Legacy folder names that should NOT be created. Kept as a reference
+ * so we can recognize and skip them during workspace sync. The canonical
+ * folder structure is now defined in setup/storage-validation.ts
+ * (provisionProjectRoot) and uses /Workspace/<Category>/ instead of
+ * root-level _-prefixed folders.
+ */
+const LEGACY_SYSTEM_FOLDERS = ['_Inbox', '_Templates', '_Reference', '_Shared', '_Resources'] as const
 
 export function createFolderStructure(root: string): void {
   if (!existsSync(root)) {
     mkdirSync(root, { recursive: true })
   }
-  for (const sub of WORKSPACE_SUBFOLDERS) {
-    const subPath = join(root, sub)
-    if (!existsSync(subPath)) {
-      mkdirSync(subPath, { recursive: true })
-    }
-  }
+  // No legacy _-prefixed folders. The setup wizard (provisionProjectRoot)
+  // creates the canonical structure: .psygil/, cases/, Workspace/<Category>/
 }
 
 // ---------------------------------------------------------------------------
@@ -474,7 +500,7 @@ export function getDefaultWorkspacePath(): string {
 }
 
 // ---------------------------------------------------------------------------
-// File watcher — chokidar watches the workspace root, emits IPC events
+// File watcher, chokidar watches the workspace root, emits IPC events
 // ---------------------------------------------------------------------------
 
 let activeWatcher: FSWatcher | null = null
@@ -534,13 +560,13 @@ export function watchWorkspace(root: string): void {
       pendingCaseFolders.clear()
       syncTimer = null
 
-      // NOW broadcast — DB is up-to-date, renderer will get fresh data
+      // NOW broadcast, DB is up-to-date, renderer will get fresh data
       broadcastRefresh()
     }, 500)  // 500ms debounce
   }
 
   watcher.on('ready', () => {
-    console.log('[watcher] Ready — watching for changes')
+    console.log('[watcher] Ready, watching for changes')
   })
 
   watcher.on('error', (err) => {
@@ -594,7 +620,7 @@ export function stopWatcher(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Tree builder — recursive JSON tree of files/folders
+// Tree builder, recursive JSON tree of files/folders
 // ---------------------------------------------------------------------------
 
 export function getWorkspaceTree(root: string): readonly FolderNode[] {

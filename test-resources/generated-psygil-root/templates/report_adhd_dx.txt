@@ -1,0 +1,113 @@
+ADHD DIAGNOSTIC EVALUATION
+DSM-5-TR Attention-Deficit/Hyperactivity Disorder Assessment
+
+HEADER
+------
+Forensic Psychology Services
+1234 Grant Street, Denver, CO 80203
+Phone: (303) 555-0100
+
+CONFIDENTIAL FORENSIC PSYCHOLOGICAL EVALUATION
+
+IDENTIFYING INFORMATION
+-----------------------
+Patient Name: {{PATIENT_NAME}}
+Date of Birth: {{DATE_OF_BIRTH}}
+Case Number: {{CASE_NUMBER}}
+Referring Party: {{REFERRING_PARTY}}
+Date of Report: {{DATE_OF_REPORT}}
+Dates of Contact: {{DATES_OF_CONTACT}}
+Examiner: Dr. Jordan Whitfield, Psy.D., ABPP
+License: PSY12345 (Colorado)
+
+REFERRAL QUESTION
+-----------------
+The referring party requested a diagnostic evaluation of {{PATIENT_NAME}} to determine whether the evaluee currently meets DSM-5-TR criteria for Attention-Deficit/Hyperactivity Disorder, to specify the presentation, and to offer treatment and accommodation recommendations. The evaluation follows best practice guidelines for adult ADHD assessment.
+
+NOTICE OF NON-CONFIDENTIALITY
+-----------------------------
+The evaluee was informed at the outset that this evaluation is being conducted at the request of {{REFERRING_PARTY}} and that the usual rules of doctor-patient confidentiality do not apply. The evaluee was advised that information obtained during the evaluation would be included in a written report provided to the referring party and that the report may be shared with the court and other parties to the legal proceeding. The evaluee acknowledged understanding of these limits and voluntarily agreed to participate.
+
+PROCEDURES
+----------
+The following procedures were used in the preparation of this report:
+Review of records provided by the referring party
+Clinical interview with the evaluee
+Mental status examination
+Collateral interview(s) where appropriate
+Standardized psychological testing (see Test Results)
+Symptom validity and effort testing
+Administration of structured ADHD interview (e.g., DIVA-5 or CAADID)
+Administration of validated ADHD self-report and observer-report scales
+Cognitive testing with attention to attentional and executive function measures
+
+RECORDS REVIEWED
+----------------
+Childhood school records and report cards, where available
+Prior psychological and psychiatric records
+Academic accommodation records
+Medication trials and treatment notes
+
+DEVELOPMENTAL HISTORY
+---------------------
+Pregnancy, birth, and early developmental milestones
+Childhood behavior at home and school
+Symptom onset before age 12, with specific corroborating details
+Academic and social functioning in childhood and adolescence
+
+CURRENT PRESENTATION
+--------------------
+Current symptoms of inattention
+Current symptoms of hyperactivity and impulsivity
+Symptom presence in two or more settings (home, work, school, social)
+Impact on academic, occupational, or social functioning
+Duration of current symptoms
+
+MENTAL STATUS EXAMINATION
+-------------------------
+Appearance, behavior, cooperation, speech, mood, affect, thought process and content, perception, cognition, insight, and judgment.
+
+TEST RESULTS
+------------
+Symptom validity testing, self-report and observer-report measures, and any cognitive testing are summarized in the Test Results section. The examiner is mindful that no single test establishes or rules out ADHD.
+
+SYMPTOM VALIDITY
+----------------
+Results of symptom validity testing and any embedded validity indicators. Given the rate of symptom exaggeration in evaluations of adult ADHD, validity assessment is a standard part of this evaluation.
+
+DIFFERENTIAL DIAGNOSIS
+----------------------
+Mood and anxiety disorders that can mimic attentional complaints
+Learning disorders
+Sleep disorders
+Substance use disorders
+Medical conditions affecting attention
+Normal variation under stress or sleep deprivation
+
+DIAGNOSTIC IMPRESSION
+---------------------
+Application of the DSM-5-TR criteria to the data gathered. Each criterion is addressed and supported by specific evidence. Presentation (combined, predominantly inattentive, predominantly hyperactive-impulsive) and severity are specified when a diagnosis is offered.
+
+OPINION
+-------
+To a reasonable degree of psychological certainty, the examiner offers a diagnostic opinion, with specifiers, and addresses the referral question directly.
+
+RECOMMENDATIONS
+---------------
+Psychiatric consultation for pharmacological treatment, where appropriate
+Evidence-based behavioral and cognitive-behavioral interventions
+Academic or occupational accommodations, where supported
+Comorbid condition treatment
+Proposed review interval
+
+SIGNATURE
+---------
+The opinions expressed in this report are held to a reasonable degree of psychological certainty based on the data reviewed and the methods described. If additional information becomes available, I reserve the right to supplement or modify these opinions.
+
+Respectfully submitted,
+
+
+_______________________________
+Dr. Jordan Whitfield, Psy.D., ABPP
+Licensed Psychologist, Colorado #PSY12345
+Date: {{DATE_OF_REPORT}}

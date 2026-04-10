@@ -1,5 +1,5 @@
 /**
- * Comprehensive demo seeder — 42 forensic psychology cases across all 6 pipeline stages,
+ * Comprehensive demo seeder, 42 forensic psychology cases across all 6 pipeline stages,
  * 10 evaluation types, varied complaints, with full supporting data:
  *   - patient_intake, data_confirmation, documents, agent_runs,
  *     diagnoses (via diagnosis_catalog), reports, audit_log
@@ -57,7 +57,7 @@ interface DemoCase {
 }
 
 // ---------------------------------------------------------------------------
-// 42 Cases — distribution across stages, eval types, complaints
+// 42 Cases, distribution across stages, eval types, complaints
 // ---------------------------------------------------------------------------
 //
 // Stage distribution:  Onboarding(5), Testing(6), Interview(6),
@@ -88,37 +88,37 @@ const CASES: DemoCase[] = [
   { num:'PSY-2026-0223', last:'Mitchell',   first:'Brenda',   dob:'1976-10-30', gender:'F',  evalType:'CST',        referral:'Court',     stage:'interview',  complaint:'Reported auditory hallucinations during detention',               charges:'Criminal Mischief (F4), Trespass (M3)',       jurisdiction:'Jefferson County',                attorney:'PD Thomas Grant',           deadline:'2026-05-08', createdAt:'2026-03-01', notes:'1 interview completed. Collateral interview with family pending.' },
   { num:'PSY-2026-0224', last:'Jackson',    first:'Terrell',  dob:'1980-05-19', gender:'M',  evalType:'Risk',       referral:'Court',     stage:'interview',  complaint:'Parole board risk evaluation for early release',                  charges:'Sexual Assault 2nd (F4)',                      jurisdiction:'Colorado DOC',                    attorney:'ADA Karen Wells',           deadline:'2026-04-15', createdAt:'2026-02-20', notes:'Clinical interview and collateral review complete. Ingestor pending.' },
   { num:'PSY-2026-0225', last:'Kim',        first:'Sung-Ho',  dob:'1973-12-01', gender:'M',  evalType:'PTSD Dx',    referral:'Attorney',  stage:'interview',  complaint:'Combat-related PTSD claim for VA benefits',                       charges:'',                                             jurisdiction:'',                                attorney:'Steven Park, Esq.',          deadline:'2026-04-20', createdAt:'2026-02-25', notes:'3 interview sessions. Detailed trauma history documented.' },
-  { num:'PSY-2026-0226', last:'Thompson',   first:'Kiara',    dob:'1996-07-14', gender:'F',  evalType:'Fitness',    referral:'Court',     stage:'interview',  complaint:'Fitness to proceed — alleged intellectual disability',             charges:'Theft (M1), Fraud (M2)',                       jurisdiction:'Boulder County',                  attorney:'PD Anna Klein',             deadline:'2026-05-02', createdAt:'2026-03-03', notes:'WAIS-V and ABAS-3 completed. Clinical interview in progress.' },
+  { num:'PSY-2026-0226', last:'Thompson',   first:'Kiara',    dob:'1996-07-14', gender:'F',  evalType:'Fitness',    referral:'Court',     stage:'interview',  complaint:'Fitness to proceed, alleged intellectual disability',             charges:'Theft (M1), Fraud (M2)',                       jurisdiction:'Boulder County',                  attorney:'PD Anna Klein',             deadline:'2026-05-02', createdAt:'2026-03-03', notes:'WAIS-V and ABAS-3 completed. Clinical interview in progress.' },
 
   // ─── DIAGNOSTICS (7) ──────────────────────────────────────────────
-  { num:'PSY-2026-0231', last:'Johnson',    first:'Marcus',   dob:'1992-03-15', gender:'M',  evalType:'CST',        referral:'Court',     stage:'diagnostics', complaint:'Cannot assist counsel — possible psychotic disorder',             charges:'Assault 1st (F3), Criminal Mischief (M1)',    jurisdiction:'Denver District Court',           attorney:'ADA Rachel Thornton',       deadline:'2026-04-15', createdAt:'2026-02-15', notes:'Schizophrenia suspected. 3 sessions completed. All testing done.' },
+  { num:'PSY-2026-0231', last:'Johnson',    first:'Marcus',   dob:'1992-03-15', gender:'M',  evalType:'CST',        referral:'Court',     stage:'diagnostics', complaint:'Cannot assist counsel, possible psychotic disorder',             charges:'Assault 1st (F3), Criminal Mischief (M1)',    jurisdiction:'Denver District Court',           attorney:'ADA Rachel Thornton',       deadline:'2026-04-15', createdAt:'2026-02-15', notes:'Schizophrenia suspected. 3 sessions completed. All testing done.' },
   { num:'PSY-2026-0232', last:'Williams',   first:'Sarah',    dob:'1984-09-08', gender:'F',  evalType:'Risk',       referral:'Court',     stage:'diagnostics', complaint:'Stalking with escalation pattern',                                charges:'Stalking (F5), Menacing (M1)',                 jurisdiction:'Jefferson County',                attorney:'PD Kevin Ford',             deadline:'2026-04-01', createdAt:'2026-02-10', notes:'HCR-20v3, PCL-R scored. Diagnostician ready for review.' },
   { num:'PSY-2026-0233', last:'Washington', first:'Keisha',   dob:'1989-01-25', gender:'F',  evalType:'CST',        referral:'Court',     stage:'diagnostics', complaint:'Erratic behavior, possible bipolar episode',                      charges:'Robbery (F4), Assault 3rd (M1)',              jurisdiction:'Adams County',                    attorney:'PD David Chen',             deadline:'2026-04-12', createdAt:'2026-02-18', notes:'Diagnostician identified Bipolar I and ASPD differential.' },
   { num:'PSY-2026-0234', last:'Kim',        first:'Sung-Ho',  dob:'1973-12-01', gender:'M',  evalType:'PTSD Dx',    referral:'Attorney',  stage:'diagnostics', complaint:'PTSD and TBI differential diagnosis',                             charges:'',                                             jurisdiction:'',                                attorney:'Steven Park, Esq.',          deadline:'2026-04-05', createdAt:'2026-02-05', notes:'Diagnostician presenting PTSD vs. Adjustment Disorder options.' },
-  { num:'PSY-2026-0235', last:'Foster',     first:'Derek',    dob:'1981-06-20', gender:'M',  evalType:'Malingering',referral:'Court',     stage:'diagnostics', complaint:'Suspected symptom fabrication — disability claim',                charges:'Theft (F4)',                                   jurisdiction:'Denver District Court',           attorney:'ADA Nancy Clark',           deadline:'2026-04-02', createdAt:'2026-02-08', notes:'MMPI-3 FBS elevated. SIRS-2 probable. TOMM below cutoff.' },
+  { num:'PSY-2026-0235', last:'Foster',     first:'Derek',    dob:'1981-06-20', gender:'M',  evalType:'Malingering',referral:'Court',     stage:'diagnostics', complaint:'Suspected symptom fabrication, disability claim',                charges:'Theft (F4)',                                   jurisdiction:'Denver District Court',           attorney:'ADA Nancy Clark',           deadline:'2026-04-02', createdAt:'2026-02-08', notes:'MMPI-3 FBS elevated. SIRS-2 probable. TOMM below cutoff.' },
   { num:'PSY-2026-0236', last:'Tanaka',     first:'Yuki',     dob:'1967-05-30', gender:'F',  evalType:'Capacity',   referral:'Attorney',  stage:'diagnostics', complaint:'Testamentary capacity for contested will',                        charges:'',                                             jurisdiction:'El Paso County Probate',          attorney:'Margaret Collins, Esq.',     deadline:'2026-04-10', createdAt:'2026-02-12', notes:'MoCA=18. Diagnostician weighing Major NCD vs. age-related decline.' },
-  { num:'PSY-2026-0237', last:'Reeves',     first:'Anthony',  dob:'1975-03-08', gender:'M',  evalType:'Mitigation', referral:'Attorney',  stage:'diagnostics', complaint:'Sentencing mitigation — childhood trauma history',                charges:'Aggravated Assault (F4)',                      jurisdiction:'Arapahoe County',                 attorney:'PD Carlos Diaz',            deadline:'2026-04-18', createdAt:'2026-02-14', notes:'ACEs score 8/10. Diagnostician evaluating PTSD + SUD comorbidity.' },
+  { num:'PSY-2026-0237', last:'Reeves',     first:'Anthony',  dob:'1975-03-08', gender:'M',  evalType:'Mitigation', referral:'Attorney',  stage:'diagnostics', complaint:'Sentencing mitigation, childhood trauma history',                charges:'Aggravated Assault (F4)',                      jurisdiction:'Arapahoe County',                 attorney:'PD Carlos Diaz',            deadline:'2026-04-18', createdAt:'2026-02-14', notes:'ACEs score 8/10. Diagnostician evaluating PTSD + SUD comorbidity.' },
 
   // ─── REVIEW (6) ───────────────────────────────────────────────────
   { num:'PSY-2026-0241', last:'Fitzgerald', first:'Sean',     dob:'1963-08-11', gender:'M',  evalType:'Capacity',   referral:'Attorney',  stage:'review',     complaint:'Financial conservatorship evaluation',                            charges:'',                                             jurisdiction:'Douglas County Probate',          attorney:'Margaret Collins, Esq.',     deadline:'2026-04-18', createdAt:'2026-01-20', notes:'Draft report in clinician review. Vascular NCD diagnosed.' },
-  { num:'PSY-2026-0242', last:'Hoffman',    first:'Rachel',   dob:'1990-11-04', gender:'F',  evalType:'Fitness',    referral:'Court',     stage:'review',     complaint:'Fitness to proceed — possible dissociative disorder',              charges:'Forgery (F5)',                                 jurisdiction:'Boulder County',                  attorney:'PD James Hartley',          deadline:'2026-04-08', createdAt:'2026-01-25', notes:'Report drafted. Editor flagged 2 medium issues.' },
-  { num:'PSY-2026-0243', last:'Kowalski',   first:'Anna',     dob:'1979-03-16', gender:'F',  evalType:'Custody',    referral:'Court',     stage:'review',     complaint:'Custody modification — substance abuse allegation',               charges:'',                                             jurisdiction:'El Paso County Family Court',     attorney:'Judge William Huang',       deadline:'2026-04-15', createdAt:'2026-01-28', notes:'Both parents evaluated. Report under clinical review.' },
-  { num:'PSY-2026-0244', last:'Cooper',     first:'Ashley',   dob:'1988-04-22', gender:'F',  evalType:'CST',        referral:'Court',     stage:'review',     complaint:'Restored competency — re-evaluation',                             charges:'Assault 2nd (F4), Resisting Arrest (M2)',     jurisdiction:'Denver District Court',           attorney:'PD Olivia Barnes',          deadline:'2026-04-08', createdAt:'2026-01-15', notes:'Competent. Report ready for attestation. Editor: 1 high flag.' },
-  { num:'PSY-2026-0245', last:'Patel',      first:'Neha',     dob:'1986-07-09', gender:'F',  evalType:'PTSD Dx',    referral:'Attorney',  stage:'review',     complaint:'PTSD from sexual assault — civil damages case',                   charges:'',                                             jurisdiction:'',                                attorney:'Jennifer Walsh, Esq.',      deadline:'2026-04-12', createdAt:'2026-01-22', notes:'PTSD confirmed. Report in final review before attestation.' },
+  { num:'PSY-2026-0242', last:'Hoffman',    first:'Rachel',   dob:'1990-11-04', gender:'F',  evalType:'Fitness',    referral:'Court',     stage:'review',     complaint:'Fitness to proceed, possible dissociative disorder',              charges:'Forgery (F5)',                                 jurisdiction:'Boulder County',                  attorney:'PD James Hartley',          deadline:'2026-04-08', createdAt:'2026-01-25', notes:'Report drafted. Editor flagged 2 medium issues.' },
+  { num:'PSY-2026-0243', last:'Kowalski',   first:'Anna',     dob:'1979-03-16', gender:'F',  evalType:'Custody',    referral:'Court',     stage:'review',     complaint:'Custody modification, substance abuse allegation',               charges:'',                                             jurisdiction:'El Paso County Family Court',     attorney:'Judge William Huang',       deadline:'2026-04-15', createdAt:'2026-01-28', notes:'Both parents evaluated. Report under clinical review.' },
+  { num:'PSY-2026-0244', last:'Cooper',     first:'Ashley',   dob:'1988-04-22', gender:'F',  evalType:'CST',        referral:'Court',     stage:'review',     complaint:'Restored competency, re-evaluation',                             charges:'Assault 2nd (F4), Resisting Arrest (M2)',     jurisdiction:'Denver District Court',           attorney:'PD Olivia Barnes',          deadline:'2026-04-08', createdAt:'2026-01-15', notes:'Competent. Report ready for attestation. Editor: 1 high flag.' },
+  { num:'PSY-2026-0245', last:'Patel',      first:'Neha',     dob:'1986-07-09', gender:'F',  evalType:'PTSD Dx',    referral:'Attorney',  stage:'review',     complaint:'PTSD from sexual assault, civil damages case',                   charges:'',                                             jurisdiction:'',                                attorney:'Jennifer Walsh, Esq.',      deadline:'2026-04-12', createdAt:'2026-01-22', notes:'PTSD confirmed. Report in final review before attestation.' },
   { num:'PSY-2026-0246', last:'Santos',     first:'Rafael',   dob:'1971-10-15', gender:'M',  evalType:'Neuropsych', referral:'Attorney',  stage:'review',     complaint:'Cognitive impairment after industrial chemical exposure',          charges:'',                                             jurisdiction:'',                                attorney:'David Greenwald, Esq.',     deadline:'2026-04-20', createdAt:'2026-01-18', notes:'Neuropsych battery complete. Report drafted with 3 AI draft sections.' },
 
   // ─── COMPLETE (12) ────────────────────────────────────────────────
-  { num:'PSY-2026-0251', last:'Chen',       first:'Wei',      dob:'1977-02-19', gender:'M',  evalType:'PTSD Dx',    referral:'Attorney',  stage:'complete',   complaint:'Occupational PTSD — first responder',                             charges:'',                                             jurisdiction:'',                                attorney:'Linda Park, Esq.',           deadline:'2026-03-10', createdAt:'2025-12-15', notes:'PTSD confirmed. Report finalized and sealed.' },
+  { num:'PSY-2026-0251', last:'Chen',       first:'Wei',      dob:'1977-02-19', gender:'M',  evalType:'PTSD Dx',    referral:'Attorney',  stage:'complete',   complaint:'Occupational PTSD, first responder',                             charges:'',                                             jurisdiction:'',                                attorney:'Linda Park, Esq.',           deadline:'2026-03-10', createdAt:'2025-12-15', notes:'PTSD confirmed. Report finalized and sealed.' },
   { num:'PSY-2026-0252', last:'Thompson',   first:'Robert',   dob:'1969-06-30', gender:'M',  evalType:'Malingering',referral:'Court',     stage:'complete',   complaint:'Symptom exaggeration in disability claim',                        charges:'Fraud (F4)',                                   jurisdiction:'Adams County',                    attorney:'ADA James Whitfield',       deadline:'2026-03-20', createdAt:'2025-12-10', notes:'Malingering confirmed. MMPI-3 and SIRS-2 definitive.' },
   { num:'PSY-2026-0253', last:'Anderson',   first:'Lisa',     dob:'1993-09-14', gender:'F',  evalType:'Fitness',    referral:'Court',     stage:'complete',   complaint:'Fitness restored after treatment',                                charges:'Theft (M1)',                                   jurisdiction:'Boulder County',                  attorney:'PD Anna Klein',             deadline:'2026-03-15', createdAt:'2025-12-01', notes:'Fit to proceed. Treatment compliance documented.' },
-  { num:'PSY-2026-0254', last:'Garcia',     first:'Miguel',   dob:'1965-12-03', gender:'M',  evalType:'Capacity',   referral:'Attorney',  stage:'complete',   complaint:'Conservatorship — advanced dementia',                             charges:'',                                             jurisdiction:'El Paso County Probate',          attorney:'Elena Ruiz, Esq.',           deadline:'2026-02-28', createdAt:'2025-11-15', notes:'Lacks capacity. Conservatorship recommended.' },
-  { num:'PSY-2026-0255', last:'Petrov',     first:'Alexei',   dob:'1975-04-03', gender:'M',  evalType:'Risk',       referral:'Court',     stage:'complete',   complaint:'SVP risk assessment — sexual offense history',                    charges:'Sexual Assault (F3)',                          jurisdiction:'Denver District Court',           attorney:'ADA Karen Wells',           deadline:'2026-03-15', createdAt:'2025-11-20', notes:'High risk. Civil commitment recommended.' },
-  { num:'PSY-2026-0256', last:'Jackson',    first:'Tamara',   dob:'1983-08-07', gender:'F',  evalType:'CST',        referral:'Court',     stage:'complete',   complaint:'Incompetent — treatment ordered',                                 charges:'Assault 2nd (F4)',                              jurisdiction:'Denver District Court',           attorney:'PD Marcus Lee',             deadline:'2026-03-10', createdAt:'2025-11-25', notes:'IST. Committed to CMHIP for restoration.' },
+  { num:'PSY-2026-0254', last:'Garcia',     first:'Miguel',   dob:'1965-12-03', gender:'M',  evalType:'Capacity',   referral:'Attorney',  stage:'complete',   complaint:'Conservatorship, advanced dementia',                             charges:'',                                             jurisdiction:'El Paso County Probate',          attorney:'Elena Ruiz, Esq.',           deadline:'2026-02-28', createdAt:'2025-11-15', notes:'Lacks capacity. Conservatorship recommended.' },
+  { num:'PSY-2026-0255', last:'Petrov',     first:'Alexei',   dob:'1975-04-03', gender:'M',  evalType:'Risk',       referral:'Court',     stage:'complete',   complaint:'SVP risk assessment, sexual offense history',                    charges:'Sexual Assault (F3)',                          jurisdiction:'Denver District Court',           attorney:'ADA Karen Wells',           deadline:'2026-03-15', createdAt:'2025-11-20', notes:'High risk. Civil commitment recommended.' },
+  { num:'PSY-2026-0256', last:'Jackson',    first:'Tamara',   dob:'1983-08-07', gender:'F',  evalType:'CST',        referral:'Court',     stage:'complete',   complaint:'Incompetent, treatment ordered',                                 charges:'Assault 2nd (F4)',                              jurisdiction:'Denver District Court',           attorney:'PD Marcus Lee',             deadline:'2026-03-10', createdAt:'2025-11-25', notes:'IST. Committed to CMHIP for restoration.' },
   { num:'PSY-2026-0257', last:'Taylor',     first:'Brandon',  dob:'1997-01-20', gender:'M',  evalType:'CST',        referral:'Court',     stage:'complete',   complaint:'Substance-induced psychosis resolved',                            charges:'DUI (M1), Eluding (F5)',                       jurisdiction:'Adams County',                    attorney:'ADA Robert Park',           deadline:'2026-03-25', createdAt:'2025-12-05', notes:'Competent. Substance-induced condition resolved.' },
-  { num:'PSY-2026-0258', last:'Harris',     first:'Tyrone',   dob:'1972-11-28', gender:'M',  evalType:'Risk',       referral:'Court',     stage:'complete',   complaint:'DV risk — lethality assessment for bond hearing',                 charges:'Domestic Violence (F4)',                        jurisdiction:'Arapahoe County',                 attorney:'ADA Michelle Stevens',      deadline:'2026-03-05', createdAt:'2025-11-10', notes:'High lethality risk. No-contact bond recommended.' },
+  { num:'PSY-2026-0258', last:'Harris',     first:'Tyrone',   dob:'1972-11-28', gender:'M',  evalType:'Risk',       referral:'Court',     stage:'complete',   complaint:'DV risk, lethality assessment for bond hearing',                 charges:'Domestic Violence (F4)',                        jurisdiction:'Arapahoe County',                 attorney:'ADA Michelle Stevens',      deadline:'2026-03-05', createdAt:'2025-11-10', notes:'High lethality risk. No-contact bond recommended.' },
   { num:'PSY-2026-0259', last:'Suzuki',     first:'Kenji',    dob:'1998-05-16', gender:'M',  evalType:'ADHD Dx',    referral:'Physician', stage:'complete',   complaint:'ADHD evaluation for workplace accommodations',                    charges:'',                                             jurisdiction:'',                                attorney:'',                          deadline:'2026-03-30', createdAt:'2025-12-20', notes:'ADHD Combined confirmed. Accommodations letter provided.' },
-  { num:'PSY-2026-0260', last:'Singh',      first:'Rajveer',  dob:'1968-03-09', gender:'M',  evalType:'Fitness',    referral:'Court',     stage:'complete',   complaint:'Fitness evaluation — non-English speaker',                        charges:'DUI (M1)',                                     jurisdiction:'Weld County',                     attorney:'PD Carlos Diaz',            deadline:'2026-03-18', createdAt:'2025-12-08', notes:'Fit to proceed with interpreter. Language barrier only.' },
-  { num:'PSY-2026-0261', last:'OBrien',     first:'Patrick',  dob:'1960-09-25', gender:'M',  evalType:'Malingering',referral:'Insurance', stage:'complete',   complaint:'Workers comp claim — suspected feigning',                         charges:'',                                             jurisdiction:'',                                attorney:'Hartford Insurance',        deadline:'2026-03-28', createdAt:'2025-12-12', notes:'Malingering probable. TOMM and SIRS-2 below cutoffs.' },
+  { num:'PSY-2026-0260', last:'Singh',      first:'Rajveer',  dob:'1968-03-09', gender:'M',  evalType:'Fitness',    referral:'Court',     stage:'complete',   complaint:'Fitness evaluation, non-English speaker',                        charges:'DUI (M1)',                                     jurisdiction:'Weld County',                     attorney:'PD Carlos Diaz',            deadline:'2026-03-18', createdAt:'2025-12-08', notes:'Fit to proceed with interpreter. Language barrier only.' },
+  { num:'PSY-2026-0261', last:'OBrien',     first:'Patrick',  dob:'1960-09-25', gender:'M',  evalType:'Malingering',referral:'Insurance', stage:'complete',   complaint:'Workers comp claim, suspected feigning',                         charges:'',                                             jurisdiction:'',                                attorney:'Hartford Insurance',        deadline:'2026-03-28', createdAt:'2025-12-12', notes:'Malingering probable. TOMM and SIRS-2 below cutoffs.' },
   { num:'PSY-2026-0262', last:'Hawkins',    first:'Gerald',   dob:'1958-12-09', gender:'M',  evalType:'Capacity',   referral:'Court',     stage:'complete',   complaint:'Healthcare proxy decision-making capacity',                       charges:'',                                             jurisdiction:'Boulder County Probate',          attorney:'Margaret Collins, Esq.',     deadline:'2026-02-15', createdAt:'2025-11-01', notes:'Vascular NCD. Lacks capacity for healthcare decisions.' },
 ]
 
@@ -189,7 +189,7 @@ function generateOnboardingData(c: DemoCase): Record<string, Record<string, stri
       schools_attended: `${['East', 'West', 'North', 'Central', 'Mountain View'][Math.floor(Math.random() * 5)]} High School${edu.includes('college') || edu.includes('Bachelor') ? `, ${['Metro State', 'UC Denver', 'PPCC', 'Colorado State', 'CU Boulder'][Math.floor(Math.random() * 5)]}` : ''}`,
       academic_experience: edu.includes('Bachelor') ? 'Average academic performance. No special education history.' : 'Graduated on time. No learning disability diagnosis.',
       employment_status: c.evalType === 'Capacity' ? 'Retired' : (Math.random() > 0.3 ? 'Employed' : 'Unemployed'),
-      current_employer: c.evalType === 'Capacity' ? 'N/A — retired since 2020' : '',
+      current_employer: c.evalType === 'Capacity' ? 'N/A, retired since 2020' : '',
       work_history: c.evalType === 'Capacity'
         ? 'Worked 30+ years in financial services. Retired as branch manager. Employer noted no concerns prior to retirement.'
         : `${Math.floor(Math.random() * 5) + 2} jobs in the past 10 years. Longest tenure: ${Math.floor(Math.random() * 5) + 2} years.`,
@@ -212,7 +212,7 @@ function generateOnboardingData(c: DemoCase): Record<string, Record<string, stri
         : c.evalType === 'Neuropsych'
         ? 'TBI from motor vehicle accident 6 months ago. Brief loss of consciousness at scene. ER evaluation, CT negative.'
         : 'No reported head injuries.',
-      sleep_quality: c.evalType === 'PTSD Dx' ? 'Poor — nightmares 3-4 times per week, difficulty falling asleep.' : 'Reports adequate sleep, 6-7 hours per night.',
+      sleep_quality: c.evalType === 'PTSD Dx' ? 'Poor, nightmares 3-4 times per week, difficulty falling asleep.' : 'Reports adequate sleep, 6-7 hours per night.',
       appetite_weight: 'Appetite normal. No significant weight changes in past 6 months.',
     },
     mental: {
@@ -268,7 +268,7 @@ function generateOnboardingData(c: DemoCase): Record<string, Record<string, stri
 }
 
 // ---------------------------------------------------------------------------
-// Test battery by eval type — used for document generation
+// Test battery by eval type, used for document generation
 // ---------------------------------------------------------------------------
 
 const TEST_BATTERIES: Record<string, string[]> = {
@@ -307,8 +307,7 @@ export function createSeedTrigger(): void {
 
 /**
  * Backfill evaluation_type (and other metadata) for demo cases that were
- * created by workspace sync before the seeder ran.  Safe to call repeatedly —
- * only touches rows with NULL evaluation_type.
+ * created by workspace sync before the seeder ran.  Safe to call repeatedly, * only touches rows with NULL evaluation_type.
  */
 export function backfillDemoTypes(): number {
   const sqlite = getSqlite()
@@ -351,7 +350,7 @@ export function backfillDemoTypes(): number {
 /**
  * Backfill intake AND onboarding data for existing demo cases that were
  * created before these tables were populated by the seeder (or were created
- * by workspace sync). Safe to call repeatedly — only inserts missing rows.
+ * by workspace sync). Safe to call repeatedly, only inserts missing rows.
  */
 export function backfillOnboarding(): number {
   const sqlite = getSqlite()
@@ -378,7 +377,7 @@ export function backfillOnboarding(): number {
   let obFilled = 0
 
   for (const c of CASES) {
-    // Find case_id — try both PSY-prefixed and bare case numbers
+    // Find case_id, try both PSY-prefixed and bare case numbers
     const bare = c.num.replace(/^PSY-/, '')
     const row = sqlite.prepare('SELECT case_id FROM cases WHERE case_number = ? OR case_number = ?').get(c.num, bare) as { case_id: number } | undefined
     if (!row) continue
@@ -439,7 +438,7 @@ export function seedDemoCases(): void {
   const sqlite = getSqlite()
   const now = new Date().toISOString()
 
-  // Resolve workspace path — use configured path, or default
+  // Resolve workspace path, use configured path, or default
   let wsPath = loadWorkspacePath()
   if (!wsPath) {
     wsPath = getDefaultWorkspacePath()
@@ -576,7 +575,7 @@ export function seedDemoCases(): void {
 
       // Drop a case info file in _Inbox
       createPlaceholder(join(caseFolderPath, '_Inbox'), 'CASE_INFO.txt',
-        `PSYGIL DEMO CASE — AI-GENERATED DATA\n${'='.repeat(40)}\n` +
+        `PSYGIL DEMO CASE, AI-GENERATED DATA\n${'='.repeat(40)}\n` +
         `Case:       ${c.num}\n` +
         `Examinee:   ${c.last}, ${c.first}\n` +
         `DOB:        ${c.dob}\n` +
@@ -591,7 +590,7 @@ export function seedDemoCases(): void {
         `This is a demo case containing no real patient data.\n`
       )
 
-      // Referral type mapping — matches expanded CHECK after migration 008
+      // Referral type mapping, matches expanded CHECK after migration 008
       const refType = c.referral.toLowerCase().includes('court') ? 'court'
         : c.referral.toLowerCase().includes('attorney') ? 'attorney'
         : c.referral.toLowerCase().includes('insurance') ? 'insurance'
@@ -599,7 +598,7 @@ export function seedDemoCases(): void {
         : 'court'
 
       // ── STAGE-APPROPRIATE DATA ──
-      // Each stage builds on the previous — cases further along have more data
+      // Each stage builds on the previous, cases further along have more data
 
       const stageIndex = ['onboarding','testing','interview','diagnostics','review','complete'].indexOf(c.stage)
 
@@ -760,7 +759,7 @@ export function seedDemoCases(): void {
           c.createdAt, c.createdAt)
         insertAudit.run(caseId, 'agent_invoked', 1, c.createdAt, JSON.stringify({ agent: 'writer' }))
 
-        // Validator agent run (report quality check — stands in for editor)
+        // Validator agent run (report quality check, stands in for editor)
         insertAgentRun.run(caseId, 'validator',
           `Validate report draft for ${c.evalType} evaluation`,
           JSON.stringify({

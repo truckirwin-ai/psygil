@@ -5,26 +5,71 @@
  * and structured case data into professional report prose.
  *
  * Pipeline:
- *   1. getCaseById() — load case metadata
- *   2. getLatestIngestorResult() — load structured case record
- *   3. getLatestDiagnosticianResult() — load clinician-confirmed diagnoses
+ *   1. getCaseById(), load case metadata
+ *   2. getLatestIngestorResult(), load structured case record
+ *   3. getLatestDiagnosticianResult(), load clinician-confirmed diagnoses
  *   4. Build writer input JSON per spec (only CONFIRMED diagnoses)
- *   5. runAgent() — PII redact → Claude → rehydrate → structured JSON
+ *   5. runAgent(), PII redact → Claude → rehydrate → structured JSON
  *   6. Save structured output to DB (agent_results table)
  *   7. Return result to caller
  *
  * CRITICAL: Only clinician-CONFIRMED diagnoses from Gate 2 are included.
- * DOCTOR ALWAYS DIAGNOSES — the Writer documents what the doctor decided.
+ * DOCTOR ALWAYS DIAGNOSES, the Writer documents what the doctor decided.
  */
 
+import * as fs from 'fs'
+import * as path from 'path'
 import { getSqlite } from '../db/connection'
 import { getCaseById } from '../cases'
 import { retrieveApiKey } from '../ai/key-storage'
 import { runAgent, type AgentConfig, type AgentResult } from './runner'
 import { getLatestIngestorResult, type IngestorOutput } from './ingestor'
+import { loadWorkspacePath, getDefaultWorkspacePath } from '../workspace'
+import type { PersistedStyleProfile } from '../../shared/types/ipc'
 
 // ---------------------------------------------------------------------------
-// Writer system prompt — from docs/engineering/03_agent_prompt_specs.md
+// Load the persisted voice/style profile from writing samples analysis.
+// Falls back to a minimal default if no profile exists on disk.
+// ---------------------------------------------------------------------------
+
+function loadStyleProfile(): Record<string, unknown> {
+  const DEFAULT_STYLE = {
+    tone: 'formal',
+    formality_level: 'professional',
+    citation_style: 'inline',
+  }
+
+  try {
+    const wsPath = loadWorkspacePath() || getDefaultWorkspacePath()
+    const profilePath = path.join(wsPath, 'Workspace', 'Writing Samples', '.style-profile.json')
+    if (!fs.existsSync(profilePath)) return DEFAULT_STYLE
+
+    const raw = fs.readFileSync(profilePath, 'utf-8')
+    const profile = JSON.parse(raw) as PersistedStyleProfile
+
+    return {
+      tone: 'formal',
+      formality_level: 'professional',
+      citation_style: 'inline',
+      // Real metrics from analyzed writing samples
+      avg_sentence_length: profile.avgSentenceLength,
+      vocabulary_richness: profile.vocabularyRichness,
+      formality_score: profile.formalityScore,
+      person_reference: profile.personReference,
+      tense_distribution: profile.tenseDistribution,
+      top_clinical_terms: profile.topTerms?.slice(0, 15).map(t => t.term) ?? [],
+      hedging_patterns: profile.hedgingPhrases?.slice(0, 10).map(h => h.phrase) ?? [],
+      section_headings: profile.sectionHeadings ?? [],
+      sample_count: profile.sampleCount,
+      total_word_count: profile.totalWordCount,
+    }
+  } catch (_) {
+    return DEFAULT_STYLE
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Writer system prompt, from docs/engineering/03_agent_prompt_specs.md
 // ---------------------------------------------------------------------------
 
 const WRITER_SYSTEM_PROMPT = `You are the Writer Agent for Psygil, an AI assistant for forensic and clinical psychologists. Your role is to transform structured case data and clinician decisions into professional report prose. You write in the clinician's voice, respecting their diagnostic conclusions. You flag content requiring revision.
@@ -168,7 +213,7 @@ GENERAL WRITING STANDARDS:
 - Spell out all abbreviations on first use (e.g., "Major Depressive Disorder (MDD)")
 - Use past tense for evaluation findings, present tense for ongoing symptoms if applicable
 - Cite page numbers or section headings when referencing prior records
-- Avoid hedging language unless genuinely uncertain ("possibly," "apparently," "may indicate" — use judiciously)
+- Avoid hedging language unless genuinely uncertain ("possibly," "apparently," "may indicate", use judiciously)
 - Use technical terminology appropriate to the audience (attorney vs. clinician vs. family)
 - Maintain professional tone; avoid colloquialisms
 - For test interpretation, reference the instrument manual and publisher guidance
@@ -184,7 +229,7 @@ CRITICAL CONTENT CONSTRAINTS:
 6. Risk assessment MUST be flagged draft_requiring_revision with mandatory disclaimer
 7. Do NOT invent supporting evidence not in case record
 8. Do NOT invent collateral records or test scores
-9. If clinician's Gate 2 decision conflicts with diagnostic evidence, DO NOT resolve—present clinician's decision and let clinician justify in later revision
+9. If clinician's Gate 2 decision conflicts with diagnostic evidence, DO NOT resolve,present clinician's decision and let clinician justify in later revision
 
 TONE MATCHING:
 If style guide is provided, match it:
@@ -229,7 +274,7 @@ export interface WriterOutput {
 }
 
 // ---------------------------------------------------------------------------
-// Diagnostician result type (minimal — what we need to load)
+// Diagnostician result type (minimal, what we need to load)
 // ---------------------------------------------------------------------------
 
 interface DiagnosticianDecision {
@@ -340,11 +385,7 @@ export async function runWriterAgent(caseId: number): Promise<AgentResult<Writer
         functional_impairment_level: diagnosticianResult.functional_impairment_level ?? 'unknown',
         forensic_conclusions: diagnosticianResult.forensic_conclusions ?? {},
       },
-      style_guide: {
-        tone: 'formal',
-        formality_level: 'professional',
-        citation_style: 'inline',
-      },
+      style_guide: loadStyleProfile(),
       report_template: {
         report_type: caseRow.evaluation_type ?? 'general',
         jurisdiction: 'general',
@@ -380,7 +421,7 @@ export async function runWriterAgent(caseId: number): Promise<AgentResult<Writer
       saveWriterResult(caseId, result.operationId, result.result)
     } catch (e) {
       console.error('[writer] Failed to save result to DB:', (e as Error).message)
-      // Don't fail the whole operation — the result is still returned
+      // Don't fail the whole operation, the result is still returned
     }
   }
 
@@ -388,7 +429,7 @@ export async function runWriterAgent(caseId: number): Promise<AgentResult<Writer
 }
 
 // ---------------------------------------------------------------------------
-// Persistence — save structured writer output to the DB
+// Persistence, save structured writer output to the DB
 // ---------------------------------------------------------------------------
 
 /**
@@ -494,7 +535,81 @@ function getLatestDiagnosticianResult(caseId: number): DiagnosticianResult | nul
   if (!row) return null
 
   try {
-    return JSON.parse(row.result_json) as DiagnosticianResult
+    let parsed = JSON.parse(row.result_json) as unknown
+
+    // Some legacy diagnostician rows store the LLM output as a markdown-fenced
+    // string (```json ... ```) inside result_json. Strip the fences and re-parse.
+    if (typeof parsed === 'string') {
+      const stripped = parsed
+        .replace(/^\s*```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/, '')
+        .trim()
+      try {
+        parsed = JSON.parse(stripped)
+      } catch {
+        return null
+      }
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      return null
+    }
+
+    const result = parsed as DiagnosticianResult & {
+      selected_diagnoses?: unknown[]
+      ruled_out_diagnoses?: unknown[]
+    }
+
+    // Merge clinician's Gate 2 decisions from the diagnostic_decisions table.
+    // The diagnostician LLM output contains differential_diagnoses (options);
+    // the clinician's actual picks live in the diagnostic_decisions table.
+    try {
+      const decisionTables = sqlite.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='diagnostic_decisions'"
+      ).all() as Array<{ name: string }>
+
+      if (decisionTables.length > 0) {
+        const decisions = sqlite.prepare(
+          `SELECT diagnosis_key, icd_code, diagnosis_name, decision, clinician_notes
+           FROM diagnostic_decisions WHERE case_id = ?`
+        ).all(caseId) as Array<{
+          diagnosis_key: string
+          icd_code: string
+          diagnosis_name: string
+          decision: string
+          clinician_notes: string | null
+        }>
+
+        const selected = decisions
+          .filter((d) => d.decision === 'render')
+          .map((d) => ({
+            diagnosis_key: d.diagnosis_key,
+            icd_code: d.icd_code,
+            diagnosis_name: d.diagnosis_name,
+            clinician_notes: d.clinician_notes ?? '',
+          }))
+
+        const ruledOut = decisions
+          .filter((d) => d.decision === 'rule_out')
+          .map((d) => ({
+            diagnosis_key: d.diagnosis_key,
+            icd_code: d.icd_code,
+            diagnosis_name: d.diagnosis_name,
+            clinician_notes: d.clinician_notes ?? '',
+          }))
+
+        if (selected.length > 0) {
+          result.selected_diagnoses = selected
+        }
+        if (ruledOut.length > 0) {
+          result.ruled_out_diagnoses = ruledOut
+        }
+      }
+    } catch (e) {
+      console.error('[writer] Failed to merge diagnostic_decisions:', (e as Error).message)
+    }
+
+    return result as DiagnosticianResult
   } catch {
     return null
   }

@@ -1,5 +1,5 @@
 // Tab types for center column tab management.
-// Renderer-only — not shared with main process.
+// Renderer-only, not shared with main process.
 
 export type TabType =
   | 'clinical-overview'

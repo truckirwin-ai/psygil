@@ -147,9 +147,27 @@ export async function generateSealedPdf(docxPath: string, outputPath: string): P
 // Public API: submitAttestation
 // ============================================================================
 
+function resolveClinicianUserId(): number {
+  const sqlite = getSqlite()
+  const row = sqlite
+    .prepare("SELECT user_id FROM users WHERE is_active = 1 ORDER BY user_id ASC LIMIT 1")
+    .get() as { user_id: number } | undefined
+  if (row?.user_id) return row.user_id
+  // Bootstrap a default clinician so reports can be persisted even before
+  // a real auth user has been created.
+  sqlite
+    .prepare(
+      `INSERT OR IGNORE INTO users (user_id, email, full_name, role, credentials, is_active, created_at)
+       VALUES (1, 'clinician@psygil.local', 'Default Clinician', 'psychologist', 'Ph.D.', 1, CURRENT_DATE)`
+    )
+    .run()
+  return 1
+}
+
 export function submitAttestation(params: AttestationParams): SubmitAttestationResult {
   const sqlite = getSqlite()
   const { caseId, signedBy, attestationStatement, signatureDate } = params
+  const clinicianUserId = resolveClinicianUserId()
 
   // 1. Verify case exists and is at 'review' stage
   const caseRow = getCaseById(caseId)
@@ -192,7 +210,7 @@ export function submitAttestation(params: AttestationParams): SubmitAttestationR
     generateSealedPdf(finalDocxPath, pdfPath)
   } catch (error) {
     console.warn('[reports] PDF generation failed:', error)
-    // Continue without PDF for MVP — it can be generated later
+    // Continue without PDF for MVP, it can be generated later
     pdfPath = null
   }
 
@@ -218,13 +236,14 @@ export function submitAttestation(params: AttestationParams): SubmitAttestationR
       .prepare(
         `UPDATE reports
          SET is_locked = 1, integrity_hash = ?, sealed_pdf_path = ?,
-             finalized_by_user_id = 0, finalized_at = ?, status = 'finalized',
+             finalized_by_user_id = ?, finalized_at = ?, status = 'finalized',
              file_path = ?, file_size_bytes = ?
          WHERE report_id = ?`
       )
       .run(
         integrityHash,
         pdfPath ?? null,
+        clinicianUserId,
         new Date().toISOString(),
         finalDocxPath,
         fileSizeBytes,
@@ -237,12 +256,14 @@ export function submitAttestation(params: AttestationParams): SubmitAttestationR
         `INSERT INTO reports
          (case_id, generated_by_user_id, is_locked, integrity_hash, sealed_pdf_path,
           finalized_by_user_id, finalized_at, status, file_path, file_size_bytes, report_version)
-         VALUES (?, 0, 1, ?, ?, 0, ?, 'finalized', ?, ?, 1)`
+         VALUES (?, ?, 1, ?, ?, ?, ?, 'finalized', ?, ?, 1)`
       )
       .run(
         caseId,
+        clinicianUserId,
         integrityHash,
         pdfPath ?? null,
+        clinicianUserId,
         new Date().toISOString(),
         finalDocxPath,
         fileSizeBytes
@@ -251,12 +272,30 @@ export function submitAttestation(params: AttestationParams): SubmitAttestationR
     reportId = (result.lastInsertRowid ?? null) as number
   }
 
-  // 8. Log audit entry
+  // 8. Log audit entry, use 'attestation_signed' so the pipeline review-stage
+  // gate can detect that the clinician has attested. Also log the legacy
+  // 'report_signed' action for downstream consumers and tests.
+  logAuditEntry({
+    caseId,
+    actionType: 'attestation_signed',
+    actorType: 'clinician',
+    actorId: String(clinicianUserId),
+    details: {
+      signedBy,
+      attestationStatement,
+      signatureDate,
+      integrityHash,
+      filePath: finalDocxPath,
+    },
+    relatedEntityType: 'report',
+    relatedEntityId: reportId,
+  })
+
   logAuditEntry({
     caseId,
     actionType: 'report_signed',
-    actorType: 'system',
-    actorId: '0',
+    actorType: 'clinician',
+    actorId: String(clinicianUserId),
     details: {
       signedBy,
       attestationStatement,

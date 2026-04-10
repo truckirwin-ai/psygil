@@ -89,7 +89,7 @@ export function classifyError(
     }
   }
 
-  // 400 Bad Request — parse specific error types
+  // 400 Bad Request, parse specific error types
   if (statusCode === 400) {
     const body = responseBody?.toLowerCase() ?? ''
 
@@ -135,7 +135,7 @@ export function classifyError(
   if (statusCode === 429) {
     return {
       code: 'RATE_LIMITED',
-      message: 'Please wait a moment — the AI is processing other requests.',
+      message: 'Please wait a moment, the AI is processing other requests.',
       technicalDetail: 'HTTP 429 Rate Limited',
       retryable: true,
       suggestedAction: 'Try again in a moment',

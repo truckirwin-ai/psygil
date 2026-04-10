@@ -9,8 +9,10 @@
  */
 
 import { spawn, type ChildProcess } from 'child_process'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import * as net from 'net'
+import { app } from 'electron'
 
 const SOCKET_PATH = '/tmp/psygil-sidecar.sock'
 const READY_TIMEOUT_MS = 10_000
@@ -19,15 +21,146 @@ const HEALTH_TIMEOUT_MS = 5_000
 let sidecarProcess: ChildProcess | null = null
 
 /**
+ * Resolve the sidecar root directory.
+ *
+ * In dev (electron-vite, `pnpm dev`):
+ *   __dirname = <repo>/app/out/main
+ *   sidecar lives at <repo>/sidecar
+ *
+ * In a packaged build (electron-builder):
+ *   sidecar is copied via extraResources to process.resourcesPath/sidecar
+ *   (see electron-builder.yml `extraResources` block)
+ */
+function resolveSidecarDir(): string {
+  // Allow explicit override (used by demo-walkthrough.ts and CI)
+  if (process.env.PSYGIL_SIDECAR_DIR && existsSync(process.env.PSYGIL_SIDECAR_DIR)) {
+    return process.env.PSYGIL_SIDECAR_DIR
+  }
+  // Packaged: extraResources path
+  if (app.isPackaged) {
+    return join(process.resourcesPath, 'sidecar')
+  }
+  // Dev: walk up from out/main → app/ → repo/ → sidecar/
+  return join(__dirname, '..', '..', '..', 'sidecar')
+}
+
+/**
+ * Resolve the Python interpreter to use for the sidecar.
+ *
+ * Priority:
+ *   1. PSYGIL_PYTHON env var (full path to a venv python)
+ *   2. <sidecar>/venv/bin/python (POSIX) or <sidecar>/venv/Scripts/python.exe (Win)
+ *   3. system `python3`
+ *
+ * The bundled venv is created on first launch by scripts/bootstrap-sidecar.sh
+ * (POSIX) or scripts/bootstrap-sidecar.ps1 (Windows). End users run that
+ * script once after install.
+ */
+function resolvePythonExecutable(sidecarDir: string): string {
+  if (process.env.PSYGIL_PYTHON && existsSync(process.env.PSYGIL_PYTHON)) {
+    return process.env.PSYGIL_PYTHON
+  }
+  const isWin = process.platform === 'win32'
+  const venvPython = isWin
+    ? join(sidecarDir, 'venv', 'Scripts', 'python.exe')
+    : join(sidecarDir, 'venv', 'bin', 'python')
+  if (existsSync(venvPython)) return venvPython
+  return isWin ? 'python' : 'python3'
+}
+
+/**
+ * Locate a PyInstaller-bundled sidecar binary, if one is staged.
+ *
+ * Search order:
+ *   1. PSYGIL_SIDECAR_BIN env var (explicit override)
+ *   2. <repo>/app/resources/sidecar/<platform>/psygil-sidecar/psygil-sidecar
+ *      (or .exe on Windows), populated by sidecar/build.sh
+ *   3. process.resourcesPath/sidecar/<platform>/psygil-sidecar/psygil-sidecar
+ *      (electron-builder packaged layout)
+ *
+ * Returns null if no bundled binary is present. Callers fall back to the
+ * Python interpreter + script approach used in development.
+ */
+function resolveBundledBinary(): string | null {
+  const isWin = process.platform === 'win32'
+  const platformDir =
+    process.platform === 'darwin'
+      ? 'darwin'
+      : process.platform === 'win32'
+        ? 'win32'
+        : 'linux'
+  const binaryName = isWin ? 'psygil-sidecar.exe' : 'psygil-sidecar'
+
+  const candidates: string[] = []
+  if (
+    process.env.PSYGIL_SIDECAR_BIN !== undefined &&
+    existsSync(process.env.PSYGIL_SIDECAR_BIN)
+  ) {
+    candidates.push(process.env.PSYGIL_SIDECAR_BIN)
+  }
+
+  // Repo-staged path used during development after running sidecar/build.sh
+  candidates.push(
+    join(
+      __dirname,
+      '..',
+      '..',
+      'resources',
+      'sidecar',
+      platformDir,
+      'psygil-sidecar',
+      binaryName,
+    ),
+  )
+
+  // Packaged path (electron-builder extraResources)
+  if (app.isPackaged) {
+    candidates.push(
+      join(
+        process.resourcesPath,
+        'sidecar',
+        platformDir,
+        'psygil-sidecar',
+        binaryName,
+      ),
+    )
+  }
+
+  for (const c of candidates) {
+    if (existsSync(c)) return c
+  }
+  return null
+}
+
+/**
  * Spawn the Python sidecar and wait for the {"status":"ready","pid":...}
  * message on stdout before resolving.
  */
 export function spawnSidecar(): Promise<{ pid: number }> {
   return new Promise((resolve, reject) => {
-    const scriptPath = join(__dirname, '..', '..', '..', '..', 'sidecar', 'server.py')
+    // Prefer a PyInstaller-bundled binary when available; fall back to
+    // running the Python script via the venv interpreter in development.
+    const bundledBinary = resolveBundledBinary()
 
-    const child = spawn('python3', [scriptPath], {
+    let command: string
+    let args: readonly string[]
+    if (bundledBinary !== null) {
+      command = bundledBinary
+      args = []
+    } else {
+      const sidecarDir = resolveSidecarDir()
+      const scriptPath = join(sidecarDir, 'server.py')
+      if (!existsSync(scriptPath)) {
+        reject(new Error(`Sidecar script not found at ${scriptPath}`))
+        return
+      }
+      command = resolvePythonExecutable(sidecarDir)
+      args = [scriptPath]
+    }
+
+    const child = spawn(command, args as string[], {
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, PYTHONUNBUFFERED: '1' },
     })
 
     sidecarProcess = child
@@ -53,7 +186,7 @@ export function spawnSidecar(): Promise<{ pid: number }> {
             return
           }
         } catch {
-          // Not JSON yet — keep buffering
+          // Not JSON yet, keep buffering
         }
       }
     })

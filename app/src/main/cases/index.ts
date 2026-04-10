@@ -1,5 +1,5 @@
 /**
- * Case management service — CRUD operations + workspace folder creation.
+ * Case management service, CRUD operations + workspace folder creation.
  * Source of truth: docs/engineering/26_Workspace_Folder_Architecture.md
  *
  * Each case maps to a real folder on disk:
@@ -31,11 +31,19 @@ export function createCase(params: CreateCaseParams): CaseRow {
   const sqlite = getSqlite()
   const wsPath = loadWorkspacePath()
   if (wsPath === null) {
-    throw new Error('No workspace path configured — set workspace before creating cases')
+    throw new Error('No workspace path configured, set workspace before creating cases')
+  }
+
+  // Cases live under {projectRoot}/cases/{case_number} Last, First.
+  // The /cases/ parent is provisioned by the setup wizard, but we ensure
+  // it exists here as a safety net for programmatically created cases.
+  const casesRoot = join(wsPath, 'cases')
+  if (!existsSync(casesRoot)) {
+    mkdirSync(casesRoot, { recursive: true })
   }
 
   const folderName = `${params.case_number} ${params.examinee_last_name}, ${params.examinee_first_name}`
-  const folderPath = join(wsPath, folderName)
+  const folderPath = join(casesRoot, folderName)
 
   // Create folder structure on disk using canonical subfolders
   scaffoldCaseSubfolders(folderPath)
@@ -213,7 +221,7 @@ export function archiveCase(caseId: number): CaseRow {
           .run(archiveDest, caseId)
       } catch (err) {
         console.error(`[cases] Failed to move folder to archive: ${err}`)
-        // DB update still succeeds — folder move is best-effort
+        // DB update still succeeds, folder move is best-effort
       }
     }
   }

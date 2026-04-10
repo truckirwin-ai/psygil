@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import OnlyOfficeEditor from '../editors/OnlyOfficeEditor'
 
 /**
- * EvalReportTab — Sprint 10
+ * EvalReportTab, Sprint 10
  *
  * Displays the Writer Agent's draft report sections with Editor Agent annotations.
  * Supports both HTML preview mode (existing) and OnlyOffice editor mode (new).
@@ -112,6 +112,29 @@ const SEVERITY_BG: Record<string, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
+interface TemplateSummary {
+  id: string
+  name: string
+  evalType: string
+  source: 'builtin' | 'custom'
+  sectionCount: number
+}
+
+interface TemplateProfileSection {
+  heading: string
+  contentType: string
+  exampleProse: string
+  estimatedLength: string
+  order: number
+}
+
+interface TemplateProfileData {
+  id: string
+  name: string
+  evalType: string
+  sections: TemplateProfileSection[]
+}
+
 export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX.Element {
   const [writerOutput, setWriterOutput] = useState<WriterOutput | null>(null)
   const [editorOutput, setEditorOutput] = useState<EditorOutput | null>(null)
@@ -124,6 +147,10 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
   const [docxVersion, setDocxVersion] = useState<number>(0)
   const [generating, setGenerating] = useState(false)
   const [ooStatus, setOoStatus] = useState<{ running: boolean; healthy: boolean } | null>(null)
+  const [templates, setTemplates] = useState<TemplateSummary[]>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+  const [evalType, setEvalType] = useState<string>('')
+  const [templateProfile, setTemplateProfile] = useState<TemplateProfileData | null>(null)
 
   // Load writer and editor outputs
   useEffect(() => {
@@ -169,6 +196,83 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
     return () => { cancelled = true }
   }, [])
 
+  // Load case eval type and matching templates
+  useEffect(() => {
+    let cancelled = false
+    const loadTemplates = async () => {
+      try {
+        // Get case eval type
+        const caseRes = await window.psygil.cases.get({ case_id: caseId })
+        if (cancelled) return
+        const caseEvalType = caseRes.status === 'success' ? (caseRes.data as { evaluation_type?: string }).evaluation_type || '' : ''
+        setEvalType(caseEvalType)
+
+        // Load templates filtered by eval type
+        const tplRes = await window.psygil.templates.list(caseEvalType ? { evalType: caseEvalType } : undefined)
+        if (cancelled) return
+        if (tplRes.status === 'success') {
+          setTemplates(tplRes.data as TemplateSummary[])
+        }
+
+        // Get last used template for this eval type
+        if (caseEvalType) {
+          const lastUsedRes = await window.psygil.templates.getLastUsed({ evalType: caseEvalType })
+          if (cancelled) return
+          if (lastUsedRes.status === 'success' && lastUsedRes.data) {
+            setSelectedTemplateId(lastUsedRes.data as string)
+          } else if (tplRes.status === 'success' && (tplRes.data as TemplateSummary[]).length > 0) {
+            // Default to first template
+            setSelectedTemplateId((tplRes.data as TemplateSummary[])[0].id)
+          }
+        }
+      } catch (err) {
+        console.error('[EvalReportTab] Failed to load templates:', err)
+      }
+    }
+    loadTemplates()
+    return () => { cancelled = true }
+  }, [caseId])
+
+  // When template selection changes, persist it and load the profile
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId)
+    if (evalType) {
+      void window.psygil.templates.setLastUsed({ evalType, templateId })
+    }
+    if (templateId) {
+      void (async () => {
+        try {
+          const res = await window.psygil.templates.get({ id: templateId })
+          if (res.status === 'success') {
+            setTemplateProfile(res.data as TemplateProfileData)
+          }
+        } catch (err) {
+          console.error('[EvalReportTab] Failed to load template profile:', err)
+        }
+      })()
+    } else {
+      setTemplateProfile(null)
+    }
+  }
+
+  // Load initial template profile when selectedTemplateId is set from last-used
+  useEffect(() => {
+    if (!selectedTemplateId) return
+    let cancelled = false
+    const loadProfile = async () => {
+      try {
+        const res = await window.psygil.templates.get({ id: selectedTemplateId })
+        if (!cancelled && res.status === 'success') {
+          setTemplateProfile(res.data as TemplateProfileData)
+        }
+      } catch (err) {
+        console.error('[EvalReportTab] Failed to load initial template profile:', err)
+      }
+    }
+    loadProfile()
+    return () => { cancelled = true }
+  }, [selectedTemplateId])
+
   const hasWriter = !!writerOutput
   const hasEditor = !!editorOutput
   const canEditMode = hasWriter && ooStatus?.running && docxPath
@@ -198,8 +302,83 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
     )
   }
 
+  // Build the template selector shared by both views
+  const templateSelector = templates.length > 0 ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Template:</span>
+      <select
+        value={selectedTemplateId}
+        onChange={(e) => handleTemplateChange(e.target.value)}
+        style={{
+          padding: '3px 8px', fontSize: 11,
+          border: '1px solid var(--border)', borderRadius: 4,
+          background: 'var(--bg)', color: 'var(--text)',
+          maxWidth: 220,
+        }}
+      >
+        <option value="">Select Template</option>
+        {templates.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}{t.source === 'custom' ? ' (custom)' : ''}
+          </option>
+        ))}
+      </select>
+    </div>
+  ) : null
+
+  // -------------------------------------------------------------------------
+  // No writer output: show template-driven preview
+  // -------------------------------------------------------------------------
+
   if (!hasWriter) {
-    return <FallbackReport caseId={caseId} toolbarTab={toolbarTab} setToolbarTab={setToolbarTab} />
+    return (
+      <div style={{ display: 'flex', height: '100%', overflow: 'hidden', flexDirection: 'column' }}>
+        {/* Top toolbar with template selector */}
+        <div
+          style={{
+            padding: '8px 16px',
+            background: 'var(--panel)',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ flex: 1 }} />
+          {templateSelector}
+          <span style={{
+            padding: '2px 8px', fontSize: 10, fontWeight: 600, borderRadius: 3,
+            background: 'rgba(0,120,212,0.08)', color: 'var(--text-secondary)',
+          }}>
+            Draft
+          </span>
+        </div>
+
+        <WordToolbar activeTab={toolbarTab} setActiveTab={setToolbarTab} />
+
+        {/* Template-based report preview */}
+        <div style={{ flex: 1, overflowY: 'auto', background: 'var(--panel)' }}>
+          <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 60px' }}>
+            {templateProfile ? (
+              <TemplateReportPreview profile={templateProfile} />
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+                <div style={{ fontSize: 14, marginBottom: 8, color: 'var(--text)' }}>
+                  Select a template to preview the report structure.
+                </div>
+                <div style={{ fontSize: 12 }}>
+                  Choose a template from the dropdown above, then run the Writer Agent to generate a draft evaluation report.
+                </div>
+                <div style={{ fontSize: 11, marginTop: 12, color: 'var(--text-secondary)' }}>
+                  Case ID: {caseId}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const summary = writerOutput.report_summary
@@ -278,6 +457,14 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
         )}
 
         <span style={{ flex: 1 }} />
+        {templateSelector}
+
+        <span style={{
+          padding: '2px 8px', fontSize: 10, fontWeight: 600, borderRadius: 3,
+          background: 'rgba(0,120,212,0.08)', color: 'var(--text-secondary)',
+        }}>
+          Draft
+        </span>
       </div>
 
       {/* Main content area */}
@@ -289,10 +476,10 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
             filePath={docxPath}
             readOnly={false}
             onDocumentReady={() => {
-              console.log('[EvalReportTab] Document ready')
+              // Document loaded
             }}
             onDocumentSaved={() => {
-              console.log('[EvalReportTab] Document saved')
+              // Document saved
             }}
             onError={(msg) => {
               console.error('[EvalReportTab] Editor error:', msg)
@@ -317,7 +504,7 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
 }
 
 // ---------------------------------------------------------------------------
-// ReportPreview — extracted HTML preview component
+// ReportPreview, extracted HTML preview component
 // ---------------------------------------------------------------------------
 
 interface ReportPreviewProps {
@@ -565,7 +752,7 @@ function ReportPreview({
                           marginBottom: 10,
                         }}
                       >
-                        AI DRAFT — CLINICIAN REVIEW REQUIRED
+                        AI DRAFT, CLINICIAN REVIEW REQUIRED
                       </div>
                       {section.revision_notes && (
                         <div
@@ -612,7 +799,7 @@ function ReportPreview({
                   {/* Confidence */}
                   {section.confidence < 0.8 && (
                     <div style={{ fontSize: '10px', color: '#ff9800', marginTop: '2px' }}>
-                      Confidence: {Math.round(section.confidence * 100)}% — review carefully
+                      Confidence: {Math.round(section.confidence * 100)}%, review carefully
                     </div>
                   )}
 
@@ -782,57 +969,69 @@ function ReportPreview({
 }
 
 // ---------------------------------------------------------------------------
-// Fallback: Static mock report (preserved from original Sprint 5 code)
+// ---------------------------------------------------------------------------
+// TemplateReportPreview: shows template section structure as a report layout
 // ---------------------------------------------------------------------------
 
-function FallbackReport({
-  caseId,
-  toolbarTab,
-  setToolbarTab,
-}: {
-  caseId: number
-  toolbarTab: string
-  setToolbarTab: (tab: string) => void
-}): React.JSX.Element {
+function TemplateReportPreview({ profile }: { readonly profile: TemplateProfileData }): React.JSX.Element {
+  // Filter out Header and Identifying Info sections (those are metadata, not body)
+  const bodySections = profile.sections.filter(
+    (s) => !['Header', 'Identifying Information', 'Signature'].includes(s.heading)
+  )
+
   return (
-    <div style={{ background: 'var(--panel)', minHeight: '100%', paddingBottom: 40, overflowY: 'auto' }}>
-      {/* Ruler */}
-      <div
-        style={{
-          maxWidth: 860,
-          margin: '0 auto',
-          height: 20,
-          background: 'var(--panel)',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'flex-end',
-          padding: '0 22px',
-          fontSize: 9,
-          color: 'var(--text-secondary)',
-          fontFamily: "'JetBrains Mono', monospace",
-        }}
-      >
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-          <span key={n} style={{ flex: 1, textAlign: 'center' }}>
-            {n}
-          </span>
-        ))}
+    <div style={{ fontFamily: "'Times New Roman', 'Georgia', serif", fontSize: 12, lineHeight: 1.8, color: 'var(--text)' }}>
+      {/* Report title */}
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+          {profile.name}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+          {profile.evalType} Template
+        </div>
       </div>
 
-      <WordToolbar activeTab={toolbarTab} setActiveTab={setToolbarTab} />
+      {/* Identifying info placeholder */}
+      <div style={{ marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+          Patient Name: _______________{'    '}DOB: _______________{'    '}Case #: _______________
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+          Referring Party: _______________{'    '}Date of Report: _______________
+        </div>
+      </div>
 
-      <div className="document-editor" style={{ maxWidth: 860, margin: '0 auto', padding: '24px 60px' }}>
-        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
-          <div style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text)' }}>
-            No Writer Agent output available.
+      {/* Sections */}
+      {bodySections.map((s, i) => (
+        <div key={i} style={{ marginBottom: 20 }}>
+          <div style={{
+            fontSize: 13, fontWeight: 700, marginBottom: 6,
+            textTransform: 'uppercase', letterSpacing: 0.5,
+            borderBottom: '1px solid var(--border)', paddingBottom: 4,
+          }}>
+            {s.heading}
           </div>
-          <div style={{ fontSize: '12px' }}>
-            Run the Writer Agent from the agent panel to generate a draft evaluation report.
-            The Ingestor and Diagnostician agents must be run first, and diagnostic decisions must be saved.
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+            {s.exampleProse
+              ? s.exampleProse.slice(0, 600) + (s.exampleProse.length > 600 ? '...' : '')
+              : 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.'}
           </div>
-          <div style={{ fontSize: '11px', marginTop: '12px', color: 'var(--text-secondary)' }}>
-            Case ID: {caseId}
+          <div style={{ fontSize: 9, color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>
+            [{s.contentType} / {s.estimatedLength}]
           </div>
+        </div>
+      ))}
+
+      {/* Signature block placeholder */}
+      <div style={{ marginTop: 40, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+          Respectfully submitted,
+        </div>
+        <div style={{ marginTop: 30, fontSize: 11, color: 'var(--text-secondary)' }}>
+          _______________________________
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+          Examiner Name, Credentials
         </div>
       </div>
     </div>

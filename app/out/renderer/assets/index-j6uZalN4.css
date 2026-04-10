@@ -1,4 +1,4 @@
-/* Psygil Design Tokens — 7 CSS variables, 3 themes */
+/* Psygil Design Tokens, 7 CSS variables, 3 themes */
 /* Source: 25_UI_Visual_Spec_v4.md §2 */
 
 :root,
@@ -31,7 +31,7 @@ html[data-theme="dark"] {
   --accent: #58a6ff;
   --highlight: #1f4b7c;
 }
-/* Psygil Global Styles — reset, body, scrollbars */
+/* Psygil Global Styles, reset, body, scrollbars */
 /* Source: 25_UI_Visual_Spec_v4.md §3, §18 */
 
 *,
@@ -54,7 +54,7 @@ body,
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar styling — spec §18 */
+/* Scrollbar styling, spec §18 */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -73,7 +73,7 @@ body,
   background: var(--text-secondary);
 }
 
-/* Splitter drag states — spec §5 */
+/* Splitter drag states, spec §5 */
 body.col-resizing,
 body.row-resizing {
   user-select: none;
@@ -98,7 +98,7 @@ body.row-resizing .h-splitter {
   pointer-events: auto;
 }
 
-/* Panel header shared style — spec §7.1 */
+/* Panel header shared style, spec §7.1 */
 .panel-header {
   height: 32px;
   display: flex;
@@ -137,7 +137,7 @@ body.row-resizing .h-splitter {
   color: var(--accent);
 }
 
-/* Tab bar — hide scrollbar for horizontal overflow (spec §8.1) */
+/* Tab bar, hide scrollbar for horizontal overflow (spec §8.1) */
 .tab-bar {
   scrollbar-width: none; /* Firefox */
 }

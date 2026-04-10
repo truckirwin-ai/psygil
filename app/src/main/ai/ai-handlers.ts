@@ -2,8 +2,8 @@
  * Psygil AI IPC Handlers
  *
  * Registers IPC handlers for AI operations:
- * - ai:complete — Call Claude with system prompt + user message
- * - ai:testConnection — Test API key and connectivity
+ * - ai:complete, Call Claude with system prompt + user message
+ * - ai:testConnection, Test API key and connectivity
  *
  * Spec reference: docs/engineering/02_ipc_api_contracts.md (Boundary 3)
  */
@@ -15,7 +15,7 @@ import { callClaude } from './claude-client'
 import { retrieveApiKey } from './key-storage'
 
 // ---------------------------------------------------------------------------
-// Stub helper — returns a typed success or error envelope
+// Stub helper, returns a typed success or error envelope
 // ---------------------------------------------------------------------------
 
 function ok<T>(data: T): IpcResponse<T> {

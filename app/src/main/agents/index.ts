@@ -1,5 +1,5 @@
 /**
- * Psygil Agent System — Public Exports
+ * Psygil Agent System, Public Exports
  *
  * Re-exports the agent runner, individual agents, and types for use by
  * other main-process modules.

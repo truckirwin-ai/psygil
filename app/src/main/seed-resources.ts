@@ -1,5 +1,5 @@
 // =============================================================================
-// seed-resources.ts — Populate _Resources folders with realistic demo content
+// seed-resources.ts, Populate _Resources folders with realistic demo content
 // =============================================================================
 //
 // Creates sample files across all three resource categories:
@@ -8,7 +8,7 @@
 //   - Documentation: DSM references, state guidelines, testing manuals
 //
 // Files are written with their ORIGINAL filenames into the category folders.
-// The ResourcesPanel scans these folders directly — no metadata sidecars.
+// The ResourcesPanel scans these folders directly, no metadata sidecars.
 // A _cleaned/ subfolder in each category holds PHI-stripped text versions.
 // =============================================================================
 
@@ -34,7 +34,7 @@ function writeSeedFile(dir: string, file: SeedFile): void {
 }
 
 // ---------------------------------------------------------------------------
-// WRITING SAMPLES — Excerpts from a forensic psychologist's own work
+// WRITING SAMPLES, Excerpts from a forensic psychologist's own work
 // ---------------------------------------------------------------------------
 
 const WRITING_SAMPLES: SeedFile[] = [
@@ -64,8 +64,8 @@ SOURCES OF INFORMATION
 3. Review of prior mental health records from [PROVIDER REMOVED] ([DATE RANGE REMOVED])
 4. Review of prior competency evaluation report by [EVALUATOR REMOVED] dated [DATE REMOVED]
 5. Review of jail medical records including current medication log
-6. Administration and scoring of the MacArthur Competence Assessment Tool—Criminal Adjudication (MacCAT-CA)
-7. Administration and scoring of the Evaluation of Competency to Stand Trial—Revised (ECST-R)
+6. Administration and scoring of the MacArthur Competence Assessment Tool,Criminal Adjudication (MacCAT-CA)
+7. Administration and scoring of the Evaluation of Competency to Stand Trial,Revised (ECST-R)
 8. Collateral telephone interview with defense counsel, [NAME REMOVED], Esq. (approximately 20 minutes)
 
 MENTAL STATUS EXAMINATION
@@ -82,7 +82,7 @@ Orientation was intact to person, place, time, and situation. Attention and conc
 
 COMPETENCY ASSESSMENT INSTRUMENTS
 
-MacArthur Competence Assessment Tool—Criminal Adjudication (MacCAT-CA)
+MacArthur Competence Assessment Tool,Criminal Adjudication (MacCAT-CA)
 
 The MacCAT-CA is a structured clinical instrument designed to assess three abilities related to adjudicative competence: Understanding (of the legal system and adjudicative process), Reasoning (about one's own legal situation), and Appreciation (of the relevance of information to one's own situation). Scores are interpreted relative to clinical and normative comparison groups.
 
@@ -96,9 +96,9 @@ DIAGNOSTIC IMPRESSIONS
 
 Based on the totality of data gathered during this evaluation, the following diagnostic impressions are offered consistent with the Diagnostic and Statistical Manual of Mental Disorders, Fifth Edition, Text Revision (DSM-5-TR):
 
-1. Schizoaffective Disorder, Bipolar Type (F25.0) — in partial remission on current medication regimen. This diagnosis is supported by the examinee's documented history of mood episodes with concurrent psychotic features, periods of auditory hallucinations, and a longitudinal course consistent with the diagnostic criteria. Current partial remission is supported by the absence of active psychotic symptoms during this evaluation and adequate mood stability reported by jail medical staff.
+1. Schizoaffective Disorder, Bipolar Type (F25.0), in partial remission on current medication regimen. This diagnosis is supported by the examinee's documented history of mood episodes with concurrent psychotic features, periods of auditory hallucinations, and a longitudinal course consistent with the diagnostic criteria. Current partial remission is supported by the absence of active psychotic symptoms during this evaluation and adequate mood stability reported by jail medical staff.
 
-2. Cannabis Use Disorder, Moderate (F12.20) — in a controlled environment. This diagnosis is supported by the examinee's self-reported history of regular cannabis use prior to incarceration, failed attempts to reduce use, and continued use despite knowledge of legal and health consequences.
+2. Cannabis Use Disorder, Moderate (F12.20), in a controlled environment. This diagnosis is supported by the examinee's self-reported history of regular cannabis use prior to incarceration, failed attempts to reduce use, and continued use despite knowledge of legal and health consequences.
 
 PSYCHOLEGAL OPINIONS
 
@@ -122,7 +122,7 @@ This evaluation represents a snapshot of the examinee's functioning at the time 
     ext: '.txt',
     mime: 'text/plain',
     content: `VIOLENCE RISK ASSESSMENT
-Clinical Formulation and Psycholegal Opinions — Writing Sample
+Clinical Formulation and Psycholegal Opinions, Writing Sample
 
 CLINICAL FORMULATION
 
@@ -130,7 +130,7 @@ The assessment of [NAME REMOVED]'s risk for future violence requires integration
 
 Historical risk factors are notable in this case. [NAME REMOVED] has a documented history of violent behavior beginning in adolescence, with [NUMBER] adjudicated offenses involving physical violence and [NUMBER] documented incidents of institutional aggression. The pattern of violence reflects predominantly reactive aggression, characterized by impulsive responses to perceived provocation rather than calculated, predatory behavior. This distinction has implications for risk management, as reactive violence is more amenable to pharmacological and cognitive-behavioral intervention than instrumental violence.
 
-The examinee's history of substance use disorder constitutes a significant dynamic risk factor. Collateral records indicate that each of [NAME REMOVED]'s violent offenses occurred in the context of active substance use, specifically alcohol and stimulant intoxication. During periods of sustained sobriety — documented at [FACILITY REMOVED] between [DATE RANGE REMOVED] — there were no documented acts of aggression. This suggests a strong functional relationship between substance use and violent behavior.
+The examinee's history of substance use disorder constitutes a significant dynamic risk factor. Collateral records indicate that each of [NAME REMOVED]'s violent offenses occurred in the context of active substance use, specifically alcohol and stimulant intoxication. During periods of sustained sobriety, documented at [FACILITY REMOVED] between [DATE RANGE REMOVED], there were no documented acts of aggression. This suggests a strong functional relationship between substance use and violent behavior.
 
 With respect to mental health factors, [NAME REMOVED]'s diagnosis of Bipolar I Disorder introduces additional risk variance. Episodes of mania, particularly those with psychotic features, have historically been associated with increased agitation, impulsivity, and impaired reality testing. However, the literature is clear that the relationship between severe mental illness and violence is modest and substantially mediated by substance use and treatment non-adherence (Elbogen & Johnson, 2009). [NAME REMOVED]'s current psychiatric stability on [MEDICATION REMOVED] is a protective factor, though one that is contingent on continued medication compliance and access to psychiatric care.
 
@@ -166,7 +166,7 @@ It must be emphasized that violence risk assessment is inherently probabilistic 
     ext: '.txt',
     mime: 'text/plain',
     content: `CHILD CUSTODY EVALUATION
-Clinical Formulation Section — Writing Sample
+Clinical Formulation Section, Writing Sample
 
 CLINICAL FORMULATION
 
@@ -196,7 +196,7 @@ The Child Behavior Checklist (CBCL) completed by each parent showed notable disc
 
 Co-Parenting Dynamics
 
-The central challenge identified in this evaluation is not parenting capacity — both parents demonstrate adequate capacity to meet the children's basic needs — but rather the quality of the co-parenting relationship. Communication between the parents is characterized by high conflict, defensive reactivity, and a pattern of escalation documented in text messages, emails, and collateral reports. Each parent attributes the conflict primarily to the other, and each demonstrates limited insight into their own contribution to the dynamic.
+The central challenge identified in this evaluation is not parenting capacity, both parents demonstrate adequate capacity to meet the children's basic needs, but rather the quality of the co-parenting relationship. Communication between the parents is characterized by high conflict, defensive reactivity, and a pattern of escalation documented in text messages, emails, and collateral reports. Each parent attributes the conflict primarily to the other, and each demonstrates limited insight into their own contribution to the dynamic.
 
 This pattern of co-parenting conflict is the most significant risk factor for the children's adjustment. The research literature consistently demonstrates that ongoing interparental conflict, particularly conflict to which children are exposed, is more predictive of negative child outcomes than family structure itself (Amato, 2001; Emery, 1999; Johnston, 1994). Both parents would benefit from structured co-parenting intervention, such as the High-Conflict Parenting Program or similar evidence-based program, to develop skills in parallel parenting, communication containment, and child-centered decision-making.
 
@@ -218,7 +218,7 @@ Consistent with professional guidelines and ethical standards, this evaluator do
 ]
 
 // ---------------------------------------------------------------------------
-// TEMPLATES — Report structure templates per evaluation type
+// TEMPLATES, Report structure templates per evaluation type
 // ---------------------------------------------------------------------------
 
 const TEMPLATES: SeedFile[] = [
@@ -394,7 +394,7 @@ _______________________________
     ext: '.txt',
     mime: 'text/plain',
     content: `CHILD CUSTODY EVALUATION REPORT
-[TEMPLATE — AFCC Model Standards Compliant]
+[TEMPLATE, AFCC Model Standards Compliant]
 
 =============================================
 TITLE PAGE
@@ -463,13 +463,13 @@ Parent-Child Observations:
   - [Parent B] with children: [date, duration, setting]
 
 Collateral Contacts:
-  - [Name, relationship, date, duration — for each contact]
+  - [Name, relationship, date, duration, for each contact]
 
 Records Reviewed:
   - [Comprehensive list of all documents reviewed]
 
 =============================================
-5. BACKGROUND — PARENT A
+5. BACKGROUND, PARENT A
 =============================================
 Personal History:
 Relationship History:
@@ -483,12 +483,12 @@ Parenting Strengths Identified:
 Areas of Concern Identified:
 
 =============================================
-6. BACKGROUND — PARENT B
+6. BACKGROUND, PARENT B
 =============================================
-[Same structure as Parent A — parallel format required]
+[Same structure as Parent A, parallel format required]
 
 =============================================
-7. BACKGROUND — CHILDREN
+7. BACKGROUND, CHILDREN
 =============================================
 [For each child:]
 Developmental History:
@@ -528,10 +528,10 @@ Cross-informant analysis:
 10. PARENT-CHILD OBSERVATIONS
 =============================================
 [Parent A] with children:
-[Detailed behavioral observations — warmth, responsiveness, limit-setting, child's behavior]
+[Detailed behavioral observations, warmth, responsiveness, limit-setting, child's behavior]
 
 [Parent B] with children:
-[Detailed behavioral observations — parallel structure]
+[Detailed behavioral observations, parallel structure]
 
 =============================================
 11. DIAGNOSTIC IMPRESSIONS
@@ -592,7 +592,7 @@ _______________________________
     ext: '.txt',
     mime: 'text/plain',
     content: `VIOLENCE RISK ASSESSMENT REPORT
-[TEMPLATE — Structured Professional Judgment Framework]
+[TEMPLATE, Structured Professional Judgment Framework]
 
 =============================================
 1. IDENTIFYING INFORMATION
@@ -693,13 +693,13 @@ Summary: [Overall characterization based on instrument]
 =============================================
 
 Static Risk Factors (historical, unchangeable):
-  - [Factor]: [Present/Absent] — [Supporting data]
+  - [Factor]: [Present/Absent], [Supporting data]
 
 Dynamic Risk Factors (potentially changeable):
-  - [Factor]: [Current status] — [Supporting data]
+  - [Factor]: [Current status], [Supporting data]
 
 Protective Factors:
-  - [Factor]: [Current status] — [Supporting data]
+  - [Factor]: [Current status], [Supporting data]
 
 =============================================
 10. RISK FORMULATION
@@ -713,7 +713,7 @@ Protective Factors:
 11. RISK MANAGEMENT RECOMMENDATIONS
 =============================================
   1. [Supervision level]
-  2. [Treatment targets — substance use, mental health, anger management]
+  2. [Treatment targets, substance use, mental health, anger management]
   3. [Monitoring requirements]
   4. [Conditions that would indicate escalating risk]
   5. [Re-assessment timeline]
@@ -725,8 +725,8 @@ Based on the structured professional judgment approach:
 
 Overall Risk Level: [LOW / MODERATE / HIGH]
 
-This opinion applies to: [Specific scenario — e.g., community release with supervision]
-Temporal scope: [Time frame — e.g., over the next 12 months under described conditions]
+This opinion applies to: [Specific scenario, e.g., community release with supervision]
+Temporal scope: [Time frame, e.g., over the next 12 months under described conditions]
 
 Risk-elevating factors: [Summary]
 Risk-mitigating factors: [Summary]
@@ -753,7 +753,7 @@ Risk-mitigating factors: [Summary]
     originalFilename: 'PTSD_Personal_Injury_Template.txt',
     ext: '.txt',
     mime: 'text/plain',
-    content: `PSYCHOLOGICAL EVALUATION — PERSONAL INJURY / PTSD CLAIM
+    content: `PSYCHOLOGICAL EVALUATION, PERSONAL INJURY / PTSD CLAIM
 [TEMPLATE]
 
 =============================================
@@ -778,7 +778,7 @@ Case: [Case caption and number]
 =============================================
 3. CONFIDENTIALITY NOTICE
 =============================================
-[Standard forensic notice — note: retained by [Plaintiff/Defense] counsel]
+[Standard forensic notice, note: retained by [Plaintiff/Defense] counsel]
 
 =============================================
 4. SOURCES OF INFORMATION
@@ -833,7 +833,7 @@ Functional Impact:
 [Standard MSE with attention to trauma-related observations]
 
 =============================================
-9. PSYCHOLOGICAL TESTING — VALIDITY
+9. PSYCHOLOGICAL TESTING, VALIDITY
 =============================================
 [MUST appear before substantive test results]
 
@@ -849,7 +849,7 @@ Symptom Validity:
 Interpretation: [Credible / Non-credible / Mixed, with specific basis]
 
 =============================================
-10. PSYCHOLOGICAL TESTING — SUBSTANTIVE
+10. PSYCHOLOGICAL TESTING, SUBSTANTIVE
 =============================================
 
 PTSD-Specific Measures:
@@ -911,7 +911,7 @@ Functional Assessment:
 ]
 
 // ---------------------------------------------------------------------------
-// DOCUMENTATION — Reference materials
+// DOCUMENTATION, Reference materials
 // ---------------------------------------------------------------------------
 
 const DOCUMENTATION: SeedFile[] = [
@@ -965,7 +965,7 @@ Posttraumatic Stress Disorder (F43.10)
   - Criterion D: Negative cognitions and mood (≥2 required)
   - Criterion E: Arousal and reactivity (≥2 required)
   - Duration: >1 month
-  - Forensic Relevance: Primary diagnosis in personal injury/tort claims. MUST assess with structured instrument (CAPS-5). MUST include validity testing (SIMS, TOMM, MMPI F-family). Address Criterion A gateway carefully — not every distressing event qualifies.
+  - Forensic Relevance: Primary diagnosis in personal injury/tort claims. MUST assess with structured instrument (CAPS-5). MUST include validity testing (SIMS, TOMM, MMPI F-family). Address Criterion A gateway carefully, not every distressing event qualifies.
   - Specifiers: With dissociative symptoms (depersonalization/derealization); With delayed expression (≥6 months)
 
 Acute Stress Disorder (F43.0)
@@ -991,7 +991,7 @@ Cannabis Use Disorder (F12.x0)
   - Forensic Relevance: Increasingly relevant as legalization creates tension between legal status and clinical impact. Address cognitive effects during active use.
 
 Stimulant Use Disorder (F15.x0 cocaine; F15.x0 amphetamine)
-  - Forensic Relevance: Stimulant-induced psychosis mimics primary psychotic disorders. Time course is critical — stimulant psychosis typically resolves within days to weeks of cessation.
+  - Forensic Relevance: Stimulant-induced psychosis mimics primary psychotic disorders. Time course is critical, stimulant psychosis typically resolves within days to weeks of cessation.
 
 =============================================
 NEURODEVELOPMENTAL DISORDERS
@@ -1031,7 +1031,7 @@ Mild Neurocognitive Disorder (F06.7x)
 =============================================
 MALINGERING (V65.2 / Z76.5)
 =============================================
-  - NOT a mental disorder — listed in "Other Conditions That May Be a Focus of Clinical Attention"
+  - NOT a mental disorder, listed in "Other Conditions That May Be a Focus of Clinical Attention"
   - DSM-5-TR guidance: Suspect when (1) medicolegal context, (2) marked discrepancy between claimed distress and objective findings, (3) lack of cooperation, (4) presence of ASPD
   - NEVER use as standalone label. Specify: malingered cognitive deficits, malingered psychiatric symptoms, malingered somatic complaints
   - Base on converging evidence from multiple validity indicators, not a single test score
@@ -1041,7 +1041,7 @@ MALINGERING (V65.2 / Z76.5)
     originalFilename: 'Colorado_CST_Statute_Reference.txt',
     ext: '.txt',
     mime: 'text/plain',
-    content: `COLORADO COMPETENCY TO STAND TRIAL — STATUTORY REFERENCE
+    content: `COLORADO COMPETENCY TO STAND TRIAL, STATUTORY REFERENCE
 C.R.S. § 16-8.5-101 through 16-8.5-116
 
 Compiled for forensic evaluation practice reference.
@@ -1111,8 +1111,8 @@ RESTORATION (§ 16-8.5-111)
 =============================================
 
 Restoration services may be provided:
-  - Outpatient (community-based) — preferred when appropriate
-  - Inpatient (state hospital) — when community setting insufficient
+  - Outpatient (community-based), preferred when appropriate
+  - Inpatient (state hospital), when community setting insufficient
 
 Maximum restoration period:
   - Misdemeanor: 91 days
@@ -1144,9 +1144,9 @@ EVALUATOR PRACTICE NOTES
 1. Always address ALL THREE prongs separately, even if one clearly resolves the question.
 2. Colorado uses "competent to proceed" language, not "competent to stand trial."
 3. Report must be filed with court and copies provided to both prosecution and defense.
-4. Evaluator may be called to testify — prepare for both direct and cross.
+4. Evaluator may be called to testify, prepare for both direct and cross.
 5. If defendant refuses to participate: document refusal, base opinion on available data, note limitations.
-6. Consider cultural and linguistic factors — interpreter use must be documented.
+6. Consider cultural and linguistic factors, interpreter use must be documented.
 7. The evaluation is point-in-time. If medication changes between evaluation and hearing, note this in testimony.
 `,
   },
@@ -1164,7 +1164,7 @@ COMPETENCY TO STAND TRIAL
 Dusky v. United States, 362 U.S. 402 (1960)
   Standard: Whether the defendant has "sufficient present ability to consult with his lawyer with a reasonable degree of rational understanding" and whether he has "a rational as well as factual understanding of the proceedings against him."
   Two prongs: (1) Ability to consult with counsel; (2) Understanding of proceedings (both factual AND rational).
-  Key: "Present ability" — competency is assessed at the time of proceedings, not at time of offense.
+  Key: "Present ability", competency is assessed at the time of proceedings, not at time of offense.
 
 Drope v. Missouri, 420 U.S. 162 (1975)
   Expanded Dusky: Added that the defendant must have "the ability to assist in preparing his defense." Effectively creates a third prong in some jurisdictions.
@@ -1183,7 +1183,7 @@ Cooper v. Oklahoma, 517 U.S. 348 (1996)
 CRIMINAL RESPONSIBILITY / INSANITY
 =============================================
 
-M'Naghten's Case (1843) — England
+M'Naghten's Case (1843), England
   "At the time of committing the act, the party accused was laboring under such a defect of reason, from disease of the mind, as not to know the nature and quality of the act he was doing, or if he did know it, that he did not know he was doing what was wrong."
   Still used in many U.S. jurisdictions.
 
@@ -1262,7 +1262,7 @@ AFCC Model Standards for Child Custody Evaluation (2006)
     ext: '.txt',
     mime: 'text/plain',
     content: `FORENSIC TEST BATTERY SELECTION GUIDE
-By Evaluation Type — Instruments, Purpose, and Norming Notes
+By Evaluation Type, Instruments, Purpose, and Norming Notes
 
 =============================================
 UNIVERSAL: PERFORMANCE & SYMPTOM VALIDITY
@@ -1286,11 +1286,11 @@ COMPETENCY TO STAND TRIAL
 =============================================
 
 Primary Competency Instruments:
-  - MacCAT-CA (MacArthur Competence Assessment Tool — Criminal Adjudication)
+  - MacCAT-CA (MacArthur Competence Assessment Tool, Criminal Adjudication)
     Subscales: Understanding (0-16), Reasoning (0-16), Appreciation (0-6)
     Norms: Clinical and community samples. Interpret by subscale, not total.
 
-  - ECST-R (Evaluation of Competency to Stand Trial — Revised)
+  - ECST-R (Evaluation of Competency to Stand Trial, Revised)
     Subscales: Consult with Counsel, Factual Understanding, Rational Understanding
     Also includes: Atypical Presentation scales (detect feigned incompetency)
 
@@ -1316,7 +1316,7 @@ Parent Assessment:
     Validity: ICN, INF, NIM, PIM. Clinical: 11 scales.
 
   - MCMI-IV (Millon Clinical Multiaxial Inventory-IV)
-    Use cautiously in custody — designed for clinical populations, not general population.
+    Use cautiously in custody, designed for clinical populations, not general population.
     High false positive rate for personality disorders in custody litigants.
 
   - PSI-4 (Parenting Stress Index, 4th Edition)
@@ -1327,7 +1327,7 @@ Parent Assessment:
     Scales: Support, Satisfaction, Involvement, Communication, Limit Setting, Autonomy, Role Orientation
 
 Child Assessment:
-  - CBCL (Child Behavior Checklist — Achenbach System)
+  - CBCL (Child Behavior Checklist, Achenbach System)
     Parent-report (CBCL), Teacher-report (TRF), Youth self-report (YSR 11-18).
     Cross-informant comparison is critical in custody cases.
 
@@ -1342,15 +1342,15 @@ VIOLENCE RISK ASSESSMENT
 General Violence:
   - HCR-20 V3 (Historical-Clinical-Risk Management-20, Version 3)
     20 items across H (10), C (5), R (5) scales. SPJ framework.
-    NOT actuarial — generates low/moderate/high judgment, not probability.
+    NOT actuarial, generates low/moderate/high judgment, not probability.
 
-  - PCL-R (Psychopathy Checklist — Revised)
+  - PCL-R (Psychopathy Checklist, Revised)
     20 items, semi-structured interview + file review. Total score 0-40.
     Factor 1: Interpersonal/Affective. Factor 2: Lifestyle/Antisocial.
-    Clinical threshold: 30 (North America). Research cutoff only — NOT diagnostic.
+    Clinical threshold: 30 (North America). Research cutoff only, NOT diagnostic.
     IMPORTANT: Requires specific training. Administration time ~3 hours.
 
-  - VRAG-R (Violence Risk Appraisal Guide — Revised)
+  - VRAG-R (Violence Risk Appraisal Guide, Revised)
     Actuarial instrument. 12 items. Generates probability estimate.
     Use in conjunction with SPJ, not alone.
 
@@ -1361,7 +1361,7 @@ Sexual Violence:
 
 Intimate Partner Violence:
   - SARA (Spousal Assault Risk Assessment Guide): 20-item SPJ.
-  - DVSI-R (Domestic Violence Screening Instrument — Revised)
+  - DVSI-R (Domestic Violence Screening Instrument, Revised)
   - ODARA (Ontario Domestic Assault Risk Assessment): Actuarial, 13 items.
 
 Stalking:
@@ -1375,7 +1375,7 @@ PTSD-Specific:
   - CAPS-5 (Clinician-Administered PTSD Scale for DSM-5)
     Gold standard structured interview. 30 items. Maps directly to DSM-5 criteria.
     Severity score 0-80. Diagnostic threshold: 33 (recommended).
-    REQUIRED in forensic PTSD evaluation — self-report alone is insufficient.
+    REQUIRED in forensic PTSD evaluation, self-report alone is insufficient.
 
   - PCL-5 (PTSD Checklist for DSM-5)
     20-item self-report. Screening/monitoring, not diagnostic alone.
@@ -1387,8 +1387,8 @@ PTSD-Specific:
 
 Supplemental:
   - MMPI-3 (critical for validity assessment in litigation context)
-  - BDI-2 (Beck Depression Inventory-II) — comorbid depression
-  - BAI (Beck Anxiety Inventory) — comorbid anxiety
+  - BDI-2 (Beck Depression Inventory-II), comorbid depression
+  - BAI (Beck Anxiety Inventory), comorbid anxiety
   - Functional assessment instruments as appropriate
 
 =============================================
@@ -1410,7 +1410,7 @@ Full Neuropsychological Battery (when warranted):
   - Category Fluency / Letter Fluency
 
 Capacity-Specific:
-  - MacCAT-T (MacArthur Competence Assessment Tool — Treatment)
+  - MacCAT-T (MacArthur Competence Assessment Tool, Treatment)
     For treatment decision-making capacity.
   - HCAI (Hopemont Capacity Assessment Interview)
   - ILS (Independent Living Scales)
@@ -1428,7 +1428,7 @@ Always report:
   5. Normative sample used
   6. Validity indicator status BEFORE interpreting scores
 
-Classification Systems (vary by instrument — use the publisher's system):
+Classification Systems (vary by instrument, use the publisher's system):
   IQ-Type (M=100, SD=15): <70 Extremely Low → 130+ Very Superior
   T-Scores (M=50, SD=10): <30 Very Low → 70+ Very High
   Scaled (M=10, SD=3): 1-4 Extremely Low → 16-19 Superior
@@ -1452,45 +1452,45 @@ These guidelines are aspirational, not mandatory. They are intended to improve t
 Forensic psychology is defined broadly: professional practice by any psychologist working within any sub-discipline of psychology when applying the scientific, technical, or specialized knowledge of psychology to the law.
 
 =============================================
-1. RESPONSIBILITIES (Guidelines 1.01–1.04)
+1. RESPONSIBILITIES (Guidelines 1.01-1.04)
 =============================================
 
-1.01 — Knowledge of the Legal System
+1.01, Knowledge of the Legal System
 Forensic practitioners seek to understand the legal and professional standards relevant to their practice area, including relevant case law, statutes, rules, and legal procedures.
 
-1.02 — Knowledge of Scientific Basis
+1.02, Knowledge of Scientific Basis
 Practitioners rely on scientifically and professionally derived knowledge. Distinguish between established facts, provisional opinions, and personal values.
 
-1.03 — Competence
+1.03, Competence
 Practice within boundaries of competence based on education, training, supervised experience, and professional experience. Seek continuing education.
 
-1.04 — Scope of Practice
+1.04, Scope of Practice
 Do not extend opinions beyond the scope of relevant data and scientific basis. Acknowledge limitations.
 
 =============================================
-2. INDEPENDENCE AND OBJECTIVITY (Guidelines 2.01–2.08)
+2. INDEPENDENCE AND OBJECTIVITY (Guidelines 2.01-2.08)
 =============================================
 
-2.01 — Impartiality and Fairness
+2.01, Impartiality and Fairness
 Strive for accuracy, impartiality, and fairness. Guard against the effects of advocacy.
 
-2.02 — Conflicts of Interest
+2.02, Conflicts of Interest
 Avoid dual roles. Do not serve as both therapist and forensic evaluator for the same individual.
 
-2.03 — Multiple Relationships
+2.03, Multiple Relationships
 Be alert to multiple relationship issues. The forensic context creates unique multiple relationship risks.
 
-2.04 — Therapeutic-Forensic Role Conflicts
+2.04, Therapeutic-Forensic Role Conflicts
 When a treating clinician is asked to provide forensic opinions, clearly delineate the limitations of doing so. Preferably, refer to an independent evaluator.
 
-2.07 — Contingent Fees
+2.07, Contingent Fees
 Forensic practitioners do not accept contingent fees (fees contingent on outcome of a case).
 
 =============================================
-3. INFORMED CONSENT AND NOTIFICATION (Guidelines 3.01–3.03)
+3. INFORMED CONSENT AND NOTIFICATION (Guidelines 3.01-3.03)
 =============================================
 
-3.01 — Notification of Purpose
+3.01, Notification of Purpose
 Before conducting an evaluation, notify the examinee of:
   - The nature, purpose, and anticipated use of the evaluation
   - Who requested the evaluation
@@ -1498,48 +1498,48 @@ Before conducting an evaluation, notify the examinee of:
   - The limits of confidentiality
   - The voluntary or court-ordered nature of participation
 
-3.02 — Informed Consent
+3.02, Informed Consent
 When possible, obtain informed consent. In court-ordered evaluations where consent is not required, notification (above) is still mandatory.
 
-3.03 — Communication with Collateral Sources
+3.03, Communication with Collateral Sources
 Consider obtaining consent before contacting collateral sources when feasible. Document any limitations on this process.
 
 =============================================
-4. METHODS AND PROCEDURES (Guidelines 4.01–4.08)
+4. METHODS AND PROCEDURES (Guidelines 4.01-4.08)
 =============================================
 
-4.01 — Use of Methods and Procedures
+4.01, Use of Methods and Procedures
 Select methods and procedures that are appropriate to the forensic context and relevant to the psycholegal question.
 
-4.02 — Use of Multiple Sources of Information
+4.02, Use of Multiple Sources of Information
 Rely on multiple sources of data. Avoid over-reliance on any single source. Cross-validate information across sources.
 
-4.02.01 — When Sources Conflict
+4.02.01, When Sources Conflict
 When information from different sources conflicts, attempt to resolve the discrepancy. Document the conflict and how it was addressed.
 
-4.03 — Use of Forensic Assessment Instruments
+4.03, Use of Forensic Assessment Instruments
 Use instruments that are validated for the specific forensic purpose. Be aware of the limitations of general clinical instruments when applied in forensic contexts.
 
-4.04 — Third Party Observation
+4.04, Third Party Observation
 Consider the potential effects of third-party observation on evaluation results.
 
-4.06 — Documentation
+4.06, Documentation
 Maintain thorough documentation of all contacts, procedures, findings, and consultations.
 
 =============================================
-5. OPINIONS (Guidelines 5.01–5.04)
+5. OPINIONS (Guidelines 5.01-5.04)
 =============================================
 
-5.01 — Basis for Opinions
+5.01, Basis for Opinions
 Base opinions on adequate foundation. Do not provide opinions without adequate basis.
 
-5.02 — Knowledge of the Law
+5.02, Knowledge of the Law
 Understand the legal standard being addressed but express opinions in clinical/scientific terms.
 
-5.03 — Ultimate Issue Opinions
+5.03, Ultimate Issue Opinions
 When providing ultimate issue opinions (e.g., "competent to stand trial"), clearly articulate the clinical basis and the reasoning connecting data to opinion.
 
-5.04 — Report Writing
+5.04, Report Writing
 Reports should:
   - Be well-organized and clearly written
   - Distinguish between observations, inferences, and opinions
@@ -1548,16 +1548,16 @@ Reports should:
   - Define technical terms
 
 =============================================
-6. COMMUNICATION (Guidelines 6.01–6.05)
+6. COMMUNICATION (Guidelines 6.01-6.05)
 =============================================
 
-6.01 — Honesty and Accuracy
+6.01, Honesty and Accuracy
 Present findings honestly and accurately, including findings that may be adverse to the retaining party's position.
 
-6.02 — Scope of Testimony
+6.02, Scope of Testimony
 In testimony, stay within the scope of expertise and the data gathered.
 
-6.04 — Comprehensive and Accurate Presentation
+6.04, Comprehensive and Accurate Presentation
 Present the full range of relevant data, including contradictory information. Do not selectively present data.
 
 =============================================
@@ -1567,7 +1567,7 @@ IMPLICATIONS FOR PSYGIL IMPLEMENTATION
 1. Template system must enforce notification/consent documentation (Guideline 3.01).
 2. Sources of Information section must be comprehensive and mandatory (Guideline 4.02).
 3. Reports must separate observations from opinions structurally (Guideline 5.04).
-4. The "DOCTOR ALWAYS DIAGNOSES" principle aligns with Guideline 5.01 — opinions must have adequate basis and be formed by the clinician, not generated by AI.
+4. The "DOCTOR ALWAYS DIAGNOSES" principle aligns with Guideline 5.01, opinions must have adequate basis and be formed by the clinician, not generated by AI.
 5. Limitations section is mandatory, not optional (Guideline 1.04).
 6. Contradictory data must be presented even when it weakens the opinion (Guideline 6.04).
 7. Template warnings should flag potential dual-role conflicts (Guideline 2.02).
@@ -1580,10 +1580,12 @@ IMPLICATIONS FOR PSYGIL IMPLEMENTATION
 // ---------------------------------------------------------------------------
 
 export function seedResources(workspacePath: string): number {
-  const resourcesRoot = join(workspacePath, '_Resources')
+  // Resources live under /Workspace/<Category>/ per the consolidated
+  // folder architecture. The old _Resources/ tree is no longer used.
+  const resourcesRoot = join(workspacePath, 'Workspace')
   const writingSamplesDir = join(resourcesRoot, 'Writing Samples')
   const templatesDir = join(resourcesRoot, 'Templates')
-  const documentationDir = join(resourcesRoot, 'Documentation')
+  const documentationDir = join(resourcesRoot, 'Documents')
 
   // Create directory structure
   for (const dir of [resourcesRoot, writingSamplesDir, templatesDir, documentationDir]) {
@@ -1608,7 +1610,7 @@ export function seedResources(workspacePath: string): number {
   cleanStaleFiles(templatesDir)
   cleanStaleFiles(documentationDir)
 
-  // Skip if already seeded — check for real document files by known extensions
+  // Skip if already seeded, check for real document files by known extensions
   const DOC_EXTS = new Set(['.txt', '.pdf', '.doc', '.docx', '.csv', '.rtf', '.md', '.xlsx'])
   const hasRealDocs = (dir: string): boolean => {
     try {

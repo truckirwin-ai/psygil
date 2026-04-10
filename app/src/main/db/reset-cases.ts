@@ -1,5 +1,5 @@
 /**
- * RESET SCRIPT — Delete ALL cases and associated data from Psygil DB + filesystem.
+ * RESET SCRIPT, Delete ALL cases and associated data from Psygil DB + filesystem.
  *
  * Usage: cd app && npx tsx src/main/db/reset-cases.ts
  *
@@ -8,7 +8,7 @@
  * 2. Deletes all rows from case-related tables
  * 3. Removes all case folders from the workspace directory
  *
- * ⚠️  DESTRUCTIVE — no undo. For development/testing only.
+ * ⚠️  DESTRUCTIVE, no undo. For development/testing only.
  */
 
 import Database from 'better-sqlite3-multiple-ciphers'

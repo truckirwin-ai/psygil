@@ -206,7 +206,7 @@ describe('═══ PSYGIL FULL LIFECYCLE WALKTHROUGH ═══', () => {
       action('Confirming Referral Questions...')
       saveDataConfirmation(1, 'referral_questions', 'confirmed', '')
       action('Flagging Timeline (needs attention)...')
-      saveDataConfirmation(1, 'timeline_events', 'flagged', 'Missing arrest date — check police report')
+      saveDataConfirmation(1, 'timeline_events', 'flagged', 'Missing arrest date, check police report')
       action('Correcting Collateral Records...')
       saveDataConfirmation(1, 'collateral_summary', 'corrected', 'Prior eval date was 2023, not 2024')
 
@@ -376,7 +376,7 @@ describe('═══ PSYGIL FULL LIFECYCLE WALKTHROUGH ═══', () => {
     it('Run Diagnostician Agent + clinician renders diagnoses → advance to Review', () => {
       console.log('\n╔══════════════════════════════════════════════════════╗')
       console.log('║  STAGE 3: DIAGNOSTICS                                ║')
-      console.log('║  DOCTOR ALWAYS DIAGNOSES — AI suggests, clinician     ║')
+      console.log('║  DOCTOR ALWAYS DIAGNOSES, AI suggests, clinician     ║')
       console.log('║  decides. No auto-accept. No AI diagnosis.            ║')
       console.log('╚══════════════════════════════════════════════════════╝')
 
@@ -430,8 +430,8 @@ describe('═══ PSYGIL FULL LIFECYCLE WALKTHROUGH ═══', () => {
         details: { agent: 'diagnostician', result_id: 2, options_presented: 2 },
       })
       action('Diagnostician complete: 2 diagnostic options presented')
-      action('  • Schizophrenia F20.9 (confidence: 0.78) — 4 criteria met')
-      action('  • ASPD F60.2 (confidence: 0.45) — 2 criteria met')
+      action('  • Schizophrenia F20.9 (confidence: 0.78), 4 criteria met')
+      action('  • ASPD F60.2 (confidence: 0.45), 2 criteria met')
 
       // --- Clinician diagnostic decisions ---
       step('DOCTOR RENDERS DIAGNOSES (clinician decides, NOT the AI)')
@@ -532,9 +532,9 @@ describe('═══ PSYGIL FULL LIFECYCLE WALKTHROUGH ═══', () => {
         details: { agent: 'writer', result_id: 3, sections: 6, requiring_revision: 3 },
       })
       action('Writer complete: 6 sections generated, 3 require clinician revision')
-      action('  ⚠ Clinical Interview — AI DRAFT (confidence: 0.72)')
-      action('  ⚠ Diagnostic Formulation — AI DRAFT (confidence: 0.65)')
-      action('  ⚠ Forensic Opinion — AI DRAFT (confidence: 0.60)')
+      action('  ⚠ Clinical Interview, AI DRAFT (confidence: 0.72)')
+      action('  ⚠ Diagnostic Formulation, AI DRAFT (confidence: 0.65)')
+      action('  ⚠ Forensic Opinion, AI DRAFT (confidence: 0.60)')
 
       // --- Gate check: no editor result ---
       step('Gate check: can we advance? (Editor not run)')
@@ -598,10 +598,10 @@ describe('═══ PSYGIL FULL LIFECYCLE WALKTHROUGH ═══', () => {
         details: { agent: 'editor', result_id: 4, flags: 4, critical: 1 },
       })
       action('Editor complete: 4 flags (1 critical, 1 high, 2 medium)')
-      action('  🔴 CRITICAL: Forensic Opinion — ultimate legal conclusion')
-      action('  🟠 HIGH: Diagnostic Formulation — unsupported temporal claim')
-      action('  🟡 MEDIUM: Clinical Interview — hospitalization count mismatch')
-      action('  🟡 MEDIUM: Test Results — missing effort validity statement')
+      action('  🔴 CRITICAL: Forensic Opinion, ultimate legal conclusion')
+      action('  🟠 HIGH: Diagnostic Formulation, unsupported temporal claim')
+      action('  🟡 MEDIUM: Clinical Interview, hospitalization count mismatch')
+      action('  🟡 MEDIUM: Test Results, missing effort validity statement')
 
       // --- Gate check: no attestation ---
       step('Gate check: can we advance? (no attestation)')
@@ -684,7 +684,7 @@ describe('═══ PSYGIL FULL LIFECYCLE WALKTHROUGH ═══', () => {
   // =========================================================================
 
   describe('STAGE 5: COMPLETE', () => {
-    it('Case complete — audit trail export + testimony prep + no further advancement', () => {
+    it('Case complete, audit trail export + testimony prep + no further advancement', () => {
       console.log('\n╔══════════════════════════════════════════════════════╗')
       console.log('║  STAGE 5: COMPLETE                                   ║')
       console.log('║  Goal: Verify final state, export audit trail,        ║')
@@ -699,7 +699,7 @@ describe('═══ PSYGIL FULL LIFECYCLE WALKTHROUGH ═══', () => {
       expect(check.canAdvance).toBe(false)
       expect(check.nextStage).toBeNull()
       gate(true, check.reason)
-      action('Complete is the final stage — no further advancement possible')
+      action('Complete is the final stage, no further advancement possible')
 
       // --- Verify getNextStage ---
       step('Verify stage topology')

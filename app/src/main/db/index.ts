@@ -5,6 +5,11 @@
  * and returns a type-safe Drizzle ORM instance.
  */
 
+// Imported by canonical name `better-sqlite3` so drizzle's adapter resolves
+// the same module instance. The postinstall script (electron-rebuild-clean.js)
+// installs a shim package at node_modules/better-sqlite3 that re-exports the
+// SQLCipher fork `better-sqlite3-multiple-ciphers`. The shim is a real
+// directory (not a symlink) so it survives electron-builder asar packaging.
 import Database from 'better-sqlite3'
 import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import argon2 from 'argon2'
@@ -41,7 +46,7 @@ export async function deriveKey(passphrase: string): Promise<string> {
  *
  * @param dbPath - Absolute path to the .db file
  * @param hexKey - 64-char hex string (256-bit key) from deriveKey()
- * @returns { db, sqlite } — Drizzle instance and raw better-sqlite3 handle
+ * @returns { db, sqlite }, Drizzle instance and raw better-sqlite3 handle
  */
 export function openDatabase(
   dbPath: string,
@@ -82,15 +87,47 @@ export async function initDatabase(
 
 /**
  * Get the default database path.
- * In Electron: app.getPath('userData')/psygil.db
- * Outside Electron (scripts/tests): cwd/data/psygil.db
+ *
+ * Resolution order:
+ *   1. If a setup config exists at userData/psygil-setup.json AND it has
+ *      a configured storage.projectRoot, use {projectRoot}/.psygil/psygil.db
+ *      (this is the doc 17 / doc 16 spec, the database lives inside
+ *       the workspace so it travels with the case files).
+ *   2. Otherwise, fall back to userData/psygil.db (legacy + first-launch
+ *      before the wizard runs).
+ *   3. Outside Electron (scripts/tests): cwd/data/psygil.db
+ *
+ * The renderer's setup:reset path also clears the legacy DB so users
+ * who switch project roots get a clean slate.
  */
 export function getDefaultDbPath(): string {
   try {
     // Dynamic require so this module works outside Electron too
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { app } = require('electron')
-    return join(app.getPath('userData'), 'psygil.db')
+    const userData: string = app.getPath('userData')
+
+    // Try to read the setup config to find the configured project root.
+    // We do this with a direct file read to avoid importing setup/state.ts
+    // (which would create a cycle: db/index.ts → setup → db/connection → db/index.ts).
+    const setupConfigPath = join(userData, 'psygil-setup.json')
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('fs') as typeof import('fs')
+    if (fs.existsSync(setupConfigPath)) {
+      try {
+        const raw = fs.readFileSync(setupConfigPath, 'utf-8')
+        const parsed = JSON.parse(raw) as {
+          storage?: { projectRoot?: string } | null
+        }
+        const projectRoot = parsed.storage?.projectRoot
+        if (typeof projectRoot === 'string' && projectRoot.length > 0) {
+          return join(projectRoot, '.psygil', 'psygil.db')
+        }
+      } catch {
+        // Fall through to legacy path
+      }
+    }
+    return join(userData, 'psygil.db')
   } catch {
     return join(process.cwd(), 'data', 'psygil.db')
   }

@@ -38,7 +38,7 @@ const PIPELINE_STAGES = [
   { key: 'complete', label: 'Complete' },
 ]
 
-/** Stage card colors — light bg, darker text, border between */
+/** Stage card colors, light bg, darker text, border between */
 const STAGE_CARD_STYLES: Record<string, { bg: string; border: string; text: string; accent: string }> = {
   onboarding:  { bg: '#e0f7fa', border: '#b2ebf2', text: '#00695c', accent: '#00897b' },
   testing:     { bg: '#f3e5f5', border: '#e1bee7', text: '#6a1b9a', accent: '#8e24aa' },
@@ -70,7 +70,7 @@ function formatClientName(c: CaseRow): string {
   const last = c.examinee_last_name ?? ''
   const initial = first.charAt(0).toUpperCase()
   const type = c.evaluation_type || ''
-  return `${last}, ${initial}. ${type ? `— ${type}` : ''}`.trim()
+  return `${last}, ${initial}. ${type ? `, ${type}` : ''}`.trim()
 }
 
 export default function DashboardTab({ cases, onCaseClick, onRefresh }: DashboardTabProps) {
@@ -82,6 +82,9 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
   const [kanbanOpen, setKanbanOpen] = useState(true)
   const [tableOpen, setTableOpen] = useState(false)
   const [activeDragId, setActiveDragId] = useState<number | null>(null)
+  const [cardLayout, setCardLayout] = useState<'horizontal' | 'vertical'>(() => {
+    return (localStorage.getItem('psygil-card-layout') as 'horizontal' | 'vertical') ?? 'horizontal'
+  })
 
   /* ── Horizontal splitter between kanban and case list ── */
   const [kanbanHeight, setKanbanHeight] = useState(320)
@@ -113,12 +116,12 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
 
   /* ── @dnd-kit setup ──
    *
-   * PointerSensor with distance:5 — movement below 5px is a click, above is drag.
-   * pointerWithin collision — detects which droppable column the POINTER is inside.
+   * PointerSensor with distance:5, movement below 5px is a click, above is drag.
+   * pointerWithin collision, detects which droppable column the POINTER is inside.
    * Unlike closestCenter (which uses the draggable element rect), pointerWithin
    * uses the actual cursor coordinates, so it works perfectly with DragOverlay
    * where the original card stays in place.
-   * DragOverlay — renders a visual clone following the cursor. The original card
+   * DragOverlay, renders a visual clone following the cursor. The original card
    * fades out. DragOverlay does NOT affect collision detection.
    */
   const sensors = useSensors(
@@ -233,16 +236,42 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
     <div style={{ padding: '12px', fontSize: '12px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '10px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '10px', flexShrink: 0 }}>
         <h1 style={{ fontSize: '16px', margin: 0, fontWeight: 600 }}>Practice Dashboard</h1>
         <span style={{ fontSize: '12px', color: '#283593', fontWeight: 600 }}>{cases.length} Total</span>
         <span style={{ fontSize: '12px', color: '#1565c0', fontWeight: 600 }}>{stats.active} Active</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '2px', background: 'var(--panel, #f0f0f0)', borderRadius: '4px', border: '1px solid var(--border, #ddd)', padding: '2px' }}>
+          <button
+            onClick={() => { setCardLayout('horizontal'); localStorage.setItem('psygil-card-layout', 'horizontal') }}
+            title="Horizontal layout"
+            style={{
+              padding: '3px 8px', fontSize: '11px', fontWeight: 600, border: 'none', borderRadius: '3px', cursor: 'pointer',
+              background: cardLayout === 'horizontal' ? 'var(--accent, #5b6abf)' : 'transparent',
+              color: cardLayout === 'horizontal' ? '#fff' : 'var(--text-secondary, #888)',
+            }}
+          >
+            ☰
+          </button>
+          <button
+            onClick={() => { setCardLayout('vertical'); localStorage.setItem('psygil-card-layout', 'vertical') }}
+            title="Vertical layout (iPad)"
+            style={{
+              padding: '3px 8px', fontSize: '11px', fontWeight: 600, border: 'none', borderRadius: '3px', cursor: 'pointer',
+              background: cardLayout === 'vertical' ? 'var(--accent, #5b6abf)' : 'transparent',
+              color: cardLayout === 'vertical' ? '#fff' : 'var(--text-secondary, #888)',
+            }}
+          >
+            ☷
+          </button>
+        </div>
       </div>
 
-      {/* ── Stage cards — click to toggle Kanban ── */}
+      {/* ── Stage cards, click to toggle Kanban ── */}
       <div
         style={{
-          display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(6, 1fr)',
+          gap: '6px',
           marginBottom: kanbanOpen ? '0' : '10px', cursor: 'pointer', userSelect: 'none', flexShrink: 0,
         }}
         onClick={toggleKanban}
@@ -276,7 +305,9 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
           onDragEnd={handleDragEnd}
         >
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6, 1fr)',
+            gap: '6px',
             /* If list is collapsed, kanban fills all space. If both open, use fixed height. */
             ...(tableOpen
               ? { height: `${kanbanHeight}px`, minHeight: 0, flexShrink: 0 }
@@ -288,11 +319,12 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
                 stageKey={stage.key}
                 cases={casesByStage[stage.key] ?? []}
                 onCaseClick={onCaseClick}
+                cardLayout={cardLayout}
               />
             ))}
           </div>
 
-          {/* DragOverlay — always mounted, conditionally renders children.
+          {/* DragOverlay, always mounted, conditionally renders children.
               Provides the visual card that follows the cursor during drag.
               Does NOT affect collision detection (pointerWithin uses cursor pos). */}
           <DragOverlay dropAnimation={null}>
@@ -301,13 +333,13 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
               if (!dragCase) return null
               const stageKey = mapStageToKey(dragCase.workflow_current_stage)
               const sc = STAGE_CARD_STYLES[stageKey]
-              return <KanbanCardContent c={dragCase} sc={sc} isDragging />
+              return <KanbanCardContent c={dragCase} sc={sc} isDragging cardLayout={cardLayout} />
             })() : null}
           </DragOverlay>
         </DndContext>
       )}
 
-      {/* ── Draggable horizontal splitter — visible when kanban is open ── */}
+      {/* ── Draggable horizontal splitter, visible when kanban is open ── */}
       {kanbanOpen && (
         <div
           onPointerDown={onSplitterPointerDown}
@@ -327,7 +359,7 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
         />
       )}
 
-      {/* ── Case List — expandable section ── */}
+      {/* ── Case List, expandable section ── */}
       <div style={{
         flex: tableOpen ? 1 : '0 0 auto',
         minHeight: tableOpen ? 0 : undefined,
@@ -336,7 +368,7 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
         display: 'flex', flexDirection: 'column',
         paddingTop: '6px',
       }}>
-        {/* Header bar — always visible */}
+        {/* Header bar, always visible */}
         <div
           style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}
           onClick={toggleTable}
@@ -344,7 +376,7 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
             Case List {tableOpen ? '▴' : '▾'}
           </span>
-          {/* Type pills — compact summary */}
+          {/* Type pills, compact summary */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginLeft: '4px' }} onClick={(e) => e.stopPropagation()}>
             {Object.entries(evalTypeStats)
               .sort((a, b) => b[1] - a[1])
@@ -434,7 +466,7 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
           {filteredCases.map((c, idx) => {
             const stageKey = mapStageToKey(c.workflow_current_stage)
             const sc = STAGE_CARD_STYLES[stageKey]
-            const referredDate = c.created_at ? c.created_at.split('T')[0] : '—'
+            const referredDate = c.created_at ? c.created_at.split('T')[0] : ','
             const isComplete = stageKey === 'complete'
             return (
               <tr key={c.case_id ?? idx}
@@ -442,7 +474,7 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
                 onClick={() => onCaseClick(c.case_id)}>
                 <td style={{ ...TD, fontSize: '10px', color: 'var(--text-secondary)' }}>{c.case_number}</td>
                 <td style={{ ...TD, fontWeight: 500 }}>{formatClientName(c)}</td>
-                <td style={TD}>{c.evaluation_type || '—'}</td>
+                <td style={TD}>{c.evaluation_type || ','}</td>
                 <td style={TD}>
                   <span style={{ background: sc?.accent || '#999', color: '#fff', padding: '1px 6px', borderRadius: '3px', fontSize: '10px' }}>
                     {mapStageLabel(c.workflow_current_stage)}
@@ -463,13 +495,14 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
 }
 
 /* ──────────────────────────────────────────────
-   Kanban Column — droppable target
+   Kanban Column, droppable target
    ────────────────────────────────────────────── */
 
-function KanbanColumn({ stageKey, cases: columnCases, onCaseClick }: {
+function KanbanColumn({ stageKey, cases: columnCases, onCaseClick, cardLayout = 'horizontal' }: {
   stageKey: string
   cases: CaseRow[]
   onCaseClick: (caseId: number) => void
+  cardLayout?: 'horizontal' | 'vertical'
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stageKey })
   const sc = STAGE_CARD_STYLES[stageKey]
@@ -482,7 +515,9 @@ function KanbanColumn({ stageKey, cases: columnCases, onCaseClick }: {
         border: `1px solid ${isOver ? '#bbb' : '#ddd'}`,
         borderTop: 'none', borderRadius: '0 0 4px 4px',
         padding: '4px', overflowY: 'auto',
-        display: 'flex', flexDirection: 'column', gap: '5px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '5px',
         transition: 'background 0.15s, border-color 0.15s',
         boxShadow: isOver ? 'inset 0 0 8px rgba(0,0,0,0.08)' : 'none',
       }}
@@ -498,6 +533,7 @@ function KanbanColumn({ stageKey, cases: columnCases, onCaseClick }: {
           c={c}
           sc={sc}
           onClick={() => onCaseClick(c.case_id)}
+          cardLayout={cardLayout}
         />
       ))}
     </div>
@@ -505,13 +541,14 @@ function KanbanColumn({ stageKey, cases: columnCases, onCaseClick }: {
 }
 
 /* ──────────────────────────────────────────────
-   Kanban Card — draggable item
+   Kanban Card, draggable item
    ────────────────────────────────────────────── */
 
-function KanbanCard({ c, sc, onClick }: {
+function KanbanCard({ c, sc, onClick, cardLayout = 'horizontal' }: {
   c: CaseRow
   sc: { bg: string; border: string; text: string; accent: string }
   onClick: () => void
+  cardLayout?: 'horizontal' | 'vertical'
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: c.case_id })
 
@@ -522,25 +559,24 @@ function KanbanCard({ c, sc, onClick }: {
       {...attributes}
       onClick={onClick}
       style={{
-        /* No transform — the DragOverlay renders the visual clone that follows
-           the cursor. This card stays in place but fades out while dragging. */
         opacity: isDragging ? 0.35 : 1,
         transition: isDragging ? 'none' : 'opacity 0.15s',
       }}
     >
-      <KanbanCardContent c={c} sc={sc} isDragging={isDragging} />
+      <KanbanCardContent c={c} sc={sc} isDragging={isDragging} cardLayout={cardLayout} />
     </div>
   )
 }
 
 /* ──────────────────────────────────────────────
-   Kanban Card Content — shared between card and overlay
+   Kanban Card Content, shared between card and overlay
    ────────────────────────────────────────────── */
 
-function KanbanCardContent({ c, sc, isDragging }: {
+function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
   c: CaseRow
   sc: { bg: string; border: string; text: string; accent: string }
   isDragging?: boolean
+  cardLayout?: 'horizontal' | 'vertical'
 }) {
   const complaint = c.evaluation_questions || null
   const referral = c.referral_source || null
@@ -549,10 +585,77 @@ function KanbanCardContent({ c, sc, isDragging }: {
   const daysUntil = deadline ? Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000) : null
   const isUrgent = daysUntil !== null && daysUntil <= 5
 
-  const ROW: React.CSSProperties = {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+  if (cardLayout === 'vertical') {
+    // Vertical layout, each field on its own line, optimized for narrow screens / iPad
+    const LABEL: React.CSSProperties = {
+      fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
+      color: '#888', marginBottom: '1px',
+    }
+    const VALUE: React.CSSProperties = {
+      fontSize: '12px', color: '#222', marginBottom: '6px',
+    }
+
+    return (
+      <div
+        style={{
+          background: '#fff', border: `1px solid ${sc.border}`,
+          borderLeft: `4px solid ${sc.accent}`,
+          borderRadius: '4px', padding: '10px 12px',
+          cursor: isDragging ? 'grabbing' : 'grab',
+          lineHeight: '1.4',
+          userSelect: 'none',
+          boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.2)' : undefined,
+          minWidth: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <span style={{ fontWeight: 700, color: '#111', fontSize: '14px' }}>
+            {c.examinee_last_name}, {(c.examinee_first_name ?? '').charAt(0)}.
+          </span>
+          <span style={{
+            background: sc.accent, color: '#fff', padding: '2px 8px',
+            borderRadius: '3px', fontSize: '10px', fontWeight: 600, flexShrink: 0,
+          }}>
+            {evalType}
+          </span>
+        </div>
+        <div style={LABEL}>Case #</div>
+        <div style={VALUE}>{c.case_number}</div>
+        {complaint && (
+          <>
+            <div style={LABEL}>Complaint</div>
+            <div style={{ ...VALUE, fontStyle: 'italic', color: '#444' }}>{complaint}</div>
+          </>
+        )}
+        {referral && (
+          <>
+            <div style={LABEL}>Referral</div>
+            <div style={VALUE}>{referral}</div>
+          </>
+        )}
+        {deadline && (
+          <>
+            <div style={LABEL}>Deadline</div>
+            <div style={{
+              ...VALUE,
+              fontWeight: isUrgent ? 800 : 600,
+              color: isUrgent ? '#c62828' : '#333',
+              marginBottom: 0,
+            }}>
+              {deadline}
+              {isUrgent && daysUntil != null && (
+                <span style={{ fontSize: '10px', color: '#c62828', marginLeft: '6px' }}>
+                  ({daysUntil}d)
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    )
   }
 
+  // Horizontal layout, stacked card, every field visible, word-wrap safe
   return (
     <div
       style={{
@@ -564,50 +667,64 @@ function KanbanCardContent({ c, sc, isDragging }: {
         fontSize: '11px',
         userSelect: 'none',
         boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.2)' : undefined,
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
       }}
     >
-      {/* Row 1: Name (left) — Type (right) */}
-      <div style={{ ...ROW, marginBottom: '2px' }}>
+      {/* Name + Type badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px', flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 700, color: '#111', fontSize: '12px' }}>
           {c.examinee_last_name}, {(c.examinee_first_name ?? '').charAt(0)}.
         </span>
         <span style={{
           background: sc.accent, color: '#fff', padding: '1px 5px',
-          borderRadius: '2px', fontSize: '9px', fontWeight: 600, flexShrink: 0, marginLeft: '4px',
+          borderRadius: '2px', fontSize: '9px', fontWeight: 600, flexShrink: 0,
         }}>
           {evalType}
         </span>
       </div>
 
-      {/* Row 2: Complaint — full width, truncated; blank line if empty */}
-      <div style={{
-        color: '#333', fontSize: '10px', fontStyle: 'italic',
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        marginBottom: '2px', minHeight: '14px',
-      }}>
-        {complaint || '\u00A0'}
+      {/* Case number */}
+      <div style={{ color: '#555', fontSize: '10px', marginBottom: '2px' }}>
+        {c.case_number}
       </div>
 
-      {/* Row 3: Case # (left) — "Deadline:" label (right) */}
-      <div style={{ ...ROW, marginBottom: '2px' }}>
-        <span style={{ color: '#555', fontSize: '10px' }}>{c.case_number}</span>
-        {deadline && (
-          <span style={{ color: '#888', fontSize: '10px', flexShrink: 0, marginLeft: '4px' }}>Deadline:</span>
-        )}
-      </div>
+      {/* Complaint, wraps naturally, 2-line clamp */}
+      {complaint && (
+        <div style={{
+          color: '#444', fontSize: '10px', fontStyle: 'italic',
+          marginBottom: '2px',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical' as const,
+          overflow: 'hidden',
+        }}>
+          {complaint}
+        </div>
+      )}
 
-      {/* Row 4: Referral source (left) — Deadline date (right) */}
-      <div style={ROW}>
-        <span style={{ color: '#555', fontSize: '10px' }}>{referral || ''}</span>
-        {deadline && (
-          <span style={{
-            fontSize: '10px', fontWeight: isUrgent ? 800 : 600, flexShrink: 0, marginLeft: '4px',
-            color: isUrgent ? '#c62828' : '#555',
-          }}>
-            {deadline}
-          </span>
-        )}
-      </div>
+      {/* Referral source */}
+      {referral && (
+        <div style={{ color: '#555', fontSize: '10px', marginBottom: '2px' }}>
+          {referral}
+        </div>
+      )}
+
+      {/* Deadline */}
+      {deadline && (
+        <div style={{
+          fontSize: '10px', fontWeight: isUrgent ? 800 : 600,
+          color: isUrgent ? '#c62828' : '#555',
+          marginTop: '2px',
+        }}>
+          {deadline}
+          {isUrgent && daysUntil != null && (
+            <span style={{ fontSize: '9px', color: '#c62828', marginLeft: '4px' }}>
+              ({daysUntil}d)
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -2,8 +2,8 @@
  * Psygil Agent IPC Handlers
  *
  * Registers the following IPC channels:
- * - agent:run — Run an agent with specified parameters
- * - agent:status — Get current agent status (queued/running/done/error)
+ * - agent:run, Run an agent with specified parameters
+ * - agent:status, Get current agent status (queued/running/done/error)
  */
 
 import { randomUUID } from 'crypto'
@@ -63,7 +63,7 @@ function clearStatus(operationId: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// Stub helper — returns a typed success/error envelope
+// Stub helper, returns a typed success/error envelope
 // ---------------------------------------------------------------------------
 
 function ok<T>(data: T): IpcResponse<T> {

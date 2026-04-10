@@ -4,6 +4,10 @@ interface TitlebarProps {
   readonly onCycleTheme: () => void
   readonly onOpenIntake: () => void
   readonly onSetup: () => void
+  readonly leftWidth: number
+  readonly rightWidth: number
+  readonly leftCollapsed: boolean
+  readonly rightCollapsed: boolean
 }
 
 const LOGO_SVG = (
@@ -19,11 +23,29 @@ const LOGO_SVG = (
   </svg>
 )
 
-export default function Titlebar({ onCycleTheme, onOpenIntake, onSetup }: TitlebarProps): React.JSX.Element {
+export default function Titlebar({ onCycleTheme, onOpenIntake, onSetup, leftWidth, rightWidth, leftCollapsed, rightCollapsed }: TitlebarProps): React.JSX.Element {
   const navActions: Record<string, (() => void) | undefined> = {
     Setup: onSetup,
     'New Case': onOpenIntake,
   }
+
+  // Below the titlebar the layout is:
+  //   [leftCol (leftWidth)] [rail (~12px button)] [splitter (6px)] [center (flex)] [splitter (6px)] [rail (~12px)] [rightCol (rightWidth)]
+  // When collapsed the rail is 24px and the column + splitter are hidden.
+  // The titlebar left/right sections must span the same total width so the border aligns with the splitter.
+
+  const RAIL_EXPANDED = 12   // approximate width of the collapse button when column is visible
+  const RAIL_COLLAPSED = 24  // explicit width of the rail when column is hidden
+  const SPLITTER_W = 6
+
+  const leftTotalWidth = leftCollapsed
+    ? RAIL_COLLAPSED
+    : leftWidth + RAIL_EXPANDED + SPLITTER_W
+
+  const rightTotalWidth = rightCollapsed
+    ? RAIL_COLLAPSED
+    : rightWidth + RAIL_EXPANDED + SPLITTER_W
+
   return (
     <div
       style={{
@@ -36,33 +58,20 @@ export default function Titlebar({ onCycleTheme, onOpenIntake, onSetup }: Titleb
         WebkitAppRegion: 'drag',
       } as ElectronCSS}
     >
-      {/* Left column — logo + nav */}
+      {/* Left column, empty drag region aligned to left column width */}
       <div
         style={{
-          width: 280,
-          minWidth: 280,
+          width: leftTotalWidth,
+          minWidth: leftCollapsed ? RAIL_COLLAPSED : undefined,
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '0 12px',
           borderRight: '1px solid var(--border)',
           height: '100%',
+          flexShrink: 0,
         }}
-      >
-        {LOGO_SVG}
-        <span
-          style={{
-            fontSize: 15,
-            fontWeight: 600,
-            letterSpacing: 2,
-            color: 'var(--text)',
-          }}
-        >
-          PSYGIL
-        </span>
-      </div>
+      />
 
-      {/* Center column — nav links */}
+      {/* Center column, nav links */}
       <div
         style={{
           flex: 1,
@@ -72,6 +81,7 @@ export default function Titlebar({ onCycleTheme, onOpenIntake, onSetup }: Titleb
           padding: '0 16px',
           borderRight: '1px solid var(--border)',
           height: '100%',
+          minWidth: 0,
         }}
       >
         {['Setup', 'New Case', 'Docs'].map((label) => (
@@ -104,42 +114,18 @@ export default function Titlebar({ onCycleTheme, onOpenIntake, onSetup }: Titleb
         ))}
       </div>
 
-      {/* Right column — settings, theme, avatar */}
+      {/* Right column, empty drag region aligned to right column width */}
       <div
         style={{
-          width: 320,
-          minWidth: 320,
+          width: rightTotalWidth,
+          minWidth: rightCollapsed ? RAIL_COLLAPSED : undefined,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-end',
-          gap: 12,
-          padding: '0 12px',
+          borderLeft: '1px solid var(--border)',
           height: '100%',
+          flexShrink: 0,
         }}
-      >
-        <TitlebarIcon label="Settings">&#9881;</TitlebarIcon>
-        <TitlebarIcon label="Theme" onClick={onCycleTheme}>&#9728;</TitlebarIcon>
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            background: 'var(--accent)',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: 600,
-            flexShrink: 0,
-          }}
-        >
-          TI
-        </div>
-        <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-          Dr. Irwin
-        </span>
-      </div>
+      />
     </div>
   )
 }

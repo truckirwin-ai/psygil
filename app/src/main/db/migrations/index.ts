@@ -3,7 +3,7 @@
  * Each migration runs inside a transaction and is tracked in a _migrations table.
  *
  * Convention: add new migrations to the MIGRATIONS array in order.
- * They are idempotent — already-applied migrations are skipped.
+ * They are idempotent, already-applied migrations are skipped.
  */
 
 import type Database from 'better-sqlite3'
@@ -123,17 +123,17 @@ const MIGRATIONS: readonly Migration[] = [
   {
     id: '006_update_prototype_case_stages',
     description: 'Update synced prototype cases with correct stages, eval types, and metadata',
-    sql: 'SELECT 1', // placeholder — real logic runs in runMigrations below
+    sql: 'SELECT 1', // placeholder, real logic runs in runMigrations below
   },
   {
     id: '007_six_stage_pipeline',
     description: 'Migrate workflow_current_stage from gate system to 6-stage pipeline',
-    sql: 'SELECT 1', // placeholder — real logic runs in runMigrations below
+    sql: 'SELECT 1', // placeholder, real logic runs in runMigrations below
   },
   {
     id: '008_expand_intake_referral_types',
     description: 'Add insurance and physician referral types to patient_intake',
-    sql: 'SELECT 1', // placeholder — recreates table with expanded CHECK
+    sql: 'SELECT 1', // placeholder, recreates table with expanded CHECK
   },
 ]
 
@@ -159,7 +159,7 @@ export function runMigrations(sqlite: InstanceType<typeof Database>): void {
   for (const migration of MIGRATIONS) {
     if (applied.has(migration.id)) continue
 
-    console.log(`[migrations] Applying: ${migration.id} — ${migration.description}`)
+    console.log(`[migrations] Applying: ${migration.id}, ${migration.description}`)
     const tx = sqlite.transaction(() => {
       if (migration.id === '007_six_stage_pipeline') {
         // SQLite doesn't support ALTER COLUMN, so we recreate the table with updated CHECK.

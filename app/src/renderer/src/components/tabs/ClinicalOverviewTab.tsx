@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
-import { CaseRow, PatientIntakeRow } from '../../../../shared/types/ipc'
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { CaseRow, PatientIntakeRow, PatientOnboardingRow, DocumentRow } from '../../../../shared/types/ipc'
 
 const EVAL_TYPE_OPTIONS = [
   'CST', 'Custody', 'Risk Assessment', 'Fitness for Duty',
@@ -9,7 +9,7 @@ const EVAL_TYPE_OPTIONS = [
 ] as const
 
 /**
- * ClinicalOverviewTab — Sprint 7.1
+ * ClinicalOverviewTab, Sprint 7.1
  *
  * Displays the clinical overview for a case:
  * - Header with pipeline indicator, metadata
@@ -132,7 +132,9 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
   const [caseData, setCaseData] = useState<CaseRow | null>(null)
   const [intakeData, setIntakeData] = useState<PatientIntakeRow | null>(null)
   const [ingestorData, setIngestorData] = useState<IngestorOutput | null>(null)
-  const [activeTab, setActiveTab] = useState<string>('intake')
+  const [onboardingData, setOnboardingData] = useState<readonly PatientOnboardingRow[]>([])
+  const [documentsData, setDocumentsData] = useState<readonly DocumentRow[]>([])
+  const [activeTab, setActiveTab] = useState<string>('overview')
   const [loading, setLoading] = useState(true)
   const [editingEvalType, setEditingEvalType] = useState(false)
   const evalTypeRef = useRef<HTMLSelectElement>(null)
@@ -153,15 +155,17 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
     setEditingEvalType(false)
   }, [caseData])
 
-  // Load case, intake, and ingestor data
+  // Load case, intake, ingestor, onboarding sections, and documents
   useEffect(() => {
     let cancelled = false
     const loadData = async () => {
       try {
-        const [caseRes, intakeRes, ingestorRes] = await Promise.all([
+        const [caseRes, intakeRes, ingestorRes, onboardingRes, docsRes] = await Promise.all([
           window.psygil.cases.get({ case_id: caseId }),
           window.psygil.intake.get({ case_id: caseId }),
           window.psygil.ingestor.getResult({ caseId }),
+          window.psygil.onboarding.get({ case_id: caseId }),
+          window.psygil.documents.list({ case_id: caseId }),
         ])
 
         if (cancelled) return
@@ -171,6 +175,8 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
         if (ingestorRes.status === 'success' && ingestorRes.data) {
           setIngestorData(ingestorRes.data as IngestorOutput)
         }
+        if (onboardingRes.status === 'success') setOnboardingData(onboardingRes.data)
+        if (docsRes.status === 'success') setDocumentsData(docsRes.data)
       } catch (err) {
         console.error('[ClinicalOverview] Failed to load data:', err)
       } finally {
@@ -282,7 +288,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
   const Field = ({ label, value }: { label: string; value: string | null | undefined }) => (
     <div style={fieldBoxStyle}>
       <div style={fieldLabelStyle}>{label}</div>
-      <div style={fieldValueStyle}>{value || '—'}</div>
+      <div style={fieldValueStyle}>{value || ','}</div>
     </div>
   )
 
@@ -306,6 +312,262 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
 
   const hasIngestor = !!ingestorData
 
+  // ------------------------------------------------------------------------
+  // Snapshot helpers, used by the at-a-glance Overview pane
+  // ------------------------------------------------------------------------
+
+  const onboardingBySection = useMemo(() => {
+    const map: Record<string, PatientOnboardingRow> = {}
+    for (const row of onboardingData) {
+      map[row.section] = row
+    }
+    return map
+  }, [onboardingData])
+
+  const documentsBySubfolder = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const d of documentsData) {
+      const folder = (d.file_path || '').split('/').slice(-2)[0] || 'Other'
+      counts[folder] = (counts[folder] ?? 0) + 1
+    }
+    return counts
+  }, [documentsData])
+
+  const lastDocumentDate = useMemo(() => {
+    if (documentsData.length === 0) return null
+    let latest = ''
+    for (const d of documentsData) {
+      const u = (d.upload_date || '').slice(0, 10)
+      if (u > latest) latest = u
+    }
+    return latest || null
+  }, [documentsData])
+
+  const ageFromDob = (dob: string | null | undefined): number | null => {
+    if (!dob) return null
+    const d = new Date(dob)
+    if (Number.isNaN(d.getTime())) return null
+    const now = new Date()
+    let years = now.getFullYear() - d.getFullYear()
+    const monthDelta = now.getMonth() - d.getMonth()
+    if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < d.getDate())) years -= 1
+    return years
+  }
+
+  const truncate = (text: string | null | undefined, max: number): string => {
+    if (!text) return ''
+    return text.length > max ? text.slice(0, max - 1).trimEnd() + '...' : text
+  }
+
+  // ------------------------------------------------------------------------
+  // Overview pane: clinician at-a-glance snapshot
+  // ------------------------------------------------------------------------
+
+  const OverviewPane = () => {
+    const age = ageFromDob(caseData.examinee_dob)
+    const stage = caseData.workflow_current_stage || 'onboarding'
+    const stageColors: Record<string, string> = {
+      onboarding: '#2196f3',
+      testing: '#9c27b0',
+      interview: '#e91e63',
+      diagnostics: '#ff9800',
+      review: '#ff5722',
+      complete: '#4caf50',
+    }
+    const stageColor = stageColors[stage] ?? '#999'
+
+    const presentingComplaint =
+      intakeData?.presenting_complaint ||
+      onboardingBySection['complaints']?.content ||
+      ''
+
+    const charges = intakeData?.charges || ''
+    const jurisdiction = intakeData?.jurisdiction || ''
+    const attorney = intakeData?.attorney_name || ''
+    const deadline = intakeData?.report_deadline || ''
+    const referralSource = intakeData?.referral_source || caseData.referral_source || ''
+
+    const mentalHealthHistory = onboardingBySection['mental']?.content || ''
+    const substanceHistory = onboardingBySection['substance']?.content || ''
+    const medicalHistory = onboardingBySection['health']?.content || ''
+    const legalHistory = onboardingBySection['legal']?.content || ''
+    const familyHistory = onboardingBySection['family']?.content || ''
+    const educationHistory = onboardingBySection['education']?.content || ''
+
+    const docTotal = documentsData.length
+    const reportsCount = documentsBySubfolder['Reports'] ?? 0
+    const testingCount = documentsBySubfolder['Testing'] ?? 0
+    const interviewsCount = documentsBySubfolder['Interviews'] ?? 0
+    const collateralCount = documentsBySubfolder['Collateral'] ?? 0
+    const diagnosticsCount = documentsBySubfolder['Diagnostics'] ?? 0
+
+    // Heuristic risk flags from onboarding free text
+    const riskFlags: { label: string; color: string }[] = []
+    const risks = [
+      { rx: /suicid|self.harm|self harm/i, label: 'Suicide history', color: '#e54040' },
+      { rx: /violen|assault|homicid/i, label: 'Violence history', color: '#e54040' },
+      { rx: /weapon|firearm|knife/i, label: 'Weapon access', color: '#e54040' },
+      { rx: /substance use disorder|alcohol use disorder|opioid|methamphetamine/i, label: 'Active substance', color: '#ff9800' },
+      { rx: /TBI|traumatic brain injury|concussion/i, label: 'TBI', color: '#ff9800' },
+      { rx: /psychotic|hallucinat|delusion|schizophrenia/i, label: 'Psychotic features', color: '#9c27b0' },
+      { rx: /malinger|symptom validity|feign|exaggerat/i, label: 'Validity concern', color: '#9c27b0' },
+    ]
+    const allText = [mentalHealthHistory, substanceHistory, medicalHistory, legalHistory, presentingComplaint].join(' ')
+    for (const r of risks) {
+      if (r.rx.test(allText)) riskFlags.push({ label: r.label, color: r.color })
+    }
+
+    const SnapshotRow = ({ label, value }: { label: string; value: string }) => (
+      <div style={{ display: 'flex', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ width: 130, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4, flexShrink: 0 }}>
+          {label}
+        </div>
+        <div style={{ flex: 1, fontSize: 13, color: 'var(--text)' }}>
+          {value || <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>not recorded</span>}
+        </div>
+      </div>
+    )
+
+    const card: React.CSSProperties = {
+      background: 'var(--panel)',
+      border: '1px solid var(--border)',
+      borderRadius: 6,
+      padding: 12,
+      marginBottom: 12,
+    }
+
+    const cardHeader: React.CSSProperties = {
+      fontSize: 11,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      color: 'var(--text-secondary)',
+      marginBottom: 8,
+    }
+
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        {/* Identification */}
+        <div style={{ ...card, gridColumn: '1 / span 2' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                width: 56, height: 56, borderRadius: '50%', background: stageColor, color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, flexShrink: 0,
+              }}
+            >
+              {caseData.examinee_first_name?.charAt(0) ?? ''}{caseData.examinee_last_name?.charAt(0) ?? ''}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
+                {caseData.examinee_last_name}, {caseData.examinee_first_name}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                Case #{caseData.case_number}
+                {age !== null ? ` , ${age}yo` : ''}
+                {caseData.examinee_gender ? ` ${caseData.examinee_gender}` : ''}
+                {caseData.examinee_dob ? ` , DOB ${caseData.examinee_dob.slice(0, 10)}` : ''}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                <span style={{ background: stageColor, color: '#fff', padding: '2px 8px', borderRadius: 3, fontSize: 11, fontWeight: 600 }}>
+                  {stage.toUpperCase()}
+                </span>
+                {caseData.evaluation_type && (
+                  <span style={{ background: 'var(--accent)', color: '#fff', padding: '2px 8px', borderRadius: 3, fontSize: 11, fontWeight: 600 }}>
+                    {caseData.evaluation_type}
+                  </span>
+                )}
+                {deadline && (
+                  <span style={{ background: '#f3a93b', color: '#fff', padding: '2px 8px', borderRadius: 3, fontSize: 11, fontWeight: 600 }}>
+                    Due {deadline}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Risk flags */}
+        <div style={{ ...card, gridColumn: '1 / span 2' }}>
+          <div style={cardHeader}>Risk flags</div>
+          {riskFlags.length > 0 ? (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {riskFlags.map((f) => (
+                <span key={f.label} style={{ background: f.color, color: '#fff', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600 }}>
+                  {f.label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>None flagged from current intake or history.</div>
+          )}
+        </div>
+
+        {/* Referral context */}
+        <div style={card}>
+          <div style={cardHeader}>Referral context</div>
+          <SnapshotRow label="Referral" value={referralSource} />
+          <SnapshotRow label="Eval type" value={caseData.evaluation_type ?? ''} />
+          <SnapshotRow label="Jurisdiction" value={jurisdiction} />
+          <SnapshotRow label="Charges" value={charges} />
+          <SnapshotRow label="Attorney" value={attorney} />
+          <SnapshotRow label="Deadline" value={deadline} />
+        </div>
+
+        {/* Presenting */}
+        <div style={card}>
+          <div style={cardHeader}>Presenting concern</div>
+          <div style={{ fontSize: 13, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+            {presentingComplaint || (
+              <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                Not yet recorded. Complete intake to populate.
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Clinical history one-liners */}
+        <div style={{ ...card, gridColumn: '1 / span 2' }}>
+          <div style={cardHeader}>Significant history</div>
+          <SnapshotRow label="Mental health" value={truncate(mentalHealthHistory, 220)} />
+          <SnapshotRow label="Substance use" value={truncate(substanceHistory, 220)} />
+          <SnapshotRow label="Medical" value={truncate(medicalHistory, 220)} />
+          <SnapshotRow label="Legal" value={truncate(legalHistory, 220)} />
+          <SnapshotRow label="Family" value={truncate(familyHistory, 220)} />
+          <SnapshotRow label="Education" value={truncate(educationHistory, 220)} />
+        </div>
+
+        {/* Workflow snapshot */}
+        <div style={card}>
+          <div style={cardHeader}>Workflow snapshot</div>
+          <SnapshotRow label="Stage" value={stage} />
+          <SnapshotRow label="Status" value={caseData.case_status ?? ''} />
+          <SnapshotRow label="Opened" value={(caseData.created_at ?? '').slice(0, 10)} />
+          <SnapshotRow label="Last activity" value={(caseData.last_modified ?? '').slice(0, 10)} />
+          <SnapshotRow label="Last document" value={lastDocumentDate ?? ''} />
+        </div>
+
+        {/* Materials breakdown */}
+        <div style={card}>
+          <div style={cardHeader}>Case materials ({docTotal})</div>
+          <SnapshotRow label="Collateral" value={collateralCount > 0 ? `${collateralCount} document${collateralCount === 1 ? '' : 's'}` : ''} />
+          <SnapshotRow label="Testing" value={testingCount > 0 ? `${testingCount} report${testingCount === 1 ? '' : 's'}` : ''} />
+          <SnapshotRow label="Interviews" value={interviewsCount > 0 ? `${interviewsCount} session${interviewsCount === 1 ? '' : 's'}` : ''} />
+          <SnapshotRow label="Diagnostics" value={diagnosticsCount > 0 ? `${diagnosticsCount} note${diagnosticsCount === 1 ? '' : 's'}` : ''} />
+          <SnapshotRow label="Reports" value={reportsCount > 0 ? `${reportsCount} report${reportsCount === 1 ? '' : 's'}` : ''} />
+        </div>
+
+        {/* Clinician summary if present */}
+        {caseData.notes && (
+          <div style={{ ...card, gridColumn: '1 / span 2' }}>
+            <div style={cardHeader}>Clinician working note</div>
+            <div style={{ fontSize: 13, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{caseData.notes}</div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   // --- Intake / Demographics Pane ---
   const IntakePane = () => {
     const demo = ingestorData?.demographics
@@ -324,15 +586,15 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
               <Field label="Name" value={`${demo.first_name || caseData.examinee_first_name} ${demo.last_name || caseData.examinee_last_name}`} />
-              <Field label="DOB" value={String(demo.dob || caseData.examinee_dob || '—')} />
-              <Field label="Age" value={demo.age ? String(demo.age) : '—'} />
-              <Field label="Sex / Gender" value={String(demo.gender || demo.sex || caseData.examinee_gender || '—')} />
-              <Field label="Race / Ethnicity" value={String(demo.race_ethnicity || demo.race || '—')} />
-              <Field label="Handedness" value={String(demo.handedness || '—')} />
-              <Field label="Education" value={String(demo.education_level || demo.education || '—')} />
-              <Field label="Occupation" value={String(demo.occupation || '—')} />
-              <Field label="Referral Source" value={String(demo.referral_source || caseData.referral_source || '—')} />
-              <Field label="Evaluation Dates" value={String(demo.evaluation_dates || '—')} />
+              <Field label="DOB" value={String(demo.dob || caseData.examinee_dob || ',')} />
+              <Field label="Age" value={demo.age ? String(demo.age) : ','} />
+              <Field label="Sex / Gender" value={String(demo.gender || demo.sex || caseData.examinee_gender || ',')} />
+              <Field label="Race / Ethnicity" value={String(demo.race_ethnicity || demo.race || ',')} />
+              <Field label="Handedness" value={String(demo.handedness || ',')} />
+              <Field label="Education" value={String(demo.education_level || demo.education || ',')} />
+              <Field label="Occupation" value={String(demo.occupation || ',')} />
+              <Field label="Referral Source" value={String(demo.referral_source || caseData.referral_source || ',')} />
+              <Field label="Evaluation Dates" value={String(demo.evaluation_dates || ',')} />
             </div>
           </>
         ) : (
@@ -649,7 +911,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                     background: 'var(--accent)', border: '2px solid var(--panel)',
                   }} />
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
-                    {String(e.date || e.timestamp || '—')}
+                    {String(e.date || e.timestamp || ',')}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text)' }}>
                     {String(e.event || e.description || JSON.stringify(e))}
@@ -726,7 +988,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
     )
   }
 
-  // --- Diagnostics summary (from ingestor — NOT the diagnostician agent) ---
+  // --- Diagnostics summary (from ingestor, NOT the diagnostician agent) ---
   const DiagnosticsPane = () => (
     <div>
       {renderEditButton('makeCaseDiagnostics')}
@@ -760,7 +1022,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
           <div style={{ fontSize: '12px', color: '#4caf50', fontWeight: 600, marginBottom: '6px' }}>
             ✓ Case Complete
           </div>
-          <Field label="Completed" value={caseData.last_modified?.split('T')[0] || '—'} />
+          <Field label="Completed" value={caseData.last_modified?.split('T')[0] || ','} />
           <Field label="Evaluation Type" value={caseData.evaluation_type} />
           <Field label="Case Number" value={caseData.case_number} />
         </div>
@@ -773,7 +1035,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
   )
 
   // -------------------------------------------------------------------------
-  // Build tab definitions — all tabs always available, content adapts
+  // Build tab definitions, all tabs always available, content adapts
   // -------------------------------------------------------------------------
 
   interface SubTab {
@@ -782,9 +1044,12 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
     component: React.FC
   }
 
-  // Full clinical workflow — all tabs always visible.
+  // Full clinical workflow, all tabs always visible.
   // This is the actual sequence a forensic psychologist works through.
+  // Overview comes FIRST: it is the at-a-glance snapshot a clinician
+  // looks at before engaging with the case.
   const visibleTabs: SubTab[] = [
+    { id: 'overview', label: 'Overview', component: OverviewPane },
     { id: 'intake', label: 'Intake', component: IntakePane },
     { id: 'referral', label: 'Referral', component: ReferralPane },
     { id: 'collateral', label: 'Collateral', component: CollateralPane },
@@ -796,8 +1061,8 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
   ]
 
   // Ensure activeTab is valid
-  const resolvedActiveTab = visibleTabs.find((t) => t.id === activeTab) ? activeTab : visibleTabs[0]?.id || 'intake'
-  const ActiveComponent = visibleTabs.find((t) => t.id === resolvedActiveTab)?.component || IntakePane
+  const resolvedActiveTab = visibleTabs.find((t) => t.id === activeTab) ? activeTab : visibleTabs[0]?.id || 'overview'
+  const ActiveComponent = visibleTabs.find((t) => t.id === resolvedActiveTab)?.component || OverviewPane
 
   const displayName = `${caseData.examinee_last_name}, ${caseData.examinee_first_name}`
 
@@ -805,7 +1070,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
     <div style={{ padding: '16px', fontSize: '13px', height: '100%', overflow: 'auto' }}>
       {/* Header Section */}
       <h1 style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--text)' }}>
-        Clinical Overview — {displayName}
+        Clinical Overview, {displayName}
       </h1>
 
       {/* Pipeline Indicator */}
@@ -830,7 +1095,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                 outline: 'none', cursor: 'pointer',
               }}
             >
-              <option value="">— Select —</option>
+              <option value="">, Select ,</option>
               {EVAL_TYPE_OPTIONS.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}

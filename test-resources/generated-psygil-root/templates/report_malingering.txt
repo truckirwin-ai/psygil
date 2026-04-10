@@ -1,0 +1,108 @@
+SYMPTOM VALIDITY ASSESSMENT
+Evaluation of Feigned or Exaggerated Psychological Symptoms
+
+HEADER
+------
+Forensic Psychology Services
+1234 Grant Street, Denver, CO 80203
+Phone: (303) 555-0100
+
+CONFIDENTIAL FORENSIC PSYCHOLOGICAL EVALUATION
+
+IDENTIFYING INFORMATION
+-----------------------
+Patient Name: {{PATIENT_NAME}}
+Date of Birth: {{DATE_OF_BIRTH}}
+Case Number: {{CASE_NUMBER}}
+Referring Party: {{REFERRING_PARTY}}
+Date of Report: {{DATE_OF_REPORT}}
+Dates of Contact: {{DATES_OF_CONTACT}}
+Examiner: Dr. Jordan Whitfield, Psy.D., ABPP
+License: PSY12345 (Colorado)
+
+REFERRAL QUESTION
+-----------------
+The referring party requested an evaluation of whether {{PATIENT_NAME}} is producing or exaggerating psychological symptoms for secondary gain. The evaluation uses the Slick, Sherman, and Iverson criteria for Malingered Neurocognitive Dysfunction, where relevant, and the Rogers model for psychiatric feigning. No single finding is used to reach a conclusion of malingering.
+
+NOTICE OF NON-CONFIDENTIALITY
+-----------------------------
+The evaluee was informed at the outset that this evaluation is being conducted at the request of {{REFERRING_PARTY}} and that the usual rules of doctor-patient confidentiality do not apply. The evaluee was advised that information obtained during the evaluation would be included in a written report provided to the referring party and that the report may be shared with the court and other parties to the legal proceeding. The evaluee acknowledged understanding of these limits and voluntarily agreed to participate.
+
+PROCEDURES
+----------
+The following procedures were used in the preparation of this report:
+Review of records provided by the referring party
+Clinical interview with the evaluee
+Mental status examination
+Collateral interview(s) where appropriate
+Standardized psychological testing (see Test Results)
+Symptom validity and effort testing
+Administration of stand-alone performance validity tests
+Administration of stand-alone symptom validity tests
+Review of embedded validity indicators on cognitive and personality measures
+
+RECORDS REVIEWED
+----------------
+Prior evaluations
+Medical and mental health records
+Incident reports and collateral statements
+Surveillance or observational reports provided by the referring party
+Employment, academic, or military records, where applicable
+
+RELEVANT BACKGROUND
+-------------------
+History of claimed symptoms and their course
+Inconsistencies between reported function and documented function
+Prior diagnoses and treatment response
+Legal, financial, or occupational incentives present at the time of evaluation
+
+PRESENTING COMPLAINTS
+---------------------
+The evaluee's account of the current symptoms, their onset, severity, course, and the functional impact reported. Any discrepancies with observed function or records are noted.
+
+MENTAL STATUS EXAMINATION
+-------------------------
+Appearance, behavior, cooperation, effort, speech, mood, affect, thought process and content, perception, cognition, insight, and judgment.
+
+PERFORMANCE VALIDITY FINDINGS
+-----------------------------
+Results of stand-alone and embedded performance validity measures. Each instrument is identified, its cutoff and classification accuracy are reported, and the examinee's result is interpreted in light of the full clinical picture.
+
+SYMPTOM VALIDITY FINDINGS
+-------------------------
+Results of stand-alone and embedded symptom validity measures. The pattern of elevations, rare symptoms, symptom combinations, and inconsistency scales is summarized.
+
+EXTERNAL EVIDENCE
+-----------------
+Discrepancies between self-reported symptoms and collateral observations, records, or surveillance.
+Consistency of reported symptoms across sessions and sources.
+Presence or absence of external incentives at the time of evaluation.
+
+ANALYSIS
+--------
+Integration of performance validity, symptom validity, and external evidence. Findings are weighed against the Slick criteria or the Rogers model, as appropriate, with explicit statements of what criteria are met, partially met, or not met.
+
+OPINION
+-------
+To a reasonable degree of psychological certainty, the examiner offers one of the following opinions: Credible Presentation, Insufficient Effort, Probable Feigning, or Definite Feigning, with reference to the applicable criteria. Where the data are insufficient to reach a conclusion, the examiner states so.
+
+CAVEATS
+-------
+Failure on validity testing does not prove deliberate feigning; causes can include low motivation, cognitive impairment, cultural mismatch, or language difficulties. The examiner considers these alternatives explicitly.
+
+RECOMMENDATIONS
+---------------
+Implications of validity findings for the interpretation of other test results in the broader evaluation
+Recommended next steps for the referring party
+
+SIGNATURE
+---------
+The opinions expressed in this report are held to a reasonable degree of psychological certainty based on the data reviewed and the methods described. If additional information becomes available, I reserve the right to supplement or modify these opinions.
+
+Respectfully submitted,
+
+
+_______________________________
+Dr. Jordan Whitfield, Psy.D., ABPP
+Licensed Psychologist, Colorado #PSY12345
+Date: {{DATE_OF_REPORT}}
