@@ -1,0 +1,101 @@
+CHILD CUSTODY EVALUATION
+Best Interests of the Child
+
+HEADER
+------
+Forensic Psychology Services
+1234 Grant Street, Denver, CO 80203
+Phone: (303) 555-0100
+
+CONFIDENTIAL FORENSIC PSYCHOLOGICAL EVALUATION
+
+IDENTIFYING INFORMATION
+-----------------------
+Child(ren): {{PATIENT_NAME}}
+Dates of Birth: {{DATE_OF_BIRTH}}
+Parents/Parties: (to be entered)
+Case Number: {{CASE_NUMBER}}
+Court: {{COURT_NAME}}
+Docket: {{DOCKET_NUMBER}}
+Referring Party: {{REFERRING_PARTY}}
+Date of Report: {{DATE_OF_REPORT}}
+Examiner: Dr. Jordan Whitfield, Psy.D., ABPP
+
+REFERRAL QUESTION
+-----------------
+The {{COURT_NAME}} ordered a psychological evaluation to address the best interests of the child(ren) with respect to decision-making responsibility and parenting time. The evaluation is guided by the APA Guidelines for Child Custody Evaluations in Family Law Proceedings (2010) and the AFCC Model Standards of Practice for Child Custody Evaluation (2022).
+
+NOTICE OF LIMITS ON CONFIDENTIALITY
+-----------------------------------
+All parties were informed at the outset that this is a court-ordered evaluation, that information obtained will be included in a written report provided to the court and the parties, and that the usual rules of confidentiality do not apply. The children were informed, in developmentally appropriate language, that the examiner would be speaking with the court about what they said.
+
+PROCEDURES
+----------
+Review of court documents, pleadings, and any prior evaluations
+Clinical interviews with each parent, individually
+Clinical interviews with each child, individually, at a developmentally appropriate level
+Observation of each parent-child dyad
+Standardized psychological testing of the parents, where indicated
+Collateral interviews (teachers, therapists, pediatricians, family members)
+Review of school, medical, and mental health records
+
+BACKGROUND OF THE FAMILY
+------------------------
+Relationship history and circumstances of separation
+Prior or current allegations of intimate partner violence, substance abuse, or child maltreatment
+Each child's developmental, educational, and medical history
+Current living arrangements and parenting schedule
+
+CLINICAL INTERVIEWS WITH PARENTS
+--------------------------------
+Each parent's account of the marital and post-separation history, concerns about the other parent, parenting approach, and views of the children's needs. Mental status observations are documented for each.
+
+CLINICAL INTERVIEWS WITH CHILDREN
+---------------------------------
+Each child's account of family life in each home, school, friendships, and adjustment. Preferences are noted where the child offered them, along with the examiner's assessment of the child's understanding and the influence of each parent.
+
+PARENT-CHILD OBSERVATIONS
+-------------------------
+Observations of each parent-child dyad during structured and unstructured interaction, with attention to attunement, warmth, discipline style, boundaries, and the child's comfort.
+
+TEST RESULTS
+------------
+Psychological test results for each parent are summarized and interpreted. Tests are selected to address specific referral questions (e.g., personality, parenting stress, symptom validity). No instrument is used as a sole determinant of custody recommendations.
+
+COLLATERAL INFORMATION
+----------------------
+Summary of information obtained from collateral sources, including teachers, therapists, pediatricians, and other individuals with relevant knowledge of the family. Each source is identified and the nature of the contact is specified.
+
+BEST-INTERESTS ANALYSIS
+-----------------------
+Each child's developmental needs and any special needs
+Each parent's capacity to meet those needs
+Quality of the attachment relationships
+Stability and continuity of the current arrangement
+History of caregiving and decision-making
+Each parent's willingness to support the child's relationship with the other parent
+Any safety concerns, including allegations of abuse or neglect
+Sibling relationships and the child's preferences, if age-appropriate
+
+OPINION
+-------
+To a reasonable degree of psychological certainty, the examiner offers the following opinions on the best-interests factors set forth above. Recommendations regarding decision-making responsibility and parenting time, where offered, are tied directly to the data presented in this report.
+
+RECOMMENDATIONS
+---------------
+Proposed decision-making allocation (joint, sole, or conditional)
+Proposed parenting time schedule
+Recommended services (individual therapy for children, co-parenting counseling, therapeutic reunification, substance monitoring)
+Proposed review or re-evaluation timeline
+
+SIGNATURE
+---------
+The opinions expressed in this report are held to a reasonable degree of psychological certainty based on the data reviewed and the methods described. If additional information becomes available, I reserve the right to supplement or modify these opinions.
+
+Respectfully submitted,
+
+
+_______________________________
+Dr. Jordan Whitfield, Psy.D., ABPP
+Licensed Psychologist, Colorado #PSY12345
+Date: {{DATE_OF_REPORT}}

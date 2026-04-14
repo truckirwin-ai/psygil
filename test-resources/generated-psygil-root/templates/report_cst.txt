@@ -1,0 +1,95 @@
+COMPETENCY TO STAND TRIAL EVALUATION
+Forensic Psychological Evaluation
+
+HEADER
+------
+Forensic Psychology Services
+1234 Grant Street, Denver, CO 80203
+Phone: (303) 555-0100
+
+CONFIDENTIAL FORENSIC PSYCHOLOGICAL EVALUATION
+
+IDENTIFYING INFORMATION
+-----------------------
+Patient Name: {{PATIENT_NAME}}
+Date of Birth: {{DATE_OF_BIRTH}}
+Case Number: {{CASE_NUMBER}}
+Referring Party: {{REFERRING_PARTY}}
+Date of Report: {{DATE_OF_REPORT}}
+Dates of Contact: {{DATES_OF_CONTACT}}
+Examiner: Dr. Jordan Whitfield, Psy.D., ABPP
+License: PSY12345 (Colorado)
+
+REFERRAL QUESTION
+-----------------
+The {{COURT_NAME}} ordered a psychological evaluation to address the following question: whether {{PATIENT_NAME}} has sufficient present ability to consult with counsel with a reasonable degree of rational understanding, and whether the defendant has a rational as well as factual understanding of the proceedings, as set forth in Dusky v. United States, 362 U.S. 402 (1960). The court order specified the following jurisdiction-specific statutory criteria: {{JURISDICTION}} competency standard.
+
+NOTICE OF NON-CONFIDENTIALITY
+-----------------------------
+The evaluee was informed at the outset that this evaluation is being conducted at the request of {{REFERRING_PARTY}} and that the usual rules of doctor-patient confidentiality do not apply. The evaluee was advised that information obtained during the evaluation would be included in a written report provided to the referring party and that the report may be shared with the court and other parties to the legal proceeding. The evaluee acknowledged understanding of these limits and voluntarily agreed to participate.
+
+PROCEDURES
+----------
+The following procedures were used in the preparation of this report:
+Review of records provided by the referring party
+Clinical interview with the evaluee
+Mental status examination
+Collateral interview(s) where appropriate
+Standardized psychological testing (see Test Results)
+Symptom validity and effort testing
+Administration of a competency-specific instrument (see Test Results)
+
+RECORDS REVIEWED
+----------------
+Arrest report and charging documents
+Prior psychiatric and psychological records (if obtained)
+Prior evaluations, if any
+Jail medical and mental health records
+Collateral statements, where applicable
+
+RELEVANT BACKGROUND
+-------------------
+Developmental and family history
+Educational and occupational history
+Psychiatric and substance use history
+Medical history, including head injury and neurological conditions
+Legal history, including prior contact with the forensic system
+
+MENTAL STATUS EXAMINATION
+-------------------------
+Appearance, behavior, and cooperation; speech and language; mood and affect; thought process and content; perception; cognition and orientation; insight and judgment.
+
+TEST RESULTS
+------------
+Standardized instruments administered during the evaluation are summarized in the Test Results section of the report. All measures are scored and interpreted by the examiner.
+
+FUNCTIONAL ABILITIES ASSESSMENT
+-------------------------------
+Factual understanding of the proceedings, including the roles of courtroom personnel, the adversarial nature of the process, the range of pleas available, and the potential consequences of conviction.
+Rational understanding of the proceedings, including the ability to appreciate how the proceedings apply to the defendant and to apply factual knowledge to the defendant's own case.
+Capacity to consult with counsel, including the ability to disclose relevant information, track and respond to questions, tolerate the stress of proceedings, and make reasoned decisions about plea and defense strategy.
+
+CLINICAL FORMULATION
+--------------------
+Integration of background, behavioral observations, test results, and functional assessment findings into a diagnostic and causal formulation. Any diagnosis offered is the examiner's own determination based on DSM-5-TR criteria. This section identifies the mental disease or defect, if any, and explains the relationship between the clinical picture and the defendant's competency-relevant abilities.
+
+OPINION
+-------
+To a reasonable degree of psychological certainty, the examiner offers the following opinion regarding the defendant's competency to stand trial. This opinion directly addresses the Dusky standard and the jurisdiction-specific statutory criteria identified in the referral question.
+
+RECOMMENDATIONS
+---------------
+If competent: no further action required for the purpose of competency.
+If incompetent: recommendations regarding restoration treatment, including setting, duration, and likelihood of restoration to competency within a foreseeable period.
+
+SIGNATURE
+---------
+The opinions expressed in this report are held to a reasonable degree of psychological certainty based on the data reviewed and the methods described. If additional information becomes available, I reserve the right to supplement or modify these opinions.
+
+Respectfully submitted,
+
+
+_______________________________
+Dr. Jordan Whitfield, Psy.D., ABPP
+Licensed Psychologist, Colorado #PSY12345
+Date: {{DATE_OF_REPORT}}

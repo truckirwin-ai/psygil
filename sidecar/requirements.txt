@@ -1,0 +1,10 @@
+# Psygil Python Sidecar dependencies
+# Run: pip install -r requirements.txt && python -m spacy download en_core_web_lg
+
+# JSON-RPC server (used in Task 2.1, lightweight — server.py uses stdlib for now)
+jsonrpcserver>=5.0
+
+# PII detection (used in Task 2.2 — Presidio + spaCy)
+presidio-analyzer
+presidio-anonymizer
+spacy>=3.7
