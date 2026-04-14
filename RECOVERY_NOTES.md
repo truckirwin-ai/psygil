@@ -72,11 +72,15 @@ Bugs found in the Apr 10 `ceb7e64` source tree during Gate 4 (app launch). Fixed
 
 1. **`app/src/main/db/migrate.ts` lines 205-206 (now removed).** Orphan SQL fragment `);\nEND;` between `tr_cases_update_last_modified` and `tr_diagnosis_audit` triggers. Caused `SqliteError: near ")": syntax error` on first-run migration. Regression introduced between Apr 3 and Apr 10 when `tr_gate_review_audit` was replaced by `tr_diagnosis_audit` and the previous block was only partially removed. Verified clean against isolated SQLite after fix.
 
-Known pre-existing issues NOT yet fixed (tracked for follow-up, not recovery-blocking):
+Known pre-existing issues addressed in the Apr 13 recovery follow-up pass:
 
-1. **Vitest 4 vs Vite 5 peer mismatch.** `pnpm exec vitest run` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED` for `vite/module-runner`. Fix by downgrading vitest to a vite-5 compatible version or upgrading vite to 6.
-2. **Python sidecar requires 3.10+.** `requirements.txt` pulls spacy/thinc that need Python 3.10 minimum. Install Python 3.11 or 3.12 and rebuild the venv.
-3. **`diagnosisCatalog` handlers log "Cannot find module '../db/seed-catalog'".** Runtime `require()` in compiled bundle does not resolve because electron-vite does not emit `out/main/db/seed-catalog.js`. Caller treats failure as non-fatal, so app keeps running without the diagnosis catalog. Fix by converting to static import or adding to Vite's `external` config.
+1. **Vitest 4 vs Vite 5 peer mismatch, FIXED.** Pinned `vitest` in `app/package.json` from `^4.1.2` to `^3.2.4`. Vitest 3.2.x supports `vite ^5.0.0 || ^6.0.0 || ^7.0.0-0` so the peer graph resolves cleanly. Run `pnpm install` in `app/` on the Mac to regenerate the lockfile, then `pnpm test`.
+2. **Python sidecar requires 3.10+, SCRIPT ADDED.** Added `sidecar/setup-dev-venv.sh` which enforces Python 3.10+ (prefers 3.12), wipes the old `.venv`, and rebuilds it with `requirements.txt` plus the `en_core_web_lg` spaCy model. Run `brew install python@3.12` first, then `sidecar/setup-dev-venv.sh`.
+3. **`diagnosisCatalog` handlers missing from main bundle, FIXED.** `registerDiagnosisCatalogHandlers()` in `app/src/main/ipc/handlers.ts` used `require('../db/seed-catalog')` and `require('../db/connection')` inside the function body, which rollup did not trace into the bundled main process. Converted both to static top-of-file imports so electron-vite emits `out/main/db/seed-catalog.js` and the catalog loads normally.
+
+Remaining known issues (non-blocking):
+
+- Other `require('../seed-demo-cases')`, `require('../updater')`, and `require('../sidecar')` callsites in `handlers.ts` use the same dynamic pattern and could exhibit the same symptom in packaged builds. Convert to static imports in a follow-up commit if any are reported missing at runtime.
 
 ## Safety guarantees
 

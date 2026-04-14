@@ -121,6 +121,8 @@ import { seedResources } from '../seed-resources'
 import { registerSetupHandlers } from '../setup/handlers'
 import { REPORT_TEMPLATES as BUILTIN_REPORT_TEMPLATES } from '../setup/templates/registry'
 import { spawnSidecar } from '../sidecar'
+import { getSqlite } from '../db/connection'
+import { seedDiagnosisCatalog } from '../db/seed-catalog'
 import {
   getBranding,
   saveBranding,
@@ -3859,14 +3861,14 @@ function registerTemplateHandlers(): void {
 // ---------------------------------------------------------------------------
 
 function registerDiagnosisCatalogHandlers(): void {
-  // Seed on first call (lazy, idempotent)
-  const { seedDiagnosisCatalog } = require('../db/seed-catalog') as typeof import('../db/seed-catalog')
+  // Static imports above ensure electron-vite traces seed-catalog into the
+  // main bundle. Prior code used `require(...)` at module load which rollup
+  // did not reliably resolve in the packaged build.
 
   ipcMain.handle(
     'diagnosisCatalog:search',
     (_event, params: { query: string; limit?: number }): IpcResponse<unknown[]> => {
       try {
-        const { getSqlite } = require('../db/connection') as typeof import('../db/connection')
         const sqlite = getSqlite()
         seedDiagnosisCatalog(sqlite)
 
@@ -3894,7 +3896,6 @@ function registerDiagnosisCatalogHandlers(): void {
     'diagnosisCatalog:list',
     (_event, params?: { category?: string }): IpcResponse<unknown[]> => {
       try {
-        const { getSqlite } = require('../db/connection') as typeof import('../db/connection')
         const sqlite = getSqlite()
         seedDiagnosisCatalog(sqlite)
 
