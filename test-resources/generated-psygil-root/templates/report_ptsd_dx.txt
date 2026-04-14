@@ -1,0 +1,115 @@
+PTSD DIAGNOSTIC EVALUATION
+DSM-5-TR Posttraumatic Stress Disorder Assessment
+
+HEADER
+------
+Forensic Psychology Services
+1234 Grant Street, Denver, CO 80203
+Phone: (303) 555-0100
+
+CONFIDENTIAL FORENSIC PSYCHOLOGICAL EVALUATION
+
+IDENTIFYING INFORMATION
+-----------------------
+Patient Name: {{PATIENT_NAME}}
+Date of Birth: {{DATE_OF_BIRTH}}
+Case Number: {{CASE_NUMBER}}
+Referring Party: {{REFERRING_PARTY}}
+Date of Report: {{DATE_OF_REPORT}}
+Dates of Contact: {{DATES_OF_CONTACT}}
+Examiner: Dr. Jordan Whitfield, Psy.D., ABPP
+License: PSY12345 (Colorado)
+
+REFERRAL QUESTION
+-----------------
+The referring party requested a diagnostic evaluation of {{PATIENT_NAME}} to determine whether the evaluee currently meets DSM-5-TR criteria for Posttraumatic Stress Disorder (PTSD), to identify any related or alternative diagnoses, and to offer treatment recommendations. Where applicable, the evaluation addresses causation and the relationship of symptoms to the claimed traumatic event.
+
+NOTICE OF NON-CONFIDENTIALITY
+-----------------------------
+The evaluee was informed at the outset that this evaluation is being conducted at the request of {{REFERRING_PARTY}} and that the usual rules of doctor-patient confidentiality do not apply. The evaluee was advised that information obtained during the evaluation would be included in a written report provided to the referring party and that the report may be shared with the court and other parties to the legal proceeding. The evaluee acknowledged understanding of these limits and voluntarily agreed to participate.
+
+PROCEDURES
+----------
+The following procedures were used in the preparation of this report:
+Review of records provided by the referring party
+Clinical interview with the evaluee
+Mental status examination
+Collateral interview(s) where appropriate
+Standardized psychological testing (see Test Results)
+Symptom validity and effort testing
+Administration of the Clinician-Administered PTSD Scale for DSM-5 (CAPS-5) or equivalent structured interview
+Administration of validated self-report PTSD and depression measures
+
+RECORDS REVIEWED
+----------------
+Prior mental health records
+Medical records relevant to the claimed traumatic event
+Incident reports, police reports, or military records where applicable
+Treatment notes and medication history
+
+RELEVANT BACKGROUND
+-------------------
+Developmental and family history
+Prior trauma exposure, prior to and after the index event
+Psychiatric and substance use history
+Medical history, including any head injury
+Occupational, educational, and social functioning before and after the index event
+
+TRAUMATIC EVENT HISTORY
+-----------------------
+Detailed account of the index event, including the evaluee's immediate reaction and the presence of features relevant to Criterion A (actual or threatened death, serious injury, or sexual violence). Additional traumatic events identified during the interview are also documented.
+
+SYMPTOM REVIEW
+--------------
+Intrusion symptoms (Criterion B)
+Avoidance symptoms (Criterion C)
+Negative alterations in cognition and mood (Criterion D)
+Alterations in arousal and reactivity (Criterion E)
+Duration of disturbance (Criterion F)
+Functional impairment (Criterion G)
+Rule-outs (Criterion H): substance, medical condition, other disorder
+Dissociative specifier, if present
+Delayed expression specifier, if present
+
+MENTAL STATUS EXAMINATION
+-------------------------
+Appearance, behavior, cooperation, speech, mood, affect, thought process and content, perception, cognition, insight, and judgment.
+
+TEST RESULTS
+------------
+CAPS-5, PCL-5, and any additional instruments administered during the evaluation are summarized in the Test Results section. Symptom validity is addressed in a dedicated subsection.
+
+SYMPTOM VALIDITY
+----------------
+Results of symptom validity and performance validity testing, with an interpretation of whether the evaluee's presentation is consistent with genuine symptoms or raises concerns about exaggeration or malingering.
+
+DIAGNOSTIC IMPRESSION
+---------------------
+Application of the DSM-5-TR criteria to the data gathered. Each PTSD criterion is addressed and supported by specific observations, interview content, and test findings. Differential diagnoses are explicitly considered and either ruled in or ruled out with clear rationale.
+
+CAUSATION AND NEXUS
+-------------------
+Where the referral question requires a causation analysis, the examiner offers an opinion on whether the claimed traumatic event is a substantial contributing cause of the current clinical picture, applying the most probable cause standard.
+
+OPINION
+-------
+To a reasonable degree of psychological certainty, the examiner offers a diagnostic opinion, with specifiers, and addresses the referral question directly.
+
+RECOMMENDATIONS
+---------------
+Evidence-based PTSD treatment (e.g., PE, CPT, EMDR)
+Concurrent treatment for comorbid conditions
+Return to work and functional recommendations, where applicable
+Proposed review interval
+
+SIGNATURE
+---------
+The opinions expressed in this report are held to a reasonable degree of psychological certainty based on the data reviewed and the methods described. If additional information becomes available, I reserve the right to supplement or modify these opinions.
+
+Respectfully submitted,
+
+
+_______________________________
+Dr. Jordan Whitfield, Psy.D., ABPP
+Licensed Psychologist, Colorado #PSY12345
+Date: {{DATE_OF_REPORT}}

@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psygil — First Run Setup</title>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></link>
+    <style>
+        :root {
+            /* Light theme (default) */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --border: #e0e0e0;
+            --accent: #0078d4;
+            --accent-hover: #106ebe;
+            --accent-active: #005a9e;
+            --surface: #fafafa;
+            --success: #107c10;
+            --warning: #ffb900;
+            --error: #d13438;
+        }
+
+        [data-theme="medium"] {
+            --bg-primary: #1e1e2e;
+            --bg-secondary: #2d2d44;
+            --text-primary: #e8eaed;
+            --text-secondary: #b0b3b8;
+            --border: #3d4452;
+            --accent: #58a6ff;
+            --accent-hover: #79c0ff;
+            --accent-active: #388bfd;
+            --surface: #252530;
+            --success: #3fb950;
+            --warning: #d29922;
+            --error: #f85149;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --border: #30363d;
+            --accent: #58a6ff;
+            --accent-hover: #79c0ff;
+            --accent-active: #388bfd;
+            --surface: #010409;
+            --success: #3fb950;
+            --warning: #d29922;
+            --error: #f85149;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        }
+
+        .card {
+            width: 100%;
+            max-width: 640px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* Header with theme toggle */
+        .card-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h1 {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .help-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            padding: 4px;
+        }
+
+        .help-btn:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .theme-toggle {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .theme-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+            padding: 4px;
+        }
+
+        .theme-btn:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .theme-btn.active {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+
+        /* Progress bar */
+        .progress-container {
+            padding: 16px 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .progress-bar {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .progress-step {
+            flex: 1;
+            height: 2px;
+            background: var(--border);
+            border-radius: 1px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-step.active {
+            background: var(--accent);
+        }
+
+        .progress-step.completed {
+            background: var(--success);
+        }
+
+        /* Content area */
+        .card-content {
+            padding: 28px 24px;
+            flex: 1;
+            overflow-y: auto;
+            min-height: 350px;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+            animation: fadeIn 0.2s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .step h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .step-subtitle {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            transition: border-color 0.15s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
+        }
+
+        [data-theme="medium"] .form-group input:focus,
+        [data-theme="medium"] .form-group select:focus {
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        [data-theme="dark"] .form-group input:focus,
+        [data-theme="dark"] .form-group select:focus {
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Radio card style for storage options */
+        .radio-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .radio-card {
+            padding: 12px 14px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .radio-card:hover {
+            border-color: var(--accent);
+            background: var(--bg-secondary);
+        }
+
+        .radio-card.selected {
+            border-color: var(--accent);
+            background: rgba(0, 120, 212, 0.06);
+        }
+
+        [data-theme="medium"] .radio-card.selected {
+            background: rgba(88, 166, 255, 0.08);
+        }
+
+        [data-theme="dark"] .radio-card.selected {
+            background: rgba(88, 166, 255, 0.08);
+        }
+
+        .radio-card input[type="radio"] {
+            margin-top: 3px;
+            cursor: pointer;
+        }
+
+        .radio-card-content {
+            flex: 1;
+        }
+
+        .radio-card-title {
+            font-weight: 600;
+            margin-bottom: 2px;
+            color: var(--text-primary);
+        }
+
+        .radio-card-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .radio-card-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--accent);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .radio-card-tag {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--accent);
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* Config fields that appear after selection */
+        .config-fields {
+            margin-top: 16px;
+            padding: 12px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: none;
+        }
+
+        .config-fields.show {
+            display: block;
+        }
+
+        .config-fields .form-group {
+            margin-bottom: 12px;
+        }
+
+        .config-fields .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        /* LLM selector */
+        .llm-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .llm-option {
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+
+        .llm-option:hover {
+            border-color: var(--accent);
+            background: var(--bg-secondary);
+        }
+
+        .llm-option.selected {
+            border-color: var(--accent);
+            background: rgba(0, 120, 212, 0.06);
+        }
+
+        [data-theme="medium"] .llm-option.selected {
+            background: rgba(88, 166, 255, 0.08);
+        }
+
+        [data-theme="dark"] .llm-option.selected {
+            background: rgba(88, 166, 255, 0.08);
+        }
+
+        .llm-option-label {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .llm-option-badge {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Welcome step */
+        .welcome-content {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .welcome-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 20px;
+            color: var(--accent);
+            opacity: 0.8;
+        }
+
+        .welcome-content h2 {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        /* Storage card improvements */
+        .radio-card {
+            padding: 16px 16px;
+        }
+
+        .radio-card-content {
+            flex: 1;
+        }
+
+        .radio-card-title {
+            font-size: 14px;
+        }
+
+        .radio-card-subtitle {
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 4px;
+        }
+
+        /* Summary step */
+        .summary-items {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .summary-item {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .summary-value {
+            color: var(--text-primary);
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+
+        .summary-tip {
+            margin-top: 20px;
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent);
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Footer with buttons */
+        .card-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            background: var(--bg-secondary);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--bg-secondary);
+            border-color: var(--text-secondary);
+        }
+
+        .btn:active {
+            background: var(--border);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--bg-primary);
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        .btn-primary:active {
+            background: var(--accent-active);
+            border-color: var(--accent-active);
+        }
+
+        .btn-secondary {
+            flex: 1;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .status-badge.idle {
+            background: var(--border);
+            color: var(--text-secondary);
+        }
+
+        .status-badge.testing {
+            background: rgba(255, 185, 0, 0.15);
+            color: var(--warning);
+        }
+
+        .status-badge.success {
+            background: rgba(16, 124, 16, 0.15);
+            color: var(--success);
+        }
+
+        .status-badge.error {
+            background: rgba(211, 52, 56, 0.15);
+            color: var(--error);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: none;
+        }
+
+        .connection-status.show {
+            display: flex;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+
+        .status-indicator.success {
+            background: var(--success);
+        }
+
+        .status-indicator.error {
+            background: var(--error);
+        }
+
+        .status-indicator.testing {
+            background: var(--warning);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Icon helper */
+        .icon {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            vertical-align: -3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            .card {
+                max-width: 100%;
+            }
+
+            .card-content {
+                min-height: 300px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .llm-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <!-- Titlebar -->
+            <div class="card-header">
+                <h1>PSYGIL</h1>
+                <div class="theme-toggle">
+                    <button class="theme-btn" data-theme="light" title="Light theme">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </button>
+                    <button class="theme-btn active" data-theme="light" title="Light theme (only theme for setup)" style="display: none;"></button>
+                    <button class="help-btn" title="Help">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 16v-4"></path>
+                            <path d="M12 8h.01"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-step active" data-step="1"></div>
+                    <div class="progress-step" data-step="2"></div>
+                    <div class="progress-step" data-step="3"></div>
+                    <div class="progress-step" data-step="4"></div>
+                    <div class="progress-step" data-step="5"></div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="card-content">
+                <!-- Step 1: Welcome -->
+                <div class="step active" data-step="1">
+                    <div class="welcome-content">
+                        <svg class="welcome-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                        </svg>
+                        <h2>Welcome to Psygil</h2>
+                        <p class="step-subtitle">AI-powered evaluation report writing for forensic and clinical psychologists</p>
+                    </div>
+                </div>
+
+                <!-- Step 2: Practice Information -->
+                <div class="step" data-step="2">
+                    <h2>Practice Information</h2>
+                    <p class="step-subtitle">Tell us about your practice and credentials</p>
+
+                    <div class="form-group">
+                        <label>Practice Name</label>
+                        <input type="text" placeholder="e.g., Midwest Forensic Services" />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Address</label>
+                            <input type="text" placeholder="Street address" />
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" placeholder="(555) 123-4567" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Clinician Name</label>
+                        <input type="text" placeholder="Full name" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Credentials</label>
+                        <input type="text" placeholder="e.g., Ph.D., Psy.D., M.S." />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>License Number</label>
+                            <input type="text" placeholder="License #" />
+                        </div>
+                        <div class="form-group">
+                            <label>State</label>
+                            <select>
+                                <option value="">Select state</option>
+                                <option value="CA">California</option>
+                                <option value="NY">New York</option>
+                                <option value="TX">Texas</option>
+                                <option value="IL">Illinois</option>
+                                <option value="FL">Florida</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Practice Profile</label>
+                        <select>
+                            <option value="">Select your specialization</option>
+                            <option value="forensic-criminal">Forensic Criminal</option>
+                            <option value="forensic-civil">Forensic Civil</option>
+                            <option value="clinical-general">Clinical General</option>
+                            <option value="neuropsych">Neuropsychology</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Step 3: Storage Configuration -->
+                <div class="step active" data-step="3">
+                    <h2>Where should Psygil store your data?</h2>
+                    <p class="step-subtitle">All case files, reports, and clinical data are encrypted at rest. Choose how you'd like to manage storage.</p>
+
+                    <div class="radio-cards">
+                        <label class="radio-card selected">
+                            <input type="radio" name="storage" value="local" checked />
+                            <svg class="radio-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                <line x1="2" y1="17" x2="22" y2="17"></line>
+                                <line x1="6" y1="21" x2="18" y2="21"></line>
+                            </svg>
+                            <div class="radio-card-content">
+                                <div class="radio-card-title">Local Storage</div>
+                                <div class="radio-card-subtitle">Everything stays on this computer. Best for solo practitioners. Encrypted with SQLCipher AES-256.</div>
+                                <div class="radio-card-tag">Recommended for solo practice</div>
+                            </div>
+                        </label>
+
+                        <label class="radio-card">
+                            <input type="radio" name="storage" value="shared" />
+                            <svg class="radio-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 3 2 3 2 15 22 15 22 3"></polyline>
+                                <line x1="2" y1="6" x2="22" y2="6"></line>
+                                <line x1="2" y1="9" x2="22" y2="9"></line>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                            </svg>
+                            <div class="radio-card-content">
+                                <div class="radio-card-title">Shared Network Drive</div>
+                                <div class="radio-card-subtitle">Store on a shared NAS or network folder. Multiple staff can access case files. Best for small practices on the same network.</div>
+                                <div class="radio-card-tag">Best for 2-10 person practices</div>
+                            </div>
+                        </label>
+
+                        <label class="radio-card">
+                            <input type="radio" name="storage" value="cloud" />
+                            <svg class="radio-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            <div class="radio-card-content">
+                                <div class="radio-card-title">Microsoft 365 or Google Drive</div>
+                                <div class="radio-card-subtitle">Sync through SharePoint/OneDrive or Google Drive with BAA. Enables remote access and multi-location practices.</div>
+                                <div class="radio-card-tag">Requires HIPAA BAA</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Config fields shown after selection -->
+                    <div class="config-fields show" id="localConfig">
+                        <div class="form-group">
+                            <label>Local data path</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="text" value="~/Library/Application Support/Psygil/data" readonly style="flex: 1;" />
+                                <button class="btn" style="flex: 0;">Browse</button>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); margin-top: 12px;">
+                            <svg style="width: 14px; height: 14px; color: var(--success);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            SQLCipher AES-256 (always on)
+                        </div>
+                    </div>
+
+                    <div class="config-fields" id="sharedConfig">
+                        <div class="form-group">
+                            <label>Network Path</label>
+                            <input type="text" placeholder="\\\\server\\psygil" />
+                        </div>
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" placeholder="domain\\username" />
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" placeholder="••••••••" />
+                        </div>
+                        <button class="btn" style="width: 100%; margin-top: 8px;">Test Connection</button>
+                    </div>
+
+                    <div class="config-fields" id="cloudConfig">
+                        <div class="form-group">
+                            <label>Cloud Storage Provider</label>
+                            <select>
+                                <option value="">Select provider</option>
+                                <option value="office365">Microsoft 365 (OneDrive)</option>
+                                <option value="gdrive">Google Drive</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 8px;">Sign In with Cloud Provider</button>
+                    </div>
+                </div>
+
+                <!-- Step 4: AI Configuration -->
+                <div class="step" data-step="4">
+                    <h2>AI Configuration</h2>
+                    <p class="step-subtitle">Select your preferred language model and API credentials</p>
+
+                    <div class="form-group">
+                        <label>Primary LLM Provider</label>
+                        <div class="llm-options">
+                            <label class="llm-option selected">
+                                <input type="radio" name="llm" value="claude" style="display: none;" />
+                                <div class="llm-option-label">Claude Sonnet</div>
+                                <div class="llm-option-badge">Recommended</div>
+                            </label>
+                            <label class="llm-option">
+                                <input type="radio" name="llm" value="gpt4" style="display: none;" />
+                                <div class="llm-option-label">GPT-4o</div>
+                                <div class="llm-option-badge">OpenAI</div>
+                            </label>
+                            <label class="llm-option">
+                                <input type="radio" name="llm" value="ollama" style="display: none;" />
+                                <div class="llm-option-label">Local Ollama</div>
+                                <div class="llm-option-badge">Offline</div>
+                            </label>
+                            <label class="llm-option">
+                                <input type="radio" name="llm" value="gemini" style="display: none;" />
+                                <div class="llm-option-label">Gemini Pro</div>
+                                <div class="llm-option-badge">Google</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>API Key
+                            <span class="status-badge idle">Not tested</span>
+                        </label>
+                        <input type="password" placeholder="sk-..." id="apiKey" />
+                    </div>
+
+                    <div class="form-group">
+                        <button class="btn" id="testConnBtn">Test Connection</button>
+                        <div class="connection-status" id="connStatus">
+                            <div class="status-indicator testing"></div>
+                            <span>Testing connection...</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 16px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 4px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                        <strong style="color: var(--text-primary);">How to get an API key:</strong>
+                        <ul style="margin: 6px 0 0 16px; padding: 0;">
+                            <li>Claude: Visit console.anthropic.com</li>
+                            <li>GPT-4: Visit platform.openai.com/account/api-keys</li>
+                            <li>Ollama: Run locally, no key required</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Step 5: Ready -->
+                <div class="step" data-step="5">
+                    <h2>You're All Set!</h2>
+                    <p class="step-subtitle">Here's what we configured for you</p>
+
+                    <div class="summary-items">
+                        <div class="summary-item">
+                            <span class="summary-label">Practice Name</span>
+                            <span class="summary-value">Your Practice</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Clinician</span>
+                            <span class="summary-value">Dr. Smith, Ph.D.</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Storage</span>
+                            <span class="summary-value">Local</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">LLM Provider</span>
+                            <span class="summary-value">Claude Sonnet</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Specialization</span>
+                            <span class="summary-value">Forensic Civil</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-tip">
+                        <strong>Tip:</strong> You can change any of these settings later from Settings (gear icon) in the main window. Your data is encrypted and backed up according to your storage configuration.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="card-footer">
+                <button class="btn btn-secondary" id="prevBtn" style="display: flex;">← Back</button>
+                <button class="btn btn-primary" id="nextBtn">Next →</button>
+            </div>
+
+            <!-- Statusbar -->
+            <div style="height: 24px; background: var(--bg-secondary); border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; font-size: 11px; color: var(--text-secondary); letter-spacing: 0.2px;">
+                Setup — Step 3 of 5 | Storage Configuration
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentStep = 1;
+        const totalSteps = 5;
+
+        // DOM elements
+        const steps = document.querySelectorAll('.step');
+        const progressSteps = document.querySelectorAll('.progress-step');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const themeButtons = document.querySelectorAll('.theme-btn');
+        const storageRadios = document.querySelectorAll('input[name="storage"]');
+        const llmRadios = document.querySelectorAll('input[name="llm"]');
+        const testConnBtn = document.getElementById('testConnBtn');
+        const connStatus = document.getElementById('connStatus');
+        const apiKeyInput = document.getElementById('apiKey');
+
+        // Theme management
+        themeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const theme = btn.dataset.theme;
+                document.documentElement.setAttribute('data-theme', theme);
+
+                themeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                localStorage.setItem('psygil-theme', theme);
+            });
+        });
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('psygil-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.querySelector(`[data-theme="${savedTheme}"]`).classList.add('active');
+
+        // Storage configuration
+        storageRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.getElementById('localConfig').classList.remove('show');
+                document.getElementById('sharedConfig').classList.remove('show');
+                document.getElementById('cloudConfig').classList.remove('show');
+
+                if (radio.value === 'local') {
+                    document.getElementById('localConfig').classList.add('show');
+                } else if (radio.value === 'shared') {
+                    document.getElementById('sharedConfig').classList.add('show');
+                } else if (radio.value === 'cloud') {
+                    document.getElementById('cloudConfig').classList.add('show');
+                }
+
+                // Update radio card styling
+                document.querySelectorAll('.radio-card').forEach(card => {
+                    card.classList.remove('selected');
+                    if (card.querySelector('input[type="radio"]:checked')) {
+                        card.classList.add('selected');
+                    }
+                });
+            });
+        });
+
+        // LLM selection
+        llmRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.querySelectorAll('.llm-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                    if (opt.querySelector('input[type="radio"]:checked')) {
+                        opt.classList.add('selected');
+                    }
+                });
+            });
+        });
+
+        // Test connection simulation
+        testConnBtn.addEventListener('click', () => {
+            const apiKey = apiKeyInput.value.trim();
+
+            if (!apiKey) {
+                alert('Please enter an API key first');
+                return;
+            }
+
+            connStatus.classList.add('show');
+            testConnBtn.disabled = true;
+
+            // Simulate API test
+            setTimeout(() => {
+                connStatus.classList.remove('show');
+                const badge = document.querySelector('.status-badge');
+                badge.innerHTML = '<span class="status-indicator success"></span>Connected';
+                badge.className = 'status-badge success';
+                testConnBtn.disabled = false;
+            }, 2000);
+        });
+
+        // Navigation
+        function updateStep() {
+            // Update visible step
+            steps.forEach((step, idx) => {
+                step.classList.remove('active');
+                if (idx + 1 === currentStep) {
+                    step.classList.add('active');
+                }
+            });
+
+            // Update progress bar
+            progressSteps.forEach((step, idx) => {
+                step.classList.remove('active', 'completed');
+                if (idx + 1 === currentStep) {
+                    step.classList.add('active');
+                } else if (idx + 1 < currentStep) {
+                    step.classList.add('completed');
+                }
+            });
+
+            // Update statusbar
+            const statusbar = document.querySelector('[style*="height: 24px"]');
+            if (statusbar) {
+                const stepTitles = [
+                    'Welcome',
+                    'Practice Information',
+                    'Storage Configuration',
+                    'AI Configuration',
+                    'Ready'
+                ];
+                statusbar.textContent = `Setup — Step ${currentStep} of ${totalSteps} | ${stepTitles[currentStep - 1]}`;
+            }
+
+            // Update buttons
+            prevBtn.disabled = currentStep === 1;
+            if (currentStep === totalSteps) {
+                nextBtn.textContent = 'Open Psygil';
+            } else {
+                nextBtn.textContent = 'Next →';
+            }
+
+            // Hide prev button on step 1
+            prevBtn.style.display = currentStep === 1 ? 'none' : 'flex';
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStep();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateStep();
+            } else {
+                // Final step - launch app
+                alert('Setup complete! Launching Psygil...');
+                // In production, this would close the wizard and open the main app
+            }
+        });
+
+        // Set initial step to 3 (Storage Configuration)
+        currentStep = 3;
+        updateStep();
+    </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+appId: com.foundrysmb.psygil
+productName: Psygil
+copyright: Copyright (c) 2026 Foundry SMB
+
+# ---------------------------------------------------------------------------
+# Output and resources
+# ---------------------------------------------------------------------------
+directories:
+  output: dist
+  buildResources: resources
+
+# Files to include in the app bundle. The renderer + preload + main bundles
+# all live under out/ after `electron-vite build`. We also need package.json
+# so Electron's main process resolution works.
+files:
+  - "out/**/*"
+  - "package.json"
+  - "!**/*.map"
+  - "!**/__tests__/**"
+
+# The Python sidecar (PII detection: Presidio + spaCy) ships alongside
+# the app as extraResources. End users still need a working Python 3.10+
+# interpreter; the bundled bootstrap script (resources/bootstrap-sidecar.sh)
+# creates a venv inside the sidecar/ directory on first launch. The
+# main-process sidecar manager (src/main/sidecar/index.ts) automatically
+# resolves the venv python from process.resourcesPath/sidecar/venv/bin/python
+# in packaged builds.
+extraResources:
+  - from: "../sidecar"
+    to: "sidecar"
+    filter:
+      - "**/*"
+      - "!__pycache__/**"
+      - "!**/*.pyc"
+      - "!venv/**"
+      - "!.pytest_cache/**"
+  - from: "resources/bootstrap-sidecar.sh"
+    to: "bootstrap-sidecar.sh"
+  - from: "resources/bootstrap-sidecar.ps1"
+    to: "bootstrap-sidecar.ps1"
+
+# Make sure native modules are rebuilt for the target Electron ABI.
+# better-sqlite3-multiple-ciphers and argon2 both need this.
+npmRebuild: true
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+
+asarUnpack:
+  - "node_modules/better-sqlite3-multiple-ciphers/**"
+  - "node_modules/argon2/**"
+
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+mac:
+  category: public.app-category.medical
+  target:
+    - target: dmg
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist
+  # Identity and notarization are gated on env vars so local builds are
+  # unsigned by default. CI sets APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD +
+  # APPLE_TEAM_ID + CSC_LINK + CSC_KEY_PASSWORD for production releases.
+  identity: null
+  notarize: false
+  icon: resources/icon.icns
+
+dmg:
+  sign: false
+  writeUpdateInfo: false
+
+# ---------------------------------------------------------------------------
+# Windows (deferred — needs Authenticode cert)
+# ---------------------------------------------------------------------------
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  publisherName: Foundry SMB
+  icon: resources/icon.ico
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+
+# ---------------------------------------------------------------------------
+# Linux (deferred)
+# ---------------------------------------------------------------------------
+linux:
+  target:
+    - AppImage
+  category: Science
+  icon: resources/icon.png
