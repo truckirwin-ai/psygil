@@ -1,7 +1,0 @@
-{
-  "name": "better-sqlite3",
-  "version": "0.0.0-psygil-shim",
-  "main": "index.js",
-  "description": "Shim that re-exports better-sqlite3-multiple-ciphers so drizzle-orm can resolve the canonical package name. Psygil uses the SQLCipher fork (better-sqlite3-multiple-ciphers) for AES-256 encryption, but drizzle-orm/better-sqlite3 hard-requires the literal package name 'better-sqlite3' at runtime.",
-  "license": "MIT"
-}
