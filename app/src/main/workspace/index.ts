@@ -397,7 +397,58 @@ export function scaffoldCaseSubfolders(caseFolderPath: string): string[] {
       created.push(sub)
     }
   }
+  writeStubDocuments(caseFolderPath)
   return created
+}
+
+/**
+ * Stub documents seeded into each case subfolder on creation.
+ * Keeps folders non-empty and signals the intended contents to the clinician.
+ * Written idempotently: only created if absent, never overwritten.
+ */
+const STUB_DOCUMENTS: Readonly<Record<string, readonly { readonly name: string; readonly body: string }[]>> = {
+  _Inbox: [
+    { name: 'README.txt', body: 'Inbox, drop incoming case materials here for triage (referral letters, court orders, intake forms, subpoenas).' },
+  ],
+  Collateral: [
+    { name: 'README.txt', body: 'Collateral records, medical records, school records, prior evaluations, police reports, witness statements.' },
+    { name: 'Collateral Log.txt', body: 'Collateral Log\n\nDate received | Source | Document | Reviewed by | Notes\n' },
+  ],
+  Testing: [
+    { name: 'README.txt', body: 'Testing, raw test protocols, scored profiles, validity scale outputs, and chain-of-custody notes for standardized instruments.' },
+    { name: 'Test Administration Log.txt', body: 'Test Administration Log\n\nDate | Instrument | Administrator | Conditions | Notes\n' },
+  ],
+  Interviews: [
+    { name: 'README.txt', body: 'Interviews, clinical interview notes, collateral interview notes, mental status exam narratives, and transcripts.' },
+    { name: 'Interview Notes.txt', body: 'Interview Notes\n\nDate:\nInterviewee:\nSetting:\nPresent:\n\nNarrative:\n' },
+  ],
+  Diagnostics: [
+    { name: 'README.txt', body: 'Diagnostics, diagnostic formulation drafts, differential reasoning, and clinician attestations. The doctor makes every diagnostic decision.' },
+    { name: 'Diagnostic Formulation.txt', body: 'Diagnostic Formulation\n\nClinical Impressions:\nRuled Out:\nValidity & Effort:\nPrognosis & Recommendations:\n' },
+  ],
+  Reports: [
+    { name: 'README.txt', body: 'Reports, final and draft forensic reports generated for this case.' },
+    { name: 'Draft Report.txt', body: 'Draft Report, populated progressively as workflow stages complete.\n' },
+  ],
+  Archive: [
+    { name: 'README.txt', body: 'Archive, superseded drafts and historical artifacts retained for the case record.' },
+  ],
+}
+
+function writeStubDocuments(caseFolderPath: string): void {
+  for (const [sub, files] of Object.entries(STUB_DOCUMENTS)) {
+    const subPath = join(caseFolderPath, sub)
+    if (!existsSync(subPath)) continue
+    for (const file of files) {
+      const filePath = join(subPath, file.name)
+      if (existsSync(filePath)) continue
+      try {
+        writeFileSync(filePath, file.body, 'utf-8')
+      } catch {
+        // non-fatal; folder remains usable without the stub
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

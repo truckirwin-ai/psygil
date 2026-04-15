@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef, Children, cloneElement, isValidElement, Fragment } from 'react'
 import type { Tab, TabType } from '../../types/tabs'
 import type { CaseRow, PatientIntakeRow, PatientOnboardingRow } from '../../../../shared/types/ipc'
 
@@ -16,6 +16,84 @@ import DataConfirmationTab from '../tabs/DataConfirmationTab'
 import PipelinePanel from '../tabs/PipelinePanel'
 import PdfViewer from '../viewers/PdfViewer'
 import MarkdownViewer from '../viewers/MarkdownViewer'
+import {
+  MockField,
+  MockSection,
+  SectionPair,
+  registerFlushHandler,
+  flushAllPendingNotes,
+  notesGridStyle,
+  notesLeftCellStyle,
+  notesRightCellStyle,
+  railBlockLabel,
+  railAssistantBodyStyle,
+  MockTable,
+  MockFlag,
+  NotesBodyGrid,
+  InlineNotesOnly,
+  SuppressInlineNotesContext,
+  type MockRow,
+} from '../notes/NotesPrimitives'
+import { NotesPanel } from '../notes/NotesPanel'
+import { MultiNotesPanel, type NotesSection } from '../notes/MultiNotesPanel'
+import { INSTRUMENT_NORMS, bandForScore, type ScoreMetric } from '../../data/instrumentNorms'
+
+/**
+ * Wrap a top-level tab's render in the 67/33 grid pattern with a right-rail
+ * NotesPanel. Keeps the inner tab component untouched and gives every stage
+ * a clinician-notes column that auto-saves + flushes on stage advance.
+ */
+function withNotesPanel(
+  caseId: number | undefined,
+  sectionKey: string,
+  notesTitle: string,
+  placeholder: string,
+  body: React.ReactNode,
+): React.JSX.Element {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '70% 30%', height: '100%', overflow: 'hidden' }}>
+      <div style={{ overflowY: 'auto', minWidth: 0, padding: '8px 16px' }}>{body}</div>
+      <div style={{ overflowY: 'auto', minWidth: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
+        {caseId !== undefined && (
+          <NotesPanel
+            caseId={caseId}
+            sectionKey={sectionKey}
+            title={notesTitle}
+            placeholder={placeholder}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Like withNotesPanel, but the right rail hosts multiple labeled sub-sections
+ * under a single section key (persisted as JSON { notes: { ...subKeys } }).
+ */
+function withMultiNotesPanel(
+  caseId: number | undefined,
+  sectionKey: string,
+  notesTitle: string,
+  sections: readonly NotesSection[],
+  body: React.ReactNode,
+): React.JSX.Element {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '70% 30%', height: '100%', overflow: 'hidden' }}>
+      <div style={{ overflowY: 'auto', minWidth: 0, padding: '8px 16px' }}>{body}</div>
+      <div style={{ overflowY: 'hidden', minWidth: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg-soft)' }}>
+        {caseId !== undefined && (
+          <MultiNotesPanel
+            caseId={caseId}
+            sectionKey={sectionKey}
+            title={notesTitle}
+            sections={sections}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Pipeline stage constants
@@ -68,6 +146,9 @@ function getStageLabel(stage: string | null): string {
   const found = PIPELINE_STAGE_LIST.find((s) => s.key === stage)
   return found?.label ?? stage
 }
+
+// Shared notes primitives + flush registry live in components/notes/NotesPrimitives.
+// See imports at top of file.
 
 // ---------------------------------------------------------------------------
 // Instrument data
@@ -233,6 +314,247 @@ const INSTRUMENT_INFO: Record<string, InstrumentInfo> = {
   },
 }
 
+// Deterministic mock score generator keyed off instrument + case, so the
+// displayed values are stable across renders and demo-credible. Real scoring
+// will replace this when the scoring pipeline lands.
+interface MockScore {
+  readonly score: number
+  readonly scoreDisplay: string          // e.g. "72T", "BR 82", "105 (Standard)", "48/50"
+  readonly metricLabel: string           // "T-score", "Base Rate", "Standard Score", "Raw"
+  readonly rangeLow: number
+  readonly rangeHigh: number
+  readonly rangeDisplay: string          // e.g. "40-64", "90-109"
+  readonly bandLabel: string             // "Within expected range", "Elevated", etc.
+  readonly bandTone: 'ok' | 'watch' | 'elevated' | 'clinical' | 'severe' | 'invalid'
+  readonly dateISO: string
+  /** 'N/A' when the instrument has no validity scales. */
+  readonly validity: 'Passed' | 'Questionable' | 'Invalid' | 'N/A'
+  readonly outOfRange: boolean
+  readonly examiner: string
+  readonly setting: string
+  readonly elevations: readonly { readonly scale: string; readonly fullName: string; readonly value: number; readonly display: string; readonly elevated: boolean }[]
+  readonly validityScales: readonly { readonly code: string; readonly fullName: string; readonly display: string; readonly status: 'Passed' | 'Questionable' | 'Invalid'; readonly rule: string }[]
+  readonly interpretation: string
+  readonly recommendation: string
+  readonly publisher: string
+  readonly scoreLabel: string
+}
+
+function hashString(s: string): number {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+// Legacy preset list (superseded by INSTRUMENT_NORMS from '../../data/instrumentNorms').
+// Retained temporarily to avoid a broad refactor; mock generator below uses the
+// authoritative norms.
+const _LEGACY_INSTRUMENT_SCALE_PRESETS: Record<string, { clinical: readonly string[]; validity: readonly string[] }> = {
+  'MMPI-3': {
+    clinical: ['RCd Demoralization', 'RC1 Somatic', 'RC2 Low Positive', 'RC4 Antisocial', 'RC6 Ideas Persecution', 'RC7 Dysfunctional Negative', 'RC8 Aberrant Experiences', 'RC9 Hypomanic Activation'],
+    validity: ['VRIN-r', 'TRIN-r', 'F-r', 'Fp-r', 'Fs', 'FBS-r', 'L-r', 'K-r'],
+  },
+  'PAI': {
+    clinical: ['SOM Somatic', 'ANX Anxiety', 'ARD Anxiety-Related', 'DEP Depression', 'MAN Mania', 'PAR Paranoia', 'SCZ Schizophrenia', 'BOR Borderline', 'ANT Antisocial', 'ALC Alcohol', 'DRG Drug'],
+    validity: ['ICN Inconsistency', 'INF Infrequency', 'NIM Negative Impression', 'PIM Positive Impression'],
+  },
+  'MCMI-IV': {
+    clinical: ['Schizoid', 'Avoidant', 'Dependent', 'Histrionic', 'Narcissistic', 'Antisocial', 'Sadistic', 'Compulsive', 'Negativistic', 'Masochistic', 'Borderline', 'Paranoid'],
+    validity: ['Disclosure (X)', 'Desirability (Y)', 'Debasement (Z)', 'Invalidity (V)'],
+  },
+  'WAIS-V': {
+    clinical: ['VCI Verbal Comprehension', 'VSI Visual Spatial', 'FRI Fluid Reasoning', 'WMI Working Memory', 'PSI Processing Speed', 'FSIQ Full Scale IQ'],
+    validity: ['Reliable Digit Span'],
+  },
+  'TOMM': { clinical: ['Trial 1', 'Trial 2', 'Retention'], validity: ['Cutoff (<45 = failure)'] },
+  'SIRS-2': {
+    clinical: ['RS Rare Symptoms', 'SC Symptom Combinations', 'IA Improbable/Absurd', 'BL Blatant', 'SU Subtle', 'SEV Severity', 'SEL Selectivity', 'RO Reported vs Observed'],
+    validity: ['Modified Total Index'],
+  },
+  'PCL-R': { clinical: ['Factor 1 Interpersonal/Affective', 'Factor 2 Lifestyle/Antisocial', 'Total'], validity: [] },
+  'HCR-20v3': { clinical: ['Historical (10 items)', 'Clinical (5 items)', 'Risk Management (5 items)'], validity: [] },
+  'HCR-20': { clinical: ['Historical', 'Clinical', 'Risk Management'], validity: [] },
+  'CAPS-5': { clinical: ['Criterion B Intrusion', 'Criterion C Avoidance', 'Criterion D Cognition/Mood', 'Criterion E Arousal'], validity: [] },
+  'BDI-II': { clinical: ['Total'], validity: [] },
+  'BAI': { clinical: ['Total'], validity: [] },
+  'M-FAST': { clinical: ['Total'], validity: ['Cutoff (>=6 = screen positive)'] },
+  'SIMS': { clinical: ['LI Low Intelligence', 'AF Affective Disorders', 'NI Neurologic Impairment', 'P Psychosis', 'AM Amnestic Disorders'], validity: ['Total (>14 = screen positive)'] },
+}
+
+const EXAMINERS = ['Dr. Alvarez, PhD, ABPP', 'Dr. Bennett, PsyD', 'Dr. Okafor, PhD', 'Dr. Rivera, PsyD, ABPP']
+const SETTINGS = ['Office, quiet room', 'Forensic unit, interview room 3', 'Detention facility, private room', 'Telehealth, proctored']
+
+// Metric formatters -- render score text appropriately for each instrument family.
+function formatMetricValue(metric: ScoreMetric, v: number, key: string): string {
+  switch (metric) {
+    case 'T': return `${v}T`
+    case 'BR': return `BR ${v}`
+    case 'StdScore': return String(v)
+    case 'Pct': return `${v}%`
+    case 'Structured': {
+      const labels = ['Low', 'Moderate', 'High']
+      return labels[Math.max(0, Math.min(2, v - 1))] ?? String(v)
+    }
+    case 'Raw':
+    default:
+      if (key === 'TOMM') return `${v}/50`
+      if (key === 'SIRS-2') {
+        const cls = ['Genuine', 'Indeterminate-General', 'Indeterminate-Psychiatric', 'Probable Feigning', 'Definite Feigning']
+        return cls[Math.max(0, Math.min(4, v))]
+      }
+      return String(v)
+  }
+}
+
+function metricDisplayLabel(metric: ScoreMetric): string {
+  switch (metric) {
+    case 'T': return 'T-score'
+    case 'BR': return 'Base Rate (BR)'
+    case 'StdScore': return 'Standard Score'
+    case 'Raw': return 'Raw'
+    case 'Structured': return 'SPJ Rating'
+    case 'Pct': return 'Mean %'
+  }
+}
+
+function mockScoreForInstrument(key: string, caseId: string): MockScore {
+  const h = hashString(`${caseId}:${key}`)
+  const norm = INSTRUMENT_NORMS[key]
+
+  // Administration date 2..60 days ago
+  const daysAgo = 2 + ((h >>> 8) % 58)
+  const d = new Date()
+  d.setDate(d.getDate() - daysAgo)
+  const dateISO = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
+
+  // Fallback for instruments without a registered norm (should be rare).
+  if (!norm) {
+    return {
+      score: 0,
+      scoreDisplay: '—',
+      metricLabel: 'Raw',
+      rangeLow: 0, rangeHigh: 0, rangeDisplay: '—',
+      bandLabel: 'Norms unavailable', bandTone: 'watch',
+      dateISO,
+      validity: 'N/A',
+      outOfRange: false,
+      examiner: EXAMINERS[h % EXAMINERS.length],
+      setting: SETTINGS[(h >>> 4) % SETTINGS.length],
+      elevations: [],
+      validityScales: [],
+      interpretation: 'Norms not yet registered for this instrument; see publisher manual.',
+      recommendation: 'Add norm definition to instrumentNorms.ts for full interpretation.',
+      publisher: 'Unknown',
+      scoreLabel: '—',
+    }
+  }
+
+  // Pick a plausible primary score based on the instrument's metric and bands.
+  // Bias toward normal for most cases, with ~30% elevated profiles.
+  const profileRoll = (h >>> 24) % 100
+  let targetBand = norm.bands[0]
+  if (profileRoll < 55) targetBand = norm.bands.find((b) => b.tone === 'ok') ?? norm.bands[0]
+  else if (profileRoll < 78) targetBand = norm.bands.find((b) => b.tone === 'watch' || b.tone === 'elevated') ?? norm.bands[norm.bands.length - 1]
+  else if (profileRoll < 94) targetBand = norm.bands.find((b) => b.tone === 'elevated' || b.tone === 'clinical') ?? norm.bands[norm.bands.length - 1]
+  else targetBand = norm.bands.find((b) => b.tone === 'severe' || b.tone === 'invalid') ?? norm.bands[norm.bands.length - 1]
+  const score = targetBand.min + ((h >>> 2) % Math.max(1, targetBand.max - targetBand.min + 1))
+
+  const band = bandForScore(norm, score)
+  const outOfRange = score < norm.normalRange[0] || score > norm.normalRange[1]
+
+  // Per-scale elevations — 1..4 scales with realistic metric values.
+  const clinical = norm.clinicalScales
+  const elevCount = clinical.length === 0 ? 0 : Math.min(clinical.length, 1 + ((h >>> 6) % 4))
+  const elevations = Array.from({ length: elevCount }, (_, i) => {
+    const c = clinical[(h + i * 11) % clinical.length]
+    const cutoff = c.elevationCutoff ?? norm.normalRange[1]
+    const jitter = (h >>> (i * 3)) % 25
+    // ~60% of picked scales elevated
+    const isElev = ((h >>> (i * 5)) % 10) < 6
+    const scaleMetric = c.metric ?? norm.metric
+    let v: number
+    if (isElev) v = cutoff + jitter
+    else v = Math.max(norm.normalRange[0], cutoff - 5 - jitter)
+    // Subtest override (Wechsler scaled scores M=10, SD=3)
+    if (scaleMetric === 'Raw' && norm.metric === 'StdScore') v = 7 + (jitter % 10)
+    return {
+      scale: c.code,
+      fullName: c.fullName,
+      value: v,
+      display: formatMetricValue(scaleMetric, v, key),
+      elevated: v >= cutoff,
+    }
+  })
+
+  // Validity scales — instrument-specific. Empty array => validity N/A.
+  const hasValidity = norm.validityScales.length > 0
+  const validityScaleDetail = norm.validityScales.slice(0, 4).map((vs, i) => {
+    // ~70% passed, 20% questionable, 10% invalid when validity scales exist
+    const roll = (h >>> (10 + i * 3)) % 10
+    const status: 'Passed' | 'Questionable' | 'Invalid' = roll < 7 ? 'Passed' : roll < 9 ? 'Questionable' : 'Invalid'
+    const [lo, hi] = vs.typicalRange
+    let v = lo + ((h >>> (i * 4)) % Math.max(1, hi - lo + 1))
+    if (status === 'Questionable' && vs.concernCutoff != null) v = vs.concernCutoff + ((h >>> (i * 2)) % 5)
+    else if (status === 'Invalid' && vs.invalidCutoff != null) v = vs.invalidCutoff + ((h >>> (i * 2)) % 8)
+    return {
+      code: vs.code,
+      fullName: vs.fullName,
+      display: formatMetricValue(vs.metric, v, key),
+      status,
+      rule: vs.rule,
+    }
+  })
+  const overallValidity: MockScore['validity'] = !hasValidity
+    ? 'N/A'
+    : validityScaleDetail.some((v) => v.status === 'Invalid')
+    ? 'Invalid'
+    : validityScaleDetail.some((v) => v.status === 'Questionable')
+    ? 'Questionable'
+    : 'Passed'
+
+  const INTERP_BY_TONE: Record<string, string> = {
+    ok: `Profile within expected limits for ${norm.administrationType.replace('-', ' ')}; no marked elevations on ${norm.metric === 'T' ? 'RC/clinical scales' : 'primary scales'}.`,
+    watch: 'Scores in subclinical range; monitor and integrate with interview data before formulation.',
+    elevated: 'Clinically significant elevations present; inconsistent with collateral history warrants follow-up.',
+    clinical: 'Pattern consistent with active psychopathology; supports documented differential.',
+    severe: 'Markedly elevated profile; severity exceeds typical forensic referral range and may reflect decompensation or overreporting.',
+    invalid: 'Response pattern raises significant validity concerns; interpret clinical findings with caution.',
+  }
+  const RECS_BY_TONE: Record<string, string> = {
+    ok: 'No additional testing indicated on this measure; integrate with interview and records.',
+    watch: 'Re-administer at next contact to confirm stability; cross-reference with collateral.',
+    elevated: `Follow up with structured interview targeting elevations (e.g., ${norm.clinicalScales[0]?.code ?? 'primary scale'}).`,
+    clinical: 'Results support continued evaluation along current differential; document in diagnostic formulation.',
+    severe: 'Review validity indicators carefully before clinical interpretation; consider collateral / additional PVTs.',
+    invalid: 'Do not interpret clinical scales; consider re-administration with motivation-enhancing instructions or alternate instrument.',
+  }
+
+  return {
+    score,
+    scoreDisplay: formatMetricValue(norm.metric, score, key),
+    metricLabel: metricDisplayLabel(norm.metric),
+    rangeLow: norm.normalRange[0],
+    rangeHigh: norm.normalRange[1],
+    rangeDisplay: `${norm.normalRange[0]}-${norm.normalRange[1]}`,
+    bandLabel: band.label,
+    bandTone: band.tone,
+    dateISO,
+    validity: overallValidity,
+    outOfRange,
+    examiner: EXAMINERS[h % EXAMINERS.length],
+    setting: SETTINGS[(h >>> 4) % SETTINGS.length],
+    elevations,
+    validityScales: validityScaleDetail,
+    interpretation: INTERP_BY_TONE[band.tone],
+    recommendation: RECS_BY_TONE[band.tone],
+    publisher: norm.publisher,
+    scoreLabel: norm.scoreLabel,
+  }
+}
+
 function getInstrumentsForEvalType(evalType: string | null): string[] {
   const et = (evalType ?? '').toLowerCase()
   if (et.includes('cst') || et.includes('fitness') || et.includes('competency')) {
@@ -375,7 +697,6 @@ type OverviewSubTab =
   | 'interviews'
   | 'diagnostics'
   | 'report'
-  | 'archive'
 
 interface SubTabDef {
   readonly id: OverviewSubTab
@@ -394,7 +715,6 @@ const ALL_SUB_TABS: SubTabDef[] = [
   { id: 'diagnostics', label: 'Diagnostics', doneAtStage: 4 }, // done when past diagnostics
   { id: 'report', label: 'Reports', doneAtStage: 5 },        // done when complete
   { id: 'collateral', label: 'Documents', doneAtStage: 5 },  // after reports, file browser
-  { id: 'archive', label: 'Archive', doneAtStage: 5 },       // done when complete
 ]
 
 // ---------------------------------------------------------------------------
@@ -518,15 +838,45 @@ export default function CenterColumn({
             onRefresh={onRefreshCases}
           />
         ) : activeTab.type === 'tests' ? (
-          <TestResultsTab caseId={activeTab.caseId!} onImportScores={onImportScores} />
+          withNotesPanel(
+            activeTab.caseId,
+            'testing_notes',
+            'Testing Notes',
+            'Protocol observations, validity indicators, administration anomalies, score interpretation concerns...',
+            <TestResultsTab caseId={activeTab.caseId!} onImportScores={onImportScores} />,
+          )
         ) : activeTab.type === 'diagnostics' ? (
-          <DiagnosticsTab caseId={activeTab.caseId!} />
+          withNotesPanel(
+            activeTab.caseId,
+            'diagnostics_notes',
+            'Diagnostic Reasoning',
+            'Differential reasoning, data convergence, rule-out rationale, Daubert considerations...',
+            <DiagnosticsTab caseId={activeTab.caseId!} />,
+          )
         ) : activeTab.type === 'report' ? (
-          <EvalReportTab caseId={activeTab.caseId!} />
+          withNotesPanel(
+            activeTab.caseId,
+            'report_notes',
+            'Report Drafting Notes',
+            'Section-level edits, tone concerns, citation gaps, legal framing adjustments...',
+            <EvalReportTab caseId={activeTab.caseId!} />,
+          )
         ) : activeTab.type === 'attestation' ? (
-          <AttestationTab caseId={activeTab.caseId!} />
+          withNotesPanel(
+            activeTab.caseId,
+            'attestation_notes',
+            'Attestation Notes',
+            'Final checklist observations, signature caveats, transmittal notes...',
+            <AttestationTab caseId={activeTab.caseId!} />,
+          )
         ) : activeTab.type === 'audit' ? (
-          <AuditTrailTab caseId={activeTab.caseId!} />
+          withNotesPanel(
+            activeTab.caseId,
+            'audit_notes',
+            'Audit Review Notes',
+            'Items flagged during audit review, integrity verification observations...',
+            <AuditTrailTab caseId={activeTab.caseId!} />,
+          )
         ) : activeTab.type === 'settings' ? (
           <SettingsTab onOpenTab={onOpenTab} />
         ) : activeTab.type === 'document-viewer' ? (
@@ -823,49 +1173,18 @@ function ClinicalOverviewContent({
     ? activeSubTab
     : 'intake'
 
-  const deadline = intakeRow?.report_deadline ?? null
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* ── Case header, name (left), metadata (right) ── */}
-      <div
-        style={{
-          padding: '10px 24px',
-          borderBottom: '1px solid var(--border)',
-          background: '#fff',
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>{fullName}</div>
-          <span
-            style={{
-              background: stageColor,
-              color: '#fff',
-              fontSize: 10,
-              fontWeight: 700,
-              borderRadius: 3,
-              padding: '2px 8px',
-              letterSpacing: 0.5,
-              textTransform: 'uppercase',
-              flexShrink: 0,
-            }}
-          >
-            {stageLabel}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>
-          <MetaChip label="Case #" value={caseRow.case_number} />
-          <MetaChip label="Opened" value={new Date(caseRow.created_at).toLocaleDateString()} />
-          {deadline != null && deadline !== '' && (
-            <MetaChip label="Due" value={new Date(deadline).toLocaleDateString()} />
-          )}
-        </div>
-      </div>
+      {/* ── Global 3-column case header (above sub-tab bar, persistent across tabs) ── */}
+      <CaseHeaderBar
+        caseRow={caseRow}
+        intakeRow={intakeRow}
+        onboardingSections={onboardingSections}
+        stageIndex={stageIndex}
+        stageLabel={stageLabel}
+        stageColor={stageColor}
+        fullName={fullName}
+      />
 
       {/* ── Sub-tab bar, tabs (left), action buttons (right) ── */}
       <div
@@ -908,10 +1227,42 @@ function ClinicalOverviewContent({
           })}
         </div>
 
+        {/* Sub-tab-specific action buttons (Interviews: Import / New Session) */}
+        {effectiveSubTab === 'interviews' && (
+          <div style={{ display: 'flex', gap: 8, marginRight: 12, flexShrink: 0 }}>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('psygil:interviews:import'))}
+              style={{
+                padding: '4px 14px', fontSize: 11, fontWeight: 500,
+                border: '1px solid var(--accent)', borderRadius: 4,
+                background: 'var(--panel)', color: 'var(--accent)',
+                cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+              }}
+            >
+              ＋ Import Transcripts
+            </button>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('psygil:interviews:new-session'))}
+              style={{
+                padding: '4px 14px', fontSize: 11, fontWeight: 500,
+                border: '1px solid var(--accent)', borderRadius: 4,
+                background: 'var(--panel)', color: 'var(--accent)',
+                cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+              }}
+            >
+              ＋ New Session
+            </button>
+          </div>
+        )}
+
         {/* Stage advance button, dynamic per active sub-tab */}
         {subTabAdvance && (
           <button
-            onClick={() => void handleSubTabAdvance()}
+            onClick={async () => {
+              // Flush any pending clinical-notes edits before advancing stage.
+              await flushAllPendingNotes()
+              void handleSubTabAdvance()
+            }}
             style={{
               margin: '0 12px',
               padding: '4px 14px',
@@ -938,29 +1289,297 @@ function ClinicalOverviewContent({
       </div>
 
       {/* ── Sub-tab content ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: effectiveSubTab === 'report' ? 0 : '20px 24px' }}>
+      <div style={{
+        flex: 1,
+        // All data sub-tabs host their own full-height column layout; outer chrome manages nothing
+        overflowY: 'hidden',
+        padding: 0,
+      }}>
         {effectiveSubTab === 'intake' && (
-          <IntakeSubTab caseRow={caseRow} intakeRow={intakeRow} onboardingSections={onboardingSections} onEdit={handleEditIntake} />
+          withMultiNotesPanel(
+            caseRow.case_id,
+            'intake_notes',
+            'Clinical Notes',
+            [
+              { key: 'background', label: 'Background & History', placeholder: 'Identity/household context, education/employment patterns, family history, current stressors...' },
+              { key: 'medical', label: 'Medical & Neurological', placeholder: 'TBI sequelae, medication effects on testing, substance use impact, functional limits...' },
+              { key: 'clinical', label: 'Clinical & Risk', placeholder: 'Risk level rationale, symptom consistency, prior treatment patterns, presenting concern observations...' },
+            ],
+            <SuppressInlineNotesContext.Provider value={true}>
+              <IntakeSubTab caseRow={caseRow} intakeRow={intakeRow} onboardingSections={onboardingSections} onEdit={handleEditIntake} />
+            </SuppressInlineNotesContext.Provider>,
+          )
         )}
         {effectiveSubTab === 'collateral' && (
-          <DocumentsSubTab caseRow={caseRow} intakeRow={intakeRow} stageIndex={stageIndex} onEdit={handleEditIntake} />
+          withMultiNotesPanel(
+            caseRow.case_id,
+            'documents_notes',
+            'Clinical Notes',
+            [
+              { key: 'document_review', label: 'Document Review', placeholder: 'Missing critical documents, inconsistencies across records, collateral source reliability...' },
+              { key: 'record_gaps', label: 'Record Gaps', placeholder: 'Key records not yet obtained, impact on evaluation, follow-up needed...' },
+              { key: 'file_notes', label: 'File Notes', placeholder: 'Notable discrepancies between records, files requiring follow-up...' },
+            ],
+            <DocumentsSubTab caseRow={caseRow} intakeRow={intakeRow} stageIndex={stageIndex} onEdit={handleEditIntake} onOpenTab={onOpenTab} />,
+          )
         )}
         {effectiveSubTab === 'testing' && (
-          <TestingSubTab caseRow={caseRow} stageIndex={stageIndex} />
+          withMultiNotesPanel(
+            caseRow.case_id,
+            'testing_notes',
+            'Testing Notes',
+            [
+              { key: 'battery', label: 'Battery Selection', placeholder: 'Rationale for instrument selection, additional tests needed, appropriateness for this population...' },
+              { key: 'validity', label: 'Validity & Effort', placeholder: 'Effort indicators, response style observations, embedded validity scale notes...' },
+              { key: 'observations', label: 'Testing Observations', placeholder: 'Behavioral observations during testing, rapport, attention, fatigue, environmental factors...' },
+            ],
+            <TestingSubTab caseRow={caseRow} stageIndex={stageIndex} />,
+          )
         )}
         {effectiveSubTab === 'interviews' && (
-          <InterviewsSubTab caseRow={caseRow} />
+          withMultiNotesPanel(
+            caseRow.case_id,
+            'interviews_notes',
+            'Clinical Notes',
+            [
+              { key: 'mse', label: 'Mental Status Observations', placeholder: 'Appearance, affect, thought process, cognitive status, reliability...' },
+              { key: 'content', label: 'Interview Content', placeholder: 'Key disclosures, inconsistencies, follow-up topics, response style...' },
+              { key: 'collaterals', label: 'Collateral Planning', placeholder: 'Sources needed, questions to ask, release status...' },
+            ],
+            <SuppressInlineNotesContext.Provider value={true}>
+              <InterviewsSubTab caseRow={caseRow} />
+            </SuppressInlineNotesContext.Provider>,
+          )
         )}
         {effectiveSubTab === 'diagnostics' && (
-          <DiagnosticsSubTab caseRow={caseRow} intakeRow={intakeRow} onboardingSections={onboardingSections} stageIndex={stageIndex} onBuildReport={handleBuildReport} />
+          // Diagnostics uses a custom unified-scroll 70/30 layout where each condition's
+          // Clinician Formulation renders in the right column, aligned with the condition
+          // on the left. Both sides scroll together as one.
+          <div style={{ height: '100%', overflowY: 'auto', minWidth: 0 }}>
+            <DiagnosticsSubTab caseRow={caseRow} intakeRow={intakeRow} onboardingSections={onboardingSections} stageIndex={stageIndex} onBuildReport={handleBuildReport} />
+          </div>
         )}
         {effectiveSubTab === 'report' && (
-          <ReportSubTab caseRow={caseRow} intakeRow={intakeRow} onboardingSections={onboardingSections} stageIndex={stageIndex} diagnosticFormulation={diagnosticFormulation} onRefreshCases={onRefreshCases} />
-        )}
-        {effectiveSubTab === 'archive' && (
-          <ArchiveSubTab caseRow={caseRow} />
+          withMultiNotesPanel(
+            caseRow.case_id,
+            'report_notes',
+            'Clinical Notes',
+            [
+              { key: 'section_edits', label: 'Section Edits', placeholder: 'Revisions per section, tone concerns, wording adjustments, redundancies to prune...' },
+              { key: 'citations', label: 'Citations & Data', placeholder: 'Missing citations, score references, record excerpts to weave in, source verification...' },
+              { key: 'legal_framing', label: 'Legal Framing', placeholder: 'Jurisdictional language, opinion qualifiers, statutory references, referral question alignment...' },
+            ],
+            <ReportSubTab caseRow={caseRow} intakeRow={intakeRow} onboardingSections={onboardingSections} stageIndex={stageIndex} diagnosticFormulation={diagnosticFormulation} onRefreshCases={onRefreshCases} />,
+          )
         )}
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// CaseHeaderBar, full-width 3-column case header shown above the sub-tab bar.
+// Persistent across every sub-tab (Intake, Testing, Interviews, Diagnostics,
+// Reports, Documents). Sources data from caseRow + intakeRow + onboarding.
+// ---------------------------------------------------------------------------
+
+function CaseHeaderBar({
+  caseRow,
+  intakeRow,
+  onboardingSections,
+  stageIndex,
+  stageLabel,
+  stageColor,
+  fullName,
+}: {
+  readonly caseRow: CaseRow
+  readonly intakeRow: PatientIntakeRow | null
+  readonly onboardingSections: readonly PatientOnboardingRow[]
+  readonly stageIndex: number
+  readonly stageLabel: string
+  readonly stageColor: string
+  readonly fullName: string
+}): React.JSX.Element {
+  const parsedOb = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {}
+    for (const row of onboardingSections) {
+      try { map[row.section] = JSON.parse(row.content) as Record<string, string> } catch { /* skip */ }
+    }
+    return map
+  }, [onboardingSections])
+
+  const age = caseRow.examinee_dob ? calcAge(caseRow.examinee_dob) : null
+  const instruments = getInstrumentsForEvalType(caseRow.evaluation_type)
+
+  const dob = caseRow.examinee_dob ?? null
+  const gender = caseRow.examinee_gender ?? null
+  const work = parsedOb.family?.current_employer
+    ?? parsedOb.education?.employment_history
+    ?? parsedOb.education?.current_employment
+    ?? null
+  const education = parsedOb.education?.highest_education
+    ?? parsedOb.family?.highest_education
+    ?? null
+  const family = parsedOb.family?.current_family_relationships
+    ?? parsedOb.family?.family_of_origin
+    ?? parsedOb.family?.marital_status
+    ?? null
+  const concern = parsedOb.complaints?.primary_complaint
+    ?? intakeRow?.presenting_complaint
+    ?? null
+  const battery = instruments.length > 0 ? instruments.join(', ') : null
+
+  const evalType = intakeRow?.eval_type ?? caseRow.evaluation_type ?? null
+  const stageName = ['Onboarding', 'Testing', 'Interview', 'Diagnostics', 'Review', 'Complete'][stageIndex] ?? stageLabel
+  const referral = intakeRow?.referral_source ?? caseRow.referral_source ?? null
+  const attorney = intakeRow?.attorney_name ?? null
+  const jurisdiction = intakeRow?.jurisdiction ?? null
+  const charges = intakeRow?.charges ?? null
+
+  const intakeDate = intakeRow?.created_at
+    ? intakeRow.created_at.split('T')[0]
+    : caseRow.created_at?.split('T')[0] ?? null
+  const dueDate = intakeRow?.report_deadline ?? null
+  const setting = parsedOb.contact?.eval_setting ?? 'In-Person'
+  const language = parsedOb.contact?.primary_language ?? null
+
+  // Risk flags (forensic-critical, preserved from Diagnostics header)
+  const hasViolence = parsedOb.mental?.violence_history && !parsedOb.mental.violence_history.toLowerCase().includes('denies')
+  const hasSelfHarm = parsedOb.mental?.self_harm_history && !parsedOb.mental.self_harm_history.toLowerCase().includes('denies')
+  const hasSubstance = parsedOb.substance?.drug_use && !parsedOb.substance.drug_use.toLowerCase().includes('denies')
+  const hasTBI = parsedOb.health?.head_injuries && !parsedOb.health.head_injuries.toLowerCase().includes('no reported')
+  const hasRiskFlag = hasViolence || hasSelfHarm || hasSubstance || hasTBI
+
+  return (
+    <div
+      style={{
+        padding: '8px 18px 6px',
+        borderBottom: '1px solid var(--border)',
+        background: '#fff',
+        flexShrink: 0,
+      }}
+    >
+      {/* Title row: name + stage badge + case # */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{fullName}</div>
+        <span
+          style={{
+            background: stageColor,
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 700,
+            borderRadius: 3,
+            padding: '2px 8px',
+            letterSpacing: 0.5,
+            textTransform: 'uppercase',
+            flexShrink: 0,
+          }}
+        >
+          {stageLabel}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+          <span style={{ fontWeight: 600 }}>Case #:</span> {caseRow.case_number}
+        </span>
+      </div>
+
+      {/* 3-column grid, fixed 300px per column. */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 300px)',
+          columnGap: 22,
+          rowGap: 2,
+        }}
+      >
+        <div>
+          <HeaderRow label="DOB / Gender" value={dob && age ? `${dob} (${age})${gender ? ', ' + gender : ''}` : gender ?? null} />
+          <HeaderRow label="Work" value={work} />
+          <HeaderRow label="Education" value={education} />
+          <HeaderRow label="Family" value={family} />
+        </div>
+        <div>
+          <HeaderRow label="Eval / Stage" value={evalType ? `${evalType} · ${stageName}` : stageName} />
+          <HeaderRow
+            label="Referral"
+            value={[referral, attorney, jurisdiction].filter((s) => s != null && s !== '').join(' · ') || null}
+          />
+          <HeaderRow label="Charges" value={charges} />
+        </div>
+        <div>
+          <HeaderRow
+            label="Intake / Due"
+            value={intakeDate || dueDate ? `${intakeDate ?? '—'}${dueDate ? '   Due ' + dueDate : ''}` : null}
+          />
+          <HeaderRow label="Setting" value={setting} />
+          <HeaderRow label="Language" value={language} />
+        </div>
+      </div>
+
+      {/* Full-width Concern + Test Battery rows, separated from the 3-column grid by a top border. */}
+      <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid var(--border)' }}>
+        <HeaderRow label="Concern" value={concern} fullWidth />
+        <HeaderRow label="Test Battery" value={battery} fullWidth />
+      </div>
+
+      {/* Risk flags banner, forensic-critical */}
+      {hasRiskFlag ? (
+        <div style={{
+          marginTop: 6,
+          padding: '4px 8px',
+          background: '#fff8e1',
+          borderLeft: '3px solid #ff9800',
+          fontSize: 10,
+          color: '#795548',
+          lineHeight: 1.4,
+          borderRadius: '0 4px 4px 0',
+        }}>
+          <strong>Flagged: </strong>
+          {hasViolence && <span>Violence hx. </span>}
+          {hasSelfHarm && <span>Self-harm hx. </span>}
+          {hasSubstance && <span>Substance use. </span>}
+          {hasTBI && <span>TBI hx. </span>}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function HeaderRow({
+  label,
+  value,
+  fullWidth = false,
+}: {
+  readonly label: string
+  readonly value: string | null | undefined
+  readonly fullWidth?: boolean
+}): React.JSX.Element {
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '92px 1fr',
+      fontSize: 11.5,
+      lineHeight: 1.45,
+      minHeight: 16,
+    }}>
+      <span style={{
+        fontSize: 10,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+        color: 'var(--text-secondary)',
+      }}>
+        {label}
+      </span>
+      <span style={{
+        color: value ? 'var(--text)' : 'var(--text-secondary)',
+        opacity: value ? 1 : 0.55,
+        overflow: fullWidth ? 'visible' : 'hidden',
+        textOverflow: fullWidth ? 'clip' : 'ellipsis',
+        whiteSpace: fullWidth ? 'normal' : 'nowrap',
+        wordBreak: fullWidth ? 'break-word' : undefined,
+      }}>
+        {value ?? '—'}
+      </span>
     </div>
   )
 }
@@ -1140,6 +1759,72 @@ function SnapshotSection({ title, items, emptyText }: {
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Mockup-language primitives (Background tab)
+// Mirrors `.mock-field` / section heads from the marketing demo page.
+// Mono labels read as "captured data"; Inter values read as "human content".
+// Empty fields render italic "Clinician has not entered" (no placeholder dashes).
+// ─────────────────────────────────────────────────────────────────────────
+
+function joinName(first: string | null | undefined, last: string | null | undefined): string | undefined {
+  const f = (first ?? '').trim()
+  const l = (last ?? '').trim()
+  if (!f && !l) return undefined
+  if (l && f) return `${l}, ${f}`
+  return l || f
+}
+
+// MockField, MockSection moved to components/notes/NotesPrimitives.
+
+// ─── Right-rail styles (Background tab) ──────────────────────────────────
+const notesRailStyle: React.CSSProperties = {
+  width: '33%',
+  flexShrink: 0,
+  borderLeft: '1px solid var(--border)',
+  background: 'var(--bg-soft)',
+  overflowY: 'auto',
+  padding: '20px 22px 32px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 18,
+}
+
+const railEyebrow: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  color: 'var(--accent)',
+}
+
+const railTitle: React.CSSProperties = {
+  fontSize: 16,
+  fontWeight: 600,
+  color: 'var(--text)',
+  marginTop: 2,
+}
+
+const railBulletListStyle: React.CSSProperties = {
+  margin: 0,
+  paddingLeft: 18,
+  listStyleType: 'disc',
+}
+
+const railBulletItemStyle: React.CSSProperties = {
+  fontSize: 12.5,
+  color: 'var(--text)',
+  lineHeight: 1.55,
+  marginBottom: 4,
+}
+
+// SectionPair, MockSection, MockField, per-section note styles, and rail label/body
+// styles moved to components/notes/NotesPrimitives.
+// Local aliases keep existing callsites working.
+const bgGridStyle = notesGridStyle
+const bgLeftCellStyle = notesLeftCellStyle
+const bgRightCellStyle = notesRightCellStyle
+
 function IntakeSubTab({
   caseRow,
   intakeRow,
@@ -1213,6 +1898,8 @@ function IntakeSubTab({
       medical: 'health', medications: 'health',
       mental: 'mental', risk: 'mental',
       substance: 'substance',
+      // Background tab (mockup-style rail) consolidates identity/family/education notes into 'contact'
+      background: 'contact',
     }
     const section = sectionMap[noteKey] ?? noteKey
     const existingRow = onboardingSections.find((r) => r.section === section)
@@ -1231,12 +1918,64 @@ function IntakeSubTab({
     }
   }, [caseRow.case_id, onboardingSections, clinNotes])
 
-  return (
-    <div>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Patient Information</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+  // ── Background tab: per-section notes, persisted as JSON in 'background_notes' onboarding row ──
+  const [bgNotes, setBgNotes] = useState<Record<string, string>>({})
+  const bgNotesLoaded = useRef(false)
+
+  useEffect(() => {
+    if (bgNotesLoaded.current) return
+    const row = onboardingSections.find((r) => (r.section as string) === 'background_notes')
+    if (row?.content) {
+      try { setBgNotes(JSON.parse(row.content) as Record<string, string>) } catch { /* ignore parse errors */ }
+    }
+    bgNotesLoaded.current = true
+  }, [onboardingSections])
+
+  const updateBg = useCallback((key: string, value: string) => {
+    setBgNotes((prev) => ({ ...prev, [key]: value }))
+  }, [])
+
+  const saveBgNotes = useCallback(async () => {
+    try {
+      await window.psygil.onboarding.save({
+        case_id: caseRow.case_id,
+        section: 'background_notes' as any,
+        data: { content: JSON.stringify(bgNotes), status: 'draft' },
+      })
+    } catch (err) {
+      console.error('[IntakeSubTab] Failed to save background notes:', err)
+    }
+  }, [caseRow.case_id, bgNotes])
+
+  // Register with global flush registry so stage-advance and other
+  // cross-cutting navigation force a save before leaving.
+  useEffect(() => registerFlushHandler(saveBgNotes), [saveBgNotes])
+
+  // Flush all per-key clinical notes (Medical + Clinical tabs) on stage advance.
+  const saveAllClinNotes = useCallback(async () => {
+    const keys = Object.keys(clinNotes)
+    for (const key of keys) {
+      try {
+        await saveNote(key)
+      } catch (err) {
+        console.error('[IntakeSubTab] Failed to flush clin note:', key, err)
+      }
+    }
+  }, [clinNotes, saveNote])
+  useEffect(() => registerFlushHandler(saveAllClinNotes), [saveAllClinNotes])
+
+  // Inner tab strip. Matches the Testing-reference standard: no wrapper
+  // title / action bar above the content; inner nav + status + Edit sit
+  // on a single row flush under the main tab bar.
+  const headerAndTabs = (
+    <div style={{ padding: '8px 24px 0', flexShrink: 0 }}>
+      <div style={{ ...innerTabBarStyle, justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 0 }}>
+          {INTAKE_INNER_TABS.map((t) => (
+            <button key={t.id} onClick={() => setActiveInner(t.id)} style={innerTabStyle(activeInner === t.id)}>{t.label}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 4 }}>
           {intakeRow && (
             <span style={{ fontSize: 11, fontWeight: 600, color: intakeRow.status === 'complete' ? '#4caf50' : '#ff9800' }}>
               {intakeRow.status === 'complete' ? '✓ Complete' : '⏳ Draft'}
@@ -1245,302 +1984,271 @@ function IntakeSubTab({
           <button onClick={onEdit} style={editBtnStyle}>Edit</button>
         </div>
       </div>
+    </div>
+  )
 
-      {/* Tab bar */}
-      <div style={innerTabBarStyle}>
-        {INTAKE_INNER_TABS.map((t) => (
-          <button key={t.id} onClick={() => setActiveInner(t.id)} style={innerTabStyle(activeInner === t.id)}>{t.label}</button>
-        ))}
-      </div>
+  // ─────────────────────────────────────────────────────────────────────────
+  // TAB 1: Background, full-height 67/33 split with mockup-styled content
+  // and a persistent right-side notes rail (Reports tab pattern, refined).
+  // ─────────────────────────────────────────────────────────────────────────
+  if (activeInner === 'overview') {
+    const pair = (key: string, title: string, placeholder: string, fields: React.ReactNode, cols: 1 | 2 = 1) => (
+      <SectionPair
+        key={key}
+        title={title}
+        noteKey={key}
+        value={bgNotes[key] ?? ''}
+        onChange={updateBg}
+        onBlur={saveBgNotes}
+        placeholder={placeholder}
+        cols={cols}
+      >
+        {fields}
+      </SectionPair>
+    )
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        {headerAndTabs}
+        {/* Single scroller; left content + right notes share the same scroll position */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <NotesBodyGrid>
+            {pair('identity_living', 'Identity & Living Situation',
+              'Presentation discrepancies, language/interpreter needs, household stability, cultural considerations...',
+              <>
+                <MockField label="Name" value={joinName(caseRow.examinee_first_name, caseRow.examinee_last_name)} />
+                <MockField label="DOB / Age" value={caseRow.examinee_dob ? `${caseRow.examinee_dob} (${calcAge(caseRow.examinee_dob)})` : undefined} />
+                <MockField label="Gender" value={caseRow.examinee_gender ?? undefined} />
+                <MockField label="Language" value={demo?.primary_language} />
+                <MockField label="Marital" value={demo?.marital_status} />
+                <MockField label="Dependents" value={demo?.dependents} />
+                <MockField label="Housing" value={demo?.living_situation} wide />
+              </>,
+              2,
+            )}
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          TAB 1: Background
-          Three columns: identity & living | education & family | clinical notes
-          ═══════════════════════════════════════════════════════════════════ */}
-      {activeInner === 'overview' && (
-        <div style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={threeColGrid}>
-            {/* ── COL 1: Identity, living situation ── */}
-            <div>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Identity" />
-                  <DataRow label="Name" value={`${caseRow.examinee_last_name ?? ','}, ${caseRow.examinee_first_name ?? ''}`} />
-                  <DataRow label="DOB / Age" value={caseRow.examinee_dob ? `${caseRow.examinee_dob} (${calcAge(caseRow.examinee_dob)})` : undefined} />
-                  <DataRow label="Gender" value={caseRow.examinee_gender ?? undefined} />
-                  <DataRow label="Language" value={demo?.primary_language} />
-                </tbody>
-              </table>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Living Situation" />
-                  <DataRow label="Marital" value={demo?.marital_status} />
-                  <DataRow label="Dependents" value={demo?.dependents} />
-                  <DataRow label="Housing" value={demo?.living_situation} />
-                </tbody>
-              </table>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Education & Employment" />
-                  <DataRow label="Education" value={edu?.highest_education ?? fam?.highest_education} />
-                  <DataRow label="Employment" value={edu?.employment_status ?? fam?.employment_status} />
-                  <DataRow label="Employer" value={edu?.current_employer ?? fam?.current_employer} />
-                  <DataRow label="Military" value={edu?.military_service ?? fam?.military_service} />
-                </tbody>
-              </table>
-            </div>
+            {pair('education_employment', 'Education & Employment',
+              'Cognitive indicators, employment stability, vocational capacity, academic difficulties, work history patterns...',
+              <>
+                <MockField label="Education" value={edu?.highest_education ?? fam?.highest_education} />
+                <MockField label="Employer" value={edu?.current_employer ?? fam?.current_employer} />
+                <MockField label="Military" value={edu?.military_service ?? fam?.military_service} />
+                <MockField label="Work History" value={edu?.work_history ?? fam?.work_history} wide />
+                <MockField label="Academic Hx" value={edu?.academic_experience ?? fam?.academic_experience} wide />
+              </>,
+              2,
+            )}
 
-            {/* ── COL 2: Family background (short fields) ── */}
-            <div>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Family Background" />
-                  <DataRow label="Family Psych Hx" value={summaryNote(fam?.family_mental_health)} fullText={fam?.family_mental_health} />
-                  <DataRow label="Family Medical Hx" value={summaryNote(fam?.family_medical_history)} fullText={fam?.family_medical_history} />
-                </tbody>
-              </table>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Current Stressors" />
-                  <DataRow label="Eval Goals" value={summaryNote(recent?.goals_evaluation)} fullText={recent?.goals_evaluation} />
-                </tbody>
-              </table>
-            </div>
+            {pair('family_history', 'Family History',
+              'Heritable risk patterns, intergenerational trauma, support system, attachment patterns, current relational quality...',
+              <>
+                <MockField label="Family Psych Hx" value={fam?.family_mental_health} />
+                <MockField label="Family Medical Hx" value={fam?.family_medical_history} />
+                <MockField label="Family of Origin" value={fam?.family_of_origin} />
+                <MockField label="Relationships" value={fam?.current_family_relationships} />
+              </>,
+            )}
 
-            {/* ── COL 3: Clinical Notes ── */}
-            <div style={clinNotesColumnStyle}>
-              <div style={clinNotesColumnHeader}>Clinical Notes</div>
-              <ClinicalNoteField
-                label="Identity & Presentation"
-                value={clinNotes.demographics ?? ''}
-                onChange={(v) => updateNote('demographics', v)}
-                onBlur={() => void saveNote('demographics')}
-                placeholder="Presentation discrepancies, living stability, language/interpreter needs, cultural considerations..."
-              />
-              <ClinicalNoteField
-                label="Education & Employment"
-                value={clinNotes.education ?? ''}
-                onChange={(v) => updateNote('education', v)}
-                onBlur={() => void saveNote('education')}
-                placeholder="Cognitive indicators, employment stability, vocational capacity, academic difficulties..."
-              />
-              <ClinicalNoteField
-                label="Family & Stressors"
-                value={clinNotes.family ?? ''}
-                onChange={(v) => updateNote('family', v)}
-                onBlur={() => void saveNote('family')}
-                placeholder="Support system, intergenerational patterns, precipitating factors, protective factors..."
-              />
-            </div>
-          </div>
+            {pair('current_stressors', 'Current Situation & Stressors',
+              'Acute precipitants, chronic load, recent events shaping presentation, motivation for evaluation, immediate concerns...',
+              <>
+                <MockField label="Eval Goals" value={recent?.goals_evaluation} />
+                <MockField label="Events" value={recent?.events_circumstances} />
+                <MockField label="Stressors" value={recent?.current_stressors} />
+              </>,
+            )}
 
-          {/* ── Full-width narrative summaries below the grid ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, marginTop: 4 }}>
-            <table style={dataTableStyle}>
-              <tbody>
-                <SectionHead title="Family & Relationships" />
-                <DataRow label="Family of Origin" value={summaryNote(fam?.family_of_origin)} fullText={fam?.family_of_origin} />
-                <DataRow label="Relationships" value={summaryNote(fam?.current_family_relationships)} fullText={fam?.current_family_relationships} />
-              </tbody>
-            </table>
-            <table style={dataTableStyle}>
-              <tbody>
-                <SectionHead title="Current Circumstances" />
-                <DataRow label="Events" value={summaryNote(recent?.events_circumstances)} fullText={recent?.events_circumstances} />
-                <DataRow label="Stressors" value={summaryNote(recent?.current_stressors)} fullText={recent?.current_stressors} />
-              </tbody>
-            </table>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-            <table style={dataTableStyle}>
-              <tbody>
-                <SectionHead title="Work & Academic History" />
-                <DataRow label="Work History" value={summaryNote(edu?.work_history ?? fam?.work_history)} fullText={edu?.work_history ?? fam?.work_history} />
-                <DataRow label="Academic Hx" value={summaryNote(edu?.academic_experience ?? fam?.academic_experience)} fullText={edu?.academic_experience ?? fam?.academic_experience} />
-              </tbody>
-            </table>
-          </div>
+            {/* Footer row: writing assistant on right, empty left (suppressed when shell rail is active) */}
+            <InlineNotesOnly>
+              <div style={bgLeftCellStyle} />
+              <div style={{ ...bgRightCellStyle, paddingTop: 18, paddingBottom: 32 }}>
+                <div style={railBlockLabel}>Writing Assistant</div>
+                <div style={railAssistantBodyStyle}>
+                  Available once the Diagnostics gate clears.
+                </div>
+              </div>
+            </InlineNotesOnly>
+          </NotesBodyGrid>
         </div>
-      )}
+      </div>
+    )
+  }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Other inner tabs, legacy layout (untouched until Background is approved).
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {headerAndTabs}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
       {/* ═══════════════════════════════════════════════════════════════════
-          TAB 2: Referral (moved from standalone tab)
+          TAB 2: Referral, unified-scroll SectionPair grid
           ═══════════════════════════════════════════════════════════════════ */}
       {activeInner === 'referral' && (
-        <div style={{ paddingTop: 12 }}>
-          <ReferralSubTab caseRow={caseRow} intakeRow={intakeRow} onboardingSections={onboardingSections} onEdit={onEdit} />
-        </div>
+        <ReferralSubTab caseRow={caseRow} intakeRow={intakeRow} onboardingSections={onboardingSections} onEdit={onEdit} />
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          TAB 3: Medical History
-          Three columns: medical conditions | substance use | clinical notes
+          TAB 3: Medical History (unified-scroll SectionPair grid)
           ═══════════════════════════════════════════════════════════════════ */}
       {activeInner === 'medical' && (
-        <div style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={threeColGrid}>
-            {/* ── COL 1: High-priority medical, neuro, TBI, conditions, surgeries ── */}
-            <div>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Neurological & TBI" />
-                  <DataRow label="Head Injuries" value={shortNote(health?.head_injuries)} fullText={health?.head_injuries} />
-                  <DataRow label="Seizures" value={shortNote(health?.seizure_history)} fullText={health?.seizure_history} />
-                  <DataRow label="LOC History" value={shortNote(health?.loss_of_consciousness)} fullText={health?.loss_of_consciousness} />
-                </tbody>
-              </table>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Active Medical Conditions" />
-                  <DataRow label="Conditions" value={shortNote(health?.medical_conditions)} fullText={health?.medical_conditions} />
-                  <DataRow label="Surgeries / Hosp" value={shortNote(health?.surgeries_hospitalizations)} fullText={health?.surgeries_hospitalizations} />
-                </tbody>
-              </table>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Substance Use" />
-                  <DataRow label="Alcohol" value={shortNote(substance?.alcohol_use)} fullText={substance?.alcohol_use} />
-                  <DataRow label="Drugs" value={shortNote(substance?.drug_use)} fullText={substance?.drug_use} />
-                  <DataRow label="SA Treatment" value={shortNote(substance?.substance_treatment)} fullText={substance?.substance_treatment} />
-                </tbody>
-              </table>
-            </div>
+        <NotesBodyGrid>
+          <SectionPair
+            title="Neurological & TBI"
+            noteKey="neuro"
+            value={clinNotes.neuro ?? ''}
+            onChange={updateNote}
+            onBlur={() => void saveNote('neuro')}
+            placeholder="TBI severity, cognitive sequelae, imaging results, relevance to current presentation..."
+            cols={2}
+          >
+            <MockField label="Head Injuries" value={health?.head_injuries} />
+            <MockField label="Seizures" value={health?.seizure_history} />
+            <MockField label="LOC History" value={health?.loss_of_consciousness} wide />
+          </SectionPair>
 
-            {/* ── COL 2: Medications, functional status, vitals ── */}
-            <div>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Current Medications" />
-                  <DataRow label="Psych Meds" value={shortNote(mental?.psych_medications)} fullText={mental?.psych_medications} />
-                  <DataRow label="Other Meds" value={shortNote(health?.current_medications)} fullText={health?.current_medications} />
-                </tbody>
-              </table>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Functional Status" />
-                  <DataRow label="Sleep" value={shortNote(health?.sleep_quality)} fullText={health?.sleep_quality} />
-                  <DataRow label="Appetite / Wt" value={shortNote(health?.appetite_weight)} fullText={health?.appetite_weight} />
-                  <DataRow label="Pain" value={shortNote(health?.chronic_pain)} fullText={health?.chronic_pain} />
-                  <DataRow label="Mobility" value={shortNote(health?.mobility_limitations)} fullText={health?.mobility_limitations} />
-                </tbody>
-              </table>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Relevant History" />
-                  <DataRow label="Allergies" value={shortNote(health?.allergies)} fullText={health?.allergies} />
-                  <DataRow label="Family Medical" value={shortNote(fam?.family_medical_history)} fullText={fam?.family_medical_history} />
-                </tbody>
-              </table>
-            </div>
+          <SectionPair
+            title="Medical Conditions"
+            noteKey="medical"
+            value={clinNotes.medical ?? ''}
+            onChange={updateNote}
+            onBlur={() => void saveNote('medical')}
+            placeholder="Medication effects on testing, compliance, polypharmacy, side effects affecting presentation..."
+            cols={2}
+          >
+            <MockField label="Conditions" value={health?.medical_conditions} wide />
+            <MockField label="Surgeries / Hosp" value={health?.surgeries_hospitalizations} wide />
+            <MockField label="Allergies" value={health?.allergies} />
+            <MockField label="Family Medical" value={fam?.family_medical_history} />
+          </SectionPair>
 
-            {/* ── COL 3: Clinical Notes ── */}
-            <div style={clinNotesColumnStyle}>
-              <div style={clinNotesColumnHeader}>Clinical Notes</div>
-              <ClinicalNoteField
-                label="Neurological / TBI"
-                value={clinNotes.neuro ?? ''}
-                onChange={(v) => updateNote('neuro', v)}
-                onBlur={() => void saveNote('neuro')}
-                placeholder="TBI severity, cognitive sequelae, imaging results, relevance to current presentation..."
-              />
-              <ClinicalNoteField
-                label="Medications & Compliance"
-                value={clinNotes.medical ?? ''}
-                onChange={(v) => updateNote('medical', v)}
-                onBlur={() => void saveNote('medical')}
-                placeholder="Medication effects on testing, compliance, polypharmacy concerns, side effects affecting presentation..."
-              />
-              <ClinicalNoteField
-                label="Substance Use"
-                value={clinNotes.substance ?? ''}
-                onChange={(v) => updateNote('substance', v)}
-                onBlur={() => void saveNote('substance')}
-                placeholder="Impact on cognitive testing, current use patterns, sobriety duration, treatment engagement..."
-              />
+          <SectionPair
+            title="Current Medications"
+            noteKey="medications"
+            value={clinNotes.medications ?? ''}
+            onChange={updateNote}
+            onBlur={() => void saveNote('medications')}
+            placeholder="Psych meds response, compliance, interactions, impact on cognition or mood..."
+            cols={2}
+          >
+            <MockField label="Psych Meds" value={mental?.psych_medications} wide />
+            <MockField label="Other Meds" value={health?.current_medications} wide />
+          </SectionPair>
+
+          <SectionPair
+            title="Functional Status"
+            noteKey="functional"
+            value={clinNotes.functional ?? ''}
+            onChange={updateNote}
+            onBlur={() => void saveNote('functional')}
+            placeholder="ADL impact, vocational limits, observed vs reported functioning..."
+            cols={2}
+          >
+            <MockField label="Sleep" value={health?.sleep_quality} />
+            <MockField label="Appetite / Wt" value={health?.appetite_weight} />
+            <MockField label="Pain" value={health?.chronic_pain} />
+            <MockField label="Mobility" value={health?.mobility_limitations} />
+          </SectionPair>
+
+          <SectionPair
+            title="Substance Use"
+            noteKey="substance"
+            value={clinNotes.substance ?? ''}
+            onChange={updateNote}
+            onBlur={() => void saveNote('substance')}
+            placeholder="Impact on cognitive testing, current use patterns, sobriety duration, treatment engagement..."
+            cols={2}
+          >
+            <MockField label="Alcohol" value={substance?.alcohol_use} />
+            <MockField label="Drugs" value={substance?.drug_use} />
+            <MockField label="SA Treatment" value={substance?.substance_treatment} wide />
+          </SectionPair>
+
+          {/* Footer: Writing Assistant rail (suppressed when shell rail is active) */}
+          <InlineNotesOnly>
+            <div style={bgLeftCellStyle} />
+            <div style={{ ...bgRightCellStyle, paddingTop: 18, paddingBottom: 32 }}>
+              <div style={railBlockLabel}>Writing Assistant</div>
+              <div style={railAssistantBodyStyle}>Available once the Diagnostics gate clears.</div>
             </div>
-          </div>
-        </div>
+          </InlineNotesOnly>
+        </NotesBodyGrid>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-          TAB 4: Clinical History
-          Three columns: presenting concerns | mental health | clinical notes
+          TAB 4: Clinical History (unified-scroll SectionPair grid)
           ═══════════════════════════════════════════════════════════════════ */}
       {activeInner === 'clinical' && (
-        <div style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={threeColGrid}>
-            {/* ── COL 1: Risk & safety, then presenting concerns ── */}
-            <div>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Risk & Safety" />
-                  <DataRow label="Self-Harm / SI" value={shortNote(mental?.self_harm_history)} fullText={mental?.self_harm_history} />
-                  <DataRow label="Violence / HI" value={shortNote(mental?.violence_history)} fullText={mental?.violence_history} />
-                  <DataRow label="Current Risk" value={shortNote(mental?.current_risk_level)} fullText={mental?.current_risk_level} />
-                  <DataRow label="Safety Plan" value={shortNote(mental?.safety_plan)} fullText={mental?.safety_plan} />
-                </tbody>
-              </table>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Presenting Concerns" />
-                  <DataRow label="Primary" value={shortNote(complaints?.primary_complaint ?? intakeRow?.presenting_complaint)} fullText={complaints?.primary_complaint ?? intakeRow?.presenting_complaint} />
-                  <DataRow label="Secondary" value={shortNote(complaints?.secondary_concerns)} fullText={complaints?.secondary_concerns} />
-                  <DataRow label="Onset" value={shortNote(complaints?.onset_timeline)} fullText={complaints?.onset_timeline} />
-                  <DataRow label="Stressors" value={shortNote(complaints?.stressors ?? recent?.current_stressors)} fullText={complaints?.stressors ?? recent?.current_stressors} />
-                </tbody>
-              </table>
-            </div>
+        <NotesBodyGrid>
+          <SectionPair
+            title="Risk & Safety"
+            noteKey="risk"
+            value={clinNotes.risk ?? ''}
+            onChange={updateNote}
+            onBlur={() => void saveNote('risk')}
+            placeholder="Risk level rationale, protective factors, safety plan adequacy, imminent concerns..."
+            cols={2}
+          >
+            <MockField label="Self-Harm / SI" value={mental?.self_harm_history} />
+            <MockField label="Violence / HI" value={mental?.violence_history} />
+            <MockField label="Current Risk" value={mental?.current_risk_level} />
+            <MockField label="Safety Plan" value={mental?.safety_plan} />
+          </SectionPair>
 
-            {/* ── COL 2: Psychiatric history & treatment ── */}
-            <div>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Psychiatric History" />
-                  <DataRow label="Prior Dx" value={shortNote(mental?.previous_diagnoses)} fullText={mental?.previous_diagnoses} />
-                  <DataRow label="Prior Treatment" value={shortNote(mental?.previous_treatment)} fullText={mental?.previous_treatment} />
-                  <DataRow label="Hospitalizations" value={shortNote(mental?.psych_hospitalizations)} fullText={mental?.psych_hospitalizations} />
-                  <DataRow label="Psych Meds" value={shortNote(mental?.psych_medications)} fullText={mental?.psych_medications} />
-                </tbody>
-              </table>
-              <table style={dataTableStyle}>
-                <tbody>
-                  <SectionHead title="Functional & Behavioral" />
-                  <DataRow label="Current Functioning" value={shortNote(mental?.current_functioning)} fullText={mental?.current_functioning} />
-                  <DataRow label="Coping" value={shortNote(mental?.coping_mechanisms)} fullText={mental?.coping_mechanisms} />
-                  <DataRow label="Social Support" value={shortNote(mental?.social_support)} fullText={mental?.social_support} />
-                  <DataRow label="Family Psych Hx" value={shortNote(fam?.family_mental_health)} fullText={fam?.family_mental_health} />
-                </tbody>
-              </table>
-            </div>
+          <SectionPair
+            title="Presenting Concerns"
+            noteKey="complaints"
+            value={clinNotes.complaints ?? ''}
+            onChange={updateNote}
+            onBlur={() => void saveNote('complaints')}
+            placeholder="Consistency of concern presentation, symptom validity observations, malingering indicators..."
+            cols={2}
+          >
+            <MockField label="Primary" value={complaints?.primary_complaint ?? intakeRow?.presenting_complaint} wide />
+            <MockField label="Secondary" value={complaints?.secondary_concerns} wide />
+            <MockField label="Onset" value={complaints?.onset_timeline} />
+            <MockField label="Stressors" value={complaints?.stressors ?? recent?.current_stressors} />
+          </SectionPair>
 
-            {/* ── COL 3: Clinical Notes ── */}
-            <div style={clinNotesColumnStyle}>
-              <div style={clinNotesColumnHeader}>Clinical Notes</div>
-              <ClinicalNoteField
-                label="Risk Assessment"
-                value={clinNotes.risk ?? ''}
-                onChange={(v) => updateNote('risk', v)}
-                onBlur={() => void saveNote('risk')}
-                placeholder="Risk level rationale, protective factors, safety plan adequacy, imminent concerns..."
-              />
-              <ClinicalNoteField
-                label="Presenting Concerns"
-                value={clinNotes.complaints ?? ''}
-                onChange={(v) => updateNote('complaints', v)}
-                onBlur={() => void saveNote('complaints')}
-                placeholder="Consistency of concern presentation, symptom validity observations, malingering indicators..."
-              />
-              <ClinicalNoteField
-                label="Psychiatric History"
-                value={clinNotes.mental ?? ''}
-                onChange={(v) => updateNote('mental', v)}
-                onBlur={() => void saveNote('mental')}
-                placeholder="Treatment compliance, diagnostic consistency, hospitalization triggers, medication response..."
-              />
+          <SectionPair
+            title="Psychiatric History"
+            noteKey="mental"
+            value={clinNotes.mental ?? ''}
+            onChange={updateNote}
+            onBlur={() => void saveNote('mental')}
+            placeholder="Treatment compliance, diagnostic consistency, hospitalization triggers, medication response..."
+            cols={2}
+          >
+            <MockField label="Prior Dx" value={mental?.previous_diagnoses} wide />
+            <MockField label="Prior Treatment" value={mental?.previous_treatment} wide />
+            <MockField label="Hospitalizations" value={mental?.psych_hospitalizations} />
+            <MockField label="Psych Meds" value={mental?.psych_medications} />
+          </SectionPair>
+
+          <SectionPair
+            title="Functional & Behavioral"
+            noteKey="functioning"
+            value={clinNotes.functioning ?? ''}
+            onChange={updateNote}
+            onBlur={() => void saveNote('functioning')}
+            placeholder="ADL functioning, coping repertoire, insight/judgment, behavioral observations..."
+            cols={2}
+          >
+            <MockField label="Current Functioning" value={mental?.current_functioning} wide />
+            <MockField label="Coping" value={mental?.coping_mechanisms} />
+            <MockField label="Social Support" value={mental?.social_support} />
+            <MockField label="Family Psych Hx" value={fam?.family_mental_health} wide />
+          </SectionPair>
+
+          <InlineNotesOnly>
+            <div style={bgLeftCellStyle} />
+            <div style={{ ...bgRightCellStyle, paddingTop: 18, paddingBottom: 32 }}>
+              <div style={railBlockLabel}>Writing Assistant</div>
+              <div style={railAssistantBodyStyle}>Available once the Diagnostics gate clears.</div>
             </div>
-          </div>
-        </div>
+          </InlineNotesOnly>
+        </NotesBodyGrid>
       )}
+      </div>
     </div>
   )
 }
@@ -1614,6 +2322,9 @@ const narrativeSectionHeader: React.CSSProperties = {
 const threeColGrid: React.CSSProperties = {
   display: 'grid', gridTemplateColumns: '1fr 1fr 280px', gap: 20,
 }
+const testingTwoColGrid: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20,
+}
 const clinNotesColumnHeader: React.CSSProperties = {
   fontSize: 11, fontWeight: 700, color: 'var(--text)',
   textTransform: 'uppercase', letterSpacing: 0.8,
@@ -1686,92 +2397,81 @@ function ReferralSubTab({
     } catch (err) { console.error('[ReferralSubTab] Failed to save notes:', err) }
   }, [caseRow.case_id, refNotes])
 
+  // Register with global flush registry (stage-advance triggers a save).
+  useEffect(() => registerFlushHandler(saveRefNotes), [saveRefNotes])
+
+  const updateRef = useCallback((key: string, value: string) => {
+    setRefNotes((prev) => ({ ...prev, [key]: value }))
+  }, [])
+
   return (
-    <div>
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Referral Information</div>
-        <button onClick={onEdit} style={editBtnStyle}>Edit</button>
-      </div>
+    <NotesBodyGrid>
+      <SectionPair
+        title="Referring Party"
+        noteKey="referral"
+        value={refNotes.referral ?? ''}
+        onChange={updateRef}
+        onBlur={() => void saveRefNotes()}
+        placeholder="Referral source relationship, potential bias, referral question clarity..."
+        cols={2}
+      >
+        <MockField label="Source Type" value={intakeRow?.referral_type ?? undefined} />
+        <MockField label="Referring Party" value={intakeRow?.referral_source ?? caseRow.referral_source ?? undefined} />
+        <MockField label="Date Authorized" value={caseRow.created_at ? new Date(caseRow.created_at).toLocaleDateString() : undefined} />
+      </SectionPair>
 
-      {/* ── Row 1: Referring Party + Court/Attorney + Notes ── */}
-      <div style={threeColGrid}>
-        <div>
-          <table style={dataTableStyle}>
-            <tbody>
-              <SectionHead title="Referring Party" />
-              <DataRow label="Source Type" value={intakeRow?.referral_type ?? undefined} />
-              <DataRow label="Referring Party" value={intakeRow?.referral_source ?? caseRow.referral_source ?? undefined} />
-              <DataRow label="Date Authorized" value={caseRow.created_at ? new Date(caseRow.created_at).toLocaleDateString() : undefined} />
-            </tbody>
-          </table>
-        </div>
-        <div>
-          <table style={dataTableStyle}>
-            <tbody>
-              <SectionHead title="Court & Attorney" />
-              <DataRow label="Jurisdiction / Court" value={intakeRow?.jurisdiction ?? undefined} />
-              <DataRow label="Attorney / Counsel" value={intakeRow?.attorney_name ?? undefined} />
-              <DataRow label="Report Deadline" value={intakeRow?.report_deadline ? new Date(intakeRow.report_deadline).toLocaleDateString() : undefined} />
-            </tbody>
-          </table>
-        </div>
-        <div style={clinNotesColumnStyle}>
-          <div style={clinNotesColumnHeader}>Clinical Notes</div>
-          <ClinicalNoteField
-            label="Referral Context"
-            value={refNotes.referral ?? ''}
-            onChange={(v) => setRefNotes((p) => ({ ...p, referral: v }))}
-            onBlur={() => void saveRefNotes()}
-            placeholder="Referral source relationship, potential bias, referral question clarity..."
-          />
-        </div>
-      </div>
+      <SectionPair
+        title="Court & Attorney"
+        noteKey="court"
+        value={refNotes.court ?? ''}
+        onChange={updateRef}
+        onBlur={() => void saveRefNotes()}
+        placeholder="Jurisdictional considerations, prior expert relationships, attorney expectations..."
+        cols={2}
+      >
+        <MockField label="Jurisdiction" value={intakeRow?.jurisdiction ?? undefined} />
+        <MockField label="Attorney" value={intakeRow?.attorney_name ?? undefined} />
+        <MockField label="Report Deadline" value={intakeRow?.report_deadline ? new Date(intakeRow.report_deadline).toLocaleDateString() : undefined} wide />
+      </SectionPair>
 
-      {/* ── Row 2: Evaluation Details + Legal History + Notes ── */}
-      <div style={threeColGrid}>
-        <div>
-          <table style={dataTableStyle}>
-            <tbody>
-              <SectionHead title="Evaluation Details" />
-              <DataRow label="Evaluation Type" value={intakeRow?.eval_type ?? caseRow.evaluation_type ?? undefined} />
-            </tbody>
-          </table>
-          <NarrativeBlock label="Reason for Referral / Evaluation Questions" value={intakeRow?.presenting_complaint ?? caseRow.evaluation_questions ?? undefined} />
-        </div>
-        <div>
-          <table style={dataTableStyle}>
-            <tbody>
-              <SectionHead title="Legal History" />
-            </tbody>
-          </table>
-          <NarrativeBlock label="Prior Arrests & Convictions" value={legalData?.arrests_convictions} />
-          <NarrativeBlock label="Incarceration History" value={legalData?.incarceration_history} />
-          <NarrativeBlock label="Probation / Parole" value={legalData?.probation_parole} />
-          <NarrativeBlock label="Protective / Restraining Orders" value={legalData?.protective_orders} />
-        </div>
-        <div style={clinNotesColumnStyle}>
-          <div style={clinNotesColumnHeader}>&nbsp;</div>
-          <ClinicalNoteField
-            label="Evaluation Scope"
-            value={refNotes.eval ?? ''}
-            onChange={(v) => setRefNotes((p) => ({ ...p, eval: v }))}
-            onBlur={() => void saveRefNotes()}
-            placeholder="Referral question adequacy, scope limitations, charge severity considerations..."
-          />
-          <ClinicalNoteField
-            label="Legal History"
-            value={refNotes.legal ?? ''}
-            onChange={(v) => setRefNotes((p) => ({ ...p, legal: v }))}
-            onBlur={() => void saveRefNotes()}
-            placeholder="Pattern observations, escalation/de-escalation, relevance to referral question..."
-          />
-        </div>
-      </div>
+      <SectionPair
+        title="Evaluation Details"
+        noteKey="eval"
+        value={refNotes.eval ?? ''}
+        onChange={updateRef}
+        onBlur={() => void saveRefNotes()}
+        placeholder="Referral question adequacy, scope limitations, charge severity considerations..."
+      >
+        <MockField label="Eval Type" value={intakeRow?.eval_type ?? caseRow.evaluation_type ?? undefined} />
+        <MockField label="Referral Question" value={intakeRow?.presenting_complaint ?? caseRow.evaluation_questions ?? undefined} />
+        <MockField label="Charges" value={intakeRow?.charges ?? undefined} />
+      </SectionPair>
 
-      {/* ── Full-width Charges block ── */}
-      <NarrativeBlock label="Charges" value={intakeRow?.charges ?? undefined} />
-    </div>
+      <SectionPair
+        title="Legal History"
+        noteKey="legal"
+        value={refNotes.legal ?? ''}
+        onChange={updateRef}
+        onBlur={() => void saveRefNotes()}
+        placeholder="Pattern observations, escalation/de-escalation, relevance to referral question..."
+      >
+        <MockField label="Prior Arrests" value={legalData?.arrests_convictions} />
+        <MockField label="Incarceration" value={legalData?.incarceration_history} />
+        <MockField label="Probation / Parole" value={legalData?.probation_parole} />
+        <MockField label="Protective Orders" value={legalData?.protective_orders} />
+      </SectionPair>
+
+      <InlineNotesOnly>
+        <div style={notesLeftCellStyle} />
+        <div style={{ ...notesRightCellStyle, paddingTop: 18, paddingBottom: 32 }}>
+          <div style={railBlockLabel}>Writing Assistant</div>
+          <div style={railAssistantBodyStyle}>Available once the Diagnostics gate clears.</div>
+          <div style={{ marginTop: 14 }}>
+            <button onClick={onEdit} style={editBtnStyle}>Edit Referral</button>
+          </div>
+        </div>
+      </InlineNotesOnly>
+    </NotesBodyGrid>
   )
 }
 
@@ -1803,11 +2503,13 @@ function DocumentsSubTab({
   intakeRow,
   stageIndex,
   onEdit,
+  onOpenTab,
 }: {
   readonly caseRow: CaseRow
   readonly intakeRow: PatientIntakeRow | null
   readonly stageIndex: number
   readonly onEdit: () => void
+  readonly onOpenTab?: (tab: Tab) => void
 }): React.JSX.Element {
   const [docsByDir, setDocsByDir] = useState<Record<string, DocEntry[]>>({})
   const [docNotes, setDocNotes] = useState<Record<string, string>>({})
@@ -1926,11 +2628,27 @@ function DocumentsSubTab({
     }
   }, [caseRow.case_id])
 
-  const handleOpenFile = useCallback((filePath: string) => {
-    window.psygil.workspace.openNative(filePath).catch((err: unknown) => {
+  // Open each document as an in-app tab. We use the existing 'document-viewer'
+  // tab type: when a filePath is provided the CenterColumn router renders
+  // ResourceViewerTab against that path, giving us an in-app tabbed view rather
+  // than a native OS hand-off. Falls back to openNative only if the host did
+  // not wire onOpenTab through.
+  const handleOpenFile = useCallback((doc: DocEntry) => {
+    if (onOpenTab) {
+      onOpenTab({
+        id: `doc:${caseRow.case_id}:${doc.document_id}`,
+        title: doc.filename,
+        type: 'document-viewer',
+        caseId: caseRow.case_id,
+        filePath: doc.file_path,
+        documentId: String(doc.document_id),
+      })
+      return
+    }
+    window.psygil.workspace.openNative(doc.file_path).catch((err: unknown) => {
       console.error('[DocumentsSubTab] open error:', err)
     })
-  }, [])
+  }, [onOpenTab, caseRow.case_id])
 
   const formatDate = (dateStr: string): string => {
     try {
@@ -1957,94 +2675,70 @@ function DocumentsSubTab({
 
   return (
     <div>
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-          Case Documents {!loading && <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-secondary)' }}>({totalFiles} file{totalFiles !== 1 ? 's' : ''})</span>}
-        </div>
+      {/* Inline action row, no wrapper title (Testing layout standard) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 10 }}>
         <button onClick={handleUpload} style={editBtnStyle}>＋ Upload Files</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20 }}>
-        {/* ── Left: Directory file list ── */}
-        <div>
-          {DOC_DIRECTORIES.map(({ key, color }) => {
-            const files = docsByDir[key] ?? []
-            return (
-              <div key={key} style={{ marginBottom: 16 }}>
-                {/* Directory header */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '6px 10px', background: 'var(--sidebar-bg, #f5f5f5)',
-                  borderLeft: `3px solid ${color}`, borderRadius: '0 4px 4px 0', marginBottom: 2,
-                }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{key}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                    {files.length > 0 ? `${files.length} file${files.length !== 1 ? 's' : ''}` : 'No files'}
+      {(() => {
+        const allRows: MockRow[] = []
+        for (const { key, color } of DOC_DIRECTORIES) {
+          const files = docsByDir[key] ?? []
+          for (const doc of files) {
+            allRows.push({
+              key: `${key}-${doc.document_id}`,
+              cells: {
+                document: (
+                  <span
+                    onClick={() => handleOpenFile(doc)}
+                    style={{ ...fileLinkStyle, cursor: 'pointer' }}
+                    title="Open in a new tab"
+                  >
+                    {fileIcon(doc.mime_type)} {doc.filename}
                   </span>
-                </div>
-                {/* File rows */}
-                {files.length > 0 ? (
-                  <table style={{ ...dataTableStyle, marginLeft: 12 }}>
-                    <tbody>
-                      {files.map((doc) => (
-                        <tr
-                          key={doc.document_id}
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => handleOpenFile(doc.file_path)}
-                          onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'var(--sidebar-bg, #f0f0f0)' }}
-                          onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent' }}
-                        >
-                          <td style={{ ...dataLabelTd, width: '40%' }}>
-                            <span style={fileLinkStyle}>
-                              {fileIcon(doc.mime_type)} {doc.filename}
-                            </span>
-                          </td>
-                          <td style={{ ...dataValueTd, width: '40%', fontSize: 11, color: 'var(--text-secondary)' }}>
-                            {doc.description ?? doc.mime_type ?? ','}
-                          </td>
-                          <td style={{ ...dataValueTd, width: '20%', fontSize: 11, color: 'var(--text-secondary)', textAlign: 'right' }}>
-                            {formatDate(doc.upload_date)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div style={{ marginLeft: 12, padding: '4px 10px', fontSize: 11, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                    No files uploaded
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                ),
+                category: <MockFlag label={key} color={color} />,
+                description: doc.description ?? doc.mime_type ?? '',
+                uploaded: formatDate(doc.upload_date),
+                status: stageIndex >= 1 ? 'Reviewed' : 'New',
+              },
+            })
+          }
+        }
+        return (
+          <MockTable
+            columns={[
+              { key: 'document', label: 'Document' },
+              { key: 'category', label: 'Category' },
+              { key: 'description', label: 'Description' },
+              { key: 'uploaded', label: 'Uploaded' },
+              { key: 'status', label: 'Status' },
+            ]}
+            rows={allRows}
+            summary={{
+              'Examinee': `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`,
+              'Case Number': caseRow.case_number,
+              'Total Files': String(totalFiles),
+              'Categories': String(DOC_DIRECTORIES.length),
+            }}
+            emptyMessage="No documents uploaded yet. Use ＋ Upload Files to add intake records, evaluations, or collateral materials."
+          />
+        )
+      })()}
+      {intakeRow && stageIndex === 0 && (
+        <div style={{ marginTop: 12 }}>
+          <button onClick={onEdit} style={editBtnStyle}>Edit Intake</button>
         </div>
-
-        {/* ── Right: Clinical Notes (column 3) ── */}
-        <div style={clinNotesColumnStyle}>
-          <div style={clinNotesColumnHeader}>Clinical Notes</div>
-          <ClinicalNoteField
-            label="Document Review"
-            value={docNotes.review ?? ''}
-            onChange={(v) => setDocNotes((p) => ({ ...p, review: v }))}
-            onBlur={() => void saveDocNotes()}
-            placeholder="Missing critical documents, inconsistencies across records, collateral source reliability..."
-          />
-          <ClinicalNoteField
-            label="Record Gaps"
-            value={docNotes.gaps ?? ''}
-            onChange={(v) => setDocNotes((p) => ({ ...p, gaps: v }))}
-            onBlur={() => void saveDocNotes()}
-            placeholder="Key records not yet obtained, impact on evaluation, follow-up needed..."
-          />
-          <ClinicalNoteField
-            label="File Notes"
-            value={docNotes.files ?? ''}
-            onChange={(v) => setDocNotes((p) => ({ ...p, files: v }))}
-            onBlur={() => void saveDocNotes()}
-            placeholder="Notable discrepancies between records, files requiring follow-up..."
-          />
+      )}
+      {!loading && (
+        <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-secondary)' }}>
+          Record-review clinician notes now live in the outer rail (Clinical Notes).
         </div>
+      )}
+      {/* Silence unused symbols while maintaining save contract for outer rail */}
+      <div style={{ display: 'none' }} aria-hidden>
+        {Object.keys(docNotes).length}
+        <button onClick={() => void saveDocNotes()} />
       </div>
     </div>
   )
@@ -2311,135 +3005,196 @@ function TestingSubTab({
         </div>
       </div>
 
-      <div style={threeColGrid}>
-        {/* COL 1, All Tests & Scores */}
-        <div>
-          <table style={dataTableStyle}>
-            <tbody>
-              <SectionHead title="Tests & Scores" />
-              <DataRow label="Total Instruments" value={String(instruments.length)} />
-              <DataRow label="Scored" value={`${stageIndex >= 2 ? instruments.length : 0} / ${instruments.length}`} />
-              {orderedExtras.length > 0 && (
-                <DataRow label="Ordered (added)" value={String(orderedExtras.length)} />
-              )}
-            </tbody>
-          </table>
-          {instruments.map((key) => {
-            const info = INSTRUMENT_INFO[key]
-            if (!info) return null
-            const isScored = stageIndex >= 2
-            const isOrdered = orderedExtras.includes(key)
-            return (
-              <div key={key} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {info.isValidity && <span style={{ color: '#ff9800', fontSize: 11 }}>⚠</span>}
-                    {key}, {info.fullName}
-                    {isOrdered && <span style={{ fontSize: 9, color: '#2196f3', fontWeight: 700, marginLeft: 4, border: '1px solid #2196f3', borderRadius: 3, padding: '0 4px' }}>ORDERED</span>}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', gap: 12 }}>
-                    <span>{info.category}</span>
-                    <span>{info.duration}</span>
-                    <span style={{ color: isScored && !isOrdered ? '#4caf50' : '#9c27b0', fontWeight: 600 }}>
-                      {isScored && !isOrdered ? '✓ Scored' : '● In Progress'}
-                    </span>
-                  </div>
-                </div>
-                {isOrdered && (
-                  <button
-                    onClick={() => handleToggleMeasure(key)}
-                    title="Remove from battery"
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: '#f44336', fontSize: 14, padding: '2px 4px', lineHeight: 1,
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    ✕
-                  </button>
+      <MockTable
+        columns={[
+          { key: 'instrument', label: 'Instrument', width: 120 },
+          { key: 'date', label: 'Date', width: 110 },
+          { key: 'score', label: 'Score', width: 95, align: 'right' },
+          { key: 'range', label: 'Range', width: 100, align: 'center' },
+          { key: 'validity', label: 'Validity', width: 110 },
+          { key: 'flag', label: 'Flag', width: 90 },
+        ]}
+        rows={instruments.map((key) => {
+          const info = INSTRUMENT_INFO[key]
+          const norm = INSTRUMENT_NORMS[key]
+          const isScored = stageIndex >= 2
+          const isOrdered = orderedExtras.includes(key)
+          const mock = mockScoreForInstrument(key, String(caseRow.case_id))
+          const showScores = isScored && !isOrdered
+          const hasValidityScales = (norm?.validityScales.length ?? 0) > 0
+
+          const scoreCell = showScores
+            ? <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{mock.scoreDisplay}</span>
+            : '—'
+          const rangeCell = showScores
+            ? <span style={{ fontFamily: 'var(--font-mono)' }}>{mock.rangeDisplay}</span>
+            : '—'
+          const dateCell = showScores ? mock.dateISO : isOrdered ? 'Ordered' : 'Pending'
+          // Validity: "—" when instrument has no validity scales (per user directive)
+          const validityCell = !showScores
+            ? '—'
+            : !hasValidityScales
+            ? <span style={{ color: 'var(--text-secondary)' }}>—</span>
+            : <span style={{ color: mock.validity === 'Passed' ? '#2e7d32' : mock.validity === 'Questionable' ? '#ef6c00' : '#c62828', fontWeight: 600 }}>{mock.validity}</span>
+          // Flag: REVIEW link when scored; ORDERED when pending.
+          const flagIsAlerting = hasValidityScales ? mock.validity !== 'Passed' : mock.bandTone === 'severe' || mock.bandTone === 'invalid' || mock.outOfRange
+          const flagNode = showScores ? (
+            <button
+              type="button"
+              onClick={() => {
+                const match = uploadedFiles.find((n) => n.toLowerCase().includes(key.toLowerCase().replace(/[^a-z0-9]/g, '')))
+                console.info('[Testing] open report for', key, match ?? '(no matching upload yet)')
+                window.dispatchEvent(new CustomEvent('psygil:testing:open-report', { detail: { instrument: key, file: match } }))
+              }}
+              style={{
+                background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                color: flagIsAlerting ? '#c62828' : 'var(--accent)',
+                fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+                letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'underline',
+              }}
+            >
+              Review
+            </button>
+          ) : isOrdered ? (
+            <MockFlag label="ORDERED" color="#1976d2" />
+          ) : ''
+
+          const labelStyle: React.CSSProperties = { color: '#345', fontWeight: 600 }
+          const sectionHeaderStyle: React.CSSProperties = {
+            fontSize: 11, color: '#345', textTransform: 'uppercase', letterSpacing: '0.06em',
+            marginBottom: 3, fontWeight: 700,
+          }
+          const toneColor = mock.bandTone === 'ok' ? '#2e7d32'
+            : mock.bandTone === 'watch' ? '#6d4c00'
+            : mock.bandTone === 'elevated' ? '#b26a00'
+            : mock.bandTone === 'clinical' ? '#c62828'
+            : mock.bandTone === 'severe' ? '#b71c1c'
+            : mock.bandTone === 'invalid' ? '#6a1b9a'
+            : '#234'
+          const tooltip = (
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: '#000' }}>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>
+                {key}
+                {info?.isValidity && (
+                  <span style={{ marginLeft: 8, fontSize: 10.5, color: '#b26a00', border: '1px solid #b26a00', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>VALIDITY</span>
+                )}
+                {norm && (
+                  <span style={{ marginLeft: 8, fontSize: 10.5, color: '#345', fontWeight: 500 }}>{norm.publisher} · {norm.year}</span>
                 )}
               </div>
-            )
-          })}
-          {uploadedFiles.length > 0 && (
-            <>
-              <div style={{ ...narrativeSectionHeader, marginTop: 8 }}>Uploaded Score Reports</div>
-              <table style={dataTableStyle}>
-                <tbody>
-                  {uploadedFiles.map((name, idx) => (
-                    <tr key={`${name}-${idx}`}>
-                      <td style={dataLabelTd}>{name}</td>
-                      <td style={{ ...dataValueTd, color: '#4caf50', fontWeight: 600, fontSize: 11 }}>✓ Uploaded</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
-        </div>
+              {info && (
+                <div style={{ color: '#234', fontSize: 12, marginBottom: 4 }}>
+                  {info.fullName} · {info.category} · {info.duration}
+                </div>
+              )}
+              {norm && (
+                <div style={{ color: '#456', fontSize: 11.5, marginBottom: 8, fontStyle: 'italic' }}>
+                  {norm.scoreLabel}
+                </div>
+              )}
+              {showScores ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 12px', fontSize: 12.5, marginBottom: 8 }}>
+                    <span style={labelStyle}>Administered</span><span>{mock.dateISO}</span>
+                    <span style={labelStyle}>Examiner</span><span>{mock.examiner}</span>
+                    <span style={labelStyle}>Setting</span><span>{mock.setting}</span>
+                    <span style={labelStyle}>{mock.metricLabel}</span>
+                    <span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{mock.scoreDisplay}</span>
+                      <span style={{ color: '#456' }}> (normal {mock.rangeDisplay})</span>
+                      {mock.outOfRange && <span style={{ color: '#c62828', fontWeight: 600 }}> · out of normal range</span>}
+                    </span>
+                    <span style={labelStyle}>Band</span>
+                    <span style={{ color: toneColor, fontWeight: 700 }}>{mock.bandLabel}</span>
+                    <span style={labelStyle}>Validity</span>
+                    {hasValidityScales ? (
+                      <span style={{ color: mock.validity === 'Passed' ? '#2e7d32' : mock.validity === 'Questionable' ? '#b26a00' : '#c62828', fontWeight: 700 }}>{mock.validity}</span>
+                    ) : (
+                      <span style={{ color: '#789', fontStyle: 'italic' }}>No validity measure on this instrument</span>
+                    )}
+                  </div>
+                  {mock.elevations.length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={sectionHeaderStyle}>Scale Scores</div>
+                      {mock.elevations.map((e) => (
+                        <div key={e.scale} style={{ fontSize: 12.5 }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', color: e.elevated ? '#c62828' : '#234', fontWeight: 700, minWidth: 60, display: 'inline-block' }}>{e.display}</span>
+                          {' '}<span style={{ fontWeight: 600 }}>{e.scale}</span>
+                          <span style={{ color: '#456' }}> — {e.fullName}</span>
+                          {e.elevated && <span style={{ color: '#c62828', marginLeft: 6, fontSize: 10.5, fontWeight: 700 }}>ELEVATED</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {hasValidityScales && mock.validityScales.length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={sectionHeaderStyle}>Validity Scales</div>
+                      {mock.validityScales.map((v) => (
+                        <div key={v.code} style={{ fontSize: 12 }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: v.status === 'Passed' ? '#2e7d32' : v.status === 'Questionable' ? '#b26a00' : '#c62828' }}>
+                            {v.display}
+                          </span>{' '}
+                          <span style={{ fontWeight: 600 }}>{v.code}</span>
+                          <span style={{ color: '#456' }}> — {v.fullName}</span>
+                          <div style={{ color: '#456', fontSize: 10.5, marginLeft: 14 }}>{v.rule}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 12.5, fontStyle: 'italic', color: '#123', marginBottom: 6 }}>
+                    {mock.interpretation}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#234', borderTop: '1px solid #7fb3e6', paddingTop: 5 }}>
+                    <span style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5, fontWeight: 700, color: '#345' }}>Recommendation: </span>
+                    {mock.recommendation}
+                  </div>
+                </>
+              ) : isOrdered ? (
+                <div style={{ fontSize: 12.5 }}>Ordered; awaiting administration.</div>
+              ) : (
+                <div style={{ fontSize: 12.5 }}>Pending administration.</div>
+              )}
+            </div>
+          )
+          return {
+            key,
+            tooltip,
+            cells: {
+              instrument: <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{key}</span>,
+              date: dateCell,
+              score: scoreCell,
+              range: rangeCell,
+              validity: validityCell,
+              flag: flagNode,
+            },
+          }
+        })}
+        summary={{
+          'Evaluation Type': caseRow.evaluation_type ?? 'Not set',
+          'Total Instruments': String(instruments.length),
+          'Validity Measures': validityInstruments.length > 0 ? String(validityInstruments.length) : 'None',
+          'Scored': `${stageIndex >= 2 ? instruments.length : 0} / ${instruments.length}`,
+        }}
+      />
 
-        {/* COL 2, Validity & Evaluation Info */}
-        <div>
+      {uploadedFiles.length > 0 && (
+        <>
+          <div style={{ ...narrativeSectionHeader, marginTop: 14 }}>Uploaded Score Reports</div>
           <table style={dataTableStyle}>
             <tbody>
-              <SectionHead title="Validity & Evaluation Info" />
-              <DataRow label="Evaluation Type" value={caseRow.evaluation_type ?? undefined} />
-              <DataRow label="Validity Measures" value={validityInstruments.length > 0 ? String(validityInstruments.length) : 'None'} />
-              <DataRow label="Effort Status" value={stageIndex >= 2 ? 'All scored' : 'Pending'} />
+              {uploadedFiles.map((name, idx) => (
+                <tr key={`${name}-${idx}`}>
+                  <td style={dataLabelTd}>{name}</td>
+                  <td style={{ ...dataValueTd, color: '#4caf50', fontWeight: 600, fontSize: 11 }}>✓ Uploaded</td>
+                </tr>
+              ))}
             </tbody>
           </table>
-          {validityInstruments.length > 0 && (
-            <>
-              <div style={{ ...narrativeSectionHeader, marginTop: 4 }}>Validity Instruments</div>
-              {validityInstruments.map((key) => {
-                const info = INSTRUMENT_INFO[key]
-                if (!info) return null
-                const isScored = stageIndex >= 2
-                return (
-                  <div key={key} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ color: '#ff9800', fontSize: 11 }}>⚠</span> {key}, {info.fullName}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', gap: 12 }}>
-                      <span>{info.category}</span>
-                      <span>{info.duration}</span>
-                      <span style={{ color: isScored ? '#4caf50' : '#9c27b0', fontWeight: 600 }}>
-                        {isScored ? '✓ Pass' : '● Pending'}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </>
-          )}
-          <NarrativeBlock label="Embedded Validity Note" value="Clinical instruments (MMPI-3, PAI, MCMI-IV) include internal validity indicators (F, Fp, FBS, NIM, MAL). Review these scales in the full test report." />
-        </div>
+        </>
+      )}
 
-        {/* COL 3, Clinical Notes */}
-        <div style={clinNotesColumnStyle}>
-          <div style={clinNotesColumnHeader}>Clinical Notes</div>
-          <ClinicalNoteField
-            label="Battery Selection"
-            value={testNotes.battery ?? ''}
-            onChange={(v) => setTestNotes((p) => ({ ...p, battery: v }))}
-            onBlur={() => void saveTestData()}
-            placeholder="Rationale for instrument selection, additional tests needed, appropriateness for this population..."
-          />
-          <ClinicalNoteField
-            label="Validity & Effort"
-            value={testNotes.validity ?? ''}
-            onChange={(v) => setTestNotes((p) => ({ ...p, validity: v }))}
-            onBlur={() => void saveTestData()}
-            placeholder="Effort indicators, response style observations, embedded validity scale notes..."
-          />
-          <ClinicalNoteField
-            label="Testing Observations"
-            value={testNotes.observations ?? ''}
-            onChange={(v) => setTestNotes((p) => ({ ...p, observations: v }))}
-            onBlur={() => void saveTestData()}
-            placeholder="Behavioral observations during testing, rapport, attention, fatigue, environmental factors..."
-          />
-        </div>
+      <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+        Clinical instruments (MMPI-3, PAI, MCMI-IV) include internal validity indicators (F, Fp, FBS, NIM, MAL). Review these scales in the full test report.
       </div>
     </div>
   )
@@ -2594,11 +3349,14 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
 
   const interviewDataLoaded = useRef(false)
 
-  // Load persisted interview sessions + notes
+  // Load persisted interview sessions + notes. If none exist, seed with a
+  // default "Session 1" placeholder so the tab bar is always visible.
   useEffect(() => {
     if (interviewDataLoaded.current) return
     interviewDataLoaded.current = true
     ;(async () => {
+      let loadedSessions: InterviewSession[] = []
+      let loadedNotes: Record<string, Record<string, string>> = {}
       try {
         const resp = await window.psygil.onboarding.get({ case_id: caseRow.case_id })
         if (resp.status === 'success' && resp.data) {
@@ -2606,17 +3364,30 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
           if (row) {
             try {
               const parsed = JSON.parse(row.content) as { sessions?: InterviewSession[]; notes?: Record<string, Record<string, string>> }
-              if (parsed.sessions?.length) {
-                setSessions(parsed.sessions)
-                setActiveSessionId(parsed.sessions[0].id)
-              }
-              if (parsed.notes) setIntNotes(parsed.notes)
+              if (parsed.sessions?.length) loadedSessions = parsed.sessions
+              if (parsed.notes) loadedNotes = parsed.notes
             } catch { /* ignore */ }
           }
         }
       } catch { /* ignore */ }
+
+      if (loadedSessions.length === 0) {
+        loadedSessions = [{
+          id: `session_${_nextSessionId++}`,
+          title: 'Clinical Interview',
+          date: new Date().toISOString().slice(0, 10),
+          source: 'manual',
+          filename: null,
+          transcript: '',
+          summary: '',
+          duration: '',
+        }]
+      }
+      setSessions(loadedSessions)
+      setActiveSessionId(loadedSessions[0].id)
+      setIntNotes(loadedNotes)
     })()
-  }, [caseRow.case_id])
+  }, [caseRow.case_id, titles])
 
   // Save interview data (sessions + notes)
   const saveInterviewData = useCallback(async (
@@ -2636,6 +3407,9 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
       })
     } catch (err) { console.error('[InterviewsSubTab] Failed to save:', err) }
   }, [caseRow.case_id, sessions, intNotes])
+
+  // Register with global flush registry, stage advance forces a save before leaving.
+  useEffect(() => registerFlushHandler(() => saveInterviewData()), [saveInterviewData])
 
   // Audio settings
   const [showAudioSettings, setShowAudioSettings] = useState(false)
@@ -3365,25 +4139,20 @@ Generate the clinical interview session summary.`,
     cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
   })
 
+  // Listen for action-bar events dispatched from the sub-tab bar
+  useEffect(() => {
+    const handleImport = (): void => { void handleImportTranscripts() }
+    const handleNew = (): void => { handleCreateNewSession() }
+    window.addEventListener('psygil:interviews:import', handleImport)
+    window.addEventListener('psygil:interviews:new-session', handleNew)
+    return () => {
+      window.removeEventListener('psygil:interviews:import', handleImport)
+      window.removeEventListener('psygil:interviews:new-session', handleNew)
+    }
+  }, [handleImportTranscripts, handleCreateNewSession])
+
   return (
     <div>
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-          Clinical Interviews
-          {sessions.length > 0 && <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-secondary)', marginLeft: 6 }}>({sessions.length} session{sessions.length !== 1 ? 's' : ''})</span>}
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={handleImportTranscripts} style={editBtnStyle}>＋ Import Transcripts</button>
-          <button
-            onClick={handleCreateNewSession}
-            style={{ ...editBtnStyle, background: 'var(--panel)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
-          >
-            ＋ New Session
-          </button>
-        </div>
-      </div>
-
       {/* ── New session inline input ── */}
       {showNewSessionInput && (
         <div style={{
@@ -3413,69 +4182,14 @@ Generate the clinical interview session summary.`,
         </div>
       )}
 
-      {/* ── Session subtabs ── */}
-      {sessions.length > 0 && (
-        <div style={{
-          display: 'flex', gap: 0, borderBottom: '1px solid var(--border)',
-          marginBottom: 0, overflowX: 'auto',
-        }}>
-          {sessions.map((s, idx) => (
-            <button
-              key={s.id}
-              onClick={() => setActiveSessionId(s.id)}
-              style={sessionTabStyle(activeSessionId === s.id)}
-            >
-              {idx + 1}. {s.title}
-              {s.source === 'import' && <span style={{ marginLeft: 4, fontSize: 9, opacity: 0.6 }}>📎</span>}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Empty state ── */}
-      {sessions.length === 0 && (
-        <div style={{
-          padding: '40px 20px', textAlign: 'center',
-          color: 'var(--text-secondary)', fontSize: 13,
-        }}>
-          <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.3 }}>🎙</div>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>No interview sessions yet</div>
-          <div style={{ fontSize: 12 }}>
-            Import transcripts from Zoom, Teams, or other meeting portals, or create a manual session for typed notes.
-          </div>
-        </div>
-      )}
-
       {/* ── Active session content ── */}
-      {activeSession && (
-        <div style={{ paddingTop: 12 }}>
-          {/* Session header bar */}
-          <div style={{
-            display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12,
-            padding: '8px 12px', background: 'var(--sidebar-bg, #f5f5f5)', borderRadius: 6,
-          }}>
-            <table style={{ ...dataTableStyle, marginBottom: 0, width: 'auto' }}>
-              <tbody>
-                <tr>
-                  <td style={{ ...dataLabelTd, borderBottom: 'none', padding: '2px 10px 2px 0' }}>Date</td>
-                  <td style={{ ...dataValueTd, borderBottom: 'none', padding: '2px 0' }}>{activeSession.date}</td>
-                </tr>
-              </tbody>
-            </table>
-            <table style={{ ...dataTableStyle, marginBottom: 0, width: 'auto' }}>
-              <tbody>
-                <tr>
-                  <td style={{ ...dataLabelTd, borderBottom: 'none', padding: '2px 10px 2px 0' }}>Source</td>
-                  <td style={{ ...dataValueTd, borderBottom: 'none', padding: '2px 0' }}>
-                    {activeSession.source === 'import' ? `📎 ${activeSession.filename}` : activeSession.source === 'recording' ? '🎙 Recording' : '✏️ Manual'}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div style={{ flex: 1 }} />
-
-            {/* ── Recording controls ── */}
-            {(activeSession.source === 'recording' || activeSession.source === 'manual') && (
+      {activeSession && (() => {
+        // Recording controls previously lived in a standalone bar above the
+        // Session Header. They now render inline in the Session Header title
+        // bar via MockSection's `titleAction` prop.
+        const recordingControls = (
+          <>
+          {(activeSession.source === 'recording' || activeSession.source === 'manual') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {/* Elapsed / duration display */}
                 {(activeSession.recordingStatus === 'recording' || activeSession.recordingStatus === 'paused') && (
@@ -3691,121 +4405,177 @@ Generate the clinical interview session summary.`,
               </div>
             )}
 
-            {/* Duration (shown when not actively recording) */}
-            {activeSession.duration && activeSession.recordingStatus !== 'recording' && activeSession.recordingStatus !== 'paused' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>Duration</span>
-                <span style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text)' }}>{activeSession.duration}</span>
+          {/* Duration indicator inline in title bar when not actively recording */}
+          {activeSession.duration && activeSession.recordingStatus !== 'recording' && activeSession.recordingStatus !== 'paused' && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>Duration</span>
+              <span style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text)' }}>{activeSession.duration}</span>
+            </span>
+          )}
+          </>
+        )
+        return (
+        <div style={{ paddingTop: 0 }}>
+          {/* Unified-scroll grid: left = Header / Summary / Transcript stacks, right = per-section clinician notes */}
+          <NotesBodyGrid>
+            {/* Session subtabs + recording controls (case header now lives in the global CaseHeaderBar) */}
+            <div style={{ gridColumn: '1 / -1', padding: '0 28px', marginTop: 4 }}>
+              <div style={{
+                display: 'flex', gap: 0, alignItems: 'center',
+                borderBottom: '1px solid var(--border)',
+                overflowX: 'auto',
+              }}>
+                <div style={{ display: 'flex', flex: 1, minWidth: 0, overflowX: 'auto' }}>
+                  {sessions.map((s, idx) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setActiveSessionId(s.id)}
+                      style={sessionTabStyle(activeSessionId === s.id)}
+                    >
+                      {idx + 1}. {s.title}
+                      {s.source === 'import' && <span style={{ marginLeft: 4, fontSize: 9, opacity: 0.6 }}>📎</span>}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 12, flexShrink: 0 }}>
+                  {recordingControls}
+                </div>
               </div>
-            )}
-          </div>
+            </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20 }}>
-            {/* ── Left: Summary + Full editor ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {/* Summary, collapsible after transcription */}
-              {(activeSession.recordingStatus === 'done' || activeSession.summary || activeSession.source !== 'recording') && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ ...narrativeSectionHeader, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    Session Summary
-                    {activeSession.recordingStatus === 'done' && !activeSession.summary && (
-                      <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ display: 'inline-block', width: 10, height: 10, border: '2px solid var(--accent)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                        Generating...
-                      </span>
-                    )}
-                  </div>
-                  <textarea
-                    value={activeSession.summary}
-                    onChange={(e) => updateSessionField(activeSession.id, 'summary', e.target.value)}
-                    onBlur={() => void saveInterviewData()}
-                    placeholder={activeSession.recordingStatus === 'done' && !activeSession.summary
-                      ? 'AI is generating a clinical summary from the transcript...'
-                      : 'Brief summary of this interview session, key topics covered, notable observations, clinical impressions...'}
-                    style={{
-                      width: '100%', boxSizing: 'border-box' as const, minHeight: 80,
-                      padding: '8px 10px', fontSize: 12.5, fontFamily: 'inherit',
-                      lineHeight: 1.6, border: '1px solid var(--border)', borderRadius: 4,
-                      background: 'var(--bg)', color: 'var(--text)', resize: 'vertical',
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Transcript / Notes, full height editor */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ ...narrativeSectionHeader, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {activeSession.source === 'import' ? 'Transcript' : activeSession.source === 'recording' ? 'Live Transcript' : 'Session Notes'}
-                  {activeSession.isStreaming && activeSession.recordingStatus === 'recording' && (
-                    <span style={{
-                      fontSize: 10, fontWeight: 600, color: '#e54040',
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                    }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#e54040', animation: 'pulse 1.2s ease-in-out infinite' }} />
-                      streaming
-                    </span>
-                  )}
-                  {activeSession.recordingStatus === 'paused' && (
-                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)' }}>paused</span>
-                  )}
-                </div>
+            {/* Row 2: Summary, notes = Summary Observations */}
+            <div style={notesLeftCellStyle}>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                color: 'var(--text-secondary)', paddingBottom: 6,
+                borderBottom: '1px solid var(--border)', margin: '20px 0 8px',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                Session Summary
+                {activeSession.recordingStatus === 'done' && !activeSession.summary && (
+                  <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ display: 'inline-block', width: 10, height: 10, border: '2px solid var(--accent)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    Generating...
+                  </span>
+                )}
+              </div>
+              <textarea
+                value={activeSession.summary}
+                onChange={(e) => updateSessionField(activeSession.id, 'summary', e.target.value)}
+                onBlur={() => void saveInterviewData()}
+                placeholder={activeSession.recordingStatus === 'done' && !activeSession.summary
+                  ? 'AI is generating a clinical summary from the transcript...'
+                  : 'Brief summary, key topics covered, notable observations, clinical impressions...'}
+                style={{
+                  width: '100%', boxSizing: 'border-box' as const, minHeight: 120,
+                  padding: '8px 10px', fontSize: 12.5, fontFamily: 'inherit',
+                  lineHeight: 1.6, border: '1px solid var(--border)', borderRadius: 4,
+                  background: 'var(--bg)', color: 'var(--text)', resize: 'vertical',
+                }}
+              />
+            </div>
+            <InlineNotesOnly>
+              <div style={{ ...notesRightCellStyle, display: 'flex', flexDirection: 'column' }}>
+                <div style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  color: 'var(--text-secondary)', margin: '20px 0 6px',
+                  paddingBottom: 6, borderBottom: '1px solid var(--border)',
+                }}>Summary Observations</div>
                 <textarea
-                  value={activeSession.transcript}
-                  onChange={(e) => updateSessionField(activeSession.id, 'transcript', e.target.value)}
+                  value={activeNotes.summary ?? ''}
+                  onChange={(e) => updateSessionNote('summary', e.target.value)}
                   onBlur={() => void saveInterviewData()}
-                  placeholder={
-                    activeSession.recordingStatus === 'idle'
-                      ? 'Press Record to begin live transcription. Words appear here as you speak. You can also type notes directly...'
-                      : activeSession.recordingStatus === 'recording'
-                        ? 'Listening... transcription will stream here in real time. You can type notes alongside the live text.'
-                        : activeSession.recordingStatus === 'paused'
-                          ? 'Recording paused. Press Resume to continue live transcription...'
-                          : activeSession.recordingStatus === 'finalizing'
-                            ? 'Flushing final audio chunk...'
-                            : activeSession.source === 'import'
-                              ? 'Imported transcript content will appear here...'
-                              : 'Type session notes, observations, and interview content here...'
-                  }
+                  placeholder="Clinical impressions derived from the summary, cross-session consistency, follow-up needed..."
                   style={{
-                    width: '100%', boxSizing: 'border-box' as const, minHeight: 420, flex: 1,
-                    padding: '10px 12px', fontSize: 12.5, fontFamily: 'monospace',
-                    lineHeight: 1.7, border: '1px solid var(--border)', borderRadius: 4,
-                    background: activeSession.recordingStatus === 'recording' ? 'rgba(229,64,64,0.03)' : 'var(--bg)',
-                    color: 'var(--text)', resize: 'vertical',
-                    borderColor: activeSession.recordingStatus === 'recording' ? 'rgba(229,64,64,0.3)' : undefined,
+                    flex: 1, width: '100%', boxSizing: 'border-box',
+                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 4, padding: '8px 10px', fontSize: 12.5,
+                    color: 'var(--text)', fontFamily: 'inherit', lineHeight: 1.5,
+                    resize: 'none', minHeight: 80,
                   }}
                 />
               </div>
-            </div>
+            </InlineNotesOnly>
 
-            {/* ── Right: Clinical Notes (column 3) ── */}
-            <div style={clinNotesColumnStyle}>
-              <div style={clinNotesColumnHeader}>Clinical Notes</div>
-              <ClinicalNoteField
-                label="Mental Status Exam"
-                value={activeNotes.mse ?? ''}
-                onChange={(v) => updateSessionNote('mse', v)}
+            {/* Row 3: Full Transcript, notes = Transcript Notes */}
+            <div style={notesLeftCellStyle}>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                color: 'var(--text-secondary)', paddingBottom: 6,
+                borderBottom: '1px solid var(--border)', margin: '20px 0 8px',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                {activeSession.source === 'import' ? 'Transcript' : activeSession.source === 'recording' ? 'Live Transcript' : 'Session Notes'}
+                {activeSession.isStreaming && activeSession.recordingStatus === 'recording' && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, color: '#e54040',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#e54040', animation: 'pulse 1.2s ease-in-out infinite' }} />
+                    streaming
+                  </span>
+                )}
+                {activeSession.recordingStatus === 'paused' && (
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)' }}>paused</span>
+                )}
+              </div>
+              <textarea
+                value={activeSession.transcript}
+                onChange={(e) => updateSessionField(activeSession.id, 'transcript', e.target.value)}
                 onBlur={() => void saveInterviewData()}
-                placeholder="Appearance, behavior, speech, mood/affect, thought process/content, cognition, insight/judgment..."
-              />
-              <ClinicalNoteField
-                label="Rapport & Engagement"
-                value={activeNotes.rapport ?? ''}
-                onChange={(v) => updateSessionNote('rapport', v)}
-                onBlur={() => void saveInterviewData()}
-                placeholder="Cooperativeness, defensiveness, forthcomingness, consistency across sessions..."
-              />
-              <ClinicalNoteField
-                label="Key Clinical Observations"
-                value={activeNotes.observations ?? ''}
-                onChange={(v) => updateSessionNote('observations', v)}
-                onBlur={() => void saveInterviewData()}
-                placeholder="Discrepancies noted, emotional responses, areas requiring follow-up, collateral contradictions..."
+                placeholder={
+                  activeSession.recordingStatus === 'idle'
+                    ? 'Press Record to begin live transcription. Words appear here as you speak. You can also type notes directly...'
+                    : activeSession.recordingStatus === 'recording'
+                      ? 'Listening... transcription will stream here in real time.'
+                      : activeSession.recordingStatus === 'paused'
+                        ? 'Recording paused. Press Resume to continue...'
+                        : activeSession.recordingStatus === 'finalizing'
+                          ? 'Flushing final audio chunk...'
+                          : activeSession.source === 'import'
+                            ? 'Imported transcript content will appear here...'
+                            : 'Type session notes, observations, and interview content here...'
+                }
+                style={{
+                  width: '100%', boxSizing: 'border-box' as const, minHeight: 420,
+                  padding: '10px 12px', fontSize: 12.5, fontFamily: 'var(--font-mono)',
+                  lineHeight: 1.7, border: '1px solid var(--border)', borderRadius: 4,
+                  background: activeSession.recordingStatus === 'recording' ? 'rgba(229,64,64,0.03)' : 'var(--bg)',
+                  color: 'var(--text)', resize: 'vertical',
+                  borderColor: activeSession.recordingStatus === 'recording' ? 'rgba(229,64,64,0.3)' : undefined,
+                }}
               />
             </div>
-          </div>
+            <InlineNotesOnly>
+              <div style={{ ...notesRightCellStyle, display: 'flex', flexDirection: 'column' }}>
+                <div style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  color: 'var(--text-secondary)', margin: '20px 0 6px',
+                  paddingBottom: 6, borderBottom: '1px solid var(--border)',
+                }}>Transcript Notes</div>
+                <textarea
+                  value={activeNotes.transcript ?? ''}
+                  onChange={(e) => updateSessionNote('transcript', e.target.value)}
+                  onBlur={() => void saveInterviewData()}
+                  placeholder="MSE observations, rapport, discrepancies, key exchanges, follow-up areas, collateral contradictions..."
+                  style={{
+                    flex: 1, width: '100%', boxSizing: 'border-box',
+                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 4, padding: '8px 10px', fontSize: 12.5,
+                    color: 'var(--text)', fontFamily: 'inherit', lineHeight: 1.5,
+                    resize: 'none', minHeight: 200,
+                  }}
+                />
+              </div>
+            </InlineNotesOnly>
+          </NotesBodyGrid>
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
@@ -4529,14 +5299,17 @@ function DiagnosticsSubTab({
   const [ruledOutConditions, setRuledOutConditions] = useState<Record<string, boolean>>({})
   const [deletedConditions, setDeletedConditions] = useState<Record<string, boolean>>({})
   const [attestationChecked, setAttestationChecked] = useState(false)
-  const [formReviewed, setFormReviewed] = useState(false)
+  // Per-section approval state for the four Final Formulation blocks.
+  // Keys are the field.key values: '_impressions', '_ruledOut', '_validity', '_prognosis'.
+  const [approvedFormulations, setApprovedFormulations] = useState<Record<string, boolean>>({})
   const [clinicalObsNotes, setClinicalObsNotes] = useState<Record<string, string>>({})
+  const [expandedConditions, setExpandedConditions] = useState<Record<string, boolean>>({})
+  const [severityFlags, setSeverityFlags] = useState<Record<string, string>>({})
   const [reportDrafts, setReportDrafts] = useState<string[]>([])
   const [currentReport, setCurrentReport] = useState<string>('')
   const [reportBuilding, setReportBuilding] = useState(false)
   const [addedConditions, setAddedConditions] = useState<DiagCondition[]>([])
   const [showAddDropdown, setShowAddDropdown] = useState(false)
-  const [expandedConditions, setExpandedConditions] = useState<Record<string, boolean>>({})
   const [hoveredCondition, setHoveredCondition] = useState<string | null>(null)
 
   const parsedOb = useMemo(() => {
@@ -4565,7 +5338,6 @@ function DiagnosticsSubTab({
   }, [])
 
   const fullName = `${caseRow.examinee_last_name}, ${caseRow.examinee_first_name}`
-  const age = caseRow.examinee_dob ? calcAge(caseRow.examinee_dob) : ','
   const instruments = getInstrumentsForEvalType(caseRow.evaluation_type)
   const et = (caseRow.evaluation_type ?? '').toLowerCase()
 
@@ -4601,32 +5373,47 @@ function DiagnosticsSubTab({
     const conditionsWithoutNotes = allConditions.filter(c => !clinicianNotes[c.name]?.trim())
 
     // ── Diagnostic Impressions ──
-    const impressionLines: string[] = []
-    conditionsWithNotes.forEach(c => {
-      const note = clinicianNotes[c.name]!.trim()
-      // Determine disposition from clinician note keywords
-      const lowerNote = note.toLowerCase()
-      const isRuledOut = lowerNote.includes('not supported') || lowerNote.includes('ruled out') ||
-        lowerNote.includes('do not support') || lowerNote.includes('does not meet') ||
-        lowerNote.includes('not indicated') || lowerNote.includes('not warranted')
-      if (!isRuledOut) {
-        impressionLines.push(`${c.dsmCode}  ${c.name}`)
-      }
-    })
-    // Add unformulated conditions as "under consideration"
-    if (conditionsWithoutNotes.length > 0 && conditionsWithNotes.length > 0) {
-      impressionLines.push('')
-      impressionLines.push('Conditions under consideration (formulation pending):')
-      conditionsWithoutNotes.forEach(c => {
-        impressionLines.push(`  ${c.dsmCode}  ${c.name}`)
-      })
-    } else if (conditionsWithNotes.length === 0) {
-      // Nothing formulated yet, list all as under consideration
-      allConditions.forEach(c => {
-        impressionLines.push(`${c.dsmCode}  ${c.name}  [formulation pending]`)
-      })
+    // Report-ready prose: one paragraph per confirmed diagnosis summarizing the
+    // clinician's formulation, followed by a paragraph on conditions still
+    // under consideration. These sentences are the building blocks assembled
+    // into the final report's diagnostic section.
+    const isRuledOutNote = (note: string): boolean => {
+      const l = note.toLowerCase()
+      return l.includes('not supported') || l.includes('ruled out') ||
+        l.includes('do not support') || l.includes('does not meet') ||
+        l.includes('not indicated') || l.includes('not warranted')
     }
-    const impressions = impressionLines.join('\n')
+    const impressionParas: string[] = []
+    const confirmed = conditionsWithNotes.filter(c => !isRuledOutNote(clinicianNotes[c.name]!))
+    confirmed.forEach(c => {
+      const sev = (severityFlags[c.name] && severityFlags[c.name] !== 'Unspecified')
+        ? `, ${severityFlags[c.name]!.toLowerCase()}`
+        : ''
+      const note = clinicianNotes[c.name]!.trim()
+      const firstSentence = (note.split(/(?<=[.!?])\s+/)[0] ?? '').trim()
+      const basis = firstSentence && firstSentence.length > 20
+        ? firstSentence
+        : `Diagnosis is supported by integration of the clinical interview, collateral records, and psychometric testing.`
+      impressionParas.push(
+        `The examinee meets DSM-5-TR criteria for ${c.name} (${c.dsmCode}${sev}). ${basis}`
+      )
+    })
+    if (confirmed.length === 0 && allConditions.length > 0) {
+      const list = allConditions
+        .map(c => `${c.name} (${c.dsmCode})`)
+        .join('; ')
+      impressionParas.push(
+        `No diagnoses have been confirmed at this time. The following conditions are under active consideration pending completion of individual formulations: ${list}. Each will be resolved in the detailed formulations above before the final report is assembled.`
+      )
+    } else if (conditionsWithoutNotes.length > 0) {
+      const list = conditionsWithoutNotes
+        .map(c => `${c.name} (${c.dsmCode})`)
+        .join('; ')
+      impressionParas.push(
+        `The following conditions remain under active consideration pending completion of their formulations: ${list}. Final disposition will be recorded once the clinician completes the corresponding entries above.`
+      )
+    }
+    const impressions = impressionParas.join('\n\n')
 
     // ── Conditions Ruled Out ──
     const ruledOutLines: string[] = []
@@ -4744,14 +5531,14 @@ function DiagnosticsSubTab({
       conditionCompletionMap[c.name] !== 'pending')
   }, [allConditions, conditionCompletionMap])
 
-  // Gate 2: Final Formulation reviewed, all 4 fields have content and doctor clicked "Review Complete"
+  // Gate 2: Final Formulation — all four sub-sections have content AND clinician has
+  // clicked "Approve" on each. Per-section approval replaces the old single review toggle.
+  const finalFormulationKeys = ['_impressions', '_ruledOut', '_validity', '_prognosis'] as const
   const gate2_finalFormulationComplete = useMemo(() => {
-    return formReviewed &&
-      !!clinicianNotes._impressions?.trim() &&
-      !!clinicianNotes._ruledOut?.trim() &&
-      !!clinicianNotes._validity?.trim() &&
-      !!clinicianNotes._prognosis?.trim()
-  }, [formReviewed, clinicianNotes])
+    return finalFormulationKeys.every(k =>
+      !!clinicianNotes[k]?.trim() && approvedFormulations[k] === true,
+    )
+  }, [clinicianNotes, approvedFormulations])
 
   // Gate 3: Attestation signed
   const gate3_attestationSigned = attestationChecked
@@ -4783,81 +5570,53 @@ function DiagnosticsSubTab({
     background: 'var(--bg)', color: 'var(--text)', resize: 'vertical',
   }
 
-  return (
-    <div>
-      {/* ── Header ── */}
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>Diagnostic Workspace</div>
+  // Continuous right rail: paint the outer grid so the right 30% gets the
+  // same soft background + 1px left border as the Testing/Interviews rail.
+  // Because the body + rail live in a single scroll container, they scroll
+  // together while staying visually distinct.
+  const railBgGradient =
+    'linear-gradient(to right,' +
+    ' transparent 0,' +
+    ' transparent calc(70% - 1px),' +
+    ' var(--border) calc(70% - 1px),' +
+    ' var(--border) 70%,' +
+    ' var(--bg-soft) 70%,' +
+    ' var(--bg-soft) 100%)'
 
-      {/* ================================================================== */}
-      {/*  CASE HEADER, dense DataRow tables                               */}
-      {/* ================================================================== */}
-      <div style={threeColGrid}>
-        <div>
-          <table style={dataTableStyle}>
-            <tbody>
-              <SectionHead title="Patient" />
-              <DataRow label="Name" value={fullName} />
-              <DataRow label="DOB" value={caseRow.examinee_dob ? `${caseRow.examinee_dob}  (age ${age})` : undefined} />
-              <DataRow label="Gender" value={caseRow.examinee_gender ?? undefined} />
-              <DataRow label="Language" value={parsedOb.contact?.primary_language} />
-            </tbody>
-          </table>
-          <NarrativeBlock label="Concern" value={parsedOb.complaints?.primary_complaint ?? intakeRow?.presenting_complaint ?? undefined} />
-        </div>
-        <div>
-          <table style={dataTableStyle}>
-            <tbody>
-              <SectionHead title="Referral" />
-              <DataRow label="Type" value={intakeRow?.eval_type ?? caseRow.evaluation_type ?? undefined} />
-              <DataRow label="Source" value={intakeRow?.referral_source ?? caseRow.referral_source ?? undefined} />
-              <DataRow label="Jurisdiction" value={intakeRow?.jurisdiction ?? undefined} />
-            </tbody>
-          </table>
-          <NarrativeBlock label="Charges" value={intakeRow?.charges ?? undefined} />
-        </div>
-        <div style={{ background: 'var(--sidebar-bg, #f5f5f5)', borderRadius: 6, padding: '0 10px 8px' }}>
-          <table style={dataTableStyle}>
-            <tbody>
-              <SectionHead title="Clinical Summary" />
-              <DataRow label="Eval Type" value={intakeRow?.eval_type ?? caseRow.evaluation_type ?? undefined} />
-              <DataRow label="Test Battery" value={instruments.length > 0 ? instruments.join(', ') : undefined} />
-              <DataRow label="Setting" value={parsedOb.contact?.eval_setting ?? 'In-Person'} />
-              <DataRow label="Stage" value={(['Onboarding', 'Testing', 'Interview', 'Diagnostics', 'Review', 'Complete'])[stageIndex] ?? undefined} />
-              <DataRow label="Intake Date" value={intakeRow?.created_at ? intakeRow.created_at.split('T')[0] : caseRow.created_at?.split('T')[0]} />
-              <DataRow label="Due Date" value={intakeRow?.report_deadline ?? undefined} />
-              <DataRow label="Prior Dx" value={shortNote(parsedOb.mental?.previous_diagnoses)} />
-              <DataRow label="Hx Treatment" value={shortNote(parsedOb.mental?.previous_treatment)} />
-              <DataRow label="Medications" value={shortNote(parsedOb.mental?.psych_medications)} />
-              <DataRow label="Medical" value={shortNote(parsedOb.health?.medical_conditions)} />
-              <DataRow label="Neurological" value={parsedOb.health?.head_injuries && !parsedOb.health.head_injuries.toLowerCase().match(/^(no |none|denies)/) ? shortNote(parsedOb.health.head_injuries) : undefined} />
-              <DataRow label="Substance Use" value={shortNote([
-                parsedOb.substance?.alcohol_use && !parsedOb.substance.alcohol_use.toLowerCase().match(/^(,|none|denies|no )/) ? parsedOb.substance.alcohol_use : null,
-                parsedOb.substance?.drug_use && !parsedOb.substance.drug_use.toLowerCase().match(/^(,|none|denies|no )/) ? parsedOb.substance.drug_use : null,
-              ].filter(Boolean).join(', ') || undefined)} />
-              <DataRow label="Sleep" value={shortNote(parsedOb.health?.sleep_quality)} />
-              <DataRow label="Stressors" value={shortNote(parsedOb.complaints?.stressors ?? parsedOb.mental?.current_stressors)} />
-            </tbody>
-          </table>
-          {/* Risk flags, inside Clinical Summary column */}
-          {(parsedOb.mental?.violence_history && !parsedOb.mental.violence_history.toLowerCase().includes('denies')) ||
-           (parsedOb.mental?.self_harm_history && !parsedOb.mental.self_harm_history.toLowerCase().includes('denies')) ||
-           (parsedOb.substance?.drug_use && !parsedOb.substance.drug_use.toLowerCase().includes('denies')) ? (
-            <div style={{ margin: '4px 0 6px', padding: '5px 8px', background: '#fff8e1', borderLeft: '3px solid #ff9800', fontSize: 10, color: '#795548', lineHeight: 1.5, borderRadius: '0 4px 4px 0' }}>
-              <strong>Flagged: </strong>
-              {parsedOb.mental?.violence_history && !parsedOb.mental.violence_history.toLowerCase().includes('denies') && <span>Violence hx. </span>}
-              {parsedOb.mental?.self_harm_history && !parsedOb.mental.self_harm_history.toLowerCase().includes('denies') && <span>Self-harm hx. </span>}
-              {parsedOb.substance?.drug_use && !parsedOb.substance.drug_use.toLowerCase().includes('denies') && <span>Substance use. </span>}
-              {parsedOb.health?.head_injuries && !parsedOb.health.head_injuries.toLowerCase().includes('no reported') && <span>TBI hx. </span>}
-            </div>
-          ) : null}
-        </div>
-      </div>
+  // Styles shared by every right-column cell so the rail reads as one band.
+  const railCellStyle: React.CSSProperties = {
+    background: 'var(--bg-soft)',
+    padding: '10px 16px 12px',
+    display: 'flex',
+    flexDirection: 'column',
+  }
+  const railLabelStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 10.5,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    color: 'var(--text-secondary)',
+    marginBottom: 6,
+  }
+
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '70% 30%',
+      columnGap: 0,
+      padding: 0,
+      alignItems: 'start',
+      background: railBgGradient,
+      minHeight: '100%',
+    }}>
+      {/* Case header + risk flags now live in the global CaseHeaderBar above the sub-tab bar. */}
 
       {/* ================================================================== */}
       {/*  DIAGNOSTIC CONSIDERATIONS                                        */}
       {/* ================================================================== */}
-      {/* ── Section header with integrated progress tracker + Add button ── */}
-      <div style={{ marginTop: 16, padding: '10px 0 8px', borderBottom: '1px solid var(--text-secondary)', marginBottom: 12 }}>
+      {/* ── Left: section header with integrated progress tracker + Add button ── */}
+      <div style={{ marginTop: 8, padding: '10px 16px 8px', borderBottom: '1px solid var(--text-secondary)', marginRight: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: 'var(--text)', whiteSpace: 'nowrap' }}>Diagnostic Considerations</span>
           <div style={{ flex: 1, height: 5, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
@@ -4928,123 +5687,190 @@ function DiagnosticsSubTab({
         </div>
       </div>
 
+      {/* ── Right: Clinical Notes rail header (sits on same row as considerations header) ── */}
+      <div style={{ ...railCellStyle, padding: '14px 16px 8px' }}>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: 'var(--text-secondary)',
+        }}>
+          Clinical Formulations
+        </div>
+      </div>
+
       {allConditions.map((cond) => {
         const status = conditionCompletionMap[cond.name] ?? 'pending'
         if (status === 'deleted') return null
-        const statusColor = status === 'complete' ? '#2e7d32' : status === 'ruled_out' ? '#e65100' : status === 'declined' ? '#6a6a6a' : '#c62828'
-        const statusIcon = status === 'complete' ? '●' : status === 'ruled_out' ? '✕' : status === 'declined' ? '○' : '◌'
-        const statusLabel = status === 'complete' ? 'Formulated' : status === 'ruled_out' ? 'Ruled Out' : status === 'declined' ? 'No comments' : 'Pending'
-        const isExpanded = !!expandedConditions[cond.name]
-        const isHovered = hoveredCondition === cond.name
 
-        // Build narrative summary: 1-2 sentences from relevance, then evidence bullets from dataSummary
-        const narrativeSummary = summaryNote(cond.relevance) ?? cond.relevance.split(/[.;]\s/)[0]
-        const evidenceParts = cond.dataSummary.split(/[.;]\s+/).map(s => s.trim().replace(/\.$/, '')).filter(Boolean)
+        // Tri-state action: RENDER (complete) / DEFER (declined) / REJECT (ruled out)
+        const decision: 'render' | 'defer' | 'reject' | 'none' =
+          status === 'complete' ? 'render' :
+          status === 'declined' ? 'defer' :
+          status === 'ruled_out' ? 'reject' : 'none'
+
+        const rowOpacity = status === 'ruled_out' ? 0.65 : 1
+
+        const clearFlags = (): void => {
+          setDeclinedConditions(prev => ({ ...prev, [cond.name]: false }))
+          setRuledOutConditions(prev => ({ ...prev, [cond.name]: false }))
+          setDeletedConditions(prev => ({ ...prev, [cond.name]: false }))
+        }
+
+        const applyDecision = (target: 'render' | 'defer' | 'reject'): void => {
+          clearFlags()
+          if (target === 'render') {
+            // RENDER: treat as "formulation active". Clear flags; keep existing notes.
+            // If there are no notes yet, seed with first template body so status becomes 'complete'.
+            setSelectedTemplates(prev => ({ ...prev, [cond.name]: prev[cond.name] ?? 0 }))
+            setClinicianNotes(prev => prev[cond.name]?.trim()
+              ? prev
+              : { ...prev, [cond.name]: cond.templateOptions[0]?.body ?? `Formulated: ${cond.name}.` })
+          } else if (target === 'defer') {
+            // DEFER: no additional comments, still counts as reviewed.
+            setDeclinedConditions(prev => ({ ...prev, [cond.name]: true }))
+            setSelectedTemplates(prev => ({ ...prev, [cond.name]: null }))
+            setClinicianNotes(prev => ({ ...prev, [cond.name]: '' }))
+          } else {
+            // REJECT: ruled out with documented rationale.
+            setRuledOutConditions(prev => ({ ...prev, [cond.name]: true }))
+            setSelectedTemplates(prev => ({ ...prev, [cond.name]: null }))
+            setClinicianNotes(prev => ({
+              ...prev,
+              [cond.name]: prev[cond.name]?.trim()
+                ? prev[cond.name]!
+                : `Ruled out: ${cond.name}. ${cond.contradictingData || 'Clinical data does not support this diagnosis.'}`,
+            }))
+          }
+        }
+
+        const actionButtonStyle = (active: boolean): React.CSSProperties => ({
+          padding: '5px 12px',
+          fontSize: 10.5,
+          fontWeight: 700,
+          fontFamily: 'inherit',
+          letterSpacing: '0.04em',
+          border: '1px solid ' + (active ? '#d95a1a' : 'var(--border)'),
+          borderRadius: 3,
+          background: active ? '#d95a1a' : 'var(--bg)',
+          color: active ? '#fff' : 'var(--text-secondary)',
+          cursor: 'pointer',
+        })
 
         return (
-        <div
-          key={cond.name}
-          style={{
-            marginBottom: 4, borderBottom: '1px solid var(--border)',
-            opacity: status === 'ruled_out' ? 0.65 : 1,
-          }}
-        >
-          {/* ── 60/40 split: Considerations left, Clinical Notes right ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: 16 }}>
-
-            {/* ════ LEFT 60%: Condition summary + expandable details ════ */}
-            <div
-              onMouseEnter={() => setHoveredCondition(cond.name)}
-              onMouseLeave={() => setHoveredCondition(null)}
-              style={{ transition: 'background 0.15s', background: isHovered && !isExpanded ? 'rgba(128,128,128,0.04)' : 'transparent', borderRadius: 4 }}
-            >
-              {/* Clickable summary header */}
-              <div
-                onClick={() => setExpandedConditions(prev => ({ ...prev, [cond.name]: !prev[cond.name] }))}
-                style={{ cursor: 'pointer', padding: '8px 0', userSelect: 'none' }}
+        <Fragment key={cond.name}>
+            {/* ════ LEFT (70%): Condition card, row + optional DSM criteria summary ════ */}
+            <div style={{
+              margin: '6px 16px 6px 16px',
+              border: '1px solid var(--border)',
+              borderRadius: 4,
+              background: 'var(--bg)',
+              opacity: rowOpacity,
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+            <div style={{
+              padding: '10px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}>
+              <button
+                type="button"
+                onClick={() => setExpandedConditions(p => ({ ...p, [cond.name]: !p[cond.name] }))}
+                aria-expanded={!!expandedConditions[cond.name]}
+                title={expandedConditions[cond.name] ? 'Collapse' : 'Expand'}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  color: 'var(--text-secondary)', fontSize: 10, width: 14,
+                  flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
               >
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span style={{ color: statusColor, fontSize: 11, flexShrink: 0 }} title={statusLabel}>{statusIcon}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', transition: 'transform 0.2s', display: 'inline-block', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0, lineHeight: 1 }}>&#9656;</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{cond.name}</span>
-                  <span style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{cond.dsmCode}</span>
-                  <span style={{ fontSize: 10, color: statusColor, marginLeft: 'auto', flexShrink: 0, fontWeight: 600 }}>{statusLabel}</span>
-                </div>
-
-                {/* Narrative summary + evidence bullets */}
-                <div style={{ marginLeft: 34, marginTop: 3 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>
-                    {narrativeSummary}
-                  </div>
-                  {evidenceParts.length > 0 && (
-                    <ul style={{ margin: '3px 0 0', paddingLeft: 14, listStyleType: 'disc' }}>
-                      {evidenceParts.slice(0, 3).map((item, i) => (
-                        <li key={i} style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4, marginBottom: 1 }}>
-                          {item.length > 80 ? item.slice(0, 77) + '...' : item}
-                        </li>
-                      ))}
-                      {evidenceParts.length > 3 && (
-                        <li style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontStyle: 'italic', listStyleType: 'none', marginLeft: -14 }}>
-                          +{evidenceParts.length - 3} more...
-                        </li>
-                      )}
-                    </ul>
-                  )}
-                </div>
-
-                {/* Hover tooltip: full details, only when collapsed */}
-                {isHovered && !isExpanded && (
-                  <div style={{
-                    marginLeft: 34, marginTop: 6, padding: '10px 12px',
-                    background: '#dce8f5', border: '1px solid #a8c4e0',
-                    borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    fontSize: 11.5, lineHeight: 1.5, color: '#1a2332',
-                    pointerEvents: 'none',
-                  }}>
-                    <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: '#4a6a8a', marginBottom: 4, letterSpacing: '0.04em' }}>Why Considered</div>
-                    <div style={{ marginBottom: 6 }}>{cond.relevance}</div>
-                    <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: '#4a6a8a', marginBottom: 4, letterSpacing: '0.04em' }}>Case Data</div>
-                    <div style={{ marginBottom: 6 }}>{cond.dataSummary}</div>
-                    <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: '#4a6a8a', marginBottom: 4, letterSpacing: '0.04em' }}>DSM-5-TR Reference</div>
-                    <div style={{ marginBottom: cond.contradictingData ? 6 : 0 }}>{cond.dsmExcerpt}</div>
-                    {cond.contradictingData && (
-                      <>
-                        <div style={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: '#c62828', marginBottom: 4, letterSpacing: '0.04em' }}>Contradicting / Rule-Out</div>
-                        <div>{cond.contradictingData}</div>
-                      </>
-                    )}
-                  </div>
-                )}
+                <span style={{
+                  display: 'inline-block',
+                  transform: expandedConditions[cond.name] ? 'rotate(90deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.15s',
+                }}>▶</span>
+              </button>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, overflow: 'hidden' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {cond.name}
+                </span>
+                <span style={{ fontSize: 11.5, color: '#d95a1a', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>
+                  {cond.dsmCode}
+                </span>
               </div>
-
-              {/* Expanded detail panel */}
-              {isExpanded && (
-                <div style={{ paddingBottom: 12, paddingTop: 4, marginLeft: 34 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div>
-                      <div style={clinNoteLabelStyle}>Why Considered</div>
-                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55, marginBottom: 8 }}>{cond.relevance}</div>
-                      <div style={clinNoteLabelStyle}>Case Data</div>
-                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55 }}>{cond.dataSummary}</div>
-                    </div>
-                    <div>
-                      <div style={clinNoteLabelStyle}>DSM-5-TR Reference</div>
-                      <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.55, marginBottom: 8 }}>{cond.dsmExcerpt}</div>
-                      {cond.contradictingData ? (
-                        <>
-                          <div style={{ ...clinNoteLabelStyle, color: '#c62828' }}>Contradicting / Rule-Out</div>
-                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>{cond.contradictingData}</div>
-                        </>
-                      ) : null}
-                    </div>
-                  </div>
+              <select
+                value={severityFlags[cond.name] ?? ''}
+                onChange={(e) => setSeverityFlags(prev => ({ ...prev, [cond.name]: e.target.value }))}
+                style={{
+                  padding: '4px 6px', fontSize: 11, fontFamily: 'inherit',
+                  border: '1px solid var(--border)', borderRadius: 3, background: 'var(--bg)',
+                  color: severityFlags[cond.name] ? 'var(--text)' : 'var(--text-secondary)',
+                  cursor: 'pointer', flexShrink: 0, fontWeight: 600,
+                  minWidth: 140,
+                }}
+                title="Severity / course specifier"
+              >
+                <option value="">Not formulated</option>
+                <option value="Mild">Mild</option>
+                <option value="Moderate">Moderate</option>
+                <option value="Severe">Severe</option>
+                <option value="In Partial Remission">In Partial Remission</option>
+                <option value="In Full Remission">In Full Remission</option>
+                <option value="Unspecified">Unspecified</option>
+              </select>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <button onClick={() => applyDecision('render')} style={actionButtonStyle(decision === 'render')}>RENDER</button>
+                <button onClick={() => applyDecision('defer')} style={actionButtonStyle(decision === 'defer')}>DEFER</button>
+                <button onClick={() => applyDecision('reject')} style={actionButtonStyle(decision === 'reject')}>REJECT</button>
+              </div>
+            </div>
+            {expandedConditions[cond.name] && (
+              <div style={{
+                borderTop: '1px solid var(--border)',
+                padding: '8px 14px 10px 40px',
+                fontSize: 11.5,
+                lineHeight: 1.5,
+                color: 'var(--text-secondary)',
+                background: 'var(--bg-soft)',
+              }}>
+                <div style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: 'var(--text-secondary)',
+                  marginBottom: 4,
+                }}>
+                  DSM-5-TR Criteria Summary
                 </div>
-              )}
+                <div style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 5,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}>
+                  {cond.dsmExcerpt}
+                </div>
+              </div>
+            )}
             </div>
 
-            {/* ════ RIGHT 40%: Clinician Formulation, always visible ════ */}
-            <div style={{ ...clinNotesColumnStyle, display: 'flex', flexDirection: 'column', padding: '8px 12px 12px' }}>
-              <div style={{ ...clinNoteLabelStyle, marginTop: 0, flexShrink: 0 }}>Clinician Formulation</div>
+            {/* ════ RIGHT (30%): Collapsible clinician formulation cell.
+                 Collapsed: empty rail band aligned with left row.
+                 Expanded: template dropdown + notes textarea. ════ */}
+            <div style={{
+              ...railCellStyle,
+              padding: expandedConditions[cond.name] ? '8px 16px 12px' : '6px 16px',
+              opacity: rowOpacity,
+              alignSelf: 'stretch',
+              justifyContent: expandedConditions[cond.name] ? 'flex-start' : 'center',
+              borderBottom: '1px solid var(--border)',
+            }}>
               <select
                 value={
                   ruledOutConditions[cond.name] ? '__ruleout__' :
@@ -5097,6 +5923,7 @@ function DiagnosticsSubTab({
                 <option value="__ruleout__">Rule Out</option>
                 <option value="__delete__">DELETE</option>
               </select>
+              {!expandedConditions[cond.name] ? null : (<>
               {ruledOutConditions[cond.name] ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div style={{ padding: '6px 8px', fontSize: 11, color: '#e65100', fontWeight: 600, background: '#fff3e0', border: '1px solid #ffcc80', borderRadius: 4 }}>
@@ -5121,18 +5948,21 @@ function DiagnosticsSubTab({
                   style={{ ...diagNoteStyle, flex: 1, minHeight: 100 }}
                 />
               )}
+              </>)}
             </div>
-
-          </div>
-        </div>
+        </Fragment>
         )
       })}
 
       {/* ================================================================== */}
-      {/*  FINAL FORMULATION                                                */}
+      {/*  FINAL FORMULATION, same 70/30 row pattern as Diagnostic Considerations */}
       {/* ================================================================== */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={narrativeSectionHeader}>Final Diagnostic Formulation</div>
+      {/* ── Left: section header with Rebuild button ── */}
+      <div style={{ marginTop: 24, padding: '10px 16px 8px', borderBottom: '1px solid var(--text-secondary)', marginRight: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+          Final Diagnostic Formulation
+        </span>
+        <div style={{ flex: 1 }} />
         <button
           onClick={() => {
             setClinicianNotes(prev => ({
@@ -5144,9 +5974,9 @@ function DiagnosticsSubTab({
             }))
           }}
           style={{
-            padding: '4px 10px', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer',
-            background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
-            color: 'var(--text-secondary)',
+            padding: '3px 10px', fontSize: 10, fontWeight: 600, fontFamily: 'inherit',
+            cursor: 'pointer', background: 'var(--bg)', border: '1px solid var(--border)',
+            borderRadius: 4, color: 'var(--text-secondary)', whiteSpace: 'nowrap',
           }}
           title="Rebuild all fields from the diagnostic considerations and clinician notes above"
         >
@@ -5154,89 +5984,264 @@ function DiagnosticsSubTab({
         </button>
       </div>
 
-      <div style={threeColGrid}>
-        <div>
-          <div style={clinNoteLabelStyle}>Diagnostic Impressions</div>
-          <textarea
-            value={clinicianNotes._impressions ?? ''}
-            onChange={(e) => handleNoteChange('_impressions', e.target.value)}
-            placeholder="DSM-5-TR codes and full diagnostic labels..."
-            style={{ ...diagNoteStyle, minHeight: 100 }}
-          />
-          <div style={{ ...clinNoteLabelStyle, marginTop: 10 }}>Conditions Ruled Out</div>
-          <textarea
-            value={clinicianNotes._ruledOut ?? ''}
-            onChange={(e) => handleNoteChange('_ruledOut', e.target.value)}
-            placeholder="Conditions considered and ruled out with basis..."
-            style={{ ...diagNoteStyle, minHeight: 80 }}
-          />
+      {/* ── Right: rail header with free-text formulation notes input ── */}
+      <div style={{ ...railCellStyle, padding: '14px 16px 10px', gap: 8 }}>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: 'var(--text-secondary)',
+        }}>
+          Formulation Notes
         </div>
-        <div>
-          <div style={clinNoteLabelStyle}>Response Style & Validity</div>
-          <textarea
-            value={clinicianNotes._validity ?? ''}
-            onChange={(e) => handleNoteChange('_validity', e.target.value)}
-            placeholder="Effort, consistency, credibility of self-report..."
-            style={{ ...diagNoteStyle, minHeight: 100 }}
-          />
-          <div style={{ ...clinNoteLabelStyle, marginTop: 10 }}>Prognosis & Recommendations</div>
-          <textarea
-            value={clinicianNotes._prognosis ?? ''}
-            onChange={(e) => handleNoteChange('_prognosis', e.target.value)}
-            placeholder="Prognosis, treatment recommendations, referrals..."
-            style={{ ...diagNoteStyle, minHeight: 80 }}
-          />
-        </div>
-        <div style={{ ...clinNotesColumnStyle, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* ── Gate 2: Review Complete ── */}
-          <div>
-            <div style={clinNotesColumnHeader}>Gate 2, Final Review</div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 8 }}>
-              Review all four formulation fields. When satisfied, mark the review as complete.
-            </div>
-            <button
-              onClick={() => setFormReviewed(!formReviewed)}
-              disabled={!clinicianNotes._impressions?.trim() || !clinicianNotes._ruledOut?.trim() || !clinicianNotes._validity?.trim() || !clinicianNotes._prognosis?.trim()}
-              style={{
-                width: '100%', padding: '6px 10px', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer',
-                background: gate2_finalFormulationComplete ? '#2e7d32' : 'var(--bg)',
-                color: gate2_finalFormulationComplete ? '#fff' : 'var(--text)',
-                border: `1px solid ${gate2_finalFormulationComplete ? '#2e7d32' : 'var(--border)'}`,
-                borderRadius: 4, fontWeight: 600,
-                opacity: (!clinicianNotes._impressions?.trim() || !clinicianNotes._ruledOut?.trim() || !clinicianNotes._validity?.trim() || !clinicianNotes._prognosis?.trim()) ? 0.4 : 1,
-              }}
-            >
-              {gate2_finalFormulationComplete ? '✓ Review Complete' : 'Mark Review Complete'}
-            </button>
-          </div>
+        <textarea
+          value={clinicianNotes._formulationRailNotes ?? ''}
+          onChange={(e) => handleNoteChange('_formulationRailNotes', e.target.value)}
+          placeholder="Working notes, open questions, reminders for the final write-up..."
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            minHeight: 88,
+            padding: '8px 10px',
+            fontSize: 12,
+            fontFamily: 'inherit',
+            lineHeight: 1.45,
+            color: 'var(--text)',
+            background: 'var(--bg)',
+            border: '1px solid var(--border)',
+            borderRadius: 4,
+            resize: 'vertical',
+          }}
+        />
+      </div>
 
-          {/* ── Gate 3: Attestation ── */}
-          <div>
-            <div style={clinNotesColumnHeader}>Attestation</div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '4px 0' }}>
-              <input
-                type="checkbox"
-                checked={attestationChecked}
-                onChange={(e) => setAttestationChecked(e.target.checked)}
-                style={{ marginTop: 2, flexShrink: 0, width: 14, height: 14, cursor: 'pointer' }}
-              />
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                I attest that all conclusions documented herein represent my independent professional judgment. No AI system rendered, suggested, or influenced these diagnostic conclusions.
+      {/* ── Four final-formulation sections, row-per-section with rail cell on right ── */}
+      {[
+        { key: '_impressions', label: 'Diagnostic Impressions',     sub: 'DSM-5-TR codes and full diagnostic labels',          placeholder: 'DSM-5-TR codes and full diagnostic labels...', minHeight: 100 },
+        { key: '_ruledOut',    label: 'Conditions Ruled Out',        sub: 'Conditions considered and rejected with basis',      placeholder: 'Conditions considered and ruled out with basis...', minHeight: 80 },
+        { key: '_validity',    label: 'Response Style & Validity',   sub: 'Effort, consistency, credibility of self-report',    placeholder: 'Effort, consistency, credibility of self-report...', minHeight: 100 },
+        { key: '_prognosis',   label: 'Prognosis & Recommendations', sub: 'Treatment recommendations and referrals',            placeholder: 'Prognosis, treatment recommendations, referrals...', minHeight: 80 },
+      ].map((field) => {
+        const hasContent = !!clinicianNotes[field.key]?.trim()
+        const isExpanded = !!expandedConditions[field.key]
+        const isApproved = !!approvedFormulations[field.key]
+        const statusLabel = isApproved ? 'APPROVED' : hasContent ? 'DRAFTED' : 'PENDING'
+        const statusColor = isApproved ? '#1565c0' : hasContent ? '#2e7d32' : 'var(--text-secondary)'
+        const statusBg = isApproved ? 'rgba(21,101,192,0.10)' : hasContent ? 'rgba(46,125,50,0.08)' : 'var(--bg)'
+        const statusBorder = isApproved ? '#1565c0' : hasContent ? '#2e7d32' : 'var(--border)'
+        return (
+          <Fragment key={field.key}>
+            {/* LEFT (70%): formulation-section card, row + optional editable notes */}
+            <div style={{
+              margin: '6px 16px 6px 16px',
+              border: '1px solid var(--border)',
+              borderRadius: 4,
+              background: 'var(--bg)',
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+            <div style={{
+              padding: '10px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}>
+              <button
+                type="button"
+                onClick={() => setExpandedConditions(p => ({ ...p, [field.key]: !p[field.key] }))}
+                aria-expanded={isExpanded}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  color: 'var(--text-secondary)', fontSize: 10, width: 14,
+                  flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <span style={{
+                  display: 'inline-block',
+                  transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.15s',
+                }}>▶</span>
+              </button>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                  {field.label}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {field.sub}
+                </span>
               </div>
+              <span style={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                padding: '3px 9px',
+                borderRadius: 3,
+                border: '1px solid ' + statusBorder,
+                color: statusColor,
+                background: statusBg,
+                flexShrink: 0,
+              }}>
+                {statusLabel}
+              </span>
+              <button
+                type="button"
+                disabled={!hasContent}
+                onClick={async (e) => {
+                  e.stopPropagation()
+                  try {
+                    await window.psygil.onboarding.save({
+                      case_id: caseRow.case_id,
+                      section: 'diagnostic_notes' as never,
+                      data: {
+                        content: JSON.stringify({
+                          impressions: clinicianNotes._impressions ?? '',
+                          ruled_out: clinicianNotes._ruledOut ?? '',
+                          validity: clinicianNotes._validity ?? '',
+                          prognosis: clinicianNotes._prognosis ?? '',
+                          approved: approvedFormulations,
+                        }),
+                        status: 'draft',
+                      },
+                    })
+                  } catch (err) {
+                    console.error('Save formulation failed:', err)
+                  }
+                }}
+                style={{
+                  padding: '4px 12px', fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
+                  cursor: hasContent ? 'pointer' : 'not-allowed',
+                  background: 'var(--bg)',
+                  color: hasContent ? 'var(--text)' : 'var(--text-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 4,
+                  flexShrink: 0,
+                }}
+                title="Persist current draft to the case record"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                disabled={!hasContent}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setApprovedFormulations(p => ({ ...p, [field.key]: !p[field.key] }))
+                  if (!isApproved) {
+                    setExpandedConditions(p => ({ ...p, [field.key]: false }))
+                  }
+                }}
+                style={{
+                  padding: '4px 12px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
+                  cursor: hasContent ? 'pointer' : 'not-allowed',
+                  background: isApproved ? 'var(--bg)' : (hasContent ? '#1565c0' : 'var(--bg)'),
+                  color: isApproved ? '#1565c0' : (hasContent ? '#fff' : 'var(--text-secondary)'),
+                  border: '1px solid ' + (isApproved ? '#1565c0' : (hasContent ? '#1565c0' : 'var(--border)')),
+                  borderRadius: 4,
+                  flexShrink: 0,
+                }}
+                title={isApproved ? 'Revoke approval and allow edits' : 'Mark this section approved for the report'}
+              >
+                {isApproved ? '↺ Revoke' : '✓ Approve'}
+              </button>
             </div>
-          </div>
+            {isExpanded && (
+              <div style={{
+                borderTop: '1px solid var(--border)',
+                padding: '10px 14px 12px 40px',
+                background: 'var(--bg-soft)',
+              }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  marginBottom: 6, gap: 8,
+                }}>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: 'var(--text-secondary)',
+                  }}>
+                    Drafted Notes
+                  </div>
+                  {isApproved && (
+                    <span style={{ fontSize: 10.5, fontWeight: 600, color: '#1565c0' }}>
+                      ✓ Approved for report
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  value={clinicianNotes[field.key] ?? ''}
+                  onChange={(e) => {
+                    handleNoteChange(field.key, e.target.value)
+                    // Editing a previously approved section revokes approval.
+                    if (approvedFormulations[field.key]) {
+                      setApprovedFormulations(p => ({ ...p, [field.key]: false }))
+                    }
+                  }}
+                  placeholder={field.placeholder}
+                  style={{ ...diagNoteStyle, minHeight: field.minHeight, width: '100%', boxSizing: 'border-box' }}
+                />
+              </div>
+            )}
+            </div>
 
-          {/* ── Build Report ── */}
-          <div style={{ marginTop: 8 }}>
-            {/* Gate status summary */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 8, fontSize: 10 }}>
-              <span style={{ color: gate1_allConditionsFormulated ? '#2e7d32' : '#c62828' }}>{gate1_allConditionsFormulated ? '✓' : '○'} Formulations</span>
-              <span style={{ color: gate2_finalFormulationComplete ? '#2e7d32' : '#c62828' }}>{gate2_finalFormulationComplete ? '✓' : '○'} Review</span>
-              <span style={{ color: gate3_attestationSigned ? '#2e7d32' : '#c62828' }}>{gate3_attestationSigned ? '✓' : '○'} Attestation</span>
-            </div>
-            <button
-              disabled={!allGatesPassed || reportBuilding}
-              onClick={async () => {
+            {/* RIGHT (30%): empty rail band, kept for row alignment */}
+            <div style={{
+              ...railCellStyle,
+              padding: '10px 16px 12px',
+              alignSelf: 'stretch',
+              justifyContent: 'center',
+              borderBottom: '1px solid var(--border)',
+            }} />
+          </Fragment>
+        )
+      })}
+
+      {/* ── Gates & Build Report row, matching the list layout ── */}
+      {/* LEFT: writer-agent status + gate checklist */}
+      <div style={{
+        margin: '12px 16px 16px 16px',
+        padding: '12px 14px',
+        border: '1px solid var(--border)',
+        borderRadius: 4,
+        background: 'var(--bg)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Writer Agent
+          </span>
+          <span style={{ fontSize: 12, fontStyle: 'italic', color: allGatesPassed ? '#2e7d32' : 'var(--text-secondary)' }}>
+            {allGatesPassed ? 'Ready to build report' : 'Blocked until clinician attests decisions'}
+          </span>
+        </div>
+        <div style={{ flex: 1 }} />
+        <div style={{ display: 'flex', gap: 14, fontSize: 10.5 }}>
+          <span style={{ color: gate1_allConditionsFormulated ? '#2e7d32' : '#c62828' }}>
+            {gate1_allConditionsFormulated ? '✓' : '○'} Formulations
+          </span>
+          <span style={{ color: gate2_finalFormulationComplete ? '#2e7d32' : '#c62828' }}>
+            {gate2_finalFormulationComplete ? '✓' : '○'} Review
+          </span>
+          <span style={{ color: gate3_attestationSigned ? '#2e7d32' : '#c62828' }}>
+            {gate3_attestationSigned ? '✓' : '○'} Attestation
+          </span>
+        </div>
+      </div>
+
+      {/* RIGHT: empty alignment band; Report Gates live in the sticky bottom cell */}
+      <div style={{ ...railCellStyle, padding: '12px 16px 16px', alignSelf: 'stretch' }}>
+        {/* Hidden legacy handler kept to preserve existing build flow if invoked elsewhere. */}
+        <button
+          hidden
+          disabled={!allGatesPassed || reportBuilding}
+          onClick={async () => {
                 setReportBuilding(true)
                 try {
                   // ── 1. Save each diagnostic decision to the database ──
@@ -5319,8 +6324,182 @@ function DiagnosticsSubTab({
             >
               {reportBuilding ? '⟳ Saving & Building...' : allGatesPassed ? '⬢ Build Report' : '⬡ Complete Gates to Build'}
             </button>
+      </div>
+
+      {/* ================================================================== */}
+      {/*  STICKY REPORT GATES, pinned to the bottom of the rail column       */}
+      {/* ================================================================== */}
+      <div style={{
+        gridColumn: '2 / 3',
+        position: 'sticky',
+        bottom: 0,
+        zIndex: 10,
+        background: 'var(--bg-soft)',
+        borderTop: '2px solid var(--border)',
+        padding: '12px 16px 14px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        boxShadow: '0 -4px 8px rgba(0,0,0,0.06)',
+      }}>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: 'var(--text-secondary)',
+        }}>
+          Report Gates
+        </div>
+
+        {/* Gate checklist */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11.5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: gate1_allConditionsFormulated ? '#2e7d32' : 'var(--text-secondary)' }}>
+            <span style={{ fontSize: 13, width: 14, textAlign: 'center' }}>{gate1_allConditionsFormulated ? '✓' : '○'}</span>
+            <span>Formulations complete</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: gate2_finalFormulationComplete ? '#2e7d32' : 'var(--text-secondary)' }}>
+            <span style={{ fontSize: 13, width: 14, textAlign: 'center' }}>{gate2_finalFormulationComplete ? '✓' : '○'}</span>
+            <span>Final formulation drafted</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: gate3_attestationSigned ? '#2e7d32' : 'var(--text-secondary)' }}>
+            <span style={{ fontSize: 13, width: 14, textAlign: 'center' }}>{gate3_attestationSigned ? '✓' : '○'}</span>
+            <span>Clinician attestation signed</span>
           </div>
         </div>
+
+        {/* Attestation checkbox */}
+        <label style={{
+          display: 'flex', alignItems: 'flex-start', gap: 8,
+          padding: '8px 10px',
+          background: 'var(--bg)',
+          border: '1px solid var(--border)',
+          borderRadius: 4,
+          cursor: gate1_allConditionsFormulated && gate2_finalFormulationComplete ? 'pointer' : 'not-allowed',
+          opacity: gate1_allConditionsFormulated && gate2_finalFormulationComplete ? 1 : 0.55,
+        }}>
+          <input
+            type="checkbox"
+            checked={attestationChecked}
+            disabled={!gate1_allConditionsFormulated || !gate2_finalFormulationComplete}
+            onChange={(e) => setAttestationChecked(e.target.checked)}
+            style={{ marginTop: 2, flexShrink: 0 }}
+          />
+          <span style={{ fontSize: 11, lineHeight: 1.4, color: 'var(--text)' }}>
+            I attest that all diagnostic decisions reflect my independent clinical judgment.
+          </span>
+        </label>
+
+        {/* Approve & Build Report */}
+        <button
+          type="button"
+          disabled={!allGatesPassed || reportBuilding}
+          onClick={async () => {
+            if (!allGatesPassed || reportBuilding) return
+            setReportBuilding(true)
+
+            // Persistence is best-effort: a storage hiccup must not block the
+            // clinician from seeing the assembled report. We log failures but
+            // always proceed to onBuildReport so the UI transitions cleanly.
+
+            // 1. Save diagnostic decisions (one row per condition).
+            for (const c of allConditions) {
+              const status = conditionCompletionMap[c.name]
+              if (status === 'deleted') continue
+              const decision: 'render' | 'rule_out' | 'defer' =
+                status === 'ruled_out' ? 'rule_out' :
+                status === 'complete' ? 'render' : 'defer'
+              try {
+                await window.psygil.diagnosticDecisions.save({
+                  case_id: caseRow.case_id,
+                  diagnosis_key: c.name.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+                  icd_code: c.dsmCode,
+                  diagnosis_name: c.name,
+                  decision,
+                  clinician_notes: clinicianNotes[c.name] ?? '',
+                })
+              } catch (err) {
+                console.error('[BuildReport] diagnosticDecisions.save failed for', c.name, err)
+              }
+            }
+
+            // 2. Save final formulation notes + attestation metadata.
+            try {
+              await window.psygil.onboarding.save({
+                case_id: caseRow.case_id,
+                section: 'diagnostic_notes' as never,
+                data: {
+                  content: JSON.stringify({
+                    impressions: clinicianNotes._impressions ?? '',
+                    ruled_out: clinicianNotes._ruledOut ?? '',
+                    validity: clinicianNotes._validity ?? '',
+                    prognosis: clinicianNotes._prognosis ?? '',
+                    clinical_obs: clinicalObsNotes,
+                    approved: approvedFormulations,
+                    attestation_signed: attestationChecked,
+                    attestation_date: new Date().toISOString(),
+                  }),
+                  status: 'final',
+                },
+              })
+            } catch (err) {
+              console.error('[BuildReport] onboarding.save failed:', err)
+            }
+
+            // 3. Audit log (non-blocking).
+            try {
+              await window.psygil.audit.log({
+                caseId: caseRow.case_id,
+                actionType: 'diagnostic_formulation_complete',
+                actorType: 'clinician',
+                details: {
+                  conditionsRendered: allConditions.filter(c => conditionCompletionMap[c.name] === 'complete').map(c => c.name),
+                  conditionsRuledOut: allConditions.filter(c => conditionCompletionMap[c.name] === 'ruled_out').map(c => c.name),
+                  conditionsDeleted: allConditions.filter(c => conditionCompletionMap[c.name] === 'deleted').map(c => c.name),
+                  attestationSigned: attestationChecked,
+                },
+              })
+            } catch (err) {
+              console.error('[BuildReport] audit.log failed:', err)
+            }
+
+            // 4. Assemble payload and navigate to the Report sub-tab.
+            const condPayload = allConditions
+              .filter(c => conditionCompletionMap[c.name] !== 'deleted')
+              .map(c => ({
+                name: c.name,
+                dsmCode: c.dsmCode,
+                notes: clinicianNotes[c.name] ?? '',
+                status: conditionCompletionMap[c.name] ?? 'pending',
+              }))
+            try {
+              onBuildReport({
+                impressions: clinicianNotes._impressions ?? '',
+                ruledOut: clinicianNotes._ruledOut ?? '',
+                validity: clinicianNotes._validity ?? '',
+                prognosis: clinicianNotes._prognosis ?? '',
+                conditions: condPayload,
+              })
+            } catch (err) {
+              console.error('[BuildReport] onBuildReport handler threw:', err)
+            } finally {
+              setReportBuilding(false)
+            }
+          }}
+          style={{
+            width: '100%', padding: '9px 12px', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
+            cursor: allGatesPassed && !reportBuilding ? 'pointer' : 'not-allowed',
+            background: allGatesPassed ? '#1565c0' : 'var(--bg)',
+            color: allGatesPassed ? '#fff' : 'var(--text-secondary)',
+            border: allGatesPassed ? 'none' : '1px solid var(--border)',
+            borderRadius: 5,
+            transition: 'background 0.2s',
+          }}
+          title={allGatesPassed ? 'Save diagnostic decisions and build report' : 'Complete all gates to unlock'}
+        >
+          {reportBuilding ? '⟳ Saving & Building...' : allGatesPassed ? '⬢ Approve & Build Report' : '⬡ Complete Gates to Build'}
+        </button>
       </div>
     </div>
   )
@@ -5332,7 +6511,30 @@ function DiagnosticsSubTab({
 // ReportSubTab, Editable document editor with "Edit in Word" support
 // ---------------------------------------------------------------------------
 
-/** Build pre-populated report content from case data */
+/**
+ * Report sections are written progressively as each pipeline stage is completed.
+ *
+ * Pipeline stage order (see STAGE_ORDER at top of file):
+ *   0 onboarding → 1 testing → 2 interview → 3 diagnostics → 4 review → 5 complete
+ *
+ * A section is considered "ready to write" once the stage that produces its
+ * clinical content has been advanced past. Until then the section appears in
+ * the outline with a clear pending placeholder so the clinician can see the
+ * structure of the final report without premature or fabricated clinical text.
+ *
+ * isStageDone(requiredStageIndex) returns true when the current stageIndex is
+ * strictly greater than the required index (i.e., the user has advanced past
+ * that workflow tab). Stage 5 ('complete') implies everything is done.
+ */
+function isStageDone(currentStageIndex: number, requiredStageIndex: number): boolean {
+  return currentStageIndex > requiredStageIndex
+}
+
+function pendingPlaceholder(stageLabel: string): string {
+  return `[This section will populate after the ${stageLabel} stage is completed.]`
+}
+
+/** Build pre-populated report content from case data, stage-gated. */
 function buildReportContent(
   caseRow: CaseRow,
   intakeRow: PatientIntakeRow | null,
@@ -5352,17 +6554,26 @@ function buildReportContent(
   const mental = parsedOb.mental
   const substance = parsedOb.substance
   const legal = parsedOb.legal
-  const recent = parsedOb.recent
+
+  // Stage completion flags, used to gate each section.
+  const onboardingDone = isStageDone(stageIndex, 0) // populates intake-derived sections
+  const testingDone    = isStageDone(stageIndex, 1) // populates Test Results
+  const interviewDone  = isStageDone(stageIndex, 2) // populates Behavioral Observations + Interview Findings
+  const diagnosticsDone = isStageDone(stageIndex, 3) // populates eval-specific analyses + Diagnostic Impressions
+  const reviewDone     = isStageDone(stageIndex, 4) // populates Summary & Recommendations
 
   const sections: { title: string; body: string }[] = []
 
-  // 1. Identifying Information & Referral
+  // 1. Identifying Information & Referral — available after Onboarding is complete.
   sections.push({
     title: 'Identifying Information & Referral Question',
-    body: `Name: ${fullName}\nDate of Birth: ${dob}\nAge: ${age}\nGender: ${contact?.gender ?? intakeRow?.gender ?? ','}\nReferral Source: ${intakeRow?.referral_source ?? ','}\nReferring Attorney/Agency: ${intakeRow?.referring_attorney ?? ','}\nEvaluation Type: ${evalType}\nDate of Evaluation: ${evalDate}\nCharges/Legal Context: ${intakeRow?.charges ?? ','}\n\nReferral Question: ${intakeRow?.referral_question ?? intakeRow?.presenting_complaint ?? '[Enter referral question]'}`,
+    body: onboardingDone
+      ? `Name: ${fullName}\nDate of Birth: ${dob}\nAge: ${age}\nGender: ${contact?.gender ?? intakeRow?.gender ?? ','}\nReferral Source: ${intakeRow?.referral_source ?? ','}\nReferring Attorney/Agency: ${intakeRow?.referring_attorney ?? ','}\nEvaluation Type: ${evalType}\nDate of Evaluation: ${evalDate}\nCharges/Legal Context: ${intakeRow?.charges ?? ','}\n\nReferral Question: ${intakeRow?.referral_question ?? intakeRow?.presenting_complaint ?? '[Enter referral question]'}`
+      : pendingPlaceholder('Onboarding'),
   })
 
-  // 2. Informed Consent & Procedures
+  // 2. Informed Consent & Procedures — Onboarding captures consent; test battery
+  //    is selected at Onboarding but administered during Testing.
   const instruments = getInstrumentsForEvalType(caseRow.evaluation_type)
   const instrumentList = instruments.map((i) => {
     const info = INSTRUMENT_INFO[i]
@@ -5371,88 +6582,113 @@ function buildReportContent(
 
   sections.push({
     title: 'Informed Consent & Evaluation Procedures',
-    body: `${fullName.split(',')[1]?.trim() ?? 'The examinee'} was informed of the nature and purpose of this evaluation, including limits of confidentiality, the non-treatment nature of the evaluation, and that findings would be documented in a written report. The examinee acknowledged understanding and provided verbal consent to proceed.\n\nThe following assessment procedures were administered:\n${instrumentList}\nClinical Interview\nReview of Collateral Records`,
+    body: onboardingDone
+      ? `${fullName.split(',')[1]?.trim() ?? 'The examinee'} was informed of the nature and purpose of this evaluation, including limits of confidentiality, the non-treatment nature of the evaluation, and that findings would be documented in a written report. The examinee acknowledged understanding and provided verbal consent to proceed.\n\nThe following assessment procedures were administered:\n${instrumentList}\nClinical Interview\nReview of Collateral Records`
+      : pendingPlaceholder('Onboarding'),
   })
 
-  // 3. Background Information
-  const bgParts: string[] = []
-  if (family) {
-    bgParts.push(`Family History: ${family.marital_status ? `Marital status: ${family.marital_status}.` : ''} ${family.children ? `Children: ${family.children}.` : ''} ${family.family_mental_health ? `Family psychiatric history: ${family.family_mental_health}.` : ''}`)
-  }
-  if (education) {
-    bgParts.push(`Education & Employment: ${education.highest_education ? `Education: ${education.highest_education}.` : ''} ${education.current_employment ? `Current employment: ${education.current_employment}.` : ''} ${education.military_service ? `Military: ${education.military_service}.` : ''}`)
-  }
-  if (health) {
-    bgParts.push(`Medical History: ${health.medical_conditions ? `Conditions: ${health.medical_conditions}.` : 'No significant medical history reported.'} ${health.head_injuries ? `Head injuries: ${health.head_injuries}.` : ''} ${health.current_medications ? `Medications: ${health.current_medications}.` : ''}`)
-  }
-  if (mental) {
-    bgParts.push(`Mental Health History: ${mental.previous_diagnoses ? `Prior diagnoses: ${mental.previous_diagnoses}.` : 'No prior psychiatric diagnoses reported.'} ${mental.previous_treatment ? `Treatment: ${mental.previous_treatment}.` : ''} ${mental.psych_medications ? `Psychiatric medications: ${mental.psych_medications}.` : ''}`)
-  }
-  if (substance) {
-    bgParts.push(`Substance Use History: ${substance.alcohol_use ? `Alcohol: ${substance.alcohol_use}.` : ''} ${substance.drug_use ? `Drugs: ${substance.drug_use}.` : ''} ${substance.substance_treatment ? `Treatment: ${substance.substance_treatment}.` : ''}`)
-  }
-  if (legal) {
-    bgParts.push(`Legal History: ${legal.arrests_convictions ?? 'No significant criminal history reported.'} ${legal.incarceration_history ? `Incarceration: ${legal.incarceration_history}.` : ''}`)
-  }
-
+  // 3. Background Information — assembled from intake/onboarding sections.
   sections.push({
     title: 'Background Information',
-    body: bgParts.join('\n\n') || '[Background information to be compiled from intake data]',
+    body: (() => {
+      if (!onboardingDone) return pendingPlaceholder('Onboarding')
+      const bgParts: string[] = []
+      if (family) {
+        bgParts.push(`Family History: ${family.marital_status ? `Marital status: ${family.marital_status}.` : ''} ${family.children ? `Children: ${family.children}.` : ''} ${family.family_mental_health ? `Family psychiatric history: ${family.family_mental_health}.` : ''}`)
+      }
+      if (education) {
+        bgParts.push(`Education & Employment: ${education.highest_education ? `Education: ${education.highest_education}.` : ''} ${education.current_employment ? `Current employment: ${education.current_employment}.` : ''} ${education.military_service ? `Military: ${education.military_service}.` : ''}`)
+      }
+      if (health) {
+        bgParts.push(`Medical History: ${health.medical_conditions ? `Conditions: ${health.medical_conditions}.` : 'No significant medical history reported.'} ${health.head_injuries ? `Head injuries: ${health.head_injuries}.` : ''} ${health.current_medications ? `Medications: ${health.current_medications}.` : ''}`)
+      }
+      if (mental) {
+        bgParts.push(`Mental Health History: ${mental.previous_diagnoses ? `Prior diagnoses: ${mental.previous_diagnoses}.` : 'No prior psychiatric diagnoses reported.'} ${mental.previous_treatment ? `Treatment: ${mental.previous_treatment}.` : ''} ${mental.psych_medications ? `Psychiatric medications: ${mental.psych_medications}.` : ''}`)
+      }
+      if (substance) {
+        bgParts.push(`Substance Use History: ${substance.alcohol_use ? `Alcohol: ${substance.alcohol_use}.` : ''} ${substance.drug_use ? `Drugs: ${substance.drug_use}.` : ''} ${substance.substance_treatment ? `Treatment: ${substance.substance_treatment}.` : ''}`)
+      }
+      if (legal) {
+        bgParts.push(`Legal History: ${legal.arrests_convictions ?? 'No significant criminal history reported.'} ${legal.incarceration_history ? `Incarceration: ${legal.incarceration_history}.` : ''}`)
+      }
+      return bgParts.join('\n\n') || '[Background information to be compiled from intake data]'
+    })(),
   })
 
-  // 4. Behavioral Observations
-  sections.push({
-    title: 'Behavioral Observations',
-    body: `[Clinician to document behavioral observations from evaluation sessions including: appearance, demeanor, cooperation level, rapport, speech characteristics, thought process, affect, orientation, and any notable behavioral features.]`,
-  })
-
-  // 5. Test Results & Validity
-  const testParts = instruments.map((i) => {
-    const info = INSTRUMENT_INFO[i]
-    if (!info) return `${i}: [Results pending]`
-    return `${i} (${info.fullName}):\n${info.isValidity ? '[Validity/effort test results]' : '[Test scores and interpretation]'}`
-  })
+  // 4. Test Results & Validity — available after Testing is complete.
   sections.push({
     title: 'Test Results & Validity',
-    body: stageIndex >= 2
-      ? testParts.join('\n\n') || '[Test results to be entered]'
-      : '[Testing not yet completed for this case]',
+    body: (() => {
+      if (!testingDone) return pendingPlaceholder('Testing')
+      const testParts = instruments.map((i) => {
+        const info = INSTRUMENT_INFO[i]
+        if (!info) return `${i}: [Results pending]`
+        return `${i} (${info.fullName}):\n${info.isValidity ? '[Validity/effort test results]' : '[Test scores and interpretation]'}`
+      })
+      return testParts.join('\n\n') || '[Test results to be entered]'
+    })(),
   })
 
-  // 6. Clinical Interview Findings
+  // 5. Behavioral Observations — available after Interview is complete.
+  sections.push({
+    title: 'Behavioral Observations',
+    body: interviewDone
+      ? `[Clinician to document behavioral observations from evaluation sessions including: appearance, demeanor, cooperation level, rapport, speech characteristics, thought process, affect, orientation, and any notable behavioral features.]`
+      : pendingPlaceholder('Interview'),
+  })
+
+  // 6. Clinical Interview Findings — available after Interview is complete.
   sections.push({
     title: 'Clinical Interview Findings',
-    body: `Presenting Concerns: ${complaints?.primary_complaint ?? intakeRow?.presenting_complaint ?? '[Enter presenting concerns]'}\n${complaints?.onset_timeline ? `Onset: ${complaints.onset_timeline}` : ''}\n${complaints?.secondary_concerns ? `Secondary Concerns: ${complaints.secondary_concerns}` : ''}\n\n[Clinician to document clinical interview findings including: history of present illness, symptom review, functional assessment, and any additional clinical observations.]`,
+    body: interviewDone
+      ? `Presenting Concerns: ${complaints?.primary_complaint ?? intakeRow?.presenting_complaint ?? '[Enter presenting concerns]'}\n${complaints?.onset_timeline ? `Onset: ${complaints.onset_timeline}` : ''}\n${complaints?.secondary_concerns ? `Secondary Concerns: ${complaints.secondary_concerns}` : ''}\n\n[Clinician to document clinical interview findings including: history of present illness, symptom review, functional assessment, and any additional clinical observations.]`
+      : pendingPlaceholder('Interview'),
   })
 
-  // 7+ Eval-type-specific sections
+  // 7+ Eval-type-specific analyses — require Diagnostics to be complete.
   const et = (evalType ?? '').toLowerCase()
+  const dxPending = pendingPlaceholder('Diagnostics')
   if (et.includes('cst') || et.includes('competency')) {
-    sections.push({ title: 'Competency Analysis, Dusky Criteria', body: '[Clinician analysis of factual understanding, rational understanding, and ability to consult with counsel per Dusky v. United States (1960).]' })
+    sections.push({
+      title: 'Competency Analysis, Dusky Criteria',
+      body: diagnosticsDone ? '[Clinician analysis of factual understanding, rational understanding, and ability to consult with counsel per Dusky v. United States (1960).]' : dxPending,
+    })
   } else if (et.includes('custody')) {
-    sections.push({ title: 'Parenting Capacity Analysis', body: '[Analysis of parenting capacity based on testing, interview, collateral, and behavioral observations.]' })
-    sections.push({ title: 'Best Interest Assessment', body: '[Best interest factors analysis per applicable jurisdiction.]' })
+    sections.push({
+      title: 'Parenting Capacity Analysis',
+      body: diagnosticsDone ? '[Analysis of parenting capacity based on testing, interview, collateral, and behavioral observations.]' : dxPending,
+    })
+    sections.push({
+      title: 'Best Interest Assessment',
+      body: diagnosticsDone ? '[Best interest factors analysis per applicable jurisdiction.]' : dxPending,
+    })
   } else if (et.includes('risk')) {
-    sections.push({ title: 'Risk Factor Analysis', body: '[Structured analysis of historical, clinical, and risk management factors. HCR-20v3 and/or other risk instruments.]' })
-    sections.push({ title: 'Dynamic Risk Factors', body: '[Current dynamic risk factors including substance use, treatment engagement, social support, and environmental stressors.]' })
-    sections.push({ title: 'Risk Level Opinion', body: '[Clinician risk level opinion with structured professional judgment rationale.]' })
+    sections.push({ title: 'Risk Factor Analysis', body: diagnosticsDone ? '[Structured analysis of historical, clinical, and risk management factors. HCR-20v3 and/or other risk instruments.]' : dxPending })
+    sections.push({ title: 'Dynamic Risk Factors', body: diagnosticsDone ? '[Current dynamic risk factors including substance use, treatment engagement, social support, and environmental stressors.]' : dxPending })
+    sections.push({ title: 'Risk Level Opinion', body: diagnosticsDone ? '[Clinician risk level opinion with structured professional judgment rationale.]' : dxPending })
   } else if (et.includes('ptsd')) {
-    sections.push({ title: 'Trauma History & PTSD Criteria', body: '[Detailed trauma history and criterion-by-criterion PTSD analysis per DSM-5-TR.]' })
+    sections.push({ title: 'Trauma History & PTSD Criteria', body: diagnosticsDone ? '[Detailed trauma history and criterion-by-criterion PTSD analysis per DSM-5-TR.]' : dxPending })
   } else if (et.includes('capacity')) {
-    sections.push({ title: 'Cognitive & Functional Assessment', body: '[Neuropsychological test results and functional capacity analysis.]' })
-    sections.push({ title: 'Capacity Opinion', body: '[Clinician opinion on decisional capacity with supporting data.]' })
+    sections.push({ title: 'Cognitive & Functional Assessment', body: diagnosticsDone ? '[Neuropsychological test results and functional capacity analysis.]' : dxPending })
+    sections.push({ title: 'Capacity Opinion', body: diagnosticsDone ? '[Clinician opinion on decisional capacity with supporting data.]' : dxPending })
   }
 
-  // Diagnostic Impressions (always)
+  // Diagnostic Impressions — requires Diagnostics to be complete. The actual
+  // formulation content is injected from the Diagnostics tab payload by the
+  // ReportSubTab effect; until then this is an outline placeholder.
   sections.push({
     title: 'Diagnostic Impressions',
-    body: '[Clinician to enter final DSM-5-TR diagnostic impressions based on the Diagnostics tab formulations.]',
+    body: diagnosticsDone
+      ? '[Clinician to enter final DSM-5-TR diagnostic impressions based on the Diagnostics tab formulations.]'
+      : pendingPlaceholder('Diagnostics'),
   })
 
-  // Summary & Recommendations (always)
+  // Summary & Recommendations — requires Review to be complete.
   sections.push({
     title: 'Summary & Recommendations',
-    body: '[Clinician summary of key findings, opinions, and recommendations.]',
+    body: reviewDone
+      ? '[Clinician summary of key findings, opinions, and recommendations.]'
+      : pendingPlaceholder('Review'),
   })
 
   return sections
@@ -5518,9 +6754,12 @@ function ReportSubTab({
     setSectionTitles(titles)
   }, [reportSections])
 
-  // Inject diagnostic formulation into the report when Build Report is triggered
+  // Inject diagnostic formulation into the report when Build Report is triggered.
+  // Only runs once the Diagnostics pipeline stage has been completed (stageIndex > 3);
+  // before that, the section stays as a pending-stage placeholder.
   useEffect(() => {
     if (!diagnosticFormulation) return
+    if (stageIndex <= 3) return
     const dx = diagnosticFormulation
 
     setSectionContent(prev => {
@@ -5569,7 +6808,7 @@ function ReportSubTab({
       }
       return updated
     })
-  }, [diagnosticFormulation, sectionTitles])
+  }, [diagnosticFormulation, sectionTitles, stageIndex])
 
   // Active section tracking for sidebar
   const [focusedSectionIdx, setFocusedSectionIdx] = useState<number>(0)
@@ -6166,24 +7405,8 @@ function ReportSubTab({
           </div>
         </div>
 
-        {/* ── Sidebar toggle rail ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-          <button
-            onClick={() => setSidebarCollapsed(prev => !prev)}
-            title={sidebarCollapsed ? 'Show notes panel' : 'Hide notes panel'}
-            style={{
-              background: '#f5f5f5', border: '1px solid #d0d0d0',
-              borderRadius: sidebarCollapsed ? '4px 0 0 4px' : '0 4px 4px 0',
-              color: '#888', cursor: 'pointer', fontSize: 11,
-              padding: '6px 3px', marginTop: 8, lineHeight: 1,
-            }}
-          >
-            {sidebarCollapsed ? '◀' : '▶'}
-          </button>
-        </div>
-
-        {/* ── Notes sidebar, guidance + writing assistant, scoped to active section ── */}
-        {!sidebarCollapsed && (
+        {/* Internal notes sidebar removed; outer rail (Report Drafting Notes) hosts per-section clinician notes. */}
+        {false && (
           <div style={{
             width: 340, flexShrink: 0, borderLeft: '1px solid #d0d0d0',
             background: 'var(--panel, #fafafa)',
@@ -6948,49 +8171,6 @@ function PipelinePill({
       <span style={{ fontSize: 10 }}>&#9675;</span>
       {label}
     </span>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// ArchiveSubTab
-// ---------------------------------------------------------------------------
-
-function ArchiveSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX.Element {
-  const isComplete = (caseRow.workflow_current_stage ?? '').toLowerCase() === 'complete'
-
-  return (
-    <div>
-      <SectionHeader title="Archive" />
-
-      {isComplete ? (
-        <div
-          style={{
-            background: 'var(--panel)',
-            border: '1px solid var(--border)',
-            borderRadius: 6,
-            overflow: 'hidden',
-          }}
-        >
-          <IntakeField label="Status" value="✓ Case Complete" />
-          <IntakeField label="Completed" value={caseRow.last_modified?.split('T')[0] ?? ','} />
-          <IntakeField label="Evaluation Type" value={caseRow.evaluation_type ?? ','} />
-          <IntakeField label="Case Number" value={caseRow.case_number ?? ','} />
-        </div>
-      ) : (
-        <div
-          style={{
-            background: 'var(--panel)',
-            border: '1px solid var(--border)',
-            borderRadius: 6,
-            padding: 16,
-            color: 'var(--text-secondary)',
-            fontSize: 13,
-          }}
-        >
-          Case is still active. Materials will be archived once the evaluation reaches the Complete stage.
-        </div>
-      )}
-    </div>
   )
 }
 

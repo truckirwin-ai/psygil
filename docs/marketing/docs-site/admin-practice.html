@@ -1,0 +1,49 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Practice Admin, Psygil Docs</title><link rel="stylesheet" href="styles.css" /></head><body>
+<div class="layout">
+<aside class="nav"><h1>Psygil Docs</h1><ul>
+<li><a href="index.html">Overview</a></li>
+<li><a href="getting-started.html">Getting Started</a></li>
+<li><a href="setup-wizard.html">Setup Wizard</a></li>
+<li><a href="shared-storage.html">Shared Storage</a></li>
+<li><a href="creating-a-case.html">Creating a Case</a></li>
+<li><a href="case-workflow.html">Case Workflow</a></li>
+<li><a href="diagnostics.html">Diagnostics</a></li>
+<li><a href="reports.html">Reports and Publishing</a></li>
+<li><a class="active" href="admin-practice.html">Practice Admin</a></li>
+<li><a href="security.html">Security and Privacy</a></li>
+<li><a href="faq.html">FAQ</a></li>
+<li><a href="troubleshooting.html">Troubleshooting</a></li>
+</ul></aside>
+<main class="content">
+<h1>Practice Admin</h1>
+<p class="lede">For supervisors and practice managers running Psygil for a group.</p>
+
+<h2>User roster</h2>
+<p>Settings &gt; Practice &gt; Users lets you add clinicians, psychometrists, admins, and front-desk staff. Each user gets a role, which controls what they can do.</p>
+
+<h3>Roles</h3>
+<ul>
+<li><strong>Psychologist</strong>, full clinical workflow, diagnostic authority.</li>
+<li><strong>Psychometrist</strong>, test administration and scoring.</li>
+<li><strong>Admin</strong>, practice configuration, user roster, audit review.</li>
+<li><strong>Receptionist</strong>, intake only.</li>
+</ul>
+
+<h2>Audit log review</h2>
+<p>Settings &gt; Audit surfaces the last N events with filters by clinician, case, and action type. The audit log is write-only. Do not try to edit it; you cannot, and your attempt is itself audited.</p>
+
+<h2>Shared workspace recommendations</h2>
+<ul>
+<li>Use an SMB share on a server you control, not a consumer cloud drive.</li>
+<li>Ensure only practice members have read or write access at the filesystem level.</li>
+<li>Back up nightly; test restores quarterly.</li>
+<li>Document your share path in your HIPAA risk analysis.</li>
+</ul>
+
+<h2>Concurrency</h2>
+<p>Two clinicians cannot edit the same case simultaneously. Psygil writes a lock when a case is opened for editing; a second user sees read-only with a warning banner.</p>
+
+<footer class="page"><span>Version 2.x</span><span>docs.psygil.com</span></footer>
+</main></div></body></html>

@@ -1,6 +1,14 @@
 /* Psygil Design Tokens, 7 CSS variables, 3 themes */
 /* Source: 25_UI_Visual_Spec_v4.md §2 */
 
+/* Cross-theme tokens (typography + soft surfaces blended from marketing site) */
+:root {
+  --font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --bg-soft: #e9ecef;
+  --accent-soft: rgba(0, 120, 212, 0.08);
+}
+
 :root,
 html[data-theme="light"] {
   --bg: #ffffff;

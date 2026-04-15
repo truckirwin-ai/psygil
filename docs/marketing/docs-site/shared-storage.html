@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shared Storage, Psygil Docs</title><link rel="stylesheet" href="styles.css" /></head><body>
+<div class="layout">
+<aside class="nav"><h1>Psygil Docs</h1><ul>
+<li><a href="index.html">Overview</a></li>
+<li><a href="getting-started.html">Getting Started</a></li>
+<li><a href="setup-wizard.html">Setup Wizard</a></li>
+<li><a class="active" href="shared-storage.html">Shared Storage</a></li>
+<li><a href="creating-a-case.html">Creating a Case</a></li>
+<li><a href="case-workflow.html">Case Workflow</a></li>
+<li><a href="diagnostics.html">Diagnostics</a></li>
+<li><a href="reports.html">Reports and Publishing</a></li>
+<li><a href="admin-practice.html">Practice Admin</a></li>
+<li><a href="security.html">Security and Privacy</a></li>
+<li><a href="faq.html">FAQ</a></li>
+<li><a href="troubleshooting.html">Troubleshooting</a></li>
+</ul></aside>
+<main class="content">
+<h1>Shared Storage</h1>
+<p class="lede">Where your cases live. The workspace folder is the single source of truth for Psygil.</p>
+
+<h2>Supported storage</h2>
+<ul>
+<li><strong>Local disk</strong>, fully supported. Fastest and simplest.</li>
+<li><strong>SMB or NFS network share</strong>, fully supported. Required for Practice edition.</li>
+<li><strong>Dropbox, OneDrive, Google Drive, iCloud Drive</strong>, discouraged for multi-user use. File sync can race with live editing.</li>
+</ul>
+
+<div class="callout warn">
+<strong>Cloud drives for teams.</strong> For Practice edition with more than one clinician, use a proper SMB share (synology, truenas, a Windows Server file share) rather than a consumer cloud drive. Psygil will warn you if it detects a cloud-synced folder.
+</div>
+
+<h2>Folder layout</h2>
+<pre><code>workspace/
+  cases/
+    2026-0001 Doe, Jane/
+      _Inbox/
+      Collateral/
+      Testing/
+      Interviews/
+      Diagnostics/
+      Reports/
+      Archive/
+  reports/
+  _inbox/
+  psygil.db              (encrypted)</code></pre>
+
+<h2>Choosing a path</h2>
+<ol class="steps">
+<li>Open Setup Wizard &gt; Storage, or later Settings &gt; Workspace.</li>
+<li>Click Choose Folder.</li>
+<li>Review the validation summary: writable, free space, cloud-drive flag.</li>
+<li>Click Provision. Psygil creates the folder layout and stub templates.</li>
+</ol>
+
+<h2>Moving a workspace</h2>
+<p>Quit Psygil on every workstation that uses the workspace. Copy the entire workspace folder to the new location. Open Psygil, go to Settings &gt; Workspace &gt; Change, and select the new path. Psygil will re-sync the database from the filesystem.</p>
+
+<h2>Backups</h2>
+<p>Back up the workspace folder with your normal backup tool (Time Machine, Windows Backup, Veeam). The encrypted database lives inside the workspace, so one backup covers both files and metadata.</p>
+
+<footer class="page"><span>Version 2.x</span><span>docs.psygil.com</span></footer>
+</main></div></body></html>

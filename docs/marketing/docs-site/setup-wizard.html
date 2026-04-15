@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Setup Wizard, Psygil Docs</title><link rel="stylesheet" href="styles.css" /></head><body>
+<div class="layout">
+<aside class="nav"><h1>Psygil Docs</h1><ul>
+<li><a href="index.html">Overview</a></li>
+<li><a href="getting-started.html">Getting Started</a></li>
+<li><a class="active" href="setup-wizard.html">Setup Wizard</a></li>
+<li><a href="shared-storage.html">Shared Storage</a></li>
+<li><a href="creating-a-case.html">Creating a Case</a></li>
+<li><a href="case-workflow.html">Case Workflow</a></li>
+<li><a href="diagnostics.html">Diagnostics</a></li>
+<li><a href="reports.html">Reports and Publishing</a></li>
+<li><a href="admin-practice.html">Practice Admin</a></li>
+<li><a href="security.html">Security and Privacy</a></li>
+<li><a href="faq.html">FAQ</a></li>
+<li><a href="troubleshooting.html">Troubleshooting</a></li>
+</ul></aside>
+<main class="content">
+<h1>Setup Wizard</h1>
+<p class="lede">Configure your edition, storage location, practice info, and appearance, one time, on first launch.</p>
+
+<h2>Wizard stages</h2>
+<ol class="steps">
+<li><strong>Welcome.</strong> Read the HIPAA notice and accept the EULA.</li>
+<li><strong>License.</strong> Paste your license key or start a trial.</li>
+<li><strong>Edition.</strong> Choose Individual, Practice, or Enterprise.</li>
+<li><strong>Storage.</strong> Pick the workspace folder (see <a href="shared-storage.html">Shared Storage</a>).</li>
+<li><strong>Practice info.</strong> Enter your practice name, NPI, address, and contact.</li>
+<li><strong>Clinical defaults.</strong> Select default evaluation types and your preferred test batteries.</li>
+<li><strong>Appearance.</strong> Light or dark theme, font size.</li>
+<li><strong>AI config.</strong> Toggle drafting assistants on or off; set tone (forensic, neutral, plain).</li>
+<li><strong>Finish.</strong> The main workspace opens.</li>
+</ol>
+
+<h2>Choosing an edition</h2>
+<h3>Individual</h3>
+<p>A single clinician on one workstation. Cases live locally. Best for solo practices.</p>
+<h3>Practice</h3>
+<p>A small group, typically 2 to 15 clinicians, sharing a workspace folder on a network drive or SMB share. Each clinician has a user record and audit trail.</p>
+<h3>Enterprise</h3>
+<p>Forthcoming. Adds SSO (SAML), centralized admin console, and cross-site audit review.</p>
+
+<div class="callout">
+<strong>Can I change editions later?</strong> Yes. Practice admins can upgrade from Individual by reopening Setup from Settings > Practice.
+</div>
+
+<h2>What the wizard writes</h2>
+<ul>
+<li>A setup config file (<code>psygil-setup.json</code>) under your user profile.</li>
+<li>An encrypted SQLite database at the chosen workspace root.</li>
+<li>Empty <code>cases/</code>, <code>reports/</code>, and <code>_inbox/</code> folders inside the workspace.</li>
+</ul>
+
+<footer class="page"><span>Version 2.x</span><span>docs.psygil.com</span></footer>
+</main></div></body></html>

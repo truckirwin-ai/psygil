@@ -78,6 +78,9 @@ sidecar/dist-macos/
 # LFS working files
 .git/lfs/
 
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
+
 # Strays from recovery
 .writetest
 .buildtest
