@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Security and Privacy, Psygil Docs</title><link rel="stylesheet" href="styles.css" /></head><body>
+<div class="layout">
+<aside class="nav"><h1>Psygil Docs</h1><ul>
+<li><a href="index.html">Overview</a></li>
+<li><a href="getting-started.html">Getting Started</a></li>
+<li><a href="setup-wizard.html">Setup Wizard</a></li>
+<li><a href="shared-storage.html">Shared Storage</a></li>
+<li><a href="creating-a-case.html">Creating a Case</a></li>
+<li><a href="case-workflow.html">Case Workflow</a></li>
+<li><a href="diagnostics.html">Diagnostics</a></li>
+<li><a href="reports.html">Reports and Publishing</a></li>
+<li><a href="admin-practice.html">Practice Admin</a></li>
+<li><a class="active" href="security.html">Security and Privacy</a></li>
+<li><a href="faq.html">FAQ</a></li>
+<li><a href="troubleshooting.html">Troubleshooting</a></li>
+</ul></aside>
+<main class="content">
+<h1>Security and Privacy</h1>
+<p class="lede">Where your data lives, how it is protected, and what Psygil never does.</p>
+
+<h2>What stays local</h2>
+<ul>
+<li>Patient identifiable information (name, DOB, contact, insurance).</li>
+<li>Test protocols and scored profiles.</li>
+<li>Interview notes and diagnostic formulations.</li>
+<li>Draft and final reports.</li>
+</ul>
+<p>All of the above live in the workspace folder you control. The database inside the workspace is encrypted at rest using SQLCipher.</p>
+
+<h2>What may leave your workstation, only with your consent</h2>
+<ul>
+<li>De-identified drafting prompts, if you have AI assistants enabled and have configured an external model.</li>
+<li>Crash telemetry, if you opt in. Never includes PHI.</li>
+</ul>
+
+<div class="callout critical">
+<strong>No cloud backend.</strong> Psygil has no server that receives your case data. There is no account sync, no telemetry of case content, no hidden upload.
+</div>
+
+<h2>HIPAA posture</h2>
+<p>Psygil is designed for HIPAA Safe Harbor at the workstation. Your practice remains the Covered Entity and must maintain its own BAA with Foundry SMB if you purchase the Practice or Enterprise edition.</p>
+
+<h2>Authentication</h2>
+<p>Individual edition uses OS-level login on your workstation. Practice edition adds per-user Psygil login (Auth0 PKCE) so that every clinical action is stamped with the correct user. Enterprise will add SSO via SAML.</p>
+
+<h2>Audit log</h2>
+<p>Every diagnostic decision, every gate pass, every export, and every publish writes an immutable row to the audit log with user, timestamp, and relevant hashes. Admins can review the log at any time.</p>
+
+<h2>Uninstall and data removal</h2>
+<p>Settings &gt; Danger Zone &gt; Remove All Local Data shreds the local config and the SQLCipher file, and prompts you to delete the workspace folder. Do this when retiring a workstation. A CLI helper is available for imaging workflows.</p>
+
+<footer class="page"><span>Version 2.x</span><span>docs.psygil.com</span></footer>
+</main></div></body></html>

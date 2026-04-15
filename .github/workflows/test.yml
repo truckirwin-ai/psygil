@@ -1,0 +1,59 @@
+name: test
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  unit-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+        working-directory: app
+      - name: Lint
+        run: npm run lint
+        working-directory: app
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: app
+      - name: Unit + component + ipc + integration
+        run: npx vitest run --coverage --config tests/vitest.config.ts
+        working-directory: app
+      - name: HARD RULE scan (source tree)
+        run: node scripts/hardRuleScanCi.js
+        working-directory: app
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+
+  e2e:
+    needs: unit-integration
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+        working-directory: app
+      - run: npm run build
+        working-directory: app
+      - run: npx playwright install --with-deps
+        working-directory: app
+      - name: Playwright e2e + a11y
+        run: npx playwright test --config tests/playwright.config.ts
+        working-directory: app
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-${{ matrix.os }}
+          path: app/test-results/

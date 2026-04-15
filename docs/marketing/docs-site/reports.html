@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reports and Publishing, Psygil Docs</title><link rel="stylesheet" href="styles.css" /></head><body>
+<div class="layout">
+<aside class="nav"><h1>Psygil Docs</h1><ul>
+<li><a href="index.html">Overview</a></li>
+<li><a href="getting-started.html">Getting Started</a></li>
+<li><a href="setup-wizard.html">Setup Wizard</a></li>
+<li><a href="shared-storage.html">Shared Storage</a></li>
+<li><a href="creating-a-case.html">Creating a Case</a></li>
+<li><a href="case-workflow.html">Case Workflow</a></li>
+<li><a href="diagnostics.html">Diagnostics</a></li>
+<li><a class="active" href="reports.html">Reports and Publishing</a></li>
+<li><a href="admin-practice.html">Practice Admin</a></li>
+<li><a href="security.html">Security and Privacy</a></li>
+<li><a href="faq.html">FAQ</a></li>
+<li><a href="troubleshooting.html">Troubleshooting</a></li>
+</ul></aside>
+<main class="content">
+<h1>Reports and Publishing</h1>
+<p class="lede">Export to Word and PDF. Publish when the record is locked.</p>
+
+<h2>Progressive drafting</h2>
+<p>The Report tab fills in progressively as each stage completes. Before a stage is complete, that section shows a clear placeholder. This guarantees your report is never ahead of your clinical work.</p>
+
+<h2>Export to Word</h2>
+<ol class="steps">
+<li>Open the Report tab for the case.</li>
+<li>Click <strong>Export &rarr; DOCX</strong>.</li>
+<li>Psygil writes a versioned draft (<code>draft_v1.docx</code>, <code>draft_v2.docx</code>, and so on) into the case's Reports folder.</li>
+<li>Open the file in Word, Pages, or LibreOffice to review.</li>
+</ol>
+
+<h2>Export to PDF</h2>
+<ol class="steps">
+<li>Click <strong>Export &rarr; PDF</strong>.</li>
+<li>Choose a filename and location.</li>
+<li>Psygil renders the report and writes a PDF with Letter page size and 0.75 inch margins.</li>
+</ol>
+
+<h2>Publish Final</h2>
+<ol class="steps">
+<li>Confirm that all gates are passed and the attestation is signed.</li>
+<li>Click <strong>Publish Final</strong>.</li>
+<li>Psygil writes locked Word and PDF files to <code>Reports/final/</code>, records a SHA-256 hash in the audit log, moves earlier drafts to Archive, and marks the case Complete.</li>
+</ol>
+
+<div class="callout warn">
+<strong>Final means final.</strong> Once published, the files are read-only and their hashes are stamped into the audit log. To revise, a practice admin must create a new draft cycle; the original stays intact for the record.
+</div>
+
+<h2>What is in a report</h2>
+<ul>
+<li>Cover page with case number, clinician, date, evaluation type.</li>
+<li>Reason for referral, informed consent record.</li>
+<li>Background and history drawn from onboarding.</li>
+<li>Testing summary, instrument by instrument, with validity notes.</li>
+<li>Interview summary.</li>
+<li>Diagnostic impressions and rule-outs in your words.</li>
+<li>Prognosis and recommendations.</li>
+<li>Attestation block with clinician signature line.</li>
+</ul>
+
+<footer class="page"><span>Version 2.x</span><span>docs.psygil.com</span></footer>
+</main></div></body></html>

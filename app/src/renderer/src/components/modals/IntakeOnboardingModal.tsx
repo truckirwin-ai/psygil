@@ -55,6 +55,21 @@ const EVAL_TYPE_OPTIONS = [
 
 const REFERRING_PARTY_TYPES = ['Court', 'Attorney', 'Physician', 'Agency', 'Insurance', 'Other'] as const
 
+/**
+ * Format a raw phone input as a North American phone number.
+ * Strips non-digits, drops a leading country code '1', caps at 10 digits,
+ * and renders progressively: "1112223333" -> "(111) 222-3333".
+ */
+function formatPhoneUS(value: string): string {
+  let digits = (value || '').replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1)
+  digits = digits.slice(0, 10)
+  if (digits.length === 0) return ''
+  if (digits.length < 4) return `(${digits}`
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
   'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
@@ -752,7 +767,7 @@ function IntakeContactAndInsuranceStep({ contact, age, onContactUpdate }: Intake
           </Field>
           <Field label="Phone" flex={2}>
             <input style={inputStyle} value={contact.phone}
-              onChange={(e) => onContactUpdate('phone', e.target.value)} placeholder="(555) 555-5555" />
+              onChange={(e) => onContactUpdate('phone', formatPhoneUS(e.target.value))} placeholder="(555) 555-5555" />
           </Field>
         </div>
 
@@ -784,7 +799,7 @@ function IntakeContactAndInsuranceStep({ contact, age, onContactUpdate }: Intake
           </Field>
           <Field label="Emergency Phone" flex={2}>
             <input style={inputStyle} value={contact.emergencyContactPhone}
-              onChange={(e) => onContactUpdate('emergencyContactPhone', e.target.value)} placeholder="(555) 555-5555" />
+              onChange={(e) => onContactUpdate('emergencyContactPhone', formatPhoneUS(e.target.value))} placeholder="(555) 555-5555" />
           </Field>
         </div>
       </div>
@@ -982,7 +997,7 @@ function IntakeReferralStep({
             <div style={rowStyle}>
               <Field label="Referring Party Phone" flex={1}>
                 <input style={inputStyle} value={referralData.referringPartyPhone}
-                  onChange={(e) => onReferralUpdate('referringPartyPhone', e.target.value)}
+                  onChange={(e) => onReferralUpdate('referringPartyPhone', formatPhoneUS(e.target.value))}
                   placeholder="(555) 555-5555" />
               </Field>
               <Field label="Referring Party Email" flex={1}>
@@ -1020,7 +1035,7 @@ function IntakeReferralStep({
               </Field>
               <Field label="Defense Phone" flex={1}>
                 <input style={inputStyle} value={referralData.defenseCounselPhone}
-                  onChange={(e) => onReferralUpdate('defenseCounselPhone', e.target.value)}
+                  onChange={(e) => onReferralUpdate('defenseCounselPhone', formatPhoneUS(e.target.value))}
                   placeholder="(555) 555-5555" />
               </Field>
             </div>
@@ -1033,7 +1048,7 @@ function IntakeReferralStep({
               </Field>
               <Field label="Prosecution Phone" flex={1}>
                 <input style={inputStyle} value={referralData.prosecutionPhone}
-                  onChange={(e) => onReferralUpdate('prosecutionPhone', e.target.value)}
+                  onChange={(e) => onReferralUpdate('prosecutionPhone', formatPhoneUS(e.target.value))}
                   placeholder="(555) 555-5555" />
               </Field>
             </div>

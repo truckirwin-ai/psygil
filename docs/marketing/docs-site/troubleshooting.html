@@ -1,0 +1,53 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Troubleshooting, Psygil Docs</title><link rel="stylesheet" href="styles.css" /></head><body>
+<div class="layout">
+<aside class="nav"><h1>Psygil Docs</h1><ul>
+<li><a href="index.html">Overview</a></li>
+<li><a href="getting-started.html">Getting Started</a></li>
+<li><a href="setup-wizard.html">Setup Wizard</a></li>
+<li><a href="shared-storage.html">Shared Storage</a></li>
+<li><a href="creating-a-case.html">Creating a Case</a></li>
+<li><a href="case-workflow.html">Case Workflow</a></li>
+<li><a href="diagnostics.html">Diagnostics</a></li>
+<li><a href="reports.html">Reports and Publishing</a></li>
+<li><a href="admin-practice.html">Practice Admin</a></li>
+<li><a href="security.html">Security and Privacy</a></li>
+<li><a href="faq.html">FAQ</a></li>
+<li><a class="active" href="troubleshooting.html">Troubleshooting</a></li>
+</ul></aside>
+<main class="content">
+<h1>Troubleshooting</h1>
+
+<h2>App will not launch after install</h2>
+<ul>
+<li>macOS, System Settings &gt; Privacy and Security: allow apps from identified developers.</li>
+<li>Windows, confirm the publisher is Foundry SMB, then accept the SmartScreen prompt.</li>
+</ul>
+
+<h2>Cannot find workspace after move</h2>
+<p>Settings &gt; Workspace &gt; Change, then point to the new path. Psygil re-syncs from the filesystem.</p>
+
+<h2>A case is missing from the tree but the folder exists</h2>
+<p>Confirm the folder name matches the pattern <code>YYYY-NNNN LastName, FirstName</code>. If not, rename it. Psygil re-adds it on next sync.</p>
+
+<h2>Changes I made outside the app did not appear</h2>
+<p>File watcher debounces events. Wait 1 to 2 seconds. If still missing, Settings &gt; Workspace &gt; Rescan.</p>
+
+<h2>Gate will not advance</h2>
+<p>The gate chip tells you what is missing. For Diagnostics, every Final Formulation section must be Approved (blue chip). Editing a section revokes its approval.</p>
+
+<h2>Report is empty or shows placeholders</h2>
+<p>That is by design. Sections populate only after their stage is complete. Advance the pipeline, then re-build.</p>
+
+<h2>Export to PDF fails</h2>
+<ul>
+<li>Confirm the chosen path is writable.</li>
+<li>Disable third-party PDF printers temporarily; Psygil uses its own renderer.</li>
+</ul>
+
+<h2>Crash report</h2>
+<p>Help &gt; Save Diagnostics Bundle produces a zip with logs and non-PHI environment details. Send it to <a href="mailto:support@psygil.com">support@psygil.com</a>.</p>
+
+<footer class="page"><span>Version 2.x</span><span>docs.psygil.com</span></footer>
+</main></div></body></html>
