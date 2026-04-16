@@ -1079,6 +1079,45 @@ function registerReportHandlers(): void {
     }
   )
 
+  // ------------------------------------------------------------------
+  // report:publish, Explicit publish entry point. Wraps submitAttestation
+  // so a caller can publish without having to think about attestation
+  // nomenclature. Fails if the case is not in the review stage or if the
+  // HARD RULE scan inside submitAttestation detects a violation.
+  // ------------------------------------------------------------------
+  ipcMain.handle(
+    'report:publish',
+    (
+      _event,
+      params: {
+        caseId: number
+        signedBy: string
+        attestationStatement: string
+        signatureDate: string
+      },
+    ): IpcResponse<{
+      success: boolean
+      reportId: number
+      integrityHash: string
+      docxPath: string
+      pdfPath: string
+    }> => {
+      try {
+        const result = submitAttestation(params)
+        return ok({
+          success: true,
+          reportId: result.reportId,
+          integrityHash: result.integrityHash,
+          docxPath: result.docxPath,
+          pdfPath: result.pdfPath,
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to publish report'
+        return fail('REPORT_PUBLISH_FAILED', message)
+      }
+    },
+  )
+
   ipcMain.handle(
     'report:getStatus',
     (

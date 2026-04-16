@@ -6,7 +6,7 @@
  */
 
 import { createHash } from 'crypto'
-import { mkdirSync, promises as fsPromises, existsSync, readdirSync } from 'fs'
+import { mkdirSync, promises as fsPromises, existsSync, readdirSync, readFileSync } from 'fs'
 import { join, resolve } from 'path'
 import { execFileSync } from 'child_process'
 import { getSqlite } from '../db/connection'
@@ -14,6 +14,9 @@ import { getCaseById } from '../cases'
 import { loadWorkspacePath } from '../workspace'
 import { logAuditEntry } from '../audit'
 import type { IpcResponse } from '../../shared/types'
+import { archiveDrafts, setReadOnly } from './archive'
+import { findProhibited, HardRuleViolationError } from '../publish/hardRuleScan'
+import { getLatestWriterResult } from '../agents/writer'
 
 // ============================================================================
 // Types
@@ -121,23 +124,60 @@ function findLatestDraft(draftsDir: string): string | null {
 // ============================================================================
 
 export async function generateSealedPdf(docxPath: string, outputPath: string): Promise<void> {
+  // Try LibreOffice CLI first for best-fidelity conversion.
   try {
-    // Try to use LibreOffice CLI if available
     execFileSync('soffice', [
       '--headless',
       '--convert-to', 'pdf',
       '--outdir', resolve(outputPath, '..'),
       docxPath
     ], { timeout: 30000 })
-
+    return
   } catch (error) {
-    console.warn('[reports] LibreOffice conversion failed:', error)
-    console.warn('[reports] Falling back: PDF conversion must be done manually')
+    process.stderr.write(
+      `[reports] LibreOffice conversion failed (${(error as Error).message}); continuing without PDF.\n`,
+    )
+  }
 
-    // Fall back: create a simple placeholder PDF or note that conversion is needed
-    // For MVP, we'll just log the requirement
-    throw new Error(
-      'LibreOffice not available for PDF conversion. Please ensure LibreOffice is installed.'
+  // Non-fatal fallback: LibreOffice is not installed. The caller is expected
+  // to handle the missing-PDF case by surfacing a UI prompt that offers
+  // "Install LibreOffice" or "Generate manually". A future enhancement will
+  // embed pdf-lib for pure-JS PDF generation (v1.1 target per plan E.1).
+  throw new Error('PDF_CONVERSION_UNAVAILABLE')
+}
+
+// ============================================================================
+// Helper: HARD RULE scan over Writer output + final DOCX bytes
+// ============================================================================
+
+function scanPublishArtifacts(caseId: number, finalDocxPath: string): void {
+  // 1. Scan the persisted WriterOutput (structured content, readable text).
+  //    If present, concatenate all section content and scan.
+  const writer = getLatestWriterResult(caseId)
+  if (writer) {
+    const allText = writer.sections
+      .map((s) => `${s.section_name}\n${s.content}\n${s.revision_notes ?? ''}`)
+      .join('\n\n')
+    const violations = findProhibited(allText, { label: `case_${caseId}:writer_output` })
+    if (violations.length > 0) {
+      throw new HardRuleViolationError(violations[0])
+    }
+  }
+
+  // 2. Scan the final DOCX file bytes as a best-effort check. DOCX is a zip
+  //    so the raw bytes include XML markup; the scanner still catches em
+  //    and en dashes in the encoded text and catches obvious watermarks.
+  try {
+    const docxBytes = readFileSync(finalDocxPath, 'utf-8')
+    const violations = findProhibited(docxBytes, { label: finalDocxPath })
+    if (violations.length > 0) {
+      throw new HardRuleViolationError(violations[0])
+    }
+  } catch (e) {
+    if (e instanceof HardRuleViolationError) throw e
+    // Reading non-UTF8 bytes is noisy; swallow I/O errors but log them.
+    process.stderr.write(
+      `[reports] DOCX byte scan skipped: ${(e as Error).message}\n`,
     )
   }
 }
@@ -188,27 +228,35 @@ export function submitAttestation(params: AttestationParams): SubmitAttestationR
     throw new Error('No report draft found. Generate a report first.')
   }
 
-  // 3. Create final directory and copy draft → final/evaluation_report.docx
+  // 3. Create final directory and copy draft to final/evaluation_report.docx
   const finalDir = getReportFinalDir(caseId)
   mkdirSync(finalDir, { recursive: true })
 
   const finalDocxPath = join(finalDir, 'evaluation_report.docx')
 
-  // Synchronous copy (for simplicity; could use async)
+  // Synchronous copy
   const fs = require('fs')
   const content = fs.readFileSync(draftDocxPath)
   fs.writeFileSync(finalDocxPath, content)
 
+  // 3a. HARD RULE pre-seal gate: scan the WriterOutput and the final DOCX
+  //     bytes. Any em dash, en dash, or AI watermark aborts the publish
+  //     and leaves the final file in place so the clinician can see what
+  //     was written; no report row, no audit entry, no read-only bit.
+  scanPublishArtifacts(caseId, finalDocxPath)
 
-  // 4. Generate PDF from the DOCX
+  // 4. Generate PDF from the DOCX. Non-fatal: if LibreOffice is missing
+  //    we keep publishing with DOCX only. Clinician can regenerate PDF
+  //    later via a dedicated button once PDF tooling is installed.
   let pdfPath: string | null = null
   try {
     const pdfFileName = 'evaluation_report.pdf'
     pdfPath = join(finalDir, pdfFileName)
     generateSealedPdf(finalDocxPath, pdfPath)
   } catch (error) {
-    console.warn('[reports] PDF generation failed:', error)
-    // Continue without PDF for MVP, it can be generated later
+    process.stderr.write(
+      `[reports] PDF generation skipped: ${(error as Error).message}\n`,
+    )
     pdfPath = null
   }
 
@@ -304,6 +352,39 @@ export function submitAttestation(params: AttestationParams): SubmitAttestationR
     relatedEntityType: 'report',
     relatedEntityId: reportId,
   })
+
+  // 9. Archive every remaining draft and freeze the final files at
+  //    read-only so a user cannot edit a sealed report without the
+  //    explicit supervisor-unlock path (future Phase B.4 work).
+  try {
+    const wsPath = loadWorkspacePath()
+    if (wsPath) {
+      const archiveDir = join(wsPath, `case_${caseId}`, 'report', 'archive')
+      const archiveResult = archiveDrafts(draftsDir, archiveDir)
+      if (archiveResult.movedCount > 0) {
+        logAuditEntry({
+          caseId,
+          actionType: 'draft_archived',
+          actorType: 'system',
+          details: {
+            draftsMoved: archiveResult.movedCount,
+            archiveDir: archiveResult.archiveDir,
+          },
+          relatedEntityType: 'report',
+          relatedEntityId: reportId,
+        })
+      }
+    }
+  } catch (e) {
+    process.stderr.write(
+      `[reports] Archive step failed: ${(e as Error).message}\n`,
+    )
+  }
+
+  setReadOnly(finalDocxPath)
+  if (pdfPath) {
+    setReadOnly(pdfPath)
+  }
 
   return {
     reportId,

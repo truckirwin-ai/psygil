@@ -913,6 +913,14 @@ export interface SubmitAttestationResult {
   readonly finalizedAt: string
 }
 
+export interface PublishResult {
+  readonly success: boolean
+  readonly reportId: number
+  readonly integrityHash: string
+  readonly docxPath: string
+  readonly pdfPath: string
+}
+
 export interface VerifyIntegrityParams {
   readonly caseId: number
 }
@@ -1415,6 +1423,7 @@ export interface PsygilApi {
   readonly report: {
     readonly getStatus: (args: ReportStatusParams) => Promise<IpcResponse<ReportStatusResult>>
     readonly submitAttestation: (args: SubmitAttestationParams) => Promise<IpcResponse<SubmitAttestationResult>>
+    readonly publish: (args: SubmitAttestationParams) => Promise<IpcResponse<PublishResult>>
     readonly verifyIntegrity: (args: VerifyIntegrityParams) => Promise<IpcResponse<VerifyIntegrityResult>>
     readonly exportAndOpen: (args: { caseId: number; fullName: string; evalType: string; sections: { title: string; body: string }[] }) => Promise<IpcResponse<{ filePath: string }>>
     readonly loadTemplate: () => Promise<IpcResponse<{ sections: { title: string; body: string }[] }>>
