@@ -100,3 +100,6 @@ sidecar/dist-macos/
 
 # Word lock files
 ~$*.docx
+
+# Asar bundle extracts from verification runs (never commit)
+/app/index.js
