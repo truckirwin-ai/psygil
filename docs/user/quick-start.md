@@ -1,19 +1,20 @@
 # Quick Start
 
-What this covers: installing Psygil, completing the setup wizard, and creating your first case.
+What this covers: installing Psygil, completing the setup wizard, and creating your first case. For the detailed version with every option explained, see [install-first-run.md](./install-first-run.md).
 
 ---
 
 ## Install the Application
 
-Download the installer for your platform from psygil.com.
+Download the installer for your platform from your Foundry SMB distribution link.
 
-- **macOS (.dmg):** Open the disk image and drag Psygil to your Applications folder. On first launch, macOS Gatekeeper will prompt you to confirm the application is from an identified developer. Click Open to proceed.
-- **Windows (.exe):** Run the installer and follow the standard wizard. The application installs to `C:\Program Files\Psygil\` and registers in Add/Remove Programs.
+- **macOS arm64 (.dmg):** Open the disk image and drag Psygil.app to any folder: Applications, ~/Applications, Desktop, a USB stick, or a project directory. The app does not require Applications. For v1.0 RC1 (unsigned), right-click the app and choose Open on first launch to bypass Gatekeeper; see the detailed doc for the one-time command that avoids this.
+- **macOS portable install (.zip):** Unzip anywhere and optionally create an empty file named .psygil-portable next to the .app to make the install self-contained. Psygil then stores all case data in a sibling Psygil-Data folder instead of ~/Library/Application Support.
+- **Windows (.exe):** Run the installer and pick any install directory. Per-user install, no admin rights required.
 
-The installer is a complete offline package. No internet connection is required for installation. AI features require a separate API key, configured during setup.
+The installer is a complete offline package. The Python sidecar ships as a frozen binary; you do not need Python installed. AI features require a separate Anthropic API key, configured during setup.
 
-Before the setup wizard appears, Psygil silently verifies its Python sidecar process. If the sidecar fails to start, you will see a diagnostic screen rather than the wizard. See [troubleshooting.md](./troubleshooting.md) for resolution steps.
+Before the setup wizard appears, Psygil verifies its sidecar process. The sidecar takes 5 to 10 seconds to boot on first launch. If it fails, the wizard shows specific remediation; see [troubleshooting.md](./troubleshooting.md).
 
 ---
 
@@ -97,6 +98,7 @@ See [walkthrough.md](./walkthrough.md) for a complete explanation of all six pip
 
 ## See Also
 
+- [install-first-run.md](./install-first-run.md): Detailed installation, portable mode, and every setup wizard step
 - [walkthrough.md](./walkthrough.md): The six-stage clinical pipeline in detail
 - [templates.md](./templates.md): Uploading and customizing report templates
 - [ai-assistant.md](./ai-assistant.md): What the AI agents do and how to use them

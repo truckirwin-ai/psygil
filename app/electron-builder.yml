@@ -26,6 +26,9 @@ files:
 # resolves the venv python from process.resourcesPath/sidecar/venv/bin/python
 # in packaged builds.
 extraResources:
+  # Python source tree as a fallback when the frozen PyInstaller binary is
+  # not staged (dev builds or a platform we have not built a binary for).
+  # The main-process locator prefers the frozen binary when present.
   - from: "../sidecar"
     to: "sidecar"
     filter:
@@ -33,11 +36,25 @@ extraResources:
       - "!__pycache__/**"
       - "!**/*.pyc"
       - "!venv/**"
+      - "!.venv/**"
+      - "!.venv-build/**"
       - "!.pytest_cache/**"
+      - "!dist/**"
+      - "!build/**"
   - from: "resources/bootstrap-sidecar.sh"
     to: "bootstrap-sidecar.sh"
   - from: "resources/bootstrap-sidecar.ps1"
     to: "bootstrap-sidecar.ps1"
+  # Staged PyInstaller frozen binary per platform. The main-process locator
+  # looks at process.resourcesPath/sidecar/<platform>/psygil-sidecar/psygil-sidecar
+  # and prefers it over the Python source bundle. Built by sidecar/build.sh.
+  # Using literal platform names (darwin / win32 / linux) rather than
+  # electron-builder's ${os} macro because ${os} resolves to "mac" on macOS,
+  # which does not match Node's process.platform (darwin).
+  - from: "resources/sidecar/darwin"
+    to: "sidecar/darwin"
+    filter:
+      - "**/*"
 
 # Make sure native modules are rebuilt for the target Electron ABI.
 # better-sqlite3-multiple-ciphers and argon2 both need this.

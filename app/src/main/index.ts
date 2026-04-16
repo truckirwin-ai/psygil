@@ -12,6 +12,13 @@ for (const stream of [process.stdout, process.stderr]) {
 
 import { app, BrowserWindow, protocol, net } from 'electron'
 import { pathToFileURL } from 'url'
+import { configurePortableMode } from './portable'
+
+// Portable-install detection: if a .psygil-portable marker exists next to
+// the .app bundle (or Windows/Linux install dir), redirect userData to a
+// sibling Psygil-Data/ folder. Must run before app.whenReady() so every
+// consumer of userData picks up the redirected path on first access.
+configurePortableMode()
 
 // Second-instance lock (Phase C.1): refuse to launch if another Psygil is
 // already running. If a second instance fires the protocol handler with a

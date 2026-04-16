@@ -62,6 +62,13 @@ function getAppliedVersions(sqlite: SqliteHandle): Set<number> {
  */
 function runVersionedMigrations(sqlite: SqliteHandle): void {
   ensureSchemaVersionsTable(sqlite)
+  // Reconcile with the legacy migrations/index.ts _migrations registry.
+  // A pre-session database may have had migrations applied through that
+  // older path; their effects (columns, triggers) are already in the schema
+  // but schema_versions does not know about them. Detect the target state
+  // for each entry and mark it applied without re-running when present.
+  reconcileLegacyMigrations(sqlite)
+
   const applied = getAppliedVersions(sqlite)
 
   const sorted = [...MIGRATIONS].sort((a, b) => a.version - b.version)
@@ -70,6 +77,87 @@ function runVersionedMigrations(sqlite: SqliteHandle): void {
     if (applied.has(entry.version)) continue
     applyMigration(sqlite, entry)
   }
+}
+
+/**
+ * Inspect the live schema for signs that legacy migrations (tracked via
+ * the old `_migrations` table in migrations/index.ts) have already applied
+ * the effects of versions in our new manifest. Seeds schema_versions with
+ * those version numbers so the runner skips them.
+ *
+ * This is a one-shot bridge between the two migration systems. Every check
+ * is a pure existence query; no schema writes happen here.
+ */
+function reconcileLegacyMigrations(sqlite: SqliteHandle): void {
+  const applied = getAppliedVersions(sqlite)
+  const toMark: Array<{ version: number; description: string }> = []
+
+  // Migration 001 (initial schema): if the `cases` table exists, the
+  // initial schema has been applied by some path (legacy monolith,
+  // fresh manifest, or a prior run). Mark it done.
+  if (!applied.has(1) && tableExists(sqlite, 'cases')) {
+    toMark.push({
+      version: 1,
+      description: '[reconciled] Initial schema detected on disk',
+    })
+  }
+
+  // Migration 002 (audit hash chain): if audit_log has prev_hash and
+  // row_hash columns AND the immutability triggers exist, the migration
+  // target state is in place. The legacy migrations/index.ts entry
+  // `009_audit_hash_chain` applies the same effect idempotently.
+  if (
+    !applied.has(2) &&
+    columnExists(sqlite, 'audit_log', 'prev_hash') &&
+    columnExists(sqlite, 'audit_log', 'row_hash')
+  ) {
+    toMark.push({
+      version: 2,
+      description: '[reconciled] Audit hash chain columns detected on disk',
+    })
+  }
+
+  // Migration 003 (documents unique path): if the unique index exists,
+  // the migration has been applied.
+  if (!applied.has(3) && indexExists(sqlite, 'idx_documents_case_path_unique')) {
+    toMark.push({
+      version: 3,
+      description: '[reconciled] Documents unique index detected on disk',
+    })
+  }
+
+  if (toMark.length === 0) return
+
+  const insert = sqlite.prepare(
+    'INSERT OR IGNORE INTO schema_versions (version, description, applied_at) VALUES (?, ?, ?)',
+  )
+  const appliedAt = new Date().toISOString()
+  for (const m of toMark) {
+    insert.run(m.version, m.description, appliedAt)
+  }
+}
+
+function tableExists(sqlite: SqliteHandle, name: string): boolean {
+  const row = sqlite
+    .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")
+    .get(name) as { 1: number } | undefined
+  return row !== undefined
+}
+
+function columnExists(sqlite: SqliteHandle, table: string, column: string): boolean {
+  try {
+    const cols = sqlite.pragma(`table_info(${table})`) as Array<{ name: string }>
+    return cols.some((c) => c.name === column)
+  } catch {
+    return false
+  }
+}
+
+function indexExists(sqlite: SqliteHandle, name: string): boolean {
+  const row = sqlite
+    .prepare("SELECT 1 FROM sqlite_master WHERE type='index' AND name=?")
+    .get(name) as { 1: number } | undefined
+  return row !== undefined
 }
 
 /**
