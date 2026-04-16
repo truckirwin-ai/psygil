@@ -30,6 +30,7 @@
 //   Otherwise default seats per tier are used.
 // =============================================================================
 
+import { createHmac, timingSafeEqual } from 'crypto'
 import type { LicenseInfo, LicenseTier } from './state'
 
 export type LicenseErrorCode =
@@ -58,6 +59,53 @@ export interface LicenseValidationResult {
 
 const KEY_REGEX = /^PSGIL-([A-Z0-9]{5})-([A-Z0-9]{5})-([A-Z0-9]{5})-([A-Z0-9]{5})$/
 const REMOTE_TIMEOUT_MS = 5000
+
+// ---------------------------------------------------------------------------
+// Response signature verification (D.5)
+// ---------------------------------------------------------------------------
+//
+// The license server signs every 200 response with HMAC-SHA256 using a shared
+// secret. The verification secret ships in the app binary. In v1.0 the HMAC
+// key is symmetric (same value on server and client). v2.0 will switch to
+// asymmetric Ed25519 so the private signing key never leaves the server.
+//
+// The secret is injected at build time via the PSYGIL_VERIFICATION_SECRET
+// environment variable. For local dev it defaults to the dev placeholder.
+
+const VERIFICATION_SECRET =
+  process.env['PSYGIL_VERIFICATION_SECRET'] ?? 'dev-signing-secret-change-in-production'
+
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, (_key, val: unknown): unknown => {
+    if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+      const sorted: Record<string, unknown> = {}
+      for (const k of Object.keys(val as Record<string, unknown>).sort()) {
+        sorted[k] = (val as Record<string, unknown>)[k]
+      }
+      return sorted
+    }
+    return val
+  })
+}
+
+/**
+ * Verify the X-Psygil-Signature header from a license server response.
+ * Returns false on any mismatch or error rather than throwing, so the
+ * caller can decide whether to treat a missing/invalid signature as fatal.
+ */
+function verifyServerSignature(body: unknown, signature: string): boolean {
+  try {
+    const expected = createHmac('sha256', VERIFICATION_SECRET)
+      .update(canonicalJson(body))
+      .digest('hex')
+    const expectedBuf = Buffer.from(expected, 'hex')
+    const providedBuf = Buffer.from(signature, 'hex')
+    if (expectedBuf.length !== providedBuf.length) return false
+    return timingSafeEqual(expectedBuf, providedBuf)
+  } catch {
+    return false
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -185,6 +233,24 @@ export async function validateRemote(
     }
 
     const body = (await response.json()) as RemoteResponse
+
+    // Verify HMAC signature. If the header is absent (dev server without
+    // SIGNING_SECRET set) we skip enforcement so local dev keeps working.
+    // In production the server always sends the header.
+    const sig = response.headers.get('x-psygil-signature')
+    if (sig !== null && sig.length > 0) {
+      if (!verifyServerSignature(body, sig)) {
+        return {
+          ok: false,
+          license: null,
+          errorCode: 'REJECTED',
+          errorMessage: 'License server response signature verification failed.',
+          source: 'remote',
+          offlineFallback: false,
+        }
+      }
+    }
+
     if (body.ok === true) {
       const tier = body.tier
       if (tier !== 'solo' && tier !== 'practice' && tier !== 'enterprise') {

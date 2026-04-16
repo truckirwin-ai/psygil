@@ -166,25 +166,37 @@ if [ ! -x "$BINARY" ]; then
   exit 1
 fi
 
-# Run the binary in a subshell that times out after 8 seconds. We expect it
-# to print {"status":"ready"} on stdout and then start listening. The
-# process will be killed by the timeout; that is the success signal here.
+# Run the binary and poll for the ready signal for up to 30 seconds.
+# First-run spaCy model load can take 8-15s on slower machines, so the
+# previous fixed 5s sleep was too tight. Poll every 1s for ready OR an
+# exit, whichever comes first.
 SMOKE_LOG="$( mktemp )"
-( "$BINARY" >"$SMOKE_LOG" 2>&1 & echo $! >"$SMOKE_LOG.pid" )
-sleep 5
-PID="$( cat "$SMOKE_LOG.pid" 2>/dev/null || true )"
-if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+PYTHONUNBUFFERED=1 "$BINARY" >"$SMOKE_LOG" 2>&1 &
+PID=$!
+READY=0
+for _ in $(seq 1 30); do
+  if grep -q '"status":"ready"' "$SMOKE_LOG" 2>/dev/null; then
+    READY=1
+    break
+  fi
+  if ! kill -0 "$PID" 2>/dev/null; then
+    break
+  fi
+  sleep 1
+done
+if kill -0 "$PID" 2>/dev/null; then
   kill "$PID" 2>/dev/null || true
 fi
+wait "$PID" 2>/dev/null || true
 
-if grep -q '"status":"ready"' "$SMOKE_LOG"; then
+if [ "$READY" -eq 1 ]; then
   echo "  Smoke test PASSED."
 else
   echo "  Smoke test FAILED. Output:"
   cat "$SMOKE_LOG"
   exit 1
 fi
-rm -f "$SMOKE_LOG" "$SMOKE_LOG.pid"
+rm -f "$SMOKE_LOG"
 
 # ---- Stage into Electron resources -----------------------------------------
 

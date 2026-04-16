@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type {
   PsygilApi,
   WorkspaceFileChangedEvent,
+  UpdateAvailableEvent,
+  UpdateDownloadProgressEvent,
   PiiDetectParams,
   PiiBatchDetectParams,
   PiiRedactParams,
@@ -302,8 +304,23 @@ const api: PsygilApi = {
 
   updater: {
     check: () => ipcRenderer.invoke('updater:check'),
+    checkNow: () => ipcRenderer.invoke('updater:checkNow'),
     download: (args: { version: string }) => ipcRenderer.invoke('updater:download', args),
     getVersion: () => ipcRenderer.invoke('updater:getVersion'),
+    onUpdateAvailable: (cb: (data: UpdateAvailableEvent) => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, data: unknown): void => {
+        cb(data as UpdateAvailableEvent)
+      }
+      ipcRenderer.on('updater:updateAvailable', listener)
+      return (): void => { ipcRenderer.removeListener('updater:updateAvailable', listener) }
+    },
+    onDownloadProgress: (cb: (data: UpdateDownloadProgressEvent) => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, data: unknown): void => {
+        cb(data as UpdateDownloadProgressEvent)
+      }
+      ipcRenderer.on('updater:downloadProgress', listener)
+      return (): void => { ipcRenderer.removeListener('updater:downloadProgress', listener) }
+    },
   },
 
   report: {

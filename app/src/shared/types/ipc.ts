@@ -1519,9 +1519,12 @@ export interface PsygilApi {
     readonly runAll: () => Promise<IpcResponse<unknown>>
   }
   readonly updater: {
-    readonly check: () => Promise<unknown>
-    readonly download: (args: { version: string }) => Promise<unknown>
-    readonly getVersion: () => Promise<unknown>
+    readonly check: () => Promise<IpcResponse<{ available: boolean; version?: string; releaseNotes?: string }>>
+    readonly checkNow: () => Promise<IpcResponse<{ available: boolean; version?: string; releaseNotes?: string; downloadSize?: number }>>
+    readonly download: (args: { version: string }) => Promise<IpcResponse<{ filePath: string | null }>>
+    readonly getVersion: () => Promise<IpcResponse<string>>
+    readonly onUpdateAvailable: (cb: (data: UpdateAvailableEvent) => void) => () => void
+    readonly onDownloadProgress: (cb: (data: UpdateDownloadProgressEvent) => void) => () => void
   }
   readonly setup: import('./setup').SetupApi
   readonly uninstall: {
@@ -1584,4 +1587,40 @@ export interface AuthRefreshResult {
 
 /** auth:getSession returns AuthSession | null */
 export type AuthGetSessionResult = AuthSession | null
+
+// ---------------------------------------------------------------------------
+// Updater types (Phase D.6)
+// ---------------------------------------------------------------------------
+
+/**
+ * Manifest fetched from the update server.
+ * Schema validated by Zod in app/src/main/updater/manifest.ts.
+ */
+export interface UpdateManifest {
+  readonly version: string
+  readonly releaseDate: string
+  readonly releaseNotes?: string
+  readonly installerUrl: string
+  readonly installerSha256: string
+  readonly ed25519Signature: string
+}
+
+/**
+ * Emitted as updater:updateAvailable from the main process to the renderer
+ * when a background check finds a newer version.
+ */
+export interface UpdateAvailableEvent {
+  readonly version: string
+  readonly releaseNotes: string
+  readonly downloadSize: number
+}
+
+/**
+ * Emitted as updater:downloadProgress from the main process during download.
+ */
+export interface UpdateDownloadProgressEvent {
+  readonly percent: number
+  readonly bytesDownloaded: number
+  readonly totalBytes: number
+}
 

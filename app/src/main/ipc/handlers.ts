@@ -945,12 +945,34 @@ function registerUpdaterHandlers(): void {
       releaseNotes?: string
     }>> => {
       try {
-        const { checkForUpdates } = await import('../updater')
-        const result = await checkForUpdates()
+        const { checkForUpdatesLegacy } = await import('../updater')
+        const result = await checkForUpdatesLegacy()
         return ok(result)
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to check for updates'
-        console.error('[updater:check] error:', message)
+        return fail('UPDATER_CHECK_FAILED', message)
+      }
+    }
+  )
+
+  // Manual check from Settings > About > "Check for Updates"
+  ipcMain.handle(
+    'updater:checkNow',
+    async (): Promise<IpcResponse<{ available: boolean; version?: string; releaseNotes?: string; downloadSize?: number }>> => {
+      try {
+        const { checkForUpdates } = await import('../updater')
+        const result = await checkForUpdates(true)
+        if (result === null) {
+          return ok({ available: false })
+        }
+        return ok({
+          available: true,
+          version: result.version,
+          releaseNotes: result.releaseNotes,
+          downloadSize: result.downloadSize,
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to check for updates'
         return fail('UPDATER_CHECK_FAILED', message)
       }
     }
@@ -965,7 +987,6 @@ function registerUpdaterHandlers(): void {
         return ok({ filePath })
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to download update'
-        console.error('[updater:download] error:', message)
         return fail('UPDATER_DOWNLOAD_FAILED', message)
       }
     }
@@ -975,7 +996,7 @@ function registerUpdaterHandlers(): void {
     'updater:getVersion',
     (): IpcResponse<string> => {
       try {
-        const { getAppVersion } = require('../updater')
+        const { getAppVersion } = require('../updater') as { getAppVersion: () => string }
         return ok(getAppVersion())
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to get app version'

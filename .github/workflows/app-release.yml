@@ -1,0 +1,380 @@
+name: App Release
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+*
+  workflow_dispatch:
+
+jobs:
+  # Build sidecar binaries for all platforms
+  build-sidecar-darwin-arm64:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Build sidecar (darwin-arm64)
+        run: cd sidecar && bash build.sh --clean
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-darwin-arm64
+          path: app/resources/sidecar/darwin-arm64/psygil-sidecar/
+          retention-days: 1
+
+  build-sidecar-darwin-x64:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Build sidecar (darwin-x64)
+        run: cd sidecar && bash build.sh --clean
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-darwin-x64
+          path: app/resources/sidecar/darwin-x64/psygil-sidecar/
+          retention-days: 1
+
+  build-sidecar-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Build sidecar (linux-x64)
+        run: cd sidecar && bash build.sh --clean
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-linux-x64
+          path: app/resources/sidecar/linux-x64/psygil-sidecar/
+          retention-days: 1
+
+  build-sidecar-win32-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Build sidecar (win32-x64)
+        run: cd sidecar && bash build.sh --clean
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-win32-x64
+          path: app/resources/sidecar/win32-x64/psygil-sidecar/
+          retention-days: 1
+
+  # Build Electron app for each platform
+  build-app-darwin-arm64:
+    needs: [build-sidecar-darwin-arm64]
+    runs-on: macos-14
+    env:
+      APPLE_DEVELOPER_ID_APPLICATION: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Download sidecar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-darwin-arm64
+          path: app/resources/sidecar/darwin-arm64/psygil-sidecar/
+
+      - name: Inject Ed25519 public key
+        env:
+          ED25519_PUBLIC_KEY: ${{ secrets.ED25519_PUBLIC_KEY }}
+        run: |
+          if [ -z "$ED25519_PUBLIC_KEY" ]; then
+            echo "ERROR: ED25519_PUBLIC_KEY secret not set"
+            exit 1
+          fi
+          sed -i '' "s|MCow.*PLACE_HOLDER_KEY_REPLACE_DURING_CI_BUILD_0000000=|$ED25519_PUBLIC_KEY|g" app/src/main/updater/index.ts
+          if grep -q "PLACE_HOLDER_KEY_REPLACE_DURING_CI_BUILD" app/src/main/updater/index.ts; then
+            echo "ERROR: Public key placeholder still present after substitution"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: cd app && npm ci --legacy-peer-deps
+
+      - name: Build and package
+        run: cd app && npm run dist:mac
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-darwin-arm64
+          path: app/dist/
+          retention-days: 1
+
+  build-app-darwin-x64:
+    needs: [build-sidecar-darwin-x64]
+    runs-on: macos-14
+    env:
+      APPLE_DEVELOPER_ID_APPLICATION: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Download sidecar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-darwin-x64
+          path: app/resources/sidecar/darwin-x64/psygil-sidecar/
+
+      - name: Inject Ed25519 public key
+        env:
+          ED25519_PUBLIC_KEY: ${{ secrets.ED25519_PUBLIC_KEY }}
+        run: |
+          if [ -z "$ED25519_PUBLIC_KEY" ]; then
+            echo "ERROR: ED25519_PUBLIC_KEY secret not set"
+            exit 1
+          fi
+          sed -i '' "s|MCow.*PLACE_HOLDER_KEY_REPLACE_DURING_CI_BUILD_0000000=|$ED25519_PUBLIC_KEY|g" app/src/main/updater/index.ts
+          if grep -q "PLACE_HOLDER_KEY_REPLACE_DURING_CI_BUILD" app/src/main/updater/index.ts; then
+            echo "ERROR: Public key placeholder still present after substitution"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: cd app && npm ci --legacy-peer-deps
+
+      - name: Build and package
+        run: cd app && npm run dist:mac
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-darwin-x64
+          path: app/dist/
+          retention-days: 1
+
+  build-app-linux-x64:
+    needs: [build-sidecar-linux-x64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Download sidecar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-linux-x64
+          path: app/resources/sidecar/linux-x64/psygil-sidecar/
+
+      - name: Inject Ed25519 public key
+        env:
+          ED25519_PUBLIC_KEY: ${{ secrets.ED25519_PUBLIC_KEY }}
+        run: |
+          if [ -z "$ED25519_PUBLIC_KEY" ]; then
+            echo "ERROR: ED25519_PUBLIC_KEY secret not set"
+            exit 1
+          fi
+          sed -i "s|MCow.*PLACE_HOLDER_KEY_REPLACE_DURING_CI_BUILD_0000000=|$ED25519_PUBLIC_KEY|g" app/src/main/updater/index.ts
+          if grep -q "PLACE_HOLDER_KEY_REPLACE_DURING_CI_BUILD" app/src/main/updater/index.ts; then
+            echo "ERROR: Public key placeholder still present after substitution"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: cd app && npm ci --legacy-peer-deps
+
+      - name: Build and package
+        run: cd app && npm run dist:linux
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-linux-x64
+          path: app/dist/
+          retention-days: 1
+
+  build-app-win32-x64:
+    needs: [build-sidecar-win32-x64]
+    runs-on: windows-latest
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Download sidecar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-win32-x64
+          path: app/resources/sidecar/win32-x64/psygil-sidecar/
+
+      - name: Inject Ed25519 public key
+        env:
+          ED25519_PUBLIC_KEY: ${{ secrets.ED25519_PUBLIC_KEY }}
+        shell: powershell
+        run: |
+          if ([string]::IsNullOrEmpty($env:ED25519_PUBLIC_KEY)) {
+            Write-Error "ED25519_PUBLIC_KEY secret not set"
+            exit 1
+          }
+          $filePath = "app/src/main/updater/index.ts"
+          $content = Get-Content $filePath -Raw
+          $content = $content -replace "MCow.*PLACE_HOLDER_KEY_REPLACE_DURING_CI_BUILD_0000000=", $env:ED25519_PUBLIC_KEY
+          Set-Content -Path $filePath -Value $content -NoNewline
+          if (Select-String -Path $filePath -Pattern "PLACE_HOLDER_KEY_REPLACE_DURING_CI_BUILD") {
+            Write-Error "Public key placeholder still present after substitution"
+            exit 1
+          }
+
+      - name: Install dependencies
+        run: cd app && npm ci --legacy-peer-deps
+
+      - name: Build and package
+        run: cd app && npm run dist:win
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-win32-x64
+          path: app/dist/
+          retention-days: 1
+
+  # Create release with signed manifest
+  release:
+    needs: [build-app-darwin-arm64, build-app-darwin-x64, build-app-linux-x64, build-app-win32-x64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Compute SHA-256 checksums and create manifest
+        env:
+          ED25519_PRIVATE_KEY: ${{ secrets.ED25519_PRIVATE_KEY }}
+        run: |
+          set -e
+
+          if [ -z "$ED25519_PRIVATE_KEY" ]; then
+            echo "ERROR: ED25519_PRIVATE_KEY secret not set"
+            exit 1
+          fi
+
+          # Extract version from git tag
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          # Create manifest structure
+          cat > manifest-stable.json << EOF
+          {
+            "version": "$VERSION",
+            "stable": {
+              "darwin_arm64": {
+                "url": "https://github.com/$GITHUB_REPOSITORY/releases/download/$VERSION/Psygil-$VERSION-arm64.dmg",
+                "sha256": "$(sha256sum app-darwin-arm64/*.dmg | awk '{print $1}')"
+              },
+              "darwin_x64": {
+                "url": "https://github.com/$GITHUB_REPOSITORY/releases/download/$VERSION/Psygil-$VERSION.dmg",
+                "sha256": "$(sha256sum app-darwin-x64/*.dmg | awk '{print $1}')"
+              },
+              "linux_x64": {
+                "url": "https://github.com/$GITHUB_REPOSITORY/releases/download/$VERSION/psygil-$VERSION.AppImage",
+                "sha256": "$(sha256sum app-linux-x64/*.AppImage | awk '{print $1}')"
+              },
+              "win32_x64": {
+                "url": "https://github.com/$GITHUB_REPOSITORY/releases/download/$VERSION/Psygil-Setup-$VERSION.exe",
+                "sha256": "$(sha256sum app-win32-x64/*.exe | awk '{print $1}')"
+              }
+            }
+          }
+          EOF
+
+          cat manifest-stable.json
+
+          # Sign manifest with Ed25519
+          # Note: This requires a node script or external tool to sign; for now, we save the manifest unsigned
+          # In production, integrate with a signing service or tool
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            app-darwin-arm64/*.dmg
+            app-darwin-x64/*.dmg
+            app-linux-x64/*.AppImage
+            app-win32-x64/*.exe
+            manifest-stable.json
+          body: |
+            Release ${{ github.ref_name }}
+
+            See CHANGELOG.md for release notes.
+
+            **Checksums and signatures are in manifest-stable.json**

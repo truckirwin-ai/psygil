@@ -88,3 +88,9 @@ sidecar/dist-macos/
 # Local dev-ops knowledge base + indexer logs (machine-generated, not shared)
 /dev-ops/
 /.claude/scheduled_tasks.lock
+
+# PyInstaller sidecar build artifacts (~510MB per platform; built in CI, not committed)
+/app/resources/sidecar/
+/sidecar/.venv-build/
+/sidecar/dist/
+/sidecar/build/
