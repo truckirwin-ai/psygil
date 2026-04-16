@@ -1,6 +1,6 @@
 # Install and First Run
 
-What this covers: step-by-step installation of Psygil on macOS (arm64) from the v1.0 RC1 build, first-launch behavior, the setup wizard, and creating your first case.
+What this covers: step-by-step installation of Psygil on macOS (arm64) from the v1.0 RC1 build, the three-field first-run dialog, post-setup configuration in Settings, and creating your first case.
 
 ## Before you start
 
@@ -75,80 +75,50 @@ Replace the path with wherever you installed. After this, double-click works nor
 
 Signed builds (post Developer ID certificate acquisition) will not require either step.
 
-## Step 4: Setup wizard
+## Step 4: First-run setup (three fields)
 
-On first launch you go through an 8-step setup wizard. Progress is saved; you can quit and resume at any step.
+On first launch Psygil opens a single dialog asking for three values. Everything else is optional and lives in Settings.
 
-### Step 1: Sidecar check
+**Field 1: Your name.** Used as the stamp on every clinical decision and on report signature lines. Enter it the way you want it to appear on evaluations, including credentials if you want them in the byline (for example, `Dr. Robert Irwin, Psy.D.`).
 
-Psygil spawns the PyInstaller-frozen Python sidecar that handles PHI redaction. Expected behavior:
-- 5 to 10 seconds of sidecar startup (spaCy model load).
-- Green status: `sidecar ready, socket: /tmp/psygil-sidecar.sock`.
+**Field 2: License key.** Provided by Foundry SMB at purchase. The app validates locally first, then contacts `licenses.psygil.com` if online. Offline validation works for 30 days; after that the app requires a one-time online check.
 
-If the sidecar fails, the step shows specific remediation based on the error:
-- `Python not found` -> you have an old build that expected system Python. Re-download the latest RC.
-- `en_core_web_lg missing` -> the spaCy model was not bundled correctly. Reinstall.
-- `socket already in use` -> another Psygil is running. Quit it or run `rm -f /tmp/psygil-sidecar.sock`.
-- Unknown error -> Copy Diagnostic button puts the full stack on your clipboard for a support ticket.
-
-### Step 2: License
-
-Enter your license key (provided by Foundry SMB) or click `Start trial` for a 30-day evaluation. The app validates locally first, then contacts `licenses.psygil.com` if online. Offline fallback works for 30 days.
-
-### Step 3: Storage
-
-Pick the folder where your cases will live. Default is `~/Documents/Psygil Cases/`. In portable mode the default is `<install-dir>/Psygil-Data/cases/`.
-
-The wizard validates:
+**Field 3: Local storage folder.** Click `Browse...` to pick the folder where your case files will live. Default is `~/Documents/Psygil Cases/`. In portable mode the default is inside the Psygil-Data sibling of the .app. The picker validates:
 - Path is writable.
 - Disk has at least 500 MB free.
-- Path is NOT a cloud-synced folder (Dropbox, iCloud, OneDrive, Google Drive). Cloud folders cause sync conflicts and are explicitly blocked. Use a local-only folder.
+- Path is NOT a cloud-synced folder (Dropbox, iCloud, OneDrive, Google Drive). Cloud folders cause sync conflicts and are blocked for v1.0. Use a local-only folder; shared-drive or team configurations are set up post-first-run in Settings.
 
-### Step 4: Practice information
+Click `Get started`. Psygil validates the license, saves it, provisions the storage folder structure (`cases/`, `Archive/`, `_Resources/`, templates), saves your name, and finalizes setup. No browser round trip, no Auth0 redirect.
 
-Fill in your practice identity. Fields: practice name, your full name, NPI number (optional), primary address. These appear on generated reports, so use the spelling you want in your evaluations.
+Total time: under 30 seconds on a warm machine.
 
-### Step 5: AI configuration
+## Step 5: Post-setup configuration (optional, in Settings)
 
-Paste your Anthropic API key (starts with `sk-ant-`). The key is stored in your macOS Keychain via `safeStorage`, never written to plain files.
+After the first-run dialog closes you land in the main app shell. Everything you skipped is available from `Settings` in the top toolbar:
 
-Click `Test connection`. The app makes one minimal request to `https://api.anthropic.com/v1/messages` and reports:
-- Success plus cost estimate ("Test cost: $0.0001") for the model you selected.
-- Failure with specific error: invalid key, network issue, model not accessible.
+**AI configuration** (`Settings > AI`)
+- Paste your Anthropic API key (starts with `sk-ant-`); stored in the macOS Keychain via safeStorage, never in plain files.
+- Click `Test connection`. On success, see the estimated token cost for the chosen model.
+- Model selection: default `claude-sonnet-4-20250514`. Opus for deeper reasoning, Haiku for faster and cheaper workflows.
 
-Model selection: default is `claude-sonnet-4-20250514`. Opus for deeper reasoning, Haiku for faster and cheaper workflows.
+**Appearance** (`Settings > Appearance`)
+- Four themes: Light, Warm (cream), Medium (gray), Dark.
+- Form inputs and the report preview stay white regardless of theme, so what you write is always readable.
 
-### Step 6: Appearance
+**Clinical preferences** (`Settings > Clinical`)
+- Primary evaluation type (CST, Custody, Risk Assessment, Parenting Time, Sanity, Fitness for Duty, Other).
+- Jurisdiction (state / territory).
+- Default test battery.
 
-Choose one of four themes:
-- `Light`: default, bright, for well-lit offices.
-- `Warm`: cream palette, easier on the eyes for long sessions.
-- `Medium`: medium gray with higher contrast, good for dim rooms.
-- `Dark`: GitHub-style dark, for late-evening work.
+**Templates** (`Settings > Templates`)
+- A starter set of `.docx` templates with placeholder tokens (`{{PATIENT_NAME}}`, `{{EVAL_TYPE}}`, `{{SIGNATURE_LINE}}`) is provisioned on first run.
+- `Preview` opens any template in your default .docx viewer.
+- `Reveal in Finder` jumps to the templates folder for deeper customization.
+- See `docs/user/templates.md` for the token syntax.
 
-Form inputs and the report preview stay white regardless of theme, so what you write is always readable.
-
-### Step 7: Clinical preferences
-
-Select your primary evaluation type (Competency to Stand Trial, Custody, Risk Assessment, Parenting Time, Sanity, Fitness for Duty, Other), your jurisdiction (state / territory), and your default test battery preferences. These drive template selection and evidence-map defaults for new cases.
-
-### Step 8: Templates
-
-The wizard provisions a starter set of report templates (.docx files with placeholder tokens like `{{PATIENT_NAME}}`, `{{EVAL_TYPE}}`, `{{SIGNATURE_LINE}}`). You can:
-- Click `Preview` on any template to open it in your default .docx viewer.
-- Click `Reveal in Finder` to jump to the templates folder and customize further.
-
-Templates you add later appear automatically. See `docs/user/templates.md` for the token syntax.
-
-### Step 9: Completion
-
-Summary screen showing:
-- Workspace path with `Reveal in Finder` button.
-- Templates provisioned.
-- API model selected.
-- Theme applied.
-
-Click `Finish` to land in the main app shell.
+**Shared storage / team account** (`Settings > Team`, post-v1.0)
+- Psygil v1.0 is single-practitioner by design. Team mode (Auth0 sign-in, shared SQLCipher database over a network share, cloud sync) lands in v1.1.
+- The Team tab in Settings shows "Available in v1.1" for now.
 
 ## Step 5: Create your first case
 
@@ -174,10 +144,12 @@ You now have a case node in the left column with a real folder on disk.
 | Symptom | Fix |
 |---|---|
 | `Psygil can't be opened because Apple cannot check it for malicious software` | Right-click the .app, choose Open, click Open in the dialog. Or run `xattr -dr com.apple.quarantine /path/to/Psygil.app`. |
-| Sidecar step hangs past 30 seconds | Quit the app, run `ps aux \| grep psygil-sidecar` to check for a stuck process, `kill` it if present, relaunch. |
-| Setup wizard restarts at step 1 every launch | Psygil cannot write to its userData directory. In portable mode, check the `.psygil-portable` folder has write permissions. In standard mode, check `~/Library/Application Support/Psygil/`. |
+| Sidecar load hangs past 30 seconds | Quit the app, run `ps aux \| grep psygil-sidecar` to check for a stuck process, `kill` it if present, relaunch. |
+| First-run dialog reappears every launch | Psygil cannot write to its userData directory, so setup completion is not persisting. In portable mode, check the `.psygil-portable` folder has write permissions. In standard mode, check `~/Library/Application Support/Psygil/`. |
 | "Workspace locked by PID X" on second launch | Another Psygil is already running or crashed leaving a stale lock. Quit the other instance, or if the PID is dead the lock auto-recovers after about 10 seconds. |
-| White screen after setup wizard | Typically a renderer crash. Quit and relaunch; the main-process stdout contains the diagnostic. For persistent crashes, file a support ticket with the log from Console.app. |
+| White screen after clicking Get started | Typically a renderer crash. Quit and relaunch; the main-process stdout contains the diagnostic. For persistent crashes, file a support ticket with the log from Console.app. |
+| License validation fails offline | First-run requires one successful online validation to activate. Connect to the internet, re-enter the license, and the app caches the result for 30 days of offline use afterward. |
+| "Cloud-sync folder not supported" | You picked Dropbox, iCloud Drive, OneDrive, or Google Drive. Pick a local-only folder instead. Team / shared storage arrives in v1.1. |
 
 ## See also
 

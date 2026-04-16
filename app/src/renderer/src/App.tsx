@@ -9,7 +9,7 @@ import SetupModal from './components/modals/SetupModal'
 import DocumentUploadModal from './components/modals/DocumentUploadModal'
 import ScoreImportModal from './components/modals/ScoreImportModal'
 import SetupWizard from './components/setup/SetupWizard'
-import LoginGate from './components/setup/LoginGate'
+import FirstRunModal from './components/setup/FirstRunModal'
 import type { Tab, TabState } from './types/tabs'
 import type { CaseRow } from '../../shared/types/ipc'
 import { setTheme as applyTheme, getTheme } from './app/theme'
@@ -48,44 +48,16 @@ function loadWidth(key: string, fallback: number): number {
   return fallback
 }
 
-type SetupGateState = 'unknown' | 'wizard' | 'app'
-type AuthGateState = 'unknown' | 'unauthenticated' | 'authenticated'
+type SetupGateState = 'unknown' | 'first-run' | 'app'
 
 export default function App(): React.JSX.Element {
-  // Auth gate: attempt silent refresh on mount; require login if no session.
-  const [authGate, setAuthGate] = useState<AuthGateState>('unknown')
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        // First try a silent refresh from persisted refresh token
-        const refreshResp = await window.psygil.auth.refresh()
-        if (cancelled) return
-        if (refreshResp.status === 'success' && refreshResp.data.refreshed) {
-          setAuthGate('authenticated')
-          return
-        }
-        // Fall back to checking if there is an in-memory session
-        const sessionResp = await window.psygil.auth.getSession()
-        if (cancelled) return
-        if (sessionResp.status === 'success' && sessionResp.data !== null) {
-          setAuthGate('authenticated')
-        } else {
-          setAuthGate('unauthenticated')
-        }
-      } catch {
-        if (!cancelled) setAuthGate('unauthenticated')
-      }
-    })()
-    return () => { cancelled = true }
-  }, [])
-
-  const handleAuthenticated = useCallback(() => {
-    setAuthGate('authenticated')
-  }, [])
+  // Auth0 PKCE is available via Settings for organizations that opt in to
+  // the team / shared-account flow, but v1.0 first-run no longer depends
+  // on a browser round trip. The FirstRunModal below captures the
+  // clinician's name, license, and storage folder locally.
 
   // Setup gate: load the persisted setup state on mount and decide whether
-  // to show the SetupWizard full-screen or proceed to the main app.
+  // to show the FirstRunModal or proceed to the main app.
   const [setupGate, setSetupGate] = useState<SetupGateState>('unknown')
   useEffect(() => {
     let cancelled = false
@@ -96,7 +68,7 @@ export default function App(): React.JSX.Element {
         if (resp.status === 'success' && resp.data.config.setupState === 'complete') {
           setSetupGate('app')
         } else {
-          setSetupGate('wizard')
+          setSetupGate('first-run')
         }
       } catch {
         // If the setup IPC is unreachable, fall through to the app rather
@@ -329,32 +301,9 @@ export default function App(): React.JSX.Element {
     })
   }, [openTab])
 
-  // Gate: show wizard until setup is complete. While we're still resolving
-  // Auth gate: show LoginGate while unauthenticated; blank while checking.
-  if (authGate === 'unknown') {
-    return (
-      <div
-        style={{
-          height: '100vh',
-          background: 'var(--bg, #fff)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--text-secondary, #666)',
-          fontSize: 14,
-        }}
-      >
-        Loading...
-      </div>
-    )
-  }
-
-  if (authGate === 'unauthenticated') {
-    return <LoginGate onAuthenticated={handleAuthenticated} />
-  }
-
-  // the setup state on first paint, show a blank screen to avoid flashing
-  // the main UI for a frame.
+  // Gate: show FirstRunModal on cold start until setup completes. While we
+  // are still resolving the setup state on first paint, show a blank screen
+  // to avoid flashing the main UI for a frame.
   if (setupGate === 'unknown') {
     return (
       <div
@@ -373,13 +322,8 @@ export default function App(): React.JSX.Element {
     )
   }
 
-  if (setupGate === 'wizard') {
-    return (
-      <SetupWizard
-        onComplete={handleSetupComplete}
-        onCreateFirstCase={handleCreateFirstCase}
-      />
-    )
+  if (setupGate === 'first-run') {
+    return <FirstRunModal onComplete={handleSetupComplete} />
   }
 
   return (

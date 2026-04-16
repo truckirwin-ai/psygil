@@ -1,6 +1,6 @@
 # Quick Start
 
-What this covers: installing Psygil, completing the setup wizard, and creating your first case. For the detailed version with every option explained, see [install-first-run.md](./install-first-run.md).
+What this covers: installing Psygil, completing the three-field first-run dialog, and creating your first case. For the detailed version with every option explained, see [install-first-run.md](./install-first-run.md).
 
 ---
 
@@ -14,62 +14,46 @@ Download the installer for your platform from your Foundry SMB distribution link
 
 The installer is a complete offline package. The Python sidecar ships as a frozen binary; you do not need Python installed. AI features require a separate Anthropic API key, configured during setup.
 
-Before the setup wizard appears, Psygil verifies its sidecar process. The sidecar takes 5 to 10 seconds to boot on first launch. If it fails, the wizard shows specific remediation; see [troubleshooting.md](./troubleshooting.md).
+Before the first-run dialog appears, Psygil verifies its sidecar process. The sidecar takes 5 to 10 seconds to boot on first launch. If it fails, the dialog shows specific remediation; see [troubleshooting.md](./troubleshooting.md).
 
 ---
 
-## Setup Wizard
+## First-Run Setup
 
-The wizard runs once on first launch. It has eight steps. All choices can be changed later in Settings.
+A single dialog appears on first launch with three fields. Everything else is optional and available in Settings afterward.
 
-### Step 1: License Activation
+### Field 1: Your Name
 
-Enter the 25-character license key delivered by email at purchase. The app contacts the Psygil license server once to validate the key, then stores a token locally. If you are offline, you may defer validation; the grace period is 14 days.
+The name used as the stamp on every clinical decision and on report signature lines. Enter it the way you want it to appear on evaluations, including credentials if desired (for example, `Dr. Robert Irwin, Psy.D.`). Editable later in Settings.
 
-### Step 2: Storage Location
+### Field 2: License Key
 
-Choose where Psygil stores your case files.
+Enter the key delivered by Foundry SMB at purchase. The app validates locally first, then contacts `licenses.psygil.com` if online. Offline validation works for 30 days after the first successful online check.
 
-- The default location is `~/Documents/Psygil/` on macOS or `C:\Users\{username}\Documents\Psygil\` on Windows.
-- To use a different folder, click Choose Folder and select a local directory. The app requires at least 500 MB of free space and write permissions.
-- Avoid placing the workspace inside iCloud Drive, OneDrive, Dropbox, or Google Drive. The app will warn you if it detects a cloud-sync path. Cloud sync can corrupt the encrypted database file. If you need remote access, upgrade to a Practice or Enterprise license, which uses Psygil's built-in cloud storage.
+### Field 3: Local Storage Folder
+
+Click Browse to pick the folder where your case files will live.
+
+- The default is `~/Documents/Psygil Cases/` on macOS. In portable mode, the default is inside the `Psygil-Data` sibling next to the .app.
+- The app requires at least 500 MB of free space and write permissions.
+- Cloud-sync folders (iCloud Drive, OneDrive, Dropbox, Google Drive) are not supported for v1.0. Cloud sync can corrupt the encrypted database file. Use a local-only folder.
+- Team and shared-storage configurations are set up after first run in Settings.
 
 The app creates an encrypted SQLCipher database at this location. The encryption key is stored in your OS keychain and never written to disk in plain text.
 
-### Step 3: Practice Information
+Click Get Started. Psygil validates the license, provisions the storage folder structure, saves your name, and finalizes setup in under 30 seconds.
 
-Enter your name, credentials, license number, and license state. These values populate report signature blocks and letterhead. Practice name, address, phone, and a logo are optional but appear in report headers if provided.
+---
 
-Select your specialty from the dropdown. This pre-selects evaluation types and instrument libraries in the next step.
+## Post-Setup Configuration (Optional)
 
-### Step 4: AI Configuration
+After the first-run dialog closes you land in the main app shell. Everything that was skipped is available from Settings in the top toolbar:
 
-This step is optional. If you skip it, all AI-assisted features are disabled, but manual report editing works fully.
-
-To enable AI features, select a provider (Anthropic is recommended; OpenAI is also supported), choose a model, and enter your API key. The app stores the key in the OS keychain only; it is never written to config files or logs.
-
-After you enter a key, click Test and save. The app:
-1. Stores the key in the keychain.
-2. Sends a minimal test prompt with no patient data to verify connectivity.
-3. Runs a full UNID redaction pipeline test to confirm that PHI de-identification works end to end before any real data is processed.
-
-If the pipeline test fails, the key is not activated. The app explains what went wrong. You can skip AI configuration and return later via Settings.
-
-### Step 5: Appearance
-
-Choose Light, Medium, or Dark theme. Adjust font size and sidebar default. These are personal preferences with no effect on data or compliance.
-
-### Step 6: Clinical Preferences
-
-Check the evaluation types you perform and the instruments you have access to. These selections control which options appear in case creation and which report templates are preloaded. You can add or remove options at any time in Settings.
-
-### Step 7: Templates
-
-The app provisions report templates based on your selected evaluation types. Seven templates ship with v1.0 (CST, Custody, Risk Assessment, Fitness for Duty, PTSD Dx, ADHD Dx, Malingering). You can upload your own templates later. See [templates.md](./templates.md) for details.
-
-### Step 8: Completion
-
-A summary screen confirms your configuration. Click Open Psygil to go to the Dashboard, or click Create First Case to go directly to a new case intake form.
+- **Settings > AI**: paste your Anthropic API key (stored in the macOS Keychain). Click Test connection to verify and see cost estimates.
+- **Settings > Appearance**: pick from four themes (Light, Warm, Medium gray, Dark). Form inputs and the report preview stay white regardless.
+- **Settings > Clinical**: primary evaluation type, jurisdiction, default test battery.
+- **Settings > Templates**: preview, edit, or upload `.docx` report templates. Seven templates ship by default (CST, Custody, Risk Assessment, Fitness for Duty, PTSD Dx, ADHD Dx, Malingering).
+- **Settings > Team**: shared storage and team-account setup. Available in v1.1.
 
 ---
 
@@ -98,7 +82,7 @@ See [walkthrough.md](./walkthrough.md) for a complete explanation of all six pip
 
 ## See Also
 
-- [install-first-run.md](./install-first-run.md): Detailed installation, portable mode, and every setup wizard step
+- [install-first-run.md](./install-first-run.md): Detailed installation, portable mode, and the three-field first-run dialog with Settings follow-up
 - [walkthrough.md](./walkthrough.md): The six-stage clinical pipeline in detail
 - [templates.md](./templates.md): Uploading and customizing report templates
 - [ai-assistant.md](./ai-assistant.md): What the AI agents do and how to use them
