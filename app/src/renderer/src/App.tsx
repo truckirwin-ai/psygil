@@ -9,6 +9,7 @@ import SetupModal from './components/modals/SetupModal'
 import DocumentUploadModal from './components/modals/DocumentUploadModal'
 import ScoreImportModal from './components/modals/ScoreImportModal'
 import SetupWizard from './components/setup/SetupWizard'
+import LoginGate from './components/setup/LoginGate'
 import type { Tab, TabState } from './types/tabs'
 import type { CaseRow } from '../../shared/types/ipc'
 
@@ -48,8 +49,41 @@ function loadWidth(key: string, fallback: number): number {
 }
 
 type SetupGateState = 'unknown' | 'wizard' | 'app'
+type AuthGateState = 'unknown' | 'unauthenticated' | 'authenticated'
 
 export default function App(): React.JSX.Element {
+  // Auth gate: attempt silent refresh on mount; require login if no session.
+  const [authGate, setAuthGate] = useState<AuthGateState>('unknown')
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        // First try a silent refresh from persisted refresh token
+        const refreshResp = await window.psygil.auth.refresh()
+        if (cancelled) return
+        if (refreshResp.status === 'success' && refreshResp.data.refreshed) {
+          setAuthGate('authenticated')
+          return
+        }
+        // Fall back to checking if there is an in-memory session
+        const sessionResp = await window.psygil.auth.getSession()
+        if (cancelled) return
+        if (sessionResp.status === 'success' && sessionResp.data !== null) {
+          setAuthGate('authenticated')
+        } else {
+          setAuthGate('unauthenticated')
+        }
+      } catch {
+        if (!cancelled) setAuthGate('unauthenticated')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const handleAuthenticated = useCallback(() => {
+    setAuthGate('authenticated')
+  }, [])
+
   // Setup gate: load the persisted setup state on mount and decide whether
   // to show the SetupWizard full-screen or proceed to the main app.
   const [setupGate, setSetupGate] = useState<SetupGateState>('unknown')
@@ -297,6 +331,29 @@ export default function App(): React.JSX.Element {
   }, [openTab])
 
   // Gate: show wizard until setup is complete. While we're still resolving
+  // Auth gate: show LoginGate while unauthenticated; blank while checking.
+  if (authGate === 'unknown') {
+    return (
+      <div
+        style={{
+          height: '100vh',
+          background: 'var(--bg, #fff)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-secondary, #666)',
+          fontSize: 14,
+        }}
+      >
+        Loading...
+      </div>
+    )
+  }
+
+  if (authGate === 'unauthenticated') {
+    return <LoginGate onAuthenticated={handleAuthenticated} />
+  }
+
   // the setup state on first paint, show a blank screen to avoid flashing
   // the main UI for a frame.
   if (setupGate === 'unknown') {

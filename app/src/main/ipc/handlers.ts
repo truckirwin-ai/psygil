@@ -53,9 +53,10 @@ import type {
   AiTestConnectionResult,
 } from '../../shared/types'
 import { getAuthStatus } from '../auth'
-import { performLogin } from '../auth/login'
 import { performLogout } from '../auth/logout'
 import { checkLicense } from '../auth/user'
+import { startLogin, logout as authLogout, refreshSession } from '../auth/login'
+import { getCurrentSession, type AuthSession } from '../auth/session'
 import {
   loadWorkspacePath,
   saveWorkspacePath,
@@ -315,25 +316,19 @@ function registerDbHandlers(): void {
 // ---------------------------------------------------------------------------
 
 function registerAuthHandlers(): void {
+  // auth:login - opens Auth0 browser flow (PKCE), returns immediately.
+  // Session arrives asynchronously via auth:session-changed event.
   ipcMain.handle(
     'auth:login',
-    async (event): Promise<IpcResponse<AuthLoginResult>> => {
+    async (): Promise<IpcResponse<AuthLoginResult>> => {
       try {
-        const parentWindow = BrowserWindow.fromWebContents(event.sender)
-        const result = await performLogin(parentWindow)
-
-        if (!result.is_authenticated) {
-          return fail('LOGIN_FAILED', 'Login failed')
-        }
-
-        const license = checkLicense()
-
+        await startLogin()
         return ok({
-          is_authenticated: true,
-          user_id: result.user_id ?? '',
-          user_name: result.user_name ?? '',
-          user_email: result.user_email ?? '',
-          is_active: license.is_active
+          is_authenticated: false,
+          user_id: '',
+          user_name: '',
+          user_email: '',
+          is_active: false,
         })
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Login failed'
@@ -347,13 +342,43 @@ function registerAuthHandlers(): void {
     (): IpcResponse<AuthGetStatusResult> => ok(getAuthStatus())
   )
 
+  // auth:getSession - returns the current in-memory AuthSession or null.
+  ipcMain.handle(
+    'auth:getSession',
+    (): IpcResponse<AuthSession | null> => {
+      try {
+        const session = getCurrentSession()
+        return ok(session)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to get session'
+        return fail('SESSION_GET_FAILED', message)
+      }
+    }
+  )
+
+  // auth:refresh - attempt silent re-auth from stored refresh token.
+  ipcMain.handle(
+    'auth:refresh',
+    async (): Promise<IpcResponse<{ refreshed: boolean }>> => {
+      try {
+        const refreshed = await refreshSession()
+        return ok({ refreshed })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Refresh failed'
+        return fail('REFRESH_FAILED', message)
+      }
+    }
+  )
+
   ipcMain.handle(
     'auth:logout',
-    (event): IpcResponse<AuthLogoutResult> => {
+    async (event): Promise<IpcResponse<AuthLogoutResult>> => {
       try {
+        await authLogout()
+        // Also clear the legacy session store for backwards compat
         const parentWindow = BrowserWindow.fromWebContents(event.sender)
-        const result = performLogout(parentWindow)
-        return ok(result)
+        performLogout(parentWindow)
+        return ok({ logged_out_at: new Date().toISOString() })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Logout failed'
         return fail('LOGOUT_FAILED', message)
@@ -361,6 +386,9 @@ function registerAuthHandlers(): void {
     }
   )
 }
+
+// Exported so main/index.ts can call it after app.whenReady()
+export { registerAuthHandlers }
 
 // ---------------------------------------------------------------------------
 // Config handlers

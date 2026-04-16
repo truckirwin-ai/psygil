@@ -1293,6 +1293,11 @@ export interface PsygilApi {
     readonly login: () => Promise<IpcResponse<AuthLoginResult>>
     readonly getStatus: () => Promise<IpcResponse<AuthGetStatusResult>>
     readonly logout: () => Promise<IpcResponse<AuthLogoutResult>>
+    readonly getSession: () => Promise<IpcResponse<AuthSession | null>>
+    readonly refresh: () => Promise<IpcResponse<{ refreshed: boolean }>>
+    readonly onSessionChanged: (
+      cb: (data: { authenticated: boolean; userId?: string; email?: string; name?: string }) => void
+    ) => () => void
   }
   readonly config: {
     readonly get: (params: ConfigGetParams) => Promise<IpcResponse<ConfigGetResult>>
@@ -1526,3 +1531,35 @@ declare global {
     readonly psygil: PsygilApi
   }
 }
+
+// ---------------------------------------------------------------------------
+// Auth Session (Phase B.1 additions - append only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Full in-memory Auth0 session. Returned by auth:getSession IPC channel.
+ * Mirrors the AuthSession interface in src/main/auth/session.ts.
+ */
+export interface AuthSession {
+  readonly accessToken: string
+  readonly refreshToken: string | null
+  readonly idToken: string
+  readonly userId: string
+  readonly email: string
+  readonly name: string
+  readonly expiresAt: number
+}
+
+/** Returned by auth:login (PKCE flow launches browser; session arrives async). */
+export interface AuthLoginLaunchResult {
+  readonly launched: boolean
+}
+
+/** Returned by auth:refresh */
+export interface AuthRefreshResult {
+  readonly refreshed: boolean
+}
+
+/** auth:getSession returns AuthSession | null */
+export type AuthGetSessionResult = AuthSession | null
+

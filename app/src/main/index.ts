@@ -13,6 +13,18 @@ for (const stream of [process.stdout, process.stderr]) {
 import { app, BrowserWindow, protocol, net } from 'electron'
 import { pathToFileURL } from 'url'
 
+// Second-instance lock (Phase C.1): refuse to launch if another Psygil is
+// already running. If a second instance fires the protocol handler with a
+// psygil:// URL, forward it to the running instance instead of starting a
+// new one. Must run BEFORE app.whenReady().
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+  // Stop execution; app.quit() is async and we do not want any handlers to
+  // register on the losing instance.
+  process.exit(0)
+}
+
 // Register local-file:// as a privileged scheme so it can be used in iframes
 // for serving local PDFs to the renderer without CSP issues.
 protocol.registerSchemesAsPrivileged([
@@ -23,7 +35,9 @@ protocol.registerSchemesAsPrivileged([
 app.disableHardwareAcceleration()
 import { join } from 'path'
 import { registerAllHandlers } from './ipc'
+import { registerCallbackHandler } from './auth/callback'
 import { loadWorkspacePath, watchWorkspace, stopWatcher, syncWorkspaceToDB } from './workspace'
+import { acquireWorkspaceLock, releaseWorkspaceLock } from './workspace/lock'
 import { initDb, getSqlite } from './db/connection'
 import { shouldSeedDemoCases, seedDemoCases, createSeedTrigger, backfillDemoTypes, backfillOnboarding } from './seed-demo-cases'
 import { seedRealisticCases } from './setup/case-content/seeder'
@@ -162,6 +176,16 @@ app.whenReady().then(async () => {
     console.error('[main] Handler registration failed:', err)
   }
 
+  // Register Auth0 deep-link callback handler (open-url + second-instance).
+  // Lines touched by Phase B.1: this block only. A concurrent agent adding
+  // a second-instance lock should merge cleanly since that lock fires before
+  // app.whenReady() and this block is scoped to the ready callback.
+  try {
+    registerCallbackHandler()
+  } catch (err) {
+    console.error('[main] Callback handler registration failed:', err)
+  }
+
   // Demo seeding, DISABLED for clean-slate testing.
   // To re-enable: create the trigger file manually with `db:seed-demo` script.
   // The auto-seed fallback (which re-seeded when 0 cases found) is removed
@@ -192,15 +216,28 @@ app.whenReady().then(async () => {
     console.error('[main] Realistic case seeding failed:', err)
   }
 
-  // Sync workspace folders → DB BEFORE opening window so the tree is populated on first load
+  // Sync workspace folders to DB BEFORE opening window so the tree is populated on first load.
+  // Acquire the per-workspace lock file (Phase C.1) so two Psygil instances
+  // cannot both watch and mutate the same workspace tree. A stale lock from
+  // a crashed previous run is auto-recovered.
   try {
     const wsPath = loadWorkspacePath()
     if (wsPath !== null) {
-      syncWorkspaceToDB(wsPath)
-      watchWorkspace(wsPath)
+      const lockResult = acquireWorkspaceLock(wsPath)
+      if (!lockResult.acquired) {
+        process.stderr.write(
+          `[main] Workspace lock held by PID ${lockResult.heldByPid} since ${lockResult.heldSince} (host ${lockResult.hostname}). Refusing to sync or watch.\n`,
+        )
+        // Continue to open the window so the user can see a warning banner
+        // (UI surface for this lands in Phase C.2). Sync and watcher are
+        // skipped to avoid corruption.
+      } else {
+        syncWorkspaceToDB(wsPath)
+        watchWorkspace(wsPath)
+      }
     }
   } catch (err) {
-    console.error('[main] Workspace sync failed:', err)
+    process.stderr.write(`[main] Workspace sync failed: ${err}\n`)
   }
 
   // Open window after sync so renderer gets populated case list immediately
@@ -211,15 +248,46 @@ app.whenReady().then(async () => {
       createWindow()
     }
   })
+
+  // Second-instance handler (Phase C.1): when the OS tries to launch a
+  // second Psygil (user double-clicks the dock icon, or a psygil:// URL
+  // comes in from the browser), surface and focus the existing window
+  // instead of starting a new process. The second instance was already
+  // quit via requestSingleInstanceLock at the top of this file; this
+  // handler fires in the original surviving instance with the second
+  // instance's argv.
+  app.on('second-instance', (_event, argv) => {
+    const wins = BrowserWindow.getAllWindows()
+    if (wins.length > 0) {
+      const win = wins[0]
+      if (win.isMinimized()) win.restore()
+      win.show()
+      win.focus()
+    }
+    // If one of the argv entries is a psygil:// URL (Windows / Linux
+    // deep-link path), forward it to the Auth0 callback handler that
+    // Phase B.1 will land in src/main/auth/callback.ts. Detection only
+    // for now; the handler wires this up.
+    for (const arg of argv) {
+      if (typeof arg === 'string' && arg.startsWith('psygil://')) {
+        app.emit('open-url', { preventDefault: () => undefined }, arg)
+        break
+      }
+    }
+  })
 })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    const wsPath = loadWorkspacePath()
+    if (wsPath !== null) releaseWorkspaceLock(wsPath)
     stopWatcher()
     app.quit()
   }
 })
 
 app.on('before-quit', () => {
+  const wsPath = loadWorkspacePath()
+  if (wsPath !== null) releaseWorkspaceLock(wsPath)
   stopWatcher()
 })

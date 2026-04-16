@@ -137,7 +137,16 @@ const api: PsygilApi = {
   auth: {
     login: () => ipcRenderer.invoke(CH.AUTH_LOGIN),
     getStatus: () => ipcRenderer.invoke(CH.AUTH_GET_STATUS),
-    logout: () => ipcRenderer.invoke(CH.AUTH_LOGOUT)
+    logout: () => ipcRenderer.invoke(CH.AUTH_LOGOUT),
+    getSession: () => ipcRenderer.invoke('auth:getSession'),
+    refresh: () => ipcRenderer.invoke('auth:refresh'),
+    onSessionChanged: (cb: (data: { authenticated: boolean; userId?: string; email?: string; name?: string }) => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, data: unknown): void => {
+        cb(data as { authenticated: boolean; userId?: string; email?: string; name?: string })
+      }
+      ipcRenderer.on('auth:session-changed', listener)
+      return (): void => { ipcRenderer.removeListener('auth:session-changed', listener) }
+    },
   },
 
   config: {
