@@ -4,7 +4,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/main/**/__tests__/**/*.test.ts'],
+    include: [
+      'src/main/**/__tests__/**/*.test.ts',
+      'tests/**/*.test.ts',
+    ],
     // Increase timeout for integration tests
     testTimeout: 30_000,
     // Setup file to mock Electron APIs

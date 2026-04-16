@@ -26,6 +26,10 @@ import { runAgent, type AgentConfig, type AgentResult } from './runner'
 import { getLatestIngestorResult, type IngestorOutput } from './ingestor'
 import { loadWorkspacePath, getDefaultWorkspacePath } from '../workspace'
 import type { PersistedStyleProfile } from '../../shared/types/ipc'
+import { validateWriterOutput } from '../../shared/types/writer'
+import { buildTemplateOutput } from './writer-templates'
+import { applyStageGate } from './writer-stage-gate'
+import type { PipelineStage } from '../../shared/types/ipc'
 
 // ---------------------------------------------------------------------------
 // Load the persisted voice/style profile from writing samples analysis.
@@ -412,20 +416,57 @@ export async function runWriterAgent(caseId: number): Promise<AgentResult<Writer
     temperature: 0.2, // Low temperature for consistency, but slightly higher than ingestor/diagnostician for prose quality
   }
 
-  // 8. Run through the generic agent runner (redact → Claude → rehydrate → destroy)
+  // 8. Run through the generic agent runner (redact, Claude, rehydrate, destroy)
   const result = await runAgent<WriterOutput>(apiKey, config)
 
-  // 9. If successful, persist the structured result to the DB
-  if (result.status === 'success' && result.result) {
-    try {
-      saveWriterResult(caseId, result.operationId, result.result)
-    } catch (e) {
-      console.error('[writer] Failed to save result to DB:', (e as Error).message)
-      // Don't fail the whole operation, the result is still returned
-    }
+  // 9. If the runner failed, return the error unchanged (already has HARD RULE
+  //    violations surfaced via hardRuleScan).
+  if (result.status !== 'success') {
+    return result
   }
 
-  return result
+  // 10. Validate the Claude output against the WriterOutput Zod schema.
+  //     Empty sections or malformed shape falls back to a deterministic
+  //     template so the DOCX generator never produces an empty file.
+  const validation = validateWriterOutput(result.result)
+  let candidateOutput: WriterOutput
+  if (validation.ok) {
+    candidateOutput = validation.output
+  } else {
+    const templated = buildTemplateOutput({
+      caseId: caseRow.case_number ?? `CASE-${caseId}`,
+      evaluationType: caseRow.evaluation_type ?? undefined,
+      ingestor: ingestorResult,
+      selectedDiagnoses: diagnosticianResult.selected_diagnoses ?? [],
+      ruledOutDiagnoses: diagnosticianResult.ruled_out_diagnoses ?? [],
+      functionalImpairmentLevel: diagnosticianResult.functional_impairment_level,
+      forensicConclusions: diagnosticianResult.forensic_conclusions ?? {},
+    })
+    process.stderr.write(
+      `[writer] Claude output failed validation (${validation.reason}): ${validation.issues.join('; ')}. Falling back to deterministic template.\n`,
+    )
+    candidateOutput = templated
+  }
+
+  // 10a. Progressive report gating: any section whose required stage is
+  //      not yet complete is replaced with a "Pending, <stage>" placeholder
+  //      so partial exports cannot contain premature or fabricated content.
+  const currentStage = (caseRow.workflow_current_stage as PipelineStage) ?? 'onboarding'
+  const finalOutput = applyStageGate(candidateOutput, currentStage)
+
+  // 11. Persist the structured result to the DB
+  try {
+    saveWriterResult(caseId, result.operationId, finalOutput)
+  } catch (e) {
+    process.stderr.write(`[writer] Failed to save result to DB: ${(e as Error).message}\n`)
+    // Do not fail the whole operation, the result is still returned
+  }
+
+  // 12. Return the final (validated or templated) output
+  return {
+    ...result,
+    result: finalOutput,
+  }
 }
 
 // ---------------------------------------------------------------------------

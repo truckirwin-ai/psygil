@@ -10,6 +10,7 @@
 import { randomUUID } from 'crypto'
 import { callClaude, type ClaudeResponse } from '../ai/claude-client'
 import { redact, rehydrate, destroyMap } from '../pii/pii_detector'
+import { scanForProhibited } from '../publish/hardRuleScan'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -137,6 +138,13 @@ export async function runAgent<T = unknown>(
     // 4. Rehydrate response text
     const rehydrationResult = await rehydrate(claudeResponse.content, operationId)
     const fullText = rehydrationResult.fullText
+
+    // 4a. HARD RULE guard (per CLAUDE.md): reject any Claude output that
+    // contains em dashes, en dashes, or AI watermark strings before the
+    // result can be persisted to agent_results. Throws HardRuleViolationError
+    // which falls into the outer catch and produces an AgentError with the
+    // violation surfaced in `error`.
+    scanForProhibited(fullText, { label: `${config.agentType}:${operationId}` })
 
     // 5. Parse rehydrated text as JSON. Claude often wraps JSON in
     // ```json ... ``` fences; strip those before parsing so downstream
