@@ -228,7 +228,7 @@ export function submitAttestation(params: AttestationParams): SubmitAttestationR
     .get(caseId) as { report_id?: number } | undefined
 
   if (existingReport) {
-    reportId = existingReport.report_id
+    reportId = existingReport.report_id ?? 0
     // Update existing report
     sqlite
       .prepare(

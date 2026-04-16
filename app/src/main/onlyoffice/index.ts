@@ -12,9 +12,10 @@
 
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import { join } from 'path'
 import { app } from 'electron'
 import { createHmac } from 'crypto'
-import type { SafeStorage } from 'electron'
+import { safeStorage } from 'electron'
 
 const execFileAsync = promisify(execFile)
 
@@ -23,37 +24,50 @@ const IMAGE = 'onlyoffice/documentserver:latest'
 const PORT = 9980
 const HEALTH_CHECK_INTERVAL_MS = 2000
 const HEALTH_CHECK_TIMEOUT_MS = 120000
-const JWT_SECRET_KEY = 'psygil-oo-jwt-secret'
 
-let safeStorageInstance: SafeStorage | null = null
+/** In-process JWT secret cache (regenerated each launch if not persisted). */
+let cachedJwtSecret: string | null = null
 
-/**
- * Initialize safe storage for secure secret storage.
- * Call this from the main process after the app is ready.
- */
-export function initializeSafeStorage(electronSafeStorage: SafeStorage): void {
-  safeStorageInstance = electronSafeStorage
+function getSecretFilePath(): string {
+  return join(app.getPath('userData'), '.oo-jwt-secret')
 }
 
 /**
- * Store JWT secret securely using Electron's safeStorage.
+ * Store JWT secret using Electron safeStorage (encrypt then write to userData).
  */
 function storeSecret(secret: string): void {
-  if (!safeStorageInstance) {
-    throw new Error('SafeStorage not initialized. Call initializeSafeStorage() first.')
+  cachedJwtSecret = secret
+  try {
+    const { writeFileSync: wfs } = require('fs')
+    if (safeStorage.isEncryptionAvailable()) {
+      const encrypted = safeStorage.encryptString(secret)
+      wfs(getSecretFilePath(), encrypted)
+    } else {
+      wfs(getSecretFilePath(), Buffer.from(secret, 'utf-8'))
+    }
+  } catch {
+    // Non-fatal: cachedJwtSecret is still set for this session.
   }
-  safeStorageInstance.setItemSync(JWT_SECRET_KEY, secret)
 }
 
 /**
  * Retrieve JWT secret from secure storage.
  */
 function getSecret(): string | null {
-  if (!safeStorageInstance) {
-    return null
-  }
+  if (cachedJwtSecret) return cachedJwtSecret
   try {
-    return safeStorageInstance.getItemSync(JWT_SECRET_KEY)
+    const { readFileSync: rfs, existsSync: efs } = require('fs')
+    const path = getSecretFilePath()
+    if (!efs(path)) return null
+    const data: Buffer = rfs(path)
+    let secret: string
+    if (safeStorage.isEncryptionAvailable()) {
+      secret = safeStorage.decryptString(data)
+    } else {
+      secret = data.toString('utf-8')
+    }
+    cachedJwtSecret = secret
+    return secret
   } catch {
     return null
   }

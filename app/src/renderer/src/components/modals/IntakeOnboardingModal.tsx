@@ -242,6 +242,10 @@ function intakeRowToForm(row: PatientIntakeRow): Partial<IntakeFormFields> {
       evalType: row.eval_type ?? '',
       reasonForReferral: row.presenting_complaint ?? '',
       charges: row.charges ?? '',
+      arrestsConvictions: '',
+      incarcerationHistory: '',
+      probationParole: '',
+      protectiveOrders: '',
       supportingDocuments: '',
       additionalNotes: '',
     },
@@ -367,11 +371,11 @@ export default function IntakeOnboardingModal({
   }, [isOpen, onClose])
 
   // Intake field updaters
-  const updateContactField = useCallback(<K extends keyof ContactForm>(k: K, v: ContactForm[K]) => {
+  const updateContactField = useCallback((k: string, v: string) => {
     setIntakeForm((p) => ({ ...p, contact: { ...p.contact, [k]: v } }))
   }, [])
 
-  const updateReferralField = useCallback(<K extends keyof ReferralForm>(k: K, v: ReferralForm[K]) => {
+  const updateReferralField = useCallback((k: string, v: string) => {
     setIntakeForm((p) => ({ ...p, referral: { ...p.referral, [k]: v } }))
   }, [])
 
@@ -874,12 +878,12 @@ function IntakeReferralStep({
     try {
       const resp = await window.psygil.referral.parseDoc()
       if (resp.status === 'error') {
-        if (resp.error === 'cancelled') {
+        if (resp.message === 'cancelled') {
           // User cancelled the file picker, no error to show
           setParsing(false)
           return
         }
-        setParseError(resp.error ?? 'Failed to parse document')
+        setParseError(resp.message ?? 'Failed to parse document')
         setParsing(false)
         return
       }
@@ -890,7 +894,7 @@ function IntakeReferralStep({
       }
 
       // Apply parsed fields to form (only non-empty values)
-      const fieldKeys: (keyof typeof referralData)[] = [
+      const fieldKeys: string[] = [
         'caseNumber', 'judgeAssignedCourt', 'defenseCounselName',
         'prosecutionAttorney', 'referringPartyName', 'referringPartyType',
         'referringPartyPhone', 'evalType', 'charges', 'reasonForReferral',
@@ -1509,9 +1513,17 @@ function OnboardingStep({
     contact: ['marital_status', 'dependents', 'living_situation', 'primary_language'],
     complaints: ['primary_complaint', 'secondary_concerns', 'onset_timeline'],
     family: ['family_of_origin', 'family_mental_health', 'family_medical_history', 'current_family_relationships', 'highest_education', 'schools_attended', 'academic_experience', 'employment_status', 'current_employer', 'work_history', 'military_service'],
+    education: [],
     health: ['medical_conditions', 'current_medications', 'surgeries_hospitalizations', 'head_injuries', 'sleep_quality', 'appetite_weight', 'previous_treatment', 'previous_diagnoses', 'psych_medications', 'self_harm_history', 'violence_history'],
+    mental: [],
     substance: ['alcohol_use', 'drug_use', 'substance_treatment'],
+    legal: [],
     recent: ['events_circumstances', 'current_stressors', 'goals_evaluation'],
+    diagnostic_notes: [],
+    referral_notes: [],
+    documents_notes: [],
+    testing_notes: [],
+    interview_notes: [],
   }
 
   const fieldLabels: Record<string, string> = {

@@ -84,3 +84,6 @@ sidecar/dist-macos/
 # Strays from recovery
 .writetest
 .buildtest
+
+# Local dev-ops knowledge base + indexer logs (machine-generated, not shared)
+/dev-ops/

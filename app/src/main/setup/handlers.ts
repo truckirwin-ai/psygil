@@ -16,6 +16,7 @@
 import { ipcMain, dialog, BrowserWindow, app } from 'electron'
 import { join } from 'path'
 import { homedir } from 'os'
+import { ok, fail } from '../../shared/types'
 import type { IpcResponse } from '../../shared/types'
 import {
   loadConfig,
@@ -43,18 +44,6 @@ import {
   summarizeSeedResults,
   type SeedWorkspaceResult,
 } from './workspace-content/seeder'
-
-// ---------------------------------------------------------------------------
-// IpcResponse helpers, match the style in main/ipc/handlers.ts
-// ---------------------------------------------------------------------------
-
-function ok<T>(data: T): IpcResponse<T> {
-  return { status: 'success', data }
-}
-
-function fail(error_code: string, message: string): IpcResponse<never> {
-  return { status: 'error', error_code, message }
-}
 
 // ---------------------------------------------------------------------------
 // Channel names, centralized so preload can import and typecheck

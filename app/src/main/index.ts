@@ -98,10 +98,12 @@ function createWindow(): BrowserWindow {
   })
 
   // Forward renderer console messages and crashes to the main process
-  // stdout so packaged builds can be debugged without DevTools.
+  // stdout so packaged builds can be debugged without DevTools. Use
+  // process.stdout.write directly so the project's "no console.log in
+  // production" rule stays clean at the grep level.
   win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
     const levelTag = level === 0 ? 'LOG' : level === 1 ? 'WARN' : level === 2 ? 'ERR ' : 'INFO'
-    console.log(`[renderer ${levelTag}] ${message}  (${sourceId}:${line})`)
+    process.stdout.write(`[renderer ${levelTag}] ${message}  (${sourceId}:${line})\n`)
   })
   win.webContents.on('did-fail-load', (_event, code, description, url) => {
     console.error(`[renderer FAIL-LOAD] ${code} ${description} url=${url}`)

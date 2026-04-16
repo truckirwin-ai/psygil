@@ -126,8 +126,8 @@ function getNextVersion(reportDir: string): number {
  * Build the document sections from WriterOutput.
  * Includes title page, sections, and editor annotations if provided.
  */
-function buildDocumentSections(writerOutput: WriterOutput, editorOutput?: EditorOutput | null): Paragraph[] {
-  const sections: Paragraph[] = []
+function buildDocumentSections(writerOutput: WriterOutput, editorOutput?: EditorOutput | null): unknown[] {
+  const sections: unknown[] = []
 
   // Title page
   sections.push(
@@ -150,7 +150,7 @@ function buildDocumentSections(writerOutput: WriterOutput, editorOutput?: Editor
       }),
     )
 
-    const summaryRows: Paragraph[] = []
+    const summaryRows: unknown[] = []
     if (summary.patient_name) {
       summaryRows.push(
         new Paragraph({
@@ -283,7 +283,7 @@ function buildDocumentSections(writerOutput: WriterOutput, editorOutput?: Editor
     )
 
     // Annotations table
-    const annotationRows: Paragraph[] = []
+    const annotationRows: unknown[] = []
     for (const annotation of editorOutput.annotations) {
       annotationRows.push(
         new Paragraph({

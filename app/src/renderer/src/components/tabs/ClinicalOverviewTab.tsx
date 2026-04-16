@@ -312,6 +312,10 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
 
   const hasIngestor = !!ingestorData
 
+  const currentStageIdx = caseData.workflow_current_stage
+    ? STAGE_IDX[caseData.workflow_current_stage.toLowerCase()] ?? 0
+    : 0
+
   // ------------------------------------------------------------------------
   // Snapshot helpers, used by the at-a-glance Overview pane
   // ------------------------------------------------------------------------
@@ -639,12 +643,12 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                 <div style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '4px' }}>
                   {i + 1}. {String(q.question || q.text || JSON.stringify(q))}
                 </div>
-                {q.source_document && (
+                {!!q.source_document && (
                   <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                     Source: {String(q.source_document)}{q.page_number ? `, p. ${q.page_number}` : ''}
                   </div>
                 )}
-                {q.inferred && (
+                {!!q.inferred && (
                   <span style={badgeStyle('#ff9800')}>inferred</span>
                 )}
               </div>
@@ -697,7 +701,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                   <strong style={{ fontSize: '13px', color: 'var(--text)' }}>
                     {String(t.test_name || t.name || `Test ${i + 1}`)}
                   </strong>
-                  {t.administration_date && (
+                  {!!t.administration_date && (
                     <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                       {String(t.administration_date)}
                     </span>
@@ -705,7 +709,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                 </div>
 
                 {/* Validity indicators */}
-                {t.validity_indicators && (
+                {!!t.validity_indicators && (
                   <div style={{ marginBottom: '4px' }}>
                     <span style={fieldLabelStyle}>Validity: </span>
                     <span style={{ fontSize: '12px', color: 'var(--text)' }}>
@@ -720,31 +724,31 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                 )}
 
                 {/* Scores summary */}
-                {(t.scaled_scores || t.t_scores || t.raw_scores || t.percentiles) && (
+                {Boolean(t.scaled_scores || t.t_scores || t.raw_scores || t.percentiles) ? (
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    {t.scaled_scores && <div>Scaled: {JSON.stringify(t.scaled_scores)}</div>}
-                    {t.t_scores && <div>T-scores: {JSON.stringify(t.t_scores)}</div>}
-                    {t.percentiles && <div>Percentiles: {JSON.stringify(t.percentiles)}</div>}
+                    {t.scaled_scores != null && <div>Scaled: {JSON.stringify(t.scaled_scores)}</div>}
+                    {t.t_scores != null && <div>T-scores: {JSON.stringify(t.t_scores)}</div>}
+                    {t.percentiles != null && <div>Percentiles: {JSON.stringify(t.percentiles)}</div>}
                   </div>
-                )}
+                ) : null}
 
                 {/* Diagnostic classifications from publisher */}
-                {t.diagnostic_classifications && (
+                {t.diagnostic_classifications != null ? (
                   <div style={{ marginTop: '4px', fontSize: '11px' }}>
                     <span style={fieldLabelStyle}>Classifications: </span>
                     <span style={{ color: 'var(--text)' }}>{String(t.diagnostic_classifications)}</span>
                   </div>
-                )}
+                ) : null}
 
                 {/* Source document */}
-                {t.source_document && (
+                {!!t.source_document && (
                   <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                     Source: {String(t.source_document)}
                   </div>
                 )}
 
                 {/* Missing subtests flag */}
-                {t.missing_subtests && (
+                {!!t.missing_subtests && (
                   <div style={{ marginTop: '4px' }}>
                     <span style={badgeStyle('#ff9800')}>incomplete</span>
                     <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
@@ -854,13 +858,13 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                   <strong style={{ fontSize: '12px', color: 'var(--text)' }}>
                     {String(c.source || c.source_type || `Record ${i + 1}`)}
                   </strong>
-                  {c.date && (
+                  {!!c.date && (
                     <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                       {String(c.date)}
                     </span>
                   )}
                 </div>
-                {c.key_facts && (
+                {!!c.key_facts && (
                   <div style={{ fontSize: '12px', color: 'var(--text)', marginTop: '4px' }}>
                     {Array.isArray(c.key_facts)
                       ? (c.key_facts as unknown[]).map((fact, fi) => (
@@ -870,7 +874,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                     }
                   </div>
                 )}
-                {c.conflicting_information && (
+                {!!c.conflicting_information && (
                   <div style={{ marginTop: '6px', padding: '4px 8px', background: '#fff3e0', borderRadius: '3px', fontSize: '11px', color: '#e65100' }}>
                     Conflict: {String(c.conflicting_information)}
                   </div>
@@ -916,7 +920,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                   <div style={{ fontSize: '12px', color: 'var(--text)' }}>
                     {String(e.event || e.description || JSON.stringify(e))}
                   </div>
-                  {e.source_document && (
+                  {!!e.source_document && (
                     <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
                       Source: {String(e.source_document)}
                     </div>

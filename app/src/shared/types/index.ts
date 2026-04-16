@@ -1,3 +1,5 @@
+export { ok, fail, isOk, isErr } from './ipc'
+export type { IpcOk, IpcErr } from './ipc'
 export type {
   IpcSuccess,
   IpcError,

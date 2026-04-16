@@ -9,22 +9,11 @@
  */
 
 import { ipcMain } from 'electron'
+import { ok, fail } from '../../shared/types'
 import type { IpcResponse } from '../../shared/types'
 import type { AiCompleteParams, AiCompleteResult, AiTestConnectionParams, AiTestConnectionResult } from '../../shared/types'
 import { callClaude } from './claude-client'
 import { retrieveApiKey } from './key-storage'
-
-// ---------------------------------------------------------------------------
-// Stub helper, returns a typed success or error envelope
-// ---------------------------------------------------------------------------
-
-function ok<T>(data: T): IpcResponse<T> {
-  return { status: 'success', data }
-}
-
-function fail(error_code: string, message: string): IpcResponse<never> {
-  return { status: 'error', error_code, message }
-}
 
 // ---------------------------------------------------------------------------
 // AI handlers

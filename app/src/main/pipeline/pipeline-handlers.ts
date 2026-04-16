@@ -6,6 +6,7 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron'
+import { ok, fail } from '../../shared/types'
 import type { IpcResponse } from '../../shared/types'
 import { getSqlite } from '../db/connection'
 import {
@@ -24,18 +25,6 @@ import type {
   PipelineConditionsParams,
   PipelineConditionsResult,
 } from '../../shared/types'
-
-// ---------------------------------------------------------------------------
-// Helper: ok(data) and fail(code, message)
-// ---------------------------------------------------------------------------
-
-function ok<T>(data: T): IpcResponse<T> {
-  return { status: 'success', data }
-}
-
-function fail(error_code: string, message: string): IpcResponse<never> {
-  return { status: 'error', error_code, message }
-}
 
 // Broadcast a cases:changed event so renderer can refresh kanban/lists
 function broadcastCasesChanged(caseId: number, newStage: string, previousStage: string): void {

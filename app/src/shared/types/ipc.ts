@@ -3,21 +3,62 @@
 // Source of truth: docs/engineering/02_ipc_api_contracts.md (Boundary 4)
 
 // ---------------------------------------------------------------------------
-// Generic envelope
+// Generic envelope, discriminated union on `ok`
 // ---------------------------------------------------------------------------
 
-export interface IpcSuccess<T> {
+/**
+ * Successful IPC response. Discriminator: ok === true.
+ * Legacy field `status: 'success'` preserved so callers that check
+ * `resp.status === 'success'` keep compiling during migration.
+ */
+export interface IpcOk<T> {
+  readonly ok: true
   readonly status: 'success'
   readonly data: T
 }
 
-export interface IpcError {
+/**
+ * Error IPC response. Discriminator: ok === false.
+ * Legacy fields `status`, `error_code`, `message` preserved on this branch.
+ */
+export interface IpcErr {
+  readonly ok: false
   readonly status: 'error'
   readonly error_code: string
   readonly message: string
 }
 
-export type IpcResponse<T> = IpcSuccess<T> | IpcError
+/** Discriminated union. Narrow with `isOk(r)`, `isErr(r)`, or `r.ok`. */
+export type IpcResponse<T> = IpcOk<T> | IpcErr
+
+// Deprecated aliases kept for backwards compatibility.
+// Prefer IpcOk / IpcErr in new code.
+export type IpcSuccess<T> = IpcOk<T>
+export type IpcError = IpcErr
+
+// ---------------------------------------------------------------------------
+// Type guards
+// ---------------------------------------------------------------------------
+
+export function isOk<T>(r: IpcResponse<T>): r is IpcOk<T> {
+  return r.ok === true
+}
+
+export function isErr<T>(r: IpcResponse<T>): r is IpcErr {
+  return r.ok === false
+}
+
+// ---------------------------------------------------------------------------
+// Constructor helpers (main-process handlers)
+// ---------------------------------------------------------------------------
+
+export function ok<T>(data: T): IpcOk<T> {
+  return { ok: true, status: 'success', data }
+}
+
+export function fail(code: string, message = 'An error occurred'): IpcErr {
+  return { ok: false, status: 'error', error_code: code, message }
+}
 
 // ---------------------------------------------------------------------------
 // Pipeline stages (6-stage clinical pipeline)
@@ -891,7 +932,7 @@ export interface AuditEntry {
   readonly caseId: number
   readonly timestamp: string
   readonly actionType: string
-  readonly actorType: 'clinician' | 'system' | 'agent'
+  readonly actorType: 'clinician' | 'system' | 'ai_agent'
   readonly actorId?: string
   readonly actorName?: string
   readonly details: string
@@ -903,11 +944,11 @@ export interface AuditEntry {
 export interface AuditLogParams {
   readonly caseId: number
   readonly actionType: string
-  readonly actorType: 'clinician' | 'system' | 'agent'
+  readonly actorType: 'clinician' | 'system' | 'ai_agent'
   readonly actorId?: string
-  readonly details: string
+  readonly details: string | Record<string, unknown>
   readonly relatedEntityType?: string
-  readonly relatedEntityId?: string
+  readonly relatedEntityId?: string | number
 }
 
 export interface AuditLogResult {
@@ -1450,6 +1491,11 @@ export interface PsygilApi {
     readonly list: () => Promise<IpcResponse<readonly { id: string; name: string; description: string; stopAtStage: string | null; stepCount: number }[]>>
     readonly run: (params: { manifestId: string }) => Promise<IpcResponse<unknown>>
     readonly runAll: () => Promise<IpcResponse<unknown>>
+  }
+  readonly updater: {
+    readonly check: () => Promise<unknown>
+    readonly download: (args: { version: string }) => Promise<unknown>
+    readonly getVersion: () => Promise<unknown>
   }
   readonly setup: import('./setup').SetupApi
 }

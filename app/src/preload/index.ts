@@ -105,8 +105,11 @@ const api: PsygilApi = {
     update: (params: CasesUpdateParams) => ipcRenderer.invoke(CH.CASES_UPDATE, params),
     archive: (params) => ipcRenderer.invoke(CH.CASES_ARCHIVE, params),
     onChanged: (callback: (data: { caseId: number; newStage: string; previousStage: string }) => void) => {
-      const wrapped = (_event: Electron.IpcRendererEvent, data: { caseId: number; newStage: string; previousStage: string }): void => { callback(data) }
-      ipcRenderer.on('cases:changed', wrapped)
+      const wrapped = (...args: unknown[]): void => {
+        const data = args[1] as { caseId: number; newStage: string; previousStage: string }
+        callback(data)
+      }
+      ipcRenderer.on('cases:changed', wrapped as never)
       return wrapped
     },
     offChanged: (wrapped?: (...args: unknown[]) => void) => {
@@ -185,7 +188,7 @@ const api: PsygilApi = {
       ipcRenderer.on(CH.WS_FILE_CHANGED, wrapped)
       return wrapped
     },
-    offFileChanged: (wrapped?: (...args: unknown[]) => void) => {
+    offFileChanged: (wrapped?: unknown) => {
       if (wrapped) {
         ipcRenderer.removeListener(CH.WS_FILE_CHANGED, wrapped as never)
       } else {
@@ -269,8 +272,8 @@ const api: PsygilApi = {
     get: () => ipcRenderer.invoke('branding:get'),
     save: (branding: unknown) => ipcRenderer.invoke('branding:save', branding),
     saveLogo: () => ipcRenderer.invoke('branding:saveLogo'),
-    onChanged: (cb: (b: unknown) => void) => {
-      const listener = (_e: unknown, b: unknown): void => cb(b)
+    onChanged: (cb: (branding: { practiceName: string; logoPath?: string; logoData?: string; primaryColor: string; tagline?: string; showAttribution: boolean }) => void) => {
+      const listener = (_e: unknown, b: unknown): void => cb(b as { practiceName: string; logoPath?: string; logoData?: string; primaryColor: string; tagline?: string; showAttribution: boolean })
       ipcRenderer.on('branding:changed', listener)
       return () => { ipcRenderer.removeListener('branding:changed', listener) }
     },
@@ -312,7 +315,7 @@ const api: PsygilApi = {
   },
 
   audit: {
-    log: (args: { caseId: number; actionType: string; actorType: 'clinician' | 'ai_agent' | 'system'; actorId?: string; details: Record<string, unknown>; relatedEntityType?: string; relatedEntityId?: number }) => ipcRenderer.invoke('audit:log', args),
+    log: (args: { caseId: number; actionType: string; actorType: 'clinician' | 'ai_agent' | 'system'; actorId?: string; details: string | Record<string, unknown>; relatedEntityType?: string; relatedEntityId?: string | number }) => ipcRenderer.invoke('audit:log', args),
     getTrail: (args: { caseId: number }) => ipcRenderer.invoke('audit:getTrail', args),
     export: (args: { caseId: number; format?: 'csv' | 'json' }) => ipcRenderer.invoke('audit:export', args),
   },
@@ -326,14 +329,14 @@ const api: PsygilApi = {
   },
 
   resources: {
-    upload: (args: { category: string; filePaths?: string[] }) => ipcRenderer.invoke('resources:upload', args),
+    upload: (args: { category: string; filePaths?: readonly string[] }) => ipcRenderer.invoke('resources:upload', { ...args, filePaths: args.filePaths ? [...args.filePaths] : undefined }),
     list: (args: { category?: string }) => ipcRenderer.invoke('resources:list', args),
     delete: (args: { id: string; storedPath: string }) => ipcRenderer.invoke('resources:delete', args),
     open: (args: { storedPath: string }) => ipcRenderer.invoke('resources:open', args),
     read: (args: { storedPath: string }) => ipcRenderer.invoke('resources:read', args),
-    uploadWritingSample: (args: { filePaths?: string[] }) => ipcRenderer.invoke('resources:uploadWritingSample', args),
+    uploadWritingSample: (args: { filePaths?: readonly string[] }) => ipcRenderer.invoke('resources:uploadWritingSample', { ...args, filePaths: args.filePaths ? [...args.filePaths] : undefined }),
     previewCleaned: (args: { storedPath: string }) => ipcRenderer.invoke('resources:previewCleaned', args),
-    analyzeStyle: (args: { storedPaths: string[] }) => ipcRenderer.invoke('resources:analyzeStyle', args),
+    analyzeStyle: (args: { storedPaths: readonly string[] }) => ipcRenderer.invoke('resources:analyzeStyle', { storedPaths: [...args.storedPaths] }),
     getStyleProfile: () => ipcRenderer.invoke('resources:getStyleProfile'),
     recalculateStyleProfile: () => ipcRenderer.invoke('resources:recalculateStyleProfile'),
   },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { IpcResponse, AuditEntry } from '@shared/types/ipc'
+import { IpcResponse, AuditEntry } from '../../../../shared/types/ipc'
 
 /**
  * AuditTrailTab
@@ -404,7 +404,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
               }}
             >
               <div style={{ fontSize: '20px', fontWeight: 700, color: '#9c27b0' }}>
-                {entries.filter((e) => e.actorType === 'agent').length}
+                {entries.filter((e) => e.actorType === 'ai_agent').length}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                 AI Agent Operations

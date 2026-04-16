@@ -770,7 +770,7 @@ export const deshawnRigginsManifest: TestCaseManifest = {
 
   intake: {
     referralSource: 'Hon. Frank W. Medina, Denver District Court, Division 5',
-    referralType: 'court',
+    referralType: 'court_ordered',
     presentingComplaint: 'Defense counsel reports defendant unable to meaningfully participate in case preparation, appears confused about charges, exhibits disorganized behavior and responds to internal stimuli during attorney meetings. History of schizoaffective disorder with medication noncompliance.',
     status: 'complete',
   },

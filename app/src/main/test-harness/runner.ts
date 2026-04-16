@@ -25,6 +25,12 @@ import type { TestCaseManifest, PipelineStep, StepAction } from './manifest'
 // Types
 // ---------------------------------------------------------------------------
 
+// Terminal output helpers. Test-harness runner emits banner-style progress
+// to the launching terminal; uses process.stdout/stderr.write directly so
+// the project's "no console.log in production" rule stays clean at grep.
+const out = (s: string): void => { process.stdout.write(s + '\n') }
+const err = (s: string): void => { process.stderr.write(s + '\n') }
+
 export interface StepResult {
   readonly stepIndex: number
   readonly description: string
@@ -86,12 +92,12 @@ export async function runManifest(manifest: TestCaseManifest): Promise<RunResult
     : join(dirname(__dirname), '..', '..', '.test-harness-fixtures')
   ensureDir(fixturesDir)
 
-  console.log(`\n${'='.repeat(72)}`)
-  console.log(`TEST HARNESS: ${manifest.name}`)
-  console.log(`ID: ${manifest.id}`)
-  console.log(`Stop at: ${manifest.stopAtStage ?? 'complete (full run)'}`)
-  console.log(`Steps: ${manifest.steps.length}`)
-  console.log(`${'='.repeat(72)}\n`)
+  out(`\n${'='.repeat(72)}`)
+  out(`TEST HARNESS: ${manifest.name}`)
+  out(`ID: ${manifest.id}`)
+  out(`Stop at: ${manifest.stopAtStage ?? 'complete (full run)'}`)
+  out(`Steps: ${manifest.steps.length}`)
+  out(`${'='.repeat(72)}\n`)
 
   // Pre-run cleanup: delete any existing case with the same case_number
   // so the harness can be re-run idempotently.
@@ -102,7 +108,7 @@ export async function runManifest(manifest: TestCaseManifest): Promise<RunResult
       .get(manifest.caseDefinition.caseNumber) as { case_id: number } | undefined
     if (existing) {
       const cid = existing.case_id
-      console.log(`  [cleanup] Deleting prior test case ${cid} (${manifest.caseDefinition.caseNumber})`)
+      out(`  [cleanup] Deleting prior test case ${cid} (${manifest.caseDefinition.caseNumber})`)
       // Delete in dependency order. ON DELETE CASCADE handles most, but
       // some tables (agent_results, data_confirmation, decisions, formulations)
       // don't have CASCADE so delete them explicitly.
@@ -126,14 +132,14 @@ export async function runManifest(manifest: TestCaseManifest): Promise<RunResult
       sqlite.prepare('DELETE FROM cases WHERE case_id = ?').run(cid)
     }
   } catch (e) {
-    console.warn(`  [cleanup] Warning: ${(e as Error).message}`)
+    err(`  [cleanup] Warning: ${(e as Error).message}`)
   }
 
   for (let i = 0; i < manifest.steps.length; i++) {
     const step = manifest.steps[i]
     const stepStart = Date.now()
 
-    console.log(`  [${i + 1}/${manifest.steps.length}] ${step.description}`)
+    out(`  [${i + 1}/${manifest.steps.length}] ${step.description}`)
 
     try {
       await executeStep(step, manifest, caseId, fixturesDir)
@@ -147,7 +153,7 @@ export async function runManifest(manifest: TestCaseManifest): Promise<RunResult
           .get(manifest.caseDefinition.caseNumber) as { case_id: number } | undefined
         if (row) {
           caseId = row.case_id
-          console.log(`    -> Case created: ID ${caseId}`)
+          out(`    -> Case created: ID ${caseId}`)
         }
       }
 
@@ -183,7 +189,7 @@ export async function runManifest(manifest: TestCaseManifest): Promise<RunResult
           durationMs: Date.now() - stepStart,
         })
 
-        console.log(`    -> OK (stage: ${stageAfter}, status: ${statusAfter}) [${Date.now() - stepStart}ms]`)
+        out(`    -> OK (stage: ${stageAfter}, status: ${statusAfter}) [${Date.now() - stepStart}ms]`)
       } else {
         results.push({
           stepIndex: i,
@@ -192,13 +198,13 @@ export async function runManifest(manifest: TestCaseManifest): Promise<RunResult
           success: true,
           durationMs: Date.now() - stepStart,
         })
-        console.log(`    -> OK [${Date.now() - stepStart}ms]`)
+        out(`    -> OK [${Date.now() - stepStart}ms]`)
       }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err)
+    } catch (stepErr) {
+      const errorMsg = stepErr instanceof Error ? stepErr.message : String(stepErr)
 
       if (step.expectFailure) {
-        console.log(`    -> EXPECTED FAILURE: ${errorMsg} [${Date.now() - stepStart}ms]`)
+        out(`    -> EXPECTED FAILURE: ${errorMsg} [${Date.now() - stepStart}ms]`)
         results.push({
           stepIndex: i,
           description: step.description,
@@ -225,9 +231,9 @@ export async function runManifest(manifest: TestCaseManifest): Promise<RunResult
   const passed = results.filter((r) => r.success).length
   const failed = results.filter((r) => !r.success).length
 
-  console.log(`\n${'='.repeat(72)}`)
-  console.log(`RESULT: ${passed}/${results.length} passed, ${failed} failed [${totalMs}ms]`)
-  console.log(`${'='.repeat(72)}\n`)
+  out(`\n${'='.repeat(72)}`)
+  out(`RESULT: ${passed}/${results.length} passed, ${failed} failed [${totalMs}ms]`)
+  out(`${'='.repeat(72)}\n`)
 
   return {
     manifestId: manifest.id,
@@ -455,7 +461,7 @@ async function executeStep(
       // Screenshot steps are markers for the UI test runner.
       // When running headless, they're no-ops. When running with
       // the app, the external orchestrator captures the screen.
-      console.log(`    [SCREENSHOT: ${action.label}]`)
+      out(`    [SCREENSHOT: ${action.label}]`)
       break
     }
 

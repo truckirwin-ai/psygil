@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { IpcResponse } from '@shared/types/ipc'
+import { IpcResponse } from '../../../../shared/types/ipc'
 
 /**
  * AttestationTab (Gate 3)
@@ -99,7 +99,7 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
           readonly { document_type: string }[]
         >
         if (docsResponse.status === 'success') {
-          testingComplete = (docsResponse.data || []).some((doc) => doc.document_type?.includes('test'))
+          testingComplete = (docsResponse.data || []).some((doc: { document_type: string }) => doc.document_type?.includes('test'))
         }
       }
 
@@ -110,7 +110,7 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
           readonly { document_type: string }[]
         >
         if (docsResponse.status === 'success') {
-          interviewsComplete = (docsResponse.data || []).some((doc) => doc.document_type?.includes('interview'))
+          interviewsComplete = (docsResponse.data || []).some((doc: { document_type: string }) => doc.document_type?.includes('interview'))
         }
       }
 

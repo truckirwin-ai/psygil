@@ -1,4 +1,5 @@
 import { ipcMain, BrowserWindow, dialog, shell, app } from 'electron'
+import { ok, fail } from '../../shared/types'
 import type {
   IpcResponse,
   CasesListParams,
@@ -129,18 +130,6 @@ import {
   saveLogo as saveBrandingLogo,
   type PracticeBranding,
 } from '../branding/brandingManager'
-
-// ---------------------------------------------------------------------------
-// Stub helper, returns a typed success envelope
-// ---------------------------------------------------------------------------
-
-function ok<T>(data: T): IpcResponse<T> {
-  return { status: 'success', data }
-}
-
-function fail(error_code: string, message: string): IpcResponse<never> {
-  return { status: 'error', error_code, message }
-}
 
 // ---------------------------------------------------------------------------
 // Cases handlers
@@ -1379,7 +1368,7 @@ function registerAuditHandlers(): void {
       params: {
         caseId: number
         actionType: string
-        actorType: 'clinician' | 'ai_agent' | 'system' | 'agent'
+        actorType: 'clinician' | 'ai_agent' | 'system'
         actorId?: string
         details: string | Record<string, unknown>
         relatedEntityType?: string
@@ -1390,13 +1379,10 @@ function registerAuditHandlers(): void {
         // Convert details to object if it's a string
         const detailsObj = typeof params.details === 'string' ? JSON.parse(params.details) : params.details
 
-        // Map agent to ai_agent for consistency
-        const actorType = params.actorType === 'agent' ? 'ai_agent' : params.actorType
-
         const auditLogId = logAuditEntry({
           caseId: params.caseId,
           actionType: params.actionType,
-          actorType: actorType as 'clinician' | 'ai_agent' | 'system',
+          actorType: params.actorType,
           actorId: params.actorId,
           details: detailsObj,
           relatedEntityType: params.relatedEntityType,
@@ -1524,7 +1510,7 @@ function registerReferralParseHandlers(): void {
   ipcMain.handle('referral:parse-doc', async (_event): Promise<IpcResponse<Record<string, string>>> => {
     try {
       const parentWindow = BrowserWindow.getFocusedWindow()
-      if (!parentWindow) return { status: 'error', error: 'No active window' }
+      if (!parentWindow) return fail('NO_WINDOW', 'No active window')
 
       const result = await dialog.showOpenDialog(parentWindow, {
         title: 'Select Referral Document',
@@ -1536,7 +1522,7 @@ function registerReferralParseHandlers(): void {
       })
 
       if (result.canceled || result.filePaths.length === 0) {
-        return { status: 'error', error: 'cancelled' }
+        return fail('CANCELLED', 'cancelled')
       }
 
       const filePath = result.filePaths[0]
@@ -1556,7 +1542,7 @@ function registerReferralParseHandlers(): void {
       }
 
       if (!rawText.trim()) {
-        return { status: 'error', error: 'Could not extract text from document' }
+        return fail('EMPTY_DOCUMENT', 'Could not extract text from document')
       }
 
       // ── Heuristic field extraction ─────────────────────────────────
@@ -1689,7 +1675,7 @@ function registerReferralParseHandlers(): void {
 
       // Phone numbers (grab the first few found)
       const phones = text.match(/\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/g) ?? []
-      if (phones.length > 0 && !fields.referringPartyPhone) {
+      if (phones.length > 0 && !fields.referringPartyPhone && phones[0] !== undefined) {
         fields.referringPartyPhone = phones[0]
       }
 
@@ -1701,10 +1687,10 @@ function registerReferralParseHandlers(): void {
         fields._rawText = fields._rawText.substring(0, 3000) + '\n\n[... truncated ...]'
       }
 
-      return { status: 'success', data: fields }
-    } catch (err: any) {
+      return ok(fields)
+    } catch (err: unknown) {
       console.error('[referral:parse-doc]', err)
-      return { status: 'error', error: err?.message ?? 'Failed to parse referral document' }
+      return fail('PARSE_FAILED', err instanceof Error ? err.message : 'Failed to parse referral document')
     }
   })
 }
@@ -2858,23 +2844,23 @@ function registerResourcesHandlers(): void {
         if (!fs.existsSync(cleanedDir)) {
           return ok({ profiles: [], aggregate: null })
         }
-        const allFiles = fs.readdirSync(cleanedDir)
-          .filter(f => f.endsWith('.txt') && !f.startsWith('.'))
-          .map(f => pathMod.join(getCategoryDir('writing-samples'), f.replace('.txt', '.original-stub')))
+        const allFiles = (fs.readdirSync(cleanedDir) as string[])
+          .filter((f: string) => f.endsWith('.txt') && !f.startsWith('.'))
+          .map((f: string) => pathMod.join(getCategoryDir('writing-samples'), f.replace('.txt', '.original-stub')))
 
         // Build storedPaths that the analyzeStyle handler expects:
         // it derives the _cleaned/ path from the storedPath. We need to
         // construct paths such that pathMod.join(dir, '_cleaned', base + '.txt') resolves.
         // The simplest approach: list the _cleaned/ .txt files and create
         // synthetic storedPaths that resolve correctly.
-        const txtFiles = fs.readdirSync(cleanedDir)
-          .filter(f => f.endsWith('.txt') && !f.startsWith('.'))
+        const txtFiles = (fs.readdirSync(cleanedDir) as string[])
+          .filter((f: string) => f.endsWith('.txt') && !f.startsWith('.'))
         const catDir = getCategoryDir('writing-samples')
 
         // For each cleaned file, we need a storedPath whose basename (minus ext) + '.txt'
         // matches the cleaned filename. Use the cleaned path directly as storedPath;
         // the analyzeStyle handler will try _cleaned/ first, then fall back to the file itself.
-        const storedPaths = txtFiles.map(f => pathMod.join(catDir, f))
+        const storedPaths = txtFiles.map((f: string) => pathMod.join(catDir, f))
 
         if (storedPaths.length === 0) {
           return ok({ profiles: [], aggregate: null })
@@ -2883,12 +2869,8 @@ function registerResourcesHandlers(): void {
         // Simulate an invoke to the analyzeStyle handler by building the same
         // event shape. Since we are in the main process, call ipcMain handlers
         // indirectly. The cleanest approach: invoke the channel directly.
-        const { ipcMain: ipc } = require('electron')
-        // Easier: just use ipcRenderer.invoke from main is not possible,
-        // so we call the handler function through Electron's internal dispatch.
-        const result = await (ipc as typeof import('electron').IpcMain)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .emit('resources:analyzeStyle', {} as any, { storedPaths }) as any
+        // Electron does not expose a synchronous way to call IPC handlers from the main process.
+        // The analysis is done inline below instead.
 
         // Since emit doesn't return the handler result, we need a different approach.
         // Instead, read the _cleaned files directly and return the profile.
@@ -2954,20 +2936,20 @@ function registerResourcesHandlers(): void {
           const text = fs.readFileSync(pathMod.join(cleanedDir, txtFile), 'utf-8')
           if (!text || text.trim().length === 0) continue
 
-          const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0)
+          const paragraphs = (text as string).split(/\n\s*\n/).filter((p: string) => p.trim().length > 0)
           const paragraphCount = paragraphs.length
-          const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z])/).filter(s => s.trim().length > 5)
+          const sentences = (text as string).split(/(?<=[.!?])\s+(?=[A-Z])/).filter((s: string) => s.trim().length > 5)
           const sentenceCount = Math.max(sentences.length, 1)
-          const sentenceLengths = sentences.map(s => s.split(/\s+/).filter(w => w.length > 0).length)
-          sentenceLengths.sort((a, b) => a - b)
+          const sentenceLengths = sentences.map((s: string) => s.split(/\s+/).filter((w: string) => w.length > 0).length)
+          sentenceLengths.sort((a: number, b: number) => a - b)
           const avgSentenceLength = sentenceLengths.length > 0
-            ? Math.round((sentenceLengths.reduce((sum, l) => sum + l, 0) / sentenceLengths.length) * 10) / 10 : 0
+            ? Math.round((sentenceLengths.reduce((sum: number, l: number) => sum + l, 0) / sentenceLengths.length) * 10) / 10 : 0
           const medianSentenceLength = sentenceLengths.length > 0
             ? sentenceLengths[Math.floor(sentenceLengths.length / 2)] : 0
 
-          const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 0)
+          const words = (text as string).toLowerCase().split(/\s+/).filter((w: string) => w.length > 0)
           const wordCount = words.length
-          const cleanWords = words.map(w => w.replace(/[^a-z'-]/g, '')).filter(w => w.length > 1)
+          const cleanWords = words.map((w: string) => w.replace(/[^a-z'-]/g, '')).filter((w: string) => w.length > 1)
           const uniqueWords = new Set(cleanWords)
           const vocabularyRichness = wordCount > 0 ? Math.round((uniqueWords.size / wordCount) * 1000) / 1000 : 0
           const avgParagraphLength = paragraphCount > 0
@@ -3361,17 +3343,11 @@ function registerTemplateHandlers(): void {
 
   /** Extract formatting metadata from a .docx using mammoth's HTML output */
   async function analyzeFormatting(filePath: string): Promise<TemplateFormattingConfig> {
-    // Default forensic report formatting
-    const defaults: TemplateFormattingConfig = {
-      margins: { top: 1440, bottom: 1440, left: 1440, right: 1440 }, // 1 inch = 1440 twips
-      fontFamily: 'Times New Roman',
-      fontSize: 12,
-      lineSpacing: 1.5,
-      headingFont: 'Times New Roman',
-      headingSize: 14,
-      headerContent: '',
-      footerContent: '',
-    }
+    // Default forensic report formatting (mutable so we can update detected values)
+    let fontFamily = 'Times New Roman'
+    let fontSize = 12
+    let headingFont = 'Times New Roman'
+    let headerContent = ''
 
     try {
       // mammoth gives us HTML which can hint at styles
@@ -3381,26 +3357,36 @@ function registerTemplateHandlers(): void {
 
       // Try to detect font from inline styles or common patterns
       const fontMatch = html.match(/font-family:\s*['"]?([^'";}]+)/i)
-      if (fontMatch) {
-        defaults.fontFamily = fontMatch[1].trim()
-        defaults.headingFont = fontMatch[1].trim()
+      if (fontMatch && fontMatch[1]) {
+        fontFamily = fontMatch[1].trim()
+        headingFont = fontMatch[1].trim()
       }
 
       // Try to detect font size
       const sizeMatch = html.match(/font-size:\s*(\d+)pt/i)
-      if (sizeMatch) {
-        defaults.fontSize = parseInt(sizeMatch[1], 10)
+      if (sizeMatch && sizeMatch[1]) {
+        fontSize = parseInt(sizeMatch[1], 10)
       }
 
       // Try to extract header content from first centered/bold section
       const headerMatch = html.match(/<p[^>]*style="text-align:\s*center[^"]*"[^>]*>(.*?)<\/p>/i)
-      if (headerMatch) {
-        defaults.headerContent = headerMatch[1].replace(/<[^>]+>/g, '').trim()
+      if (headerMatch && headerMatch[1]) {
+        headerContent = headerMatch[1].replace(/<[^>]+>/g, '').trim()
       }
     } catch {
       // Fall back to defaults
     }
 
+    const defaults: TemplateFormattingConfig = {
+      margins: { top: 1440, bottom: 1440, left: 1440, right: 1440 }, // 1 inch = 1440 twips
+      fontFamily,
+      fontSize,
+      lineSpacing: 1.5,
+      headingFont,
+      headingSize: 14,
+      headerContent,
+      footerContent: '',
+    }
     return defaults
   }
 
@@ -4015,7 +4001,7 @@ function registerBrandingHandlers(): void {
         const focused = BrowserWindow.getFocusedWindow()
         const dialogOpts = {
           title: 'Select practice logo',
-          properties: ['openFile'] as const,
+          properties: ['openFile'] as ('openFile')[],
           filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg'] }],
         }
         const result = focused

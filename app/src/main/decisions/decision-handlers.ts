@@ -8,6 +8,7 @@
  */
 
 import { ipcMain } from 'electron'
+import { ok, fail } from '../../shared/types'
 import type {
   IpcResponse,
   DiagnosticDecisionSaveParams,
@@ -19,14 +20,6 @@ import type {
   ClinicalFormulationRow,
 } from '../../shared/types'
 import { saveDecision, listDecisions, deleteDecision, saveFormulation, getFormulation } from './index'
-
-function ok<T>(data: T): IpcResponse<T> {
-  return { status: 'success', data }
-}
-
-function fail(error_code: string, message: string): IpcResponse<never> {
-  return { status: 'error', error_code, message }
-}
 
 export function registerDecisionHandlers(): void {
   ipcMain.handle(

@@ -126,7 +126,7 @@ const Dsm5TrReferencePanel: React.FC<Dsm5TrReferencePanelProps> = ({ onInsert })
     try {
       const res = await window.psygil.diagnosisCatalog.search({ query: q, limit: 25 })
       if (res.status === 'success') {
-        setResults(res.data as CatalogRow[])
+        setResults([...res.data] as CatalogRow[])
       } else {
         setResults([])
       }
@@ -497,7 +497,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
         </div>
         <div style={cardBodyStyle}>
           {/* Effort tests */}
-          {validity.effort_tests && Array.isArray(validity.effort_tests) && (
+          {!!validity.effort_tests && Array.isArray(validity.effort_tests) && (
             <div style={{ marginBottom: '12px' }}>
               <div style={{ ...labelStyle, fontWeight: 600 }}>Effort/Performance Validity Tests:</div>
               {(validity.effort_tests as Array<Record<string, unknown>>).map((test, i) => (
@@ -515,13 +515,13 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
           )}
 
           {/* MMPI-3 validity */}
-          {validity.mmpi3_validity && (
+          {!!validity.mmpi3_validity && (
             <div style={{ marginBottom: '12px' }}>
               <div style={{ ...labelStyle, fontWeight: 600 }}>MMPI-3 Validity:</div>
               <div style={{ fontSize: '12px', color: 'var(--text)' }}>
                 Overall: <strong>{String((validity.mmpi3_validity as Record<string, unknown>).overall_validity)}</strong>
               </div>
-              {(validity.mmpi3_validity as Record<string, unknown>).interpretation_impact && (
+              {!!(validity.mmpi3_validity as Record<string, unknown>).interpretation_impact && (
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   {String((validity.mmpi3_validity as Record<string, unknown>).interpretation_impact)}
                 </div>
@@ -530,7 +530,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
           )}
 
           {/* PAI validity */}
-          {validity.pai_validity && (
+          {!!validity.pai_validity && (
             <div style={{ marginBottom: '12px' }}>
               <div style={{ ...labelStyle, fontWeight: 600 }}>PAI Validity:</div>
               <div style={{ fontSize: '12px', color: 'var(--text)' }}>
@@ -540,7 +540,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
           )}
 
           {/* Summary */}
-          {validity.summary && (
+          {!!validity.summary && (
             <div style={{ padding: '8px', background: 'var(--bg)', borderRadius: '4px', fontSize: '12px', color: 'var(--text)', lineHeight: '1.6' }}>
               <strong>Summary:</strong> {String(validity.summary)}
             </div>
@@ -583,7 +583,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                 <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
                   {String(diag.icd_code || '')}, {diagKey.replace(/_/g, ' ')}
                 </div>
-                {diag.functional_impact && (
+                {!!diag.functional_impact && (
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                     {String(diag.functional_impact)}
                   </div>
@@ -608,7 +608,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
             {isExpanded && (
               <div style={cardBodyStyle}>
                 {/* Criteria analysis */}
-                {criteria && Object.keys(criteria).length > 0 && (
+                {criteria != null && Object.keys(criteria).length > 0 ? (
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ ...labelStyle, fontWeight: 600, marginBottom: '8px' }}>DSM-5-TR Criteria Analysis:</div>
                     {Object.entries(criteria).map(([critKey, critData]) => (
@@ -617,25 +617,25 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                           {critKey.replace(/_/g, ' ').toUpperCase()}
                           <MetBadge status={String(critData.met_status || 'unknown')} />
                         </div>
-                        {critData.description && (
+                        {!!critData.description && (
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px', fontStyle: 'italic' }}>
                             {String(critData.description)}
                           </div>
                         )}
-                        {critData.supporting_evidence && Array.isArray(critData.supporting_evidence) && (critData.supporting_evidence as unknown[]).length > 0 && (
+                        {!!critData.supporting_evidence && Array.isArray(critData.supporting_evidence) && (critData.supporting_evidence as unknown[]).length > 0 ? (
                           <div style={{ marginBottom: '4px' }}>
                             <span style={{ fontSize: '10px', color: '#4caf50', fontWeight: 600 }}>Supporting:</span>
                             {(critData.supporting_evidence as Array<Record<string, unknown>>).map((ev, i) => (
                               <div key={i} style={{ fontSize: '11px', color: 'var(--text)', paddingLeft: '12px' }}>
                                 • {typeof ev === 'object' ? String(ev.source || JSON.stringify(ev)) : String(ev)}
-                                {typeof ev === 'object' && ev.strength && (
+                                {typeof ev === 'object' && !!ev.strength && (
                                   <span style={{ color: 'var(--text-secondary)', marginLeft: '4px' }}>({String(ev.strength)})</span>
                                 )}
                               </div>
                             ))}
                           </div>
-                        )}
-                        {critData.contradicting_evidence && Array.isArray(critData.contradicting_evidence) && (critData.contradicting_evidence as unknown[]).length > 0 && (
+                        ) : null}
+                        {!!critData.contradicting_evidence && Array.isArray(critData.contradicting_evidence) && (critData.contradicting_evidence as unknown[]).length > 0 ? (
                           <div>
                             <span style={{ fontSize: '10px', color: '#f44336', fontWeight: 600 }}>Contradicting:</span>
                             {(critData.contradicting_evidence as Array<Record<string, unknown>>).map((ev, i) => (
@@ -644,14 +644,14 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                               </div>
                             ))}
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     ))}
                   </div>
-                )}
+                ) : null}
 
                 {/* Onset and course */}
-                {diag.onset_and_course && (
+                {!!diag.onset_and_course && (
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ ...labelStyle, fontWeight: 600 }}>Onset & Course:</div>
                     <div style={{ fontSize: '12px', color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
@@ -746,18 +746,18 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                   </div>
                 </div>
                 <div style={cardBodyStyle}>
-                  {d.key_distinguishing_features && Array.isArray(d.key_distinguishing_features) && (
+                  {!!d.key_distinguishing_features && Array.isArray(d.key_distinguishing_features) && (
                     (d.key_distinguishing_features as Array<Record<string, unknown>>).map((feat, fi) => (
                       <div key={fi} style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>
                           {String(feat.feature)}
                         </div>
-                        {feat.evidence_for_diagnosis_1 && (
+                        {!!feat.evidence_for_diagnosis_1 && (
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '12px' }}>
                             <span style={{ color: '#2196f3' }}>Dx 1:</span> {String(feat.evidence_for_diagnosis_1)}
                           </div>
                         )}
-                        {feat.evidence_for_diagnosis_2 && (
+                        {!!feat.evidence_for_diagnosis_2 && (
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '12px' }}>
                             <span style={{ color: '#ff9800' }}>Dx 2:</span> {String(feat.evidence_for_diagnosis_2)}
                           </div>
@@ -765,7 +765,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                       </div>
                     ))
                   )}
-                  {d.clinical_clarification && (
+                  {!!d.clinical_clarification && (
                     <div style={{ fontSize: '12px', color: 'var(--text)', fontStyle: 'italic', padding: '8px', background: 'var(--bg)', borderRadius: '4px' }}>
                       {String(d.clinical_clarification)}
                     </div>
@@ -783,24 +783,24 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
           <h2 style={sectionHeader}>Psycho-Legal Analysis</h2>
           <div style={cardStyle}>
             <div style={cardBodyStyle}>
-              {psycholegal.legal_standard && (
+              {!!psycholegal.legal_standard && (
                 <div style={{ marginBottom: '8px' }}>
                   <span style={labelStyle}>Legal Standard: </span>
                   <strong style={{ fontSize: '13px' }}>{String(psycholegal.legal_standard)}</strong>
-                  {psycholegal.jurisdiction && (
+                  {!!psycholegal.jurisdiction && (
                     <span style={{ color: 'var(--text-secondary)', marginLeft: '8px', fontSize: '12px' }}>
                       ({String(psycholegal.jurisdiction)})
                     </span>
                   )}
                 </div>
               )}
-              {psycholegal.standard_elements && Array.isArray(psycholegal.standard_elements) && (
+              {!!psycholegal.standard_elements && Array.isArray(psycholegal.standard_elements) && (
                 (psycholegal.standard_elements as Array<Record<string, unknown>>).map((elem, i) => (
                   <div key={i} style={{ marginBottom: '8px', paddingLeft: '12px', borderLeft: '3px solid #ff9800' }}>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
                       {String(elem.element)}
                     </div>
-                    {elem.evidence_map && (
+                    {!!elem.evidence_map && (
                       <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                         {Array.isArray(elem.evidence_map)
                           ? (elem.evidence_map as string[]).map((e, ei) => <div key={ei}>• {String(e)}</div>)
@@ -811,7 +811,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                   </div>
                 ))
               )}
-              {psycholegal.critical_gaps && (
+              {!!psycholegal.critical_gaps && (
                 <div style={{ padding: '8px', background: '#fff3e0', borderRadius: '4px', fontSize: '12px', color: '#e65100', marginTop: '8px' }}>
                   <strong>Gaps:</strong> {String(psycholegal.critical_gaps)}
                 </div>

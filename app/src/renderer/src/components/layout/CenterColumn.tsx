@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef, Children, cloneElement, isValidElement, Fragment } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef, Children, cloneElement, isValidElement, Fragment } from 'react'
 import type { Tab, TabType } from '../../types/tabs'
 import type { CaseRow, PatientIntakeRow, PatientOnboardingRow } from '../../../../shared/types/ipc'
 
@@ -1619,7 +1619,7 @@ const INTAKE_INNER_TABS: readonly { id: IntakeInnerTab; label: string }[] = [
 /** Compact key-value row for read-only data display, always renders, shows blank for empty.
  *  When `fullText` is provided and differs from `value`, shows a dotted underline and
  *  a styled tooltip on hover with the complete intake text. */
-function DataRow({ label, value, fullText }: { readonly label: string; readonly value: string | undefined; readonly fullText?: string | null }): JSX.Element {
+function DataRow({ label, value, fullText }: { readonly label: string; readonly value: string | undefined; readonly fullText?: string | null }): React.JSX.Element {
   const v = value?.trim()
   const full = fullText?.trim()
   const hasTip = !!(full && v && full !== v && full.length > (v?.length ?? 0))
@@ -3043,7 +3043,6 @@ function TestingSubTab({
               type="button"
               onClick={() => {
                 const match = uploadedFiles.find((n) => n.toLowerCase().includes(key.toLowerCase().replace(/[^a-z0-9]/g, '')))
-                console.info('[Testing] open report for', key, match ?? '(no matching upload yet)')
                 window.dispatchEvent(new CustomEvent('psygil:testing:open-report', { detail: { instrument: key, file: match } }))
               }}
               style={{
@@ -3338,7 +3337,7 @@ interface InterviewSession {
 
 let _nextSessionId = 1
 
-function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Element {
+function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX.Element {
   const titles = getSessionTitles(caseRow.evaluation_type)
   const [sessions, setSessions] = useState<InterviewSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
@@ -3798,7 +3797,7 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
       if (resp.status === 'success') {
         return resp.data.filePath
       }
-      console.error('[Audio] Save failed:', resp.error)
+      console.error('[Audio] Save failed:', resp.status === 'error' ? resp.message : 'unknown error')
       return null
     } catch (err) {
       console.error('[Audio] Failed to save audio:', err)
@@ -3992,7 +3991,7 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): JSX.Eleme
     }
 
     // Get case context for the prompt
-    const patientName = caseRow.patient_name ?? 'the patient'
+    const patientName = `${caseRow.examinee_first_name ?? ''} ${caseRow.examinee_last_name ?? ''}`.trim() || 'the patient'
     const evalType = caseRow.evaluation_type ?? 'forensic psychological evaluation'
 
     try {
@@ -4047,7 +4046,7 @@ Generate the clinical interview session summary.`,
           : s
       ))
     }
-  }, [caseRow.patient_name, caseRow.evaluation_type, saveInterviewData])
+  }, [caseRow.examinee_first_name, caseRow.examinee_last_name, caseRow.evaluation_type, saveInterviewData])
 
   const handleStopRecording = useCallback(async () => {
     if (!activeSession) return
@@ -6266,13 +6265,15 @@ function DiagnosticsSubTab({
                     case_id: caseRow.case_id,
                     section: 'diagnostic_notes',
                     data: {
-                      impressions: clinicianNotes._impressions ?? '',
-                      ruled_out: clinicianNotes._ruledOut ?? '',
-                      validity: clinicianNotes._validity ?? '',
-                      prognosis: clinicianNotes._prognosis ?? '',
-                      clinical_obs: JSON.stringify(clinicalObsNotes),
-                      attestation_signed: attestationChecked ? 'true' : 'false',
-                      attestation_date: new Date().toISOString(),
+                      content: JSON.stringify({
+                        impressions: clinicianNotes._impressions ?? '',
+                        ruled_out: clinicianNotes._ruledOut ?? '',
+                        validity: clinicianNotes._validity ?? '',
+                        prognosis: clinicianNotes._prognosis ?? '',
+                        clinical_obs: clinicalObsNotes,
+                        attestation_signed: attestationChecked,
+                        attestation_date: new Date().toISOString(),
+                      }),
                     },
                   })
 
@@ -6281,12 +6282,12 @@ function DiagnosticsSubTab({
                     caseId: caseRow.case_id,
                     actionType: 'diagnostic_formulation_complete',
                     actorType: 'clinician',
-                    details: {
+                    details: JSON.stringify({
                       conditionsRendered: allConditions.filter(c => conditionCompletionMap[c.name] === 'complete').map(c => c.name),
                       conditionsRuledOut: allConditions.filter(c => conditionCompletionMap[c.name] === 'ruled_out').map(c => c.name),
                       conditionsDeleted: allConditions.filter(c => conditionCompletionMap[c.name] === 'deleted').map(c => c.name),
                       attestationSigned: attestationChecked,
-                    },
+                    }),
                   })
 
                   // ── 4. Build formulation payload and trigger report rebuild ──
@@ -6440,7 +6441,7 @@ function DiagnosticsSubTab({
                     attestation_signed: attestationChecked,
                     attestation_date: new Date().toISOString(),
                   }),
-                  status: 'final',
+                  status: 'complete',
                 },
               })
             } catch (err) {
@@ -6453,12 +6454,12 @@ function DiagnosticsSubTab({
                 caseId: caseRow.case_id,
                 actionType: 'diagnostic_formulation_complete',
                 actorType: 'clinician',
-                details: {
+                details: JSON.stringify({
                   conditionsRendered: allConditions.filter(c => conditionCompletionMap[c.name] === 'complete').map(c => c.name),
                   conditionsRuledOut: allConditions.filter(c => conditionCompletionMap[c.name] === 'ruled_out').map(c => c.name),
                   conditionsDeleted: allConditions.filter(c => conditionCompletionMap[c.name] === 'deleted').map(c => c.name),
                   attestationSigned: attestationChecked,
-                },
+                }),
               })
             } catch (err) {
               console.error('[BuildReport] audit.log failed:', err)
@@ -6568,7 +6569,7 @@ function buildReportContent(
   sections.push({
     title: 'Identifying Information & Referral Question',
     body: onboardingDone
-      ? `Name: ${fullName}\nDate of Birth: ${dob}\nAge: ${age}\nGender: ${contact?.gender ?? intakeRow?.gender ?? ','}\nReferral Source: ${intakeRow?.referral_source ?? ','}\nReferring Attorney/Agency: ${intakeRow?.referring_attorney ?? ','}\nEvaluation Type: ${evalType}\nDate of Evaluation: ${evalDate}\nCharges/Legal Context: ${intakeRow?.charges ?? ','}\n\nReferral Question: ${intakeRow?.referral_question ?? intakeRow?.presenting_complaint ?? '[Enter referral question]'}`
+      ? `Name: ${fullName}\nDate of Birth: ${dob}\nAge: ${age}\nGender: ${contact?.gender ?? caseRow.examinee_gender ?? ','}\nReferral Source: ${intakeRow?.referral_source ?? ','}\nReferring Attorney/Agency: ${intakeRow?.attorney_name ?? ','}\nEvaluation Type: ${evalType}\nDate of Evaluation: ${evalDate}\nCharges/Legal Context: ${intakeRow?.charges ?? ','}\n\nReferral Question: ${intakeRow?.presenting_complaint ?? '[Enter referral question]'}`
       : pendingPlaceholder('Onboarding'),
   })
 
@@ -6912,7 +6913,7 @@ function ReportSubTab({
     }
 
     // Also persist report-specific status to DB if the IPC exists
-    window.psygil?.pipeline?.setReportStatus?.({ caseId: caseRow.case_id, status: val })?.catch(() => { /* best effort */ })
+    // pipeline.setReportStatus is not in the IPC API; status is stored locally only
   }, [reportStatusKey, caseRow.case_id, onRefreshCases])
 
   // ── Edit in Word: generate .docx and open in MS Word ──
@@ -7059,7 +7060,7 @@ function ReportSubTab({
         const et = caseRow?.evaluation_type || ''
         const res = await window.psygil.templates.list(et ? { evalType: et } : undefined)
         if (!cancelled && res.status === 'success') {
-          setTemplateList(res.data as { id: string; name: string; evalType: string; source: string; sectionCount: number }[])
+          setTemplateList(res.data as unknown as { id: string; name: string; evalType: string; source: string; sectionCount: number }[])
         }
       } catch { /* ignore */ }
     }
@@ -7082,7 +7083,7 @@ function ReportSubTab({
       // Load full template profile and populate report sections
       const res = await window.psygil.templates.get({ id: templateId })
       if (res.status !== 'success') return
-      const profile = res.data as {
+      const profile = res.data as unknown as {
         sections: { heading: string; exampleProse: string; contentType: string; order: number }[]
       }
 
@@ -7155,7 +7156,7 @@ function ReportSubTab({
         }))
         setAssistantPrompt('')
       } else {
-        setAssistantError(resp.error ?? 'AI returned an empty response. Try again.')
+        setAssistantError((resp.status === 'error' ? resp.message : undefined) ?? 'AI returned an empty response. Try again.')
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unexpected error calling AI'
@@ -7907,7 +7908,7 @@ function ResourceViewerTab({
           // PDF base64 content is stored in `content` state and passed
           // directly to PdfViewer, which handles decoding internally.
         } else {
-          setError(resp?.error?.message ?? 'Failed to read file')
+          setError((resp?.status === 'error' ? resp.message : undefined) ?? 'Failed to read file')
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to read file')

@@ -211,7 +211,7 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
         const tplRes = await window.psygil.templates.list(caseEvalType ? { evalType: caseEvalType } : undefined)
         if (cancelled) return
         if (tplRes.status === 'success') {
-          setTemplates(tplRes.data as TemplateSummary[])
+          setTemplates(tplRes.data as unknown as TemplateSummary[])
         }
 
         // Get last used template for this eval type
@@ -220,9 +220,9 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
           if (cancelled) return
           if (lastUsedRes.status === 'success' && lastUsedRes.data) {
             setSelectedTemplateId(lastUsedRes.data as string)
-          } else if (tplRes.status === 'success' && (tplRes.data as TemplateSummary[]).length > 0) {
+          } else if (tplRes.status === 'success' && (tplRes.data as unknown as TemplateSummary[]).length > 0) {
             // Default to first template
-            setSelectedTemplateId((tplRes.data as TemplateSummary[])[0].id)
+            setSelectedTemplateId((tplRes.data as unknown as TemplateSummary[])[0].id)
           }
         }
       } catch (err) {
@@ -244,7 +244,7 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
         try {
           const res = await window.psygil.templates.get({ id: templateId })
           if (res.status === 'success') {
-            setTemplateProfile(res.data as TemplateProfileData)
+            setTemplateProfile(res.data as unknown as TemplateProfileData)
           }
         } catch (err) {
           console.error('[EvalReportTab] Failed to load template profile:', err)
@@ -263,7 +263,7 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
       try {
         const res = await window.psygil.templates.get({ id: selectedTemplateId })
         if (!cancelled && res.status === 'success') {
-          setTemplateProfile(res.data as TemplateProfileData)
+          setTemplateProfile(res.data as unknown as TemplateProfileData)
         }
       } catch (err) {
         console.error('[EvalReportTab] Failed to load initial template profile:', err)

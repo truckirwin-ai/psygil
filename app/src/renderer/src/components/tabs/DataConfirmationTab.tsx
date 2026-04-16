@@ -151,7 +151,7 @@ export default function DataConfirmationTab({
       }
 
       if (docsResp.status === 'success') {
-        const docs = (docsResp.data as Array<{
+        const docs = (docsResp.data as unknown as Array<{
           document_id: number
           original_filename: string
           indexed_content: string | null

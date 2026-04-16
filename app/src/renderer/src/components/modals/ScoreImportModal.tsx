@@ -70,7 +70,7 @@ export default function ScoreImportModal({
   const [uploadError, setUploadError] = useState<string | null>(null)
 
   // Manual pathway state
-  const [selectedInstrument, setSelectedInstrument] = useState(INSTRUMENTS[0].id)
+  const [selectedInstrument, setSelectedInstrument] = useState<string>(INSTRUMENTS[0].id)
   const [customInstrumentName, setCustomInstrumentName] = useState('')
   const [administrationDate, setAdministrationDate] = useState(
     new Date().toISOString().split('T')[0]
@@ -230,7 +230,7 @@ export default function ScoreImportModal({
             selectedInstrument === 'other'
               ? customInstrumentName
               : INSTRUMENTS.find((i) => i.id === selectedInstrument)?.name ?? selectedInstrument,
-          instrument_abbrev: INSTRUMENTS.find((i) => i.id === selectedInstrument)?.abbrev ?? '',
+          instrument_abbrev: (INSTRUMENTS.find((i) => i.id === selectedInstrument) as { abbrev?: string } | undefined)?.abbrev ?? selectedInstrument,
           administration_date: administrationDate,
           data_entry_method: 'manual',
           scores: scores.map((s) => ({

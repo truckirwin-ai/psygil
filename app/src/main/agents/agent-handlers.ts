@@ -8,6 +8,7 @@
 
 import { randomUUID } from 'crypto'
 import { ipcMain } from 'electron'
+import { ok, fail } from '../../shared/types'
 import type {
   IpcResponse, AgentRunParams, AgentRunResult, AgentStatusResult, AgentType,
   IngestorRunParams, IngestorRunResult, IngestorGetResultParams,
@@ -62,18 +63,6 @@ function getStatus(operationId: string): AgentStatus | undefined {
 
 function clearStatus(operationId: string): void {
   agentStatusMap.delete(operationId)
-}
-
-// ---------------------------------------------------------------------------
-// Stub helper, returns a typed success/error envelope
-// ---------------------------------------------------------------------------
-
-function ok<T>(data: T): IpcResponse<T> {
-  return { status: 'success', data }
-}
-
-function fail(error_code: string, message: string): IpcResponse<never> {
-  return { status: 'error', error_code, message }
 }
 
 // ---------------------------------------------------------------------------

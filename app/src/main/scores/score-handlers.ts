@@ -8,6 +8,7 @@
  */
 
 import { ipcMain } from 'electron'
+import { ok, fail } from '../../shared/types'
 import type {
   IpcResponse,
   TestScoreSaveParams,
@@ -15,14 +16,6 @@ import type {
 } from '../../shared/types'
 import type { TestScoreRow } from './index'
 import { saveTestScores, listTestScores, deleteTestScores } from './index'
-
-function ok<T>(data: T): IpcResponse<T> {
-  return { status: 'success', data }
-}
-
-function fail(error_code: string, message: string): IpcResponse<never> {
-  return { status: 'error', error_code, message }
-}
 
 export function registerScoreHandlers(): void {
   ipcMain.handle(

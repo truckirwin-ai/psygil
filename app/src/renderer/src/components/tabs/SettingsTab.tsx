@@ -8,6 +8,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Tab } from '../../types/tabs'
+import type { ResourceCategory } from '../../../../shared/types/ipc'
 import BrandingPanel from './settings/BrandingPanel'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,7 +161,7 @@ function ResourceListPanel({
   emptyMessage,
   uploadLabel,
 }: {
-  category: string
+  category: ResourceCategory
   title: string
   description: string
   emptyMessage: string
@@ -190,7 +191,7 @@ function ResourceListPanel({
   const handleUpload = useCallback(async () => {
     setUploading(true)
     try {
-      const resp = await window.psygil.resources.upload({ category })
+      const resp = await window.psygil.resources.upload({ category, filePaths: [] })
       if (resp.status === 'success') {
         void loadFiles()
       }
@@ -591,7 +592,7 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
           ...prev,
           stage: 'complete',
           styleProfiles: analysisResp.data.profiles as StyleProfile[],
-          styleAggregate: analysisResp.data.aggregate as StyleAggregate,
+          styleAggregate: analysisResp.data.aggregate as unknown as StyleAggregate,
         }))
       } else {
         setPipeline(prev => ({ ...prev, stage: 'complete' }))
@@ -1457,7 +1458,7 @@ function TemplatesSection(): React.JSX.Element {
     try {
       const resp = await window.psygil.templates.list()
       if (resp.status === 'success') {
-        setTemplates(resp.data as TemplateListItem[])
+        setTemplates(resp.data as unknown as TemplateListItem[])
       }
     } catch (err) {
       console.error('[Templates] Failed to load:', err)
@@ -1473,7 +1474,7 @@ function TemplatesSection(): React.JSX.Element {
     try {
       const resp = await window.psygil.templates.analyze({})
       if (resp.status === 'success') {
-        const data = resp.data as TemplateAnalysis
+        const data = resp.data as unknown as TemplateAnalysis
         setAnalysis(data)
         setConfirmName(data.suggestedName)
         setConfirmEvalType(data.detectedEvalType)
@@ -1529,7 +1530,7 @@ function TemplatesSection(): React.JSX.Element {
     try {
       const resp = await window.psygil.templates.get({ id })
       if (resp.status === 'success') {
-        const profile = resp.data as { sections: { heading: string; exampleProse: string; contentType: string }[] }
+        const profile = resp.data as unknown as { sections: { heading: string; exampleProse: string; contentType: string }[] }
         setPreviewSections(profile.sections)
         setPreviewId(id)
       }
@@ -1914,7 +1915,7 @@ function AiModelsSection(): React.JSX.Element {
     void (async () => {
       try {
         const hasResp = await window.psygil.apiKey.has()
-        if (hasResp.status === 'success') setHasKey(hasResp.data as boolean)
+        if (hasResp.status === 'success') setHasKey(hasResp.data.hasKey)
       } catch { /* ignore */ }
 
       try {
@@ -1963,7 +1964,7 @@ function AiModelsSection(): React.JSX.Element {
         setConnectedModel(result.data.model || '')
       } else {
         setConnectionStatus('error')
-        setConnectionError(result.data?.error || 'Connection failed')
+        setConnectionError((result.status === 'success' ? result.data.error : result.message) || 'Connection failed')
       }
     } catch {
       setConnectionStatus('error')

@@ -31,15 +31,15 @@ export interface AgentConfig {
 }
 
 /**
- * Result returned by the agent runner.
+ * Successful agent run. `result` is guaranteed and typed as T.
  */
-export interface AgentResult<T = unknown> {
-  readonly status: 'success' | 'error'
+export interface AgentSuccess<T> {
+  readonly status: 'success'
   readonly agentType: string
   readonly caseId: number
   readonly operationId: string
-  readonly result?: T
-  readonly error?: string
+  readonly result: T
+  readonly error?: never
   readonly tokenUsage?: {
     readonly input: number
     readonly output: number
@@ -47,12 +47,35 @@ export interface AgentResult<T = unknown> {
   readonly durationMs: number
 }
 
+/**
+ * Failed agent run. `error` is guaranteed; `result` is absent.
+ */
+export interface AgentError {
+  readonly status: 'error'
+  readonly agentType: string
+  readonly caseId: number
+  readonly operationId: string
+  readonly result?: never
+  readonly error: string
+  readonly tokenUsage?: {
+    readonly input: number
+    readonly output: number
+  }
+  readonly durationMs: number
+}
+
+/**
+ * Discriminated union on `status`. Narrow with `isSuccessful(result)`.
+ */
+export type AgentResult<T = unknown> = AgentSuccess<T> | AgentError
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const REDACTION_CONTEXT_MAP: Record<AgentType, 'intake' | 'report' | 'review' | 'diagnostics'> = {
   ingestor: 'intake',
+  psychometrician: 'intake',
   diagnostician: 'diagnostics',
   writer: 'report',
   editor: 'review',
@@ -185,8 +208,9 @@ export function isValidAgentType(value: unknown): value is AgentType {
 }
 
 /**
- * Check if an AgentResult is successful.
+ * Check if an AgentResult is successful. Narrows to AgentSuccess<T> so
+ * `result.result` is accessible and typed as T.
  */
-export function isSuccessful<T>(result: AgentResult<T>): result is AgentResult<T> & { status: 'success'; result: T } {
-  return result.status === 'success' && result.result !== undefined
+export function isSuccessful<T>(result: AgentResult<T>): result is AgentSuccess<T> {
+  return result.status === 'success'
 }
