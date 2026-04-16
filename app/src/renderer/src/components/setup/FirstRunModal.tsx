@@ -1,5 +1,5 @@
 /**
- * FirstRunModal — minimal first-launch setup prompt.
+ * FirstRunModal, minimal first-launch setup prompt.
  *
  * Replaces the Auth0 LoginGate and the first three steps of the 8-step
  * setup wizard. Collects the absolute minimum needed to open the main
