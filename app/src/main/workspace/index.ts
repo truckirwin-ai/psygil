@@ -30,6 +30,8 @@ import chokidar from 'chokidar'
 import type { FolderNode } from '../../shared/types'
 import { getSqlite } from '../db/connection'
 import { getCurrentClinicianUserId } from '../auth/session'
+// Phase C.4: rename-pair tracker for chokidar unlink+add pairing
+import { createRenamePairTracker } from './rename-pair'
 
 // ---------------------------------------------------------------------------
 // Constants, canonical case subfolder structure
@@ -559,11 +561,15 @@ export function watchWorkspace(root: string): void {
     ],
   })
 
-  // Debounce: accumulate changed case folders, sync DB THEN broadcast to
-  // renderer.  The old code broadcast BEFORE the debounced sync, so the
-  // renderer would call cases.list() and get stale data.
+  // Phase C.4: Debounce reduced from 500ms to 300ms per plan spec.
+  // Accumulate changed case folders, sync DB THEN broadcast to renderer.
+  // The old code broadcast BEFORE the debounced sync, so the renderer would
+  // call cases.list() and get stale data.
   let syncTimer: ReturnType<typeof setTimeout> | null = null
   const pendingCaseFolders = new Set<string>()
+
+  // Phase C.4: rename-pair tracker. Pairs unlink+add within 100ms window.
+  const renamePairer = createRenamePairTracker()
 
   const broadcastRefresh = (): void => {
     const windows = BrowserWindow.getAllWindows()
@@ -571,6 +577,18 @@ export function watchWorkspace(root: string): void {
       if (!win.isDestroyed()) {
         win.webContents.send('workspace:file-changed', { event: 'sync-complete', path: root })
       }
+    }
+  }
+
+  // Phase C.4: Rename a document row in-place (update file_path, no delete+insert).
+  const handleRename = (oldPath: string, newPath: string): void => {
+    try {
+      const db = getSqlite()
+      db.prepare(
+        `UPDATE documents SET file_path = ? WHERE file_path = ?`
+      ).run(newPath, oldPath)
+    } catch {
+      // Non-fatal: next scheduleSync will reconcile via upsert
     }
   }
 
@@ -585,6 +603,12 @@ export function watchWorkspace(root: string): void {
 
     if (syncTimer) clearTimeout(syncTimer)
     syncTimer = setTimeout(() => {
+      // Phase C.4: flush any expired unlink events not paired with an add
+      const unpairedUnlinks = renamePairer.flush()
+      for (const stale of unpairedUnlinks) {
+        scheduleSync(stale)
+      }
+
       for (const cfp of pendingCaseFolders) {
         syncSingleCase(cfp)
       }
@@ -593,23 +617,34 @@ export function watchWorkspace(root: string): void {
 
       // NOW broadcast, DB is up-to-date, renderer will get fresh data
       broadcastRefresh()
-    }, 500)  // 500ms debounce
+    }, 300)  // Phase C.4: 300ms debounce (reduced from 500ms)
   }
 
   watcher.on('ready', () => {
   })
 
-  watcher.on('error', (err) => {
-    console.error('[watcher] Error:', err)
+  watcher.on('error', (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err)
+    process.stderr.write(`[watcher] Error: ${msg}\n`)
   })
 
   watcher.on('add', (filePath) => {
+    // Phase C.4: check if this add is the second half of a rename pair
+    const oldPath = renamePairer.recordAdd(filePath)
+    if (oldPath !== null) {
+      // Paired rename: update the DB row in-place, then schedule a sync to
+      // reconcile stage/status (the file still belongs to the same case)
+      handleRename(oldPath, filePath)
+    }
     scheduleSync(filePath)
   })
   watcher.on('change', (filePath) => {
     scheduleSync(filePath)
   })
   watcher.on('unlink', (filePath) => {
+    // Phase C.4: record potential rename unlink; actual deletion handled if
+    // no matching add arrives within PAIR_WINDOW_MS (flush in timer above)
+    renamePairer.recordUnlink(filePath)
     scheduleSync(filePath)
   })
   watcher.on('addDir', (dirPath) => {

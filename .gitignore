@@ -87,3 +87,4 @@ sidecar/dist-macos/
 
 # Local dev-ops knowledge base + indexer logs (machine-generated, not shared)
 /dev-ops/
+/.claude/scheduled_tasks.lock

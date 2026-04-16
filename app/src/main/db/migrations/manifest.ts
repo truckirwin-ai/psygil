@@ -816,6 +816,46 @@ CREATE INDEX IF NOT EXISTS idx_agent_results_case
     ON agent_results(case_id, agent_type);
 `
 
+// Inline SQL for 002-audit-hash-chain.sql
+const SQL_002 = `-- Migration: 002-audit-hash-chain
+-- Adds tamper-evident columns to audit_log and installs immutability triggers.
+-- prev_hash is nullable so existing rows pass without backfill.
+-- row_hash is nullable for the same reason; new rows will always have it set.
+
+ALTER TABLE audit_log ADD COLUMN prev_hash TEXT;
+ALTER TABLE audit_log ADD COLUMN row_hash TEXT;
+
+CREATE TRIGGER audit_log_no_update
+BEFORE UPDATE ON audit_log
+BEGIN
+  SELECT RAISE(ABORT, 'audit_log is immutable');
+END;
+
+CREATE TRIGGER audit_log_no_delete
+BEFORE DELETE ON audit_log
+BEGIN
+  SELECT RAISE(ABORT, 'audit_log is immutable');
+END;
+`
+
+// Phase C.4: Inline SQL for 003-documents-unique-path.sql
+const SQL_003 = `-- Migration 003: Unique index on documents(case_id, file_path)
+--
+-- Deduplicates any existing rows that share (case_id, file_path), keeping
+-- the row with the highest document_id (the most recently inserted one).
+-- Then adds a UNIQUE index so idempotent upserts work correctly.
+
+DELETE FROM documents
+WHERE document_id NOT IN (
+  SELECT MAX(document_id)
+  FROM documents
+  GROUP BY case_id, file_path
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_case_path_unique
+ON documents(case_id, file_path);
+`
+
 /**
  * Ordered list of all migrations. New entries go at the END of this array.
  * Do NOT reorder or remove existing entries.
@@ -826,5 +866,15 @@ export const MIGRATIONS: readonly MigrationEntry[] = [
     description: 'Initial schema: all tables, indexes, FTS, views, triggers',
     sql: SQL_001,
   },
-  // 002-audit-hash-chain.sql will be added here when that migration lands.
+  {
+    version: 2,
+    description: 'Audit hash chain: tamper-evident prev_hash/row_hash columns, immutability triggers',
+    sql: SQL_002,
+  },
+  {
+    // Phase C.4: unique path constraint enabling idempotent document upserts
+    version: 3,
+    description: 'Documents unique path: deduplicate rows, add UNIQUE index on (case_id, file_path)',
+    sql: SQL_003,
+  },
 ]

@@ -1328,6 +1328,7 @@ export interface PsygilApi {
   readonly workspace: {
     readonly getPath: () => Promise<IpcResponse<string | null>>
     readonly setPath: (path: string) => Promise<IpcResponse<void>>
+    readonly switch: (params: { path: string }) => Promise<IpcResponse<void>>
     readonly getTree: () => Promise<IpcResponse<readonly FolderNode[]>>
     readonly openInFinder: (path: string) => Promise<IpcResponse<void>>
     readonly openNative: (path: string) => Promise<IpcResponse<void>>
@@ -1523,6 +1524,10 @@ export interface PsygilApi {
     readonly getVersion: () => Promise<unknown>
   }
   readonly setup: import('./setup').SetupApi
+  readonly uninstall: {
+    readonly wipe: (args: UninstallWipeParams) => Promise<IpcResponse<UninstallWipeResult>>
+    readonly relaunch: () => Promise<void>
+  }
 }
 
 // Augment the global Window interface for renderer usage
@@ -1530,6 +1535,23 @@ declare global {
   interface Window {
     readonly psygil: PsygilApi
   }
+}
+
+// ---------------------------------------------------------------------------
+// Uninstall / Wipe (Phase C.3)
+// ---------------------------------------------------------------------------
+
+export interface UninstallWipeParams {
+  /** Must equal the workspace folder name (last path segment) */
+  readonly confirmation: string
+}
+
+export interface UninstallWipeResult {
+  readonly success: boolean
+  /** True when the workspace folder itself should be prompted for deletion */
+  readonly workspaceFolderPromptedForDelete: boolean
+  /** Absolute path to the surviving wipe_log.json */
+  readonly wipeLogPath: string
 }
 
 // ---------------------------------------------------------------------------

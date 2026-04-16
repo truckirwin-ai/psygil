@@ -113,6 +113,8 @@ export type {
   DiagnosisCatalogRow,
   DiagnosisCatalogSearchParams,
   DiagnosisCatalogListParams,
+  UninstallWipeParams,
+  UninstallWipeResult,
   PsygilApi
 } from './ipc'
 

@@ -60,3 +60,18 @@ export function getSqlite(): InstanceType<typeof Database> {
   if (handle === null) throw new Error('Database not initialized, call initDb() first')
   return handle.sqlite
 }
+
+/**
+ * Close the SQLite connection and reset the singleton so future getSqlite()
+ * calls throw until initDb() is called again.
+ * Used by the uninstall/wipe flow before zero-filling the database file.
+ */
+export function closeSqlite(): void {
+  if (handle === null) return
+  try {
+    handle.sqlite.close()
+  } catch {
+    // Ignore close errors; we are about to destroy the file anyway
+  }
+  handle = null
+}

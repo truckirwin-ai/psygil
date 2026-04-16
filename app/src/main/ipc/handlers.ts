@@ -51,7 +51,10 @@ import type {
   AiCompleteResult,
   AiTestConnectionParams,
   AiTestConnectionResult,
+  UninstallWipeParams,
+  UninstallWipeResult,
 } from '../../shared/types'
+import { wipeLocalData } from '../uninstall'
 import { getAuthStatus } from '../auth'
 import { performLogout } from '../auth/logout'
 import { checkLicense } from '../auth/user'
@@ -67,7 +70,13 @@ import {
   getDefaultWorkspacePath,
   getMalformedFolders,
   scaffoldCaseSubfolders,
+  stopWatcher,
 } from '../workspace'
+import {
+  acquireWorkspaceLock,
+  releaseWorkspaceLock,
+  inspectWorkspaceLock,
+} from '../workspace/lock'
 import { detect, batchDetect, redact, rehydrate, destroyMap } from '../pii'
 import {
   createCase,
@@ -418,20 +427,73 @@ function registerWorkspaceHandlers(): void {
     (): IpcResponse<string | null> => ok(loadWorkspacePath())
   )
 
+  // Phase C.2: safe workspace swap. The old setPath handler is preserved as
+  // an alias for setup-wizard call sites that expect to run on an empty
+  // state, but internally both paths now route through switchWorkspace()
+  // so the old watcher is closed and the old lock is released before the
+  // new path is acquired and scanned.
+  const switchWorkspace = (newPath: string): IpcResponse<void> => {
+    try {
+      const currentPath = loadWorkspacePath()
+
+      // If we are swapping from a different workspace, check that no other
+      // Psygil instance holds the new path. Fail fast; the renderer surfaces
+      // a modal with the holder's PID + hostname.
+      if (currentPath !== newPath) {
+        const held = inspectWorkspaceLock(newPath)
+        if (held !== null && held.pid !== process.pid) {
+          return fail(
+            'WORKSPACE_LOCKED',
+            `Another Psygil instance (PID ${held.pid} on ${held.hostname}, since ${held.acquiredAt}) is using this workspace. Close it first or pick a different folder.`,
+          )
+        }
+      }
+
+      // Close the chokidar watcher on the previous workspace so events from
+      // there do not leak into the new workspace's state.
+      stopWatcher()
+
+      // Release the previous lock if it belonged to us. Safe no-op when
+      // currentPath is null or when another process owns that lock.
+      if (currentPath !== null && currentPath !== newPath) {
+        releaseWorkspaceLock(currentPath)
+      }
+
+      // Persist the new path and make sure the folder structure exists.
+      saveWorkspacePath(newPath)
+      createFolderStructure(newPath)
+
+      // Acquire the new lock. If acquisition fails the caller is treated as
+      // the winner only when the holder is us (same PID) or dead (stale).
+      const lockResult = acquireWorkspaceLock(newPath)
+      if (!lockResult.acquired) {
+        return fail(
+          'WORKSPACE_LOCKED',
+          `Workspace lock held by PID ${lockResult.heldByPid} on ${lockResult.hostname}. Refusing to sync.`,
+        )
+      }
+
+      // Re-scan the filesystem and start the watcher on the new root.
+      syncWorkspaceToDB(newPath)
+      watchWorkspace(newPath)
+      return ok(undefined)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to switch workspace'
+      return fail('WORKSPACE_SWITCH_FAILED', message)
+    }
+  }
+
   ipcMain.handle(
     'workspace:setPath',
-    (_event, path: string): IpcResponse<void> => {
-      try {
-        saveWorkspacePath(path)
-        createFolderStructure(path)
-        syncWorkspaceToDB(path)
-        watchWorkspace(path)
-        return ok(undefined)
-      } catch (e) {
-        const message = e instanceof Error ? e.message : 'Failed to set workspace path'
-        return fail('WORKSPACE_SET_FAILED', message)
-      }
-    }
+    (_event, path: string): IpcResponse<void> => switchWorkspace(path),
+  )
+
+  // Dedicated switch endpoint for Settings > Workspace > Change.
+  // Behaviorally identical to workspace:setPath today, separate name so the
+  // renderer can distinguish "first-time pick" from "post-setup swap".
+  ipcMain.handle(
+    'workspace:switch',
+    (_event, params: { path: string }): IpcResponse<void> => switchWorkspace(params.path),
   )
 
   ipcMain.handle(
@@ -4051,6 +4113,7 @@ export function registerAllHandlers(): void {
   registerTestHarnessHandlers()
   try { registerDiagnosisCatalogHandlers() } catch (e) { console.warn('[main] diagnosisCatalog handlers skipped:', (e as Error).message) }
   registerBrandingHandlers()
+  registerUninstallHandlers()
 }
 
 // ---------------------------------------------------------------------------
@@ -4127,4 +4190,31 @@ function registerBrandingHandlers(): void {
       }
     }
   )
+}
+
+// ---------------------------------------------------------------------------
+// Uninstall handlers (Phase C.3)
+// ---------------------------------------------------------------------------
+
+export function registerUninstallHandlers(): void {
+  ipcMain.handle(
+    'uninstall:wipe',
+    async (_event, params: UninstallWipeParams): Promise<IpcResponse<UninstallWipeResult>> => {
+      try {
+        const result = await wipeLocalData(params.confirmation)
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Wipe failed'
+        process.stderr.write(`[uninstall:wipe] ${message}\n`)
+        return fail('WIPE_FAILED', message)
+      }
+    }
+  )
+
+  // Separate handler: the UI calls this AFTER showing the success screen.
+  // app.relaunch() is only called here, never inside wipeLocalData.
+  ipcMain.handle('uninstall:relaunch', (): void => {
+    app.relaunch()
+    app.exit(0)
+  })
 }

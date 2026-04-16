@@ -42,6 +42,7 @@ import type {
   TestScoreListParams,
   DiagnosisCatalogSearchParams,
   DiagnosisCatalogListParams,
+  UninstallWipeParams,
 } from '../shared/types'
 
 // IPC channel constants, must match main/ipc/handlers.ts
@@ -75,6 +76,7 @@ const CH = {
   PII_DESTROY: 'pii:destroy',
   WS_GET_PATH: 'workspace:getPath',
   WS_SET_PATH: 'workspace:setPath',
+  WS_SWITCH: 'workspace:switch',
   WS_GET_TREE: 'workspace:getTree',
   SEED_DEMO: 'seed:demoCases',
   WS_OPEN_FINDER: 'workspace:openInFinder',
@@ -184,6 +186,7 @@ const api: PsygilApi = {
   workspace: {
     getPath: () => ipcRenderer.invoke(CH.WS_GET_PATH),
     setPath: (path) => ipcRenderer.invoke(CH.WS_SET_PATH, path),
+    switch: (params: { path: string }) => ipcRenderer.invoke(CH.WS_SWITCH, params),
     getTree: () => ipcRenderer.invoke(CH.WS_GET_TREE),
     openInFinder: (path) => ipcRenderer.invoke(CH.WS_OPEN_FINDER, path),
     openNative: (path) => ipcRenderer.invoke(CH.WS_OPEN_NATIVE, path),
@@ -400,6 +403,11 @@ const api: PsygilApi = {
     provisionTemplates: (params) => ipcRenderer.invoke('setup:provisionTemplates', params),
     getSupportedEvalTypes: () => ipcRenderer.invoke('setup:getSupportedEvalTypes'),
     complete: () => ipcRenderer.invoke('setup:complete'),
+  },
+
+  uninstall: {
+    wipe: (args: UninstallWipeParams) => ipcRenderer.invoke('uninstall:wipe', args),
+    relaunch: () => ipcRenderer.invoke('uninstall:relaunch'),
   },
 }
 
