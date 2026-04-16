@@ -13,6 +13,7 @@ import { basename, extname, join } from 'path'
 import { getSqlite } from '../db/connection'
 import { getCaseById } from '../cases'
 import { logAuditEntry } from '../audit'
+import { getCurrentClinicianUserId } from '../auth/session'
 import type { DocumentRow } from '../../shared/types'
 
 // ---------------------------------------------------------------------------
@@ -165,7 +166,7 @@ export async function ingestFile(
   caseId: number,
   filePath: string,
   subfolder: CaseSubfolder,
-  uploadedByUserId: number = 1,
+  uploadedByUserId?: number,
 ): Promise<DocumentRow> {
   const caseRow = getCaseById(caseId)
   if (caseRow === null) {
@@ -174,6 +175,11 @@ export async function ingestFile(
   if (caseRow.folder_path === null) {
     throw new Error(`Case ${caseId} has no workspace folder`)
   }
+
+  // Resolve the clinician to stamp on this upload. Uses the Auth0 session
+  // when present, otherwise falls back to the first active user, and
+  // bootstraps a default row only on an empty database.
+  const userId = uploadedByUserId ?? getCurrentClinicianUserId()
 
   if (!VALID_SUBFOLDERS.includes(subfolder)) {
     throw new Error(`Invalid subfolder: ${subfolder}. Must be one of: ${VALID_SUBFOLDERS.join(', ')}`)
@@ -223,7 +229,7 @@ export async function ingestFile(
     file_path: destPath,
     file_size_bytes: stat.size,
     mime_type: mime,
-    uploaded_by_user_id: uploadedByUserId,
+    uploaded_by_user_id: userId,
     description: null,
     indexed_content: extractedText,
   })
@@ -237,7 +243,7 @@ export async function ingestFile(
       caseId,
       actionType: 'document_uploaded',
       actorType: 'clinician',
-      actorId: String(uploadedByUserId),
+      actorId: String(userId),
       details: {
         filename: fileName,
         subfolder,
@@ -269,7 +275,7 @@ export async function ingestFile(
 export async function registerExistingDocument(
   caseId: number,
   filePath: string,
-  uploadedByUserId: number = 1,
+  uploadedByUserId?: number,
 ): Promise<DocumentRow> {
   if (!existsSync(filePath)) {
     throw new Error(`registerExistingDocument: file does not exist: ${filePath}`)
@@ -280,6 +286,7 @@ export async function registerExistingDocument(
   const mime = mimeFromExt(filePath)
   const docType = docTypeFromExt(filePath)
   const extractedText = await extractText(filePath, mime)
+  const userId = uploadedByUserId ?? getCurrentClinicianUserId()
 
   const sqlite = getSqlite()
 
@@ -330,7 +337,7 @@ export async function registerExistingDocument(
       file_path: filePath,
       file_size_bytes: stat.size,
       mime_type: mime,
-      uploaded_by_user_id: uploadedByUserId,
+      uploaded_by_user_id: userId,
       description: null,
       indexed_content: extractedText,
     })

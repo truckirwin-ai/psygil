@@ -29,6 +29,7 @@ import type { FSWatcher } from 'chokidar'
 import chokidar from 'chokidar'
 import type { FolderNode } from '../../shared/types'
 import { getSqlite } from '../db/connection'
+import { getCurrentClinicianUserId } from '../auth/session'
 
 // ---------------------------------------------------------------------------
 // Constants, canonical case subfolder structure
@@ -214,14 +215,10 @@ export function syncWorkspaceToDB(wsPath: string): void {
     return
   }
 
-  // Ensure a default clinician user exists (user_id = 1)
-  const existingUser = db.prepare('SELECT user_id FROM users WHERE user_id = 1').get()
-  if (!existingUser) {
-    db.prepare(`
-      INSERT OR IGNORE INTO users (user_id, email, full_name, role, is_active, created_at)
-      VALUES (1, 'clinician@psygil.com', 'Dr. Robert Irwin', 'psychologist', 1, CURRENT_DATE)
-    `).run()
-  }
+  // Resolve the clinician to stamp on any newly-discovered cases. Prefers
+  // the current Auth0 session (Phase B.1), falls back to an existing
+  // active user, only bootstraps user_id=1 on a truly empty database.
+  const clinicianUserId = getCurrentClinicianUserId()
 
   // Cases live under {projectRoot}/cases/ per the workspace layout.
   // Fall back to scanning the project root directly for backward
@@ -248,7 +245,7 @@ export function syncWorkspaceToDB(wsPath: string): void {
       examinee_first_name, examinee_last_name,
       case_status, workflow_current_stage,
       folder_path, created_at
-    ) VALUES (?, 1, ?, ?, ?, ?, ?, CURRENT_DATE)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_DATE)
   `)
   const updateCaseMetadata = db.prepare(`
     UPDATE cases SET
@@ -309,7 +306,7 @@ export function syncWorkspaceToDB(wsPath: string): void {
     } else {
       // INSERT, new case folder discovered on disk
       try {
-        insertCase.run(caseNumber, firstName, lastName.trim(), scan.inferredStatus, scan.inferredStage, fullPath)
+        insertCase.run(caseNumber, clinicianUserId, firstName, lastName.trim(), scan.inferredStatus, scan.inferredStage, fullPath)
         synced++
       } catch (e) {
         console.error('[workspace-sync] Failed to index', entry, (e as Error).message)

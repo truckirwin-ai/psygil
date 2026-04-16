@@ -17,6 +17,7 @@ import type { IpcResponse } from '../../shared/types'
 import { archiveDrafts, setReadOnly } from './archive'
 import { findProhibited, HardRuleViolationError } from '../publish/hardRuleScan'
 import { getLatestWriterResult } from '../agents/writer'
+import { getCurrentClinicianUserId } from '../auth/session'
 
 // ============================================================================
 // Types
@@ -186,27 +187,15 @@ function scanPublishArtifacts(caseId: number, finalDocxPath: string): void {
 // Public API: submitAttestation
 // ============================================================================
 
-function resolveClinicianUserId(): number {
-  const sqlite = getSqlite()
-  const row = sqlite
-    .prepare("SELECT user_id FROM users WHERE is_active = 1 ORDER BY user_id ASC LIMIT 1")
-    .get() as { user_id: number } | undefined
-  if (row?.user_id) return row.user_id
-  // Bootstrap a default clinician so reports can be persisted even before
-  // a real auth user has been created.
-  sqlite
-    .prepare(
-      `INSERT OR IGNORE INTO users (user_id, email, full_name, role, credentials, is_active, created_at)
-       VALUES (1, 'clinician@psygil.local', 'Default Clinician', 'psychologist', 'Ph.D.', 1, CURRENT_DATE)`
-    )
-    .run()
-  return 1
-}
+// Phase B.2: clinician resolution moved to src/main/auth/session.ts as
+// getCurrentClinicianUserId. Prefers the Auth0 session, falls back to the
+// first active users row, and bootstraps user_id=1 only on a truly empty
+// database. Callers must NOT hardcode user ids anywhere.
 
 export function submitAttestation(params: AttestationParams): SubmitAttestationResult {
   const sqlite = getSqlite()
   const { caseId, signedBy, attestationStatement, signatureDate } = params
-  const clinicianUserId = resolveClinicianUserId()
+  const clinicianUserId = getCurrentClinicianUserId()
 
   // 1. Verify case exists and is at 'review' stage
   const caseRow = getCaseById(caseId)
