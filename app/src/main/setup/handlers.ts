@@ -491,18 +491,14 @@ function getDefaultStoragePath(): string {
 }
 
 function validatePracticeInfo(p: PracticeInfo): string[] {
+  // Only the name and specialty are required at first-run. credentials,
+  // licenseNumber, and licenseState are collected post-first-run via
+  // Settings > Practice (or surfaced inline on the report signature block
+  // when the user publishes a report). Keeping those empty is a valid
+  // intermediate state so the minimum viable first-run flow stays short.
   const errors: string[] = []
   if (typeof p.fullName !== 'string' || p.fullName.trim().length === 0) {
     errors.push('Full name is required')
-  }
-  if (typeof p.credentials !== 'string' || p.credentials.trim().length === 0) {
-    errors.push('Credentials are required')
-  }
-  if (typeof p.licenseNumber !== 'string' || p.licenseNumber.trim().length === 0) {
-    errors.push('License number is required')
-  }
-  if (typeof p.licenseState !== 'string' || p.licenseState.trim().length === 0) {
-    errors.push('License state is required')
   }
   const validSpecialties = ['forensic', 'clinical', 'neuro', 'school', 'other']
   if (!validSpecialties.includes(p.specialty)) {
