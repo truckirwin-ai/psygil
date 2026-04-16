@@ -23,7 +23,7 @@
  *   - CPT-3 Manual (Conners, 2014, MHS)
  *   - AUDIT Manual (Babor et al., 2001, WHO)
  *   - ABAS-3 / Vineland-3 (Pearson)
- *   - FBS (Lees-Haley, English, Glenn, 1991) — embedded MMPI validity scale
+ *   - FBS (Lees-Haley, English, Glenn, 1991) , embedded MMPI validity scale
  *   - SARA V3 User Manual (Kropp, Hart, 2015)
  *
  * These norms drive deterministic demo data. They are not clinical scoring
@@ -69,7 +69,7 @@ export interface ClinicalScaleNorm {
   readonly elevationCutoff?: number
   /** Markedly elevated threshold (if distinct from elevationCutoff). */
   readonly markedCutoff?: number
-  /** For Wechsler subtests (M=10, SD=3) — optional override of the parent metric. */
+  /** For Wechsler subtests (M=10, SD=3) , optional override of the parent metric. */
   readonly metric?: ScoreMetric
 }
 
@@ -223,7 +223,7 @@ const MCMI4_NORM: InstrumentNorm = {
 }
 
 // ---------------------------------------------------------------------------
-// WAIS-V (Wechsler, 2024) — standard scores M=100 SD=15; subtests M=10 SD=3
+// WAIS-V (Wechsler, 2024) , standard scores M=100 SD=15; subtests M=10 SD=3
 // ---------------------------------------------------------------------------
 const WAIS5_NORM: InstrumentNorm = {
   metric: 'StdScore',
@@ -719,7 +719,7 @@ const VINELAND3_NORM: InstrumentNorm = {
 }
 
 // ---------------------------------------------------------------------------
-// FBS (Lees-Haley, English, Glenn, 1991) — embedded MMPI validity scale
+// FBS (Lees-Haley, English, Glenn, 1991) , embedded MMPI validity scale
 // ---------------------------------------------------------------------------
 const FBS_NORM: InstrumentNorm = {
   metric: 'Raw',
@@ -730,7 +730,7 @@ const FBS_NORM: InstrumentNorm = {
   administrationType: 'self-report',
   bands: [
     { min: 0, max: 21, label: 'Within limits', tone: 'ok' },
-    { min: 22, max: 28, label: 'Elevated — possible overreporting', tone: 'elevated' },
+    { min: 22, max: 28, label: 'Elevated , possible overreporting', tone: 'elevated' },
     { min: 29, max: 43, label: 'Strong overreporting indicator', tone: 'invalid' },
   ],
   clinicalScales: [{ code: 'FBS', fullName: 'Symptom Validity Raw' }],

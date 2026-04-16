@@ -10,6 +10,7 @@ import { useState } from 'react'
 import type { StepProps } from '../shared'
 import { styles } from '../shared'
 import type { PracticeInfo, Specialty } from '../../../../../shared/types/setup'
+import { useLocale } from '../../../i18n/useLocale'
 
 const SPECIALTIES: { value: Specialty; label: string }[] = [
   { value: 'forensic', label: 'Forensic Psychology' },
@@ -46,6 +47,7 @@ export default function StepPractice({
   onConfigUpdate,
   onAdvance,
 }: StepProps): React.JSX.Element {
+  const { strings } = useLocale()
   const [practice, setPractice] = useState<PracticeInfo>(
     config.practice ?? blankPractice(),
   )
@@ -83,17 +85,16 @@ export default function StepPractice({
 
   return (
     <div>
-      <h2 style={styles.heading}>Tell us about your practice</h2>
+      <h2 style={styles.heading}>{strings.practice.title}</h2>
       <p style={styles.subheading}>
-        This information appears on report headers and the audit trail.
-        It is stored locally on this machine and is not patient information.
+        {strings.practice.subtitle}
       </p>
 
       {error !== null && <div style={styles.errorBox}>{error}</div>}
 
       <div style={styles.fieldGrid2}>
         <div>
-          <label style={styles.fieldLabel}>Full name *</label>
+          <label style={styles.fieldLabel}>{strings.practice.fieldFullName} *</label>
           <input
             style={styles.input}
             value={practice.fullName}
@@ -102,7 +103,7 @@ export default function StepPractice({
           />
         </div>
         <div>
-          <label style={styles.fieldLabel}>Credentials *</label>
+          <label style={styles.fieldLabel}>{strings.practice.fieldCredentials} *</label>
           <input
             style={styles.input}
             value={practice.credentials}

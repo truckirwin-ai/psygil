@@ -20,7 +20,7 @@ import { createPortal } from 'react-dom'
 //
 // When true, SectionPair collapses to a single-column body (MockSection only,
 // no per-section right-rail notes cell). Used when the tab is wrapped in a
-// shared shell-level notes rail (withMultiNotesPanel) — we don't want two
+// shared shell-level notes rail (withMultiNotesPanel) , we don't want two
 // notes columns.
 // ---------------------------------------------------------------------------
 
@@ -473,8 +473,8 @@ function MockTableRow({ row, columns }: MockTableRowProps): React.JSX.Element {
             top: pos.y + 16,
             zIndex: 9999,
             pointerEvents: 'none',
-            background: '#dceeff',
-            color: '#000',
+            background: 'color-mix(in srgb, var(--info) 12%, var(--field-bg))',
+            color: 'var(--field-text)',
             fontSize: 13.5,
             lineHeight: 1.5,
             padding: '10px 14px',
@@ -483,8 +483,8 @@ function MockTableRow({ row, columns }: MockTableRowProps): React.JSX.Element {
             minWidth: 300,
             textAlign: 'left',
             whiteSpace: 'normal',
-            border: '1px solid #7fb3e6',
-            boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+            border: '1px solid color-mix(in srgb, var(--info) 40%, transparent)',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.18)', /* themed:skip - shadow */
           }}
         >
           {row.tooltip}
@@ -554,7 +554,7 @@ interface MockFlagProps {
   readonly color?: string
 }
 
-export function MockFlag({ label, color = '#c62828' }: MockFlagProps): React.JSX.Element {
+export function MockFlag({ label, color = 'var(--danger)' }: MockFlagProps): React.JSX.Element {
   return (
     <span
       style={{

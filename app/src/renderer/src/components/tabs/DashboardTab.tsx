@@ -18,6 +18,7 @@ interface DashboardTabProps {
   onRefresh?: () => void
 }
 
+// themed:skip - eval-type categorical colors, each is a distinct semantic marker not a theme token
 const EVAL_TYPE_COLORS: Record<string, string> = {
   CST: '#2196f3',
   Custody: '#9c27b0',
@@ -38,7 +39,7 @@ const PIPELINE_STAGES = [
   { key: 'complete', label: 'Complete' },
 ]
 
-/** Stage card colors, light bg, darker text, border between */
+/** Stage card colors - themed:skip: pipeline-stage identity colors, each maps to a distinct clinical workflow phase */
 const STAGE_CARD_STYLES: Record<string, { bg: string; border: string; text: string; accent: string }> = {
   onboarding:  { bg: '#e0f7fa', border: '#b2ebf2', text: '#00695c', accent: '#00897b' },
   testing:     { bg: '#f3e5f5', border: '#e1bee7', text: '#6a1b9a', accent: '#8e24aa' },
@@ -248,8 +249,8 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '10px', flexShrink: 0 }}>
         <h1 style={{ fontSize: '16px', margin: 0, fontWeight: 600 }}>Practice Dashboard</h1>
-        <span style={{ fontSize: '12px', color: '#283593', fontWeight: 600 }}>{cases.length} Total</span>
-        <span style={{ fontSize: '12px', color: '#1565c0', fontWeight: 600 }}>{stats.active} Active</span>
+        <span style={{ fontSize: '12px', color: 'var(--text)', fontWeight: 600 }}>{cases.length} Total</span>
+        <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>{stats.active} Active</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '2px', background: 'var(--panel, #f0f0f0)', borderRadius: '4px', border: '1px solid var(--border, #ddd)', padding: '2px' }}>
           <button
             onClick={() => { setCardLayout('horizontal'); localStorage.setItem('psygil-card-layout', 'horizontal') }}
@@ -391,7 +392,7 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
             {Object.entries(evalTypeStats)
               .sort((a, b) => b[1] - a[1])
               .map(([type, count]) => {
-                const color = EVAL_TYPE_COLORS[type] || '#777'
+                const color = EVAL_TYPE_COLORS[type] || 'var(--text-secondary)'
                 return (
                   <span key={type} style={{
                     display: 'inline-flex', alignItems: 'center', gap: '3px',
@@ -486,11 +487,11 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
                 <td style={{ ...TD, fontWeight: 500 }}>{formatClientName(c)}</td>
                 <td style={TD}>{c.evaluation_type || ','}</td>
                 <td style={TD}>
-                  <span style={{ background: sc?.accent || '#999', color: '#fff', padding: '1px 6px', borderRadius: '3px', fontSize: '10px' }}>
+                  <span style={{ background: sc?.accent || 'var(--text-secondary)', color: '#fff', padding: '1px 6px', borderRadius: '3px', fontSize: '10px' }}>
                     {mapStageLabel(c.workflow_current_stage)}
                   </span>
                 </td>
-                <td style={{ ...TD, fontSize: '10px', color: isComplete ? '#4caf50' : 'var(--text-secondary)' }}>
+                <td style={{ ...TD, fontSize: '10px', color: isComplete ? 'var(--success)' : 'var(--text-secondary)' }}>
                   {isComplete ? 'Done' : referredDate}
                 </td>
               </tr>
@@ -521,15 +522,15 @@ function KanbanColumn({ stageKey, cases: columnCases, onCaseClick, cardLayout = 
     <div
       ref={setNodeRef}
       style={{
-        background: isOver ? '#e0e0e0' : '#f0f0f0',
-        border: `1px solid ${isOver ? '#bbb' : '#ddd'}`,
+        background: isOver ? 'var(--highlight)' : 'var(--panel)',
+        border: `1px solid ${isOver ? 'var(--border)' : 'var(--border)'}`,
         borderTop: 'none', borderRadius: '0 0 4px 4px',
         padding: '4px', overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
         gap: '5px',
         transition: 'background 0.15s, border-color 0.15s',
-        boxShadow: isOver ? 'inset 0 0 8px rgba(0,0,0,0.08)' : 'none',
+        boxShadow: isOver ? 'inset 0 0 8px color-mix(in srgb, var(--text) 8%, transparent)' : 'none',
       }}
     >
       {columnCases.length === 0 && (
@@ -599,27 +600,27 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
     // Vertical layout, each field on its own line, optimized for narrow screens / iPad
     const LABEL: React.CSSProperties = {
       fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
-      color: '#888', marginBottom: '1px',
+      color: 'var(--text-secondary)', marginBottom: '1px',
     }
     const VALUE: React.CSSProperties = {
-      fontSize: '12px', color: '#222', marginBottom: '6px',
+      fontSize: '12px', color: 'var(--text)', marginBottom: '6px',
     }
 
     return (
       <div
         style={{
-          background: '#fff', border: `1px solid ${sc.border}`,
+          background: 'var(--bg)', border: `1px solid ${sc.border}`,
           borderLeft: `4px solid ${sc.accent}`,
           borderRadius: '4px', padding: '10px 12px',
           cursor: isDragging ? 'grabbing' : 'grab',
           lineHeight: '1.4',
           userSelect: 'none',
-          boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.2)' : undefined,
+          boxShadow: isDragging ? '0 4px 12px color-mix(in srgb, var(--text) 20%, transparent)' : undefined,
           minWidth: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span style={{ fontWeight: 700, color: '#111', fontSize: '14px' }}>
+          <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: '14px' }}>
             {c.examinee_last_name}, {(c.examinee_first_name ?? '').charAt(0)}.
           </span>
           <span style={{
@@ -634,7 +635,7 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
         {complaint && (
           <>
             <div style={LABEL}>Complaint</div>
-            <div style={{ ...VALUE, fontStyle: 'italic', color: '#444' }}>{complaint}</div>
+            <div style={{ ...VALUE, fontStyle: 'italic', color: 'var(--text-secondary)' }}>{complaint}</div>
           </>
         )}
         {referral && (
@@ -649,12 +650,12 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
             <div style={{
               ...VALUE,
               fontWeight: isUrgent ? 800 : 600,
-              color: isUrgent ? '#c62828' : '#333',
+              color: isUrgent ? 'var(--danger)' : 'var(--text)',
               marginBottom: 0,
             }}>
               {deadline}
               {isUrgent && daysUntil != null && (
-                <span style={{ fontSize: '10px', color: '#c62828', marginLeft: '6px' }}>
+                <span style={{ fontSize: '10px', color: 'var(--danger)', marginLeft: '6px' }}>
                   ({daysUntil}d)
                 </span>
               )}
@@ -669,21 +670,21 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
   return (
     <div
       style={{
-        background: '#fff', border: `1px solid ${sc.border}`,
+        background: 'var(--bg)', border: `1px solid ${sc.border}`,
         borderLeft: `3px solid ${sc.accent}`,
         borderRadius: '3px', padding: '6px 8px',
         cursor: isDragging ? 'grabbing' : 'grab',
         lineHeight: '1.4',
         fontSize: '11px',
         userSelect: 'none',
-        boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.2)' : undefined,
+        boxShadow: isDragging ? '0 4px 12px color-mix(in srgb, var(--text) 20%, transparent)' : undefined,
         wordBreak: 'break-word',
         overflowWrap: 'break-word',
       }}
     >
       {/* Name + Type badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px', flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, color: '#111', fontSize: '12px' }}>
+        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: '12px' }}>
           {c.examinee_last_name}, {(c.examinee_first_name ?? '').charAt(0)}.
         </span>
         <span style={{
@@ -695,14 +696,14 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
       </div>
 
       {/* Case number */}
-      <div style={{ color: '#555', fontSize: '10px', marginBottom: '2px' }}>
+      <div style={{ color: 'var(--text-secondary)', fontSize: '10px', marginBottom: '2px' }}>
         {c.case_number}
       </div>
 
       {/* Complaint, wraps naturally, 2-line clamp */}
       {complaint && (
         <div style={{
-          color: '#444', fontSize: '10px', fontStyle: 'italic',
+          color: 'var(--text-secondary)', fontSize: '10px', fontStyle: 'italic',
           marginBottom: '2px',
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -715,7 +716,7 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
 
       {/* Referral source */}
       {referral && (
-        <div style={{ color: '#555', fontSize: '10px', marginBottom: '2px' }}>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '10px', marginBottom: '2px' }}>
           {referral}
         </div>
       )}
@@ -724,12 +725,12 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
       {deadline && (
         <div style={{
           fontSize: '10px', fontWeight: isUrgent ? 800 : 600,
-          color: isUrgent ? '#c62828' : '#555',
+          color: isUrgent ? 'var(--danger)' : 'var(--text-secondary)',
           marginTop: '2px',
         }}>
           {deadline}
           {isUrgent && daysUntil != null && (
-            <span style={{ fontSize: '9px', color: '#c62828', marginLeft: '4px' }}>
+            <span style={{ fontSize: '9px', color: 'var(--danger)', marginLeft: '4px' }}>
               ({daysUntil}d)
             </span>
           )}

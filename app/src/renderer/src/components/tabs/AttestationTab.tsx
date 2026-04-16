@@ -210,12 +210,12 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
       {isLocked && (
         <div
           style={{
-            background: '#e3f2fd',
-            color: '#1565c0',
+            background: 'color-mix(in srgb, var(--info) 10%, transparent)',
+            color: 'var(--info)',
             padding: '16px',
             borderRadius: '4px',
             marginBottom: '20px',
-            border: '1px solid #bbdefb',
+            border: '1px solid color-mix(in srgb, var(--info) 30%, transparent)',
           }}
         >
           <p style={{ fontWeight: 600, fontSize: '14px', margin: '0 0 8px 0' }}>
@@ -225,7 +225,7 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
             This report has been finalized and locked. No further edits are possible. You can verify its integrity or prepare testimony.
           </p>
           {integrityHash && (
-            <p style={{ fontSize: '12px', margin: '8px 0 0 0', color: '#1565c0', fontFamily: 'monospace' }}>
+            <p style={{ fontSize: '12px', margin: '8px 0 0 0', color: 'var(--info)', fontFamily: 'monospace' }}>
               Hash: {integrityHash.substring(0, 32)}...
             </p>
           )}
@@ -236,12 +236,12 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
       {!isLocked && !allValidated && (
         <div
           style={{
-            background: '#fff3cd',
-            color: '#856404',
+            background: 'color-mix(in srgb, var(--warn) 10%, transparent)',
+            color: 'var(--warn)',
             padding: '16px',
             borderRadius: '4px',
             marginBottom: '20px',
-            border: '1px solid #ffc107',
+            border: '1px solid color-mix(in srgb, var(--warn) 30%, transparent)',
           }}
         >
           <p style={{ fontWeight: 600, fontSize: '14px', margin: '0 0 8px 0' }}>
@@ -256,12 +256,12 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
       {!isLocked && allValidated && !submitSuccess && (
         <div
           style={{
-            background: '#e8f5e9',
-            color: '#2e7d32',
+            background: 'color-mix(in srgb, var(--success) 10%, transparent)',
+            color: 'var(--success)',
             padding: '16px',
             borderRadius: '4px',
             marginBottom: '20px',
-            border: '1px solid #4caf50',
+            border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)',
           }}
         >
           <p style={{ fontWeight: 600, fontSize: '14px', margin: '0' }}>
@@ -273,18 +273,18 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
       {submitSuccess && (
         <div
           style={{
-            background: '#c8e6c9',
-            color: '#1b5e20',
+            background: 'color-mix(in srgb, var(--success) 15%, transparent)',
+            color: 'var(--success)',
             padding: '16px',
             borderRadius: '4px',
             marginBottom: '20px',
-            border: '1px solid #4caf50',
+            border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)',
           }}
         >
           <p style={{ fontWeight: 600, fontSize: '14px', margin: '0 0 8px 0' }}>
             ✓ Attestation Submitted Successfully
           </p>
-          <p style={{ fontSize: '12px', margin: '0', fontFamily: 'monospace', color: '#1b5e20' }}>
+          <p style={{ fontSize: '12px', margin: '0', fontFamily: 'monospace', color: 'var(--success)' }}>
             Integrity Hash: {integrityHash}
           </p>
         </div>
@@ -293,18 +293,18 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
       {submitError && (
         <div
           style={{
-            background: '#ffebee',
-            color: '#c62828',
+            background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+            color: 'var(--danger)',
             padding: '16px',
             borderRadius: '4px',
             marginBottom: '20px',
-            border: '1px solid #ef5350',
+            border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
           }}
         >
           <p style={{ fontWeight: 600, fontSize: '14px', margin: '0 0 8px 0' }}>
             ✗ Submission Error
           </p>
-          <p style={{ fontSize: '12px', margin: '0', color: '#c62828' }}>
+          <p style={{ fontSize: '12px', margin: '0', color: 'var(--danger)' }}>
             {submitError}
           </p>
         </div>
@@ -685,9 +685,9 @@ export const AttestationTab: React.FC<AttestationTabProps> = ({ caseId }) => {
           style={{
             marginTop: '16px',
             padding: '12px',
-            background: verifyResult.valid ? '#c8e6c9' : '#ffcdd2',
-            color: verifyResult.valid ? '#1b5e20' : '#b71c1c',
-            border: `1px solid ${verifyResult.valid ? '#4caf50' : '#f44336'}`,
+            background: verifyResult.valid ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'color-mix(in srgb, var(--danger) 12%, transparent)',
+            color: verifyResult.valid ? 'var(--success)' : 'var(--danger)',
+            border: `1px solid ${verifyResult.valid ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'color-mix(in srgb, var(--danger) 30%, transparent)'}`,
             borderRadius: '4px',
             fontSize: '12px',
           }}

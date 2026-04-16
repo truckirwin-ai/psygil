@@ -64,7 +64,7 @@ const inputStyle: React.CSSProperties = {
 const btnPrimaryStyle: React.CSSProperties = {
   padding: '7px 16px',
   background: 'var(--accent)',
-  color: '#fff',
+  color: 'var(--field-bg)',
   border: 'none',
   borderRadius: 4,
   cursor: 'pointer',
@@ -93,7 +93,7 @@ const DEFAULT_BRANDING: PracticeBranding = {
   practiceName: '',
   logoPath: undefined,
   logoData: undefined,
-  primaryColor: '#2E75B6',
+  primaryColor: '#2E75B6', // themed:skip - user-configurable branding color
   tagline: undefined,
   showAttribution: true,
 }
@@ -117,7 +117,7 @@ export default function BrandingPanel({ onSave }: BrandingPanelProps): React.JSX
     void (async () => {
       try {
         // ASSUMPTION: branding:get is exposed via window.psygil.branding.get()
-        // @ts-ignore — branding namespace added in preload after PsygilApi base type
+        // @ts-ignore , branding namespace added in preload after PsygilApi base type
         const resp = await window.psygil.branding.get()
         if (!cancelled && resp.status === 'success') {
           const data = resp.data as PracticeBranding
@@ -211,7 +211,7 @@ export default function BrandingPanel({ onSave }: BrandingPanelProps): React.JSX
 
   // ── Live preview ──────────────────────────────────────────────────────────
   const previewName = branding.practiceName || 'Your Practice Name'
-  const previewColor = branding.primaryColor || '#2E75B6'
+  const previewColor = branding.primaryColor || '#2E75B6' // themed:skip - user branding color fallback
 
   if (loading) {
     return (
@@ -299,7 +299,7 @@ export default function BrandingPanel({ onSave }: BrandingPanelProps): React.JSX
             {logoPreviewSrc && (
               <button
                 onClick={handleLogoRemove}
-                style={{ ...btnSecondaryStyle, color: '#e54040', borderColor: 'rgba(229,64,64,0.3)', fontSize: 11, padding: '4px 10px' }}
+                style={{ ...btnSecondaryStyle, color: 'var(--danger)', borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)', fontSize: 11, padding: '4px 10px' }}
               >
                 Remove
               </button>
@@ -336,7 +336,7 @@ export default function BrandingPanel({ onSave }: BrandingPanelProps): React.JSX
               const val = e.target.value
               if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) updateField('primaryColor', val)
             }}
-            placeholder="#2E75B6"
+            placeholder="#2E75B6" /* themed:skip - user branding color input */
             style={{ ...inputStyle, width: 100, fontFamily: 'monospace' }}
           />
           <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
@@ -446,12 +446,12 @@ export default function BrandingPanel({ onSave }: BrandingPanelProps): React.JSX
         </button>
 
         {saveStatus === 'saved' && (
-          <span style={{ fontSize: 11.5, color: '#4caf50', fontWeight: 600 }}>
+          <span style={{ fontSize: 11.5, color: 'var(--success)', fontWeight: 600 }}>
             ✓ Saved
           </span>
         )}
         {saveStatus === 'error' && saveError && (
-          <span style={{ fontSize: 11.5, color: '#e54040' }}>
+          <span style={{ fontSize: 11.5, color: 'var(--danger)' }}>
             Error: {saveError}
           </span>
         )}

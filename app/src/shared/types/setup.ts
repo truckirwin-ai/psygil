@@ -24,7 +24,7 @@ export type SetupState = (typeof SETUP_STATES)[number]
 
 export type LicenseTier = 'solo' | 'practice' | 'enterprise'
 export type StorageMode = 'local' | 'network' | 'cloud'
-export type Theme = 'light' | 'medium' | 'dark'
+export type Theme = 'light' | 'warm' | 'medium' | 'dark'
 export type FontSize = 'small' | 'medium' | 'large'
 export type Specialty = 'forensic' | 'clinical' | 'neuro' | 'school' | 'other'
 

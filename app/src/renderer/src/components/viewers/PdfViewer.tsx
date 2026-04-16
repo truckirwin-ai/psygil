@@ -95,8 +95,8 @@ export default function PdfViewer({ base64 }: PdfViewerProps): React.JSX.Element
         canvas.height = viewport.height
         canvas.style.display = 'block'
         canvas.style.marginBottom = '8px'
-        canvas.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)'
-        canvas.style.background = '#fff'
+        canvas.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)' // themed:skip - shadow
+        canvas.style.background = '#fff' // themed:skip - PDF pages are always white
         canvas.dataset.page = String(i)
 
         container.appendChild(canvas)
@@ -145,7 +145,7 @@ export default function PdfViewer({ base64 }: PdfViewerProps): React.JSX.Element
 
   if (err) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: '#ef5350', fontSize: 13 }}>
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--danger)', fontSize: 13 }}>
         <p>PDF load error: {err}</p>
       </div>
     )
@@ -205,7 +205,7 @@ export default function PdfViewer({ base64 }: PdfViewerProps): React.JSX.Element
           flex: 1,
           overflow: 'auto',
           padding: '16px',
-          background: '#525659',
+          background: '#525659', /* themed:skip - intentional neutral gray viewer mat */
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',

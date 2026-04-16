@@ -696,7 +696,7 @@ function ModeButton({
       onClick={onClick}
       style={{
         background: active ? 'var(--accent)' : 'var(--panel)',
-        color: active ? '#ffffff' : 'var(--text-secondary)',
+        color: active ? 'var(--field-bg)' : 'var(--text-secondary)',
         border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
         borderRadius: 4,
         padding: '4px 12px',
@@ -734,7 +734,7 @@ function calcAge(dob: string): string {
 const overlayStyle: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.55)',
+  background: 'rgba(0,0,0,0.55)', /* themed:skip - modal scrim */
   zIndex: 9999,
   display: 'flex',
   alignItems: 'center',
@@ -841,8 +841,8 @@ const sectionTitleStyle: React.CSSProperties = {
 const patientBadgeStyle: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 600,
-  background: '#fff3cd',
-  color: '#856404',
+  background: 'color-mix(in srgb, var(--warn) 10%, transparent)',
+  color: 'var(--warn)',
   padding: '2px 8px',
   borderRadius: 4,
   letterSpacing: 0.3,
@@ -851,8 +851,8 @@ const patientBadgeStyle: React.CSSProperties = {
 const underReviewBadgeStyle: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 600,
-  background: '#fff3cd',
-  color: '#856404',
+  background: 'color-mix(in srgb, var(--warn) 10%, transparent)',
+  color: 'var(--warn)',
   padding: '2px 8px',
   borderRadius: 4,
   letterSpacing: 0.3,
@@ -942,7 +942,7 @@ const inputStyle: React.CSSProperties = {
 
 const primaryButtonStyle: React.CSSProperties = {
   background: 'var(--accent)',
-  color: '#ffffff',
+  color: 'var(--field-bg)',
   border: 'none',
   borderRadius: 4,
   padding: '8px 22px',

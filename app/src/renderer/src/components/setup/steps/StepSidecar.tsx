@@ -22,6 +22,57 @@ const HEALTH_PROBE_TEXT =
 const MAX_AUTO_RETRIES = 6
 const RETRY_DELAY_MS = 1500
 
+// ---------------------------------------------------------------------------
+// Error classification
+// ---------------------------------------------------------------------------
+
+export interface SidecarErrorClassification {
+  readonly category: string
+  readonly remediation: string
+}
+
+/**
+ * Maps a raw sidecar error message to a human-readable category and
+ * actionable remediation instruction. Exported for unit testing.
+ */
+export function classifySidecarError(message: string): SidecarErrorClassification {
+  if (/ENOENT|Python not found|command not found/i.test(message)) {
+    return {
+      category: 'Python not installed',
+      remediation:
+        "Python 3.11 is not installed. On macOS run `brew install python@3.11`, on Windows download from python.org (3.11.x), on Linux use your distribution's python3.11 package.",
+    }
+  }
+  if (/en_core_web_lg|No module named spacy/i.test(message)) {
+    return {
+      category: 'spaCy model missing',
+      remediation:
+        'The spaCy language model is missing. Open a terminal, cd to the project, run `PYTHON=$(which python3.11) sidecar/setup-dev-venv.sh`.',
+    }
+  }
+  if (/EADDRINUSE|socket already in use/i.test(message)) {
+    return {
+      category: 'Socket in use',
+      remediation:
+        'Another Psygil instance is running or a previous run left a stale socket. Run `rm -f /tmp/psygil-sidecar.sock` and try again.',
+    }
+  }
+  if (/Smoke test FAILED/i.test(message)) {
+    return {
+      category: 'Sidecar smoke test failed',
+      remediation:
+        'The sidecar built but failed to boot. Check Python version and reinstall requirements: `cd sidecar && .venv/bin/python -m pip install -r requirements.txt`.',
+    }
+  }
+  return {
+    category: 'Unknown error',
+    remediation: message,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 type ProbeStatus = 'idle' | 'probing' | 'ok' | 'failed'
 
@@ -30,6 +81,7 @@ export default function StepSidecar({ config, onConfigUpdate, onAdvance }: StepP
   const [detectedCount, setDetectedCount] = useState<number>(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [retryAttempt, setRetryAttempt] = useState<number>(0)
+  const [copiedDiag, setCopiedDiag] = useState<boolean>(false)
 
   /**
    * Run the probe once. Returns true on success, false on retryable failure.
@@ -98,6 +150,18 @@ export default function StepSidecar({ config, onConfigUpdate, onAdvance }: StepP
     }
   }, [config.setupState, runProbe])
 
+  const classified = errorMessage !== null ? classifySidecarError(errorMessage) : null
+  const isUnknownError = classified !== null && classified.category === 'Unknown error'
+
+  const handleCopyDiagnostic = (): void => {
+    if (errorMessage !== null) {
+      void navigator.clipboard.writeText(errorMessage).then(() => {
+        setCopiedDiag(true)
+        setTimeout(() => setCopiedDiag(false), 2000)
+      })
+    }
+  }
+
   return (
     <div>
       <h2 style={styles.heading}>Verify the PII pipeline</h2>
@@ -126,9 +190,40 @@ export default function StepSidecar({ config, onConfigUpdate, onAdvance }: StepP
             )}
           </div>
         )}
-        {status === 'failed' && (
+        {status === 'failed' && classified !== null && (
           <div style={styles.errorBox}>
-            Sidecar check failed. {errorMessage ?? ''}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  background: 'rgba(220, 38, 38, 0.15)',
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                }}
+              >
+                {classified.category}
+              </span>
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+              {classified.remediation}
+            </div>
+            {isUnknownError && (
+              <button
+                type="button"
+                style={{
+                  ...styles.secondaryButton,
+                  marginTop: 8,
+                  fontSize: 12,
+                  padding: '4px 10px',
+                }}
+                onClick={handleCopyDiagnostic}
+              >
+                {copiedDiag ? 'Copied.' : 'Copy diagnostic to clipboard'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -138,14 +233,6 @@ export default function StepSidecar({ config, onConfigUpdate, onAdvance }: StepP
           <strong>Sidecar unreachable.</strong> PII detection, redaction, and AI
           features will not function until this is fixed. You can skip the gate
           below to continue setup and use the app for non-PHI work.
-          <br />
-          <br />
-          Common causes:
-          <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
-            <li>The Python sidecar is not running (check the dev console for <code>[PII]</code> log lines)</li>
-            <li>System Python is older than 3.10 (Presidio + spaCy require 3.10+)</li>
-            <li>Required packages not installed (see <code>sidecar/requirements.txt</code>)</li>
-          </ul>
         </div>
       )}
 

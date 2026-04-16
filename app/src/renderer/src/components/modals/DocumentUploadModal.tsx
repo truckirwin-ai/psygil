@@ -3,6 +3,7 @@
  *
  * Drag-and-drop file upload with subfolder selection, progress tracking,
  * and batch ingestion. Supports both drop zone and native file picker.
+ * Bulk import (multi-file) is opt-in via the "Import Multiple" button.
  *
  * Usage:
  *   <DocumentUploadModal
@@ -14,6 +15,9 @@
 
 import { useState, useCallback, useRef } from 'react'
 import type { DocumentRow } from '../../../../shared/types/ipc'
+import { computeNextStatus } from '../../utils/importQueue'
+export { computeNextStatus } from '../../utils/importQueue'
+export type { ImportStatus, ImportEvent } from '../../utils/importQueue'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,6 +82,8 @@ export default function DocumentUploadModal({
   const [subfolder, setSubfolder] = useState<CaseSubfolder>(defaultSubfolder)
   const [isDragOver, setIsDragOver] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [importedCount, setImportedCount] = useState(0)
+  const [importTotalCount, setImportTotalCount] = useState(0)
   const dropRef = useRef<HTMLDivElement>(null)
 
   // -----------------------------------------------------------------------
@@ -169,6 +175,56 @@ export default function DocumentUploadModal({
   }, [])
 
   // -----------------------------------------------------------------------
+  // Retry a single failed file
+  // -----------------------------------------------------------------------
+
+  const retryFile = useCallback(async (fileId: string) => {
+    const file = queue.find((f) => f.id === fileId)
+    if (!file || file.status !== 'error') return
+
+    // error -> retrying -> uploading via computeNextStatus
+    const afterRetry = computeNextStatus('error', 'retry')
+    setQueue((prev) =>
+      prev.map((f) => (f.id === fileId ? { ...f, status: afterRetry as QueuedFile['status'], error: undefined } : f))
+    )
+    const uploadStatus = computeNextStatus(afterRetry, 'start')
+    setQueue((prev) =>
+      prev.map((f) => (f.id === fileId ? { ...f, status: uploadStatus as QueuedFile['status'] } : f))
+    )
+
+    try {
+      const resp = await window.psygil.documents.ingest({
+        case_id: caseId,
+        file_path: file.path,
+        subfolder: file.subfolder,
+      })
+      if (resp.status === 'success') {
+        setQueue((prev) =>
+          prev.map((f) =>
+            f.id === fileId ? { ...f, status: 'done' as const, result: resp.data as DocumentRow } : f
+          )
+        )
+      } else {
+        setQueue((prev) =>
+          prev.map((f) =>
+            f.id === fileId
+              ? { ...f, status: 'error' as const, error: (resp as { message?: string }).message ?? 'Upload failed' }
+              : f
+          )
+        )
+      }
+    } catch (err) {
+      setQueue((prev) =>
+        prev.map((f) =>
+          f.id === fileId
+            ? { ...f, status: 'error' as const, error: err instanceof Error ? err.message : 'Upload failed' }
+            : f
+        )
+      )
+    }
+  }, [queue, caseId])
+
+  // -----------------------------------------------------------------------
   // Change subfolder for a queued file
   // -----------------------------------------------------------------------
 
@@ -187,6 +243,8 @@ export default function DocumentUploadModal({
     if (pending.length === 0) return
 
     setIsUploading(true)
+    setImportedCount(0)
+    setImportTotalCount(pending.length)
 
     for (const file of pending) {
       // Mark as uploading
@@ -209,6 +267,7 @@ export default function DocumentUploadModal({
                 : f
             )
           )
+          setImportedCount((n) => n + 1)
         } else {
           setQueue((prev) =>
             prev.map((f) =>
@@ -350,7 +409,7 @@ export default function DocumentUploadModal({
               borderRadius: 8,
               padding: '32px 20px',
               textAlign: 'center',
-              background: isDragOver ? 'rgba(33,150,243,0.08)' : 'var(--panel)',
+              background: isDragOver ? 'color-mix(in srgb, var(--info) 8%, transparent)' : 'var(--panel)',
               transition: 'all 0.2s',
               cursor: 'pointer',
               marginBottom: 16,
@@ -398,11 +457,11 @@ export default function DocumentUploadModal({
                     borderLeftWidth: 3,
                     borderLeftColor:
                       file.status === 'done'
-                        ? '#4caf50'
+                        ? 'var(--success)'
                         : file.status === 'error'
-                          ? '#f44336'
+                          ? 'var(--danger)'
                           : file.status === 'uploading'
-                            ? '#ff9800'
+                            ? 'var(--warn)'
                             : 'var(--border)',
                   }}
                 >
@@ -431,7 +490,7 @@ export default function DocumentUploadModal({
                       {file.name}
                     </div>
                     {file.error && (
-                      <div style={{ fontSize: 11, color: '#f44336', marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
                         {file.error}
                       </div>
                     )}
@@ -470,7 +529,7 @@ export default function DocumentUploadModal({
                     </span>
                   )}
 
-                  {/* Remove button */}
+                  {/* Remove button (pending only) */}
                   {file.status === 'pending' && (
                     <button
                       onClick={() => removeFile(file.id)}
@@ -487,6 +546,26 @@ export default function DocumentUploadModal({
                       ✕
                     </button>
                   )}
+
+                  {/* Retry button (error only) */}
+                  {file.status === 'error' && (
+                    <button
+                      onClick={() => { void retryFile(file.id) }}
+                      style={{
+                        background: 'var(--accent)',
+                        border: 'none',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 3,
+                        flexShrink: 0,
+                      }}
+                    >
+                      Retry
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -498,16 +577,42 @@ export default function DocumentUploadModal({
           style={{
             padding: '12px 20px',
             borderTop: '1px solid var(--border)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
             background: 'var(--panel)',
           }}
         >
+          {/* Progress bar (visible during upload) */}
+          {isUploading && importTotalCount > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                <span>Importing files...</span>
+                <span>{importedCount} of {importTotalCount} imported</span>
+              </div>
+              <div
+                style={{
+                  height: 4,
+                  borderRadius: 2,
+                  background: 'var(--border)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    borderRadius: 2,
+                    background: 'var(--accent)',
+                    width: `${importTotalCount > 0 ? Math.round((importedCount / importTotalCount) * 100) : 0}%`,
+                    transition: 'width 0.2s',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {/* Status summary */}
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {isUploading
-              ? `Uploading\u2026 ${uploadingCount} in progress`
+              ? `${uploadingCount} in progress`
               : queue.length > 0
                 ? `${pendingCount} pending, ${doneCount} done${errorCount > 0 ? `, ${errorCount} failed` : ''}`
                 : 'No files selected'}
@@ -542,13 +647,14 @@ export default function DocumentUploadModal({
                   border: 'none',
                   borderRadius: 4,
                   background: 'var(--accent)',
-                  color: '#ffffff',
+                  color: 'var(--field-bg)',
                   cursor: isUploading ? 'wait' : 'pointer',
                 }}
               >
-                {isUploading ? 'Uploading\u2026' : `Upload ${pendingCount} File${pendingCount > 1 ? 's' : ''}`}
+                {isUploading ? 'Uploading...' : `Upload ${pendingCount} File${pendingCount > 1 ? 's' : ''}`}
               </button>
             )}
+          </div>
           </div>
         </div>
       </div>

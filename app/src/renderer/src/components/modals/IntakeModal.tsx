@@ -867,7 +867,7 @@ function Field({
 const overlayStyle: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.55)',
+  background: 'rgba(0,0,0,0.55)', /* themed:skip - modal scrim */
   zIndex: 9999,
   display: 'flex',
   alignItems: 'center',
@@ -1028,7 +1028,7 @@ const inputStyle: React.CSSProperties = {
 
 const activeChipStyle: React.CSSProperties = {
   background: 'var(--accent)',
-  color: '#ffffff',
+  color: 'var(--field-bg)',
   border: '1px solid var(--accent)',
   borderRadius: 4,
   padding: '4px 12px',
@@ -1052,7 +1052,7 @@ const inactiveChipStyle: React.CSSProperties = {
 
 const primaryButtonStyle: React.CSSProperties = {
   background: 'var(--accent)',
-  color: '#ffffff',
+  color: 'var(--field-bg)',
   border: 'none',
   borderRadius: 4,
   padding: '8px 24px',
@@ -1075,11 +1075,11 @@ const secondaryButtonStyle: React.CSSProperties = {
 }
 
 const errorStyle: React.CSSProperties = {
-  background: 'rgba(244,67,54,0.1)',
-  border: '1px solid rgba(244,67,54,0.4)',
+  background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--danger) 40%, transparent)',
   borderRadius: 4,
   padding: '8px 12px',
   fontSize: 13,
-  color: '#f44336',
+  color: 'var(--danger)',
   marginTop: 4,
 }

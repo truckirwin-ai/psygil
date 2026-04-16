@@ -99,6 +99,7 @@ function withMultiNotesPanel(
 // Pipeline stage constants
 // ---------------------------------------------------------------------------
 
+// themed:skip , pipeline stage identity colors; each hue uniquely identifies a clinical workflow phase
 const PIPELINE_STAGE_LIST = [
   { key: 'onboarding', label: 'Onboarding', color: '#2196f3' },
   { key: 'testing', label: 'Testing', color: '#9c27b0' },
@@ -113,6 +114,7 @@ type StageKey = (typeof PIPELINE_STAGE_LIST)[number]['key']
 // Kept for the bottom pipeline bar
 const PIPELINE_STAGES = PIPELINE_STAGE_LIST
 
+// themed:skip , pipeline stage identity colors; each hue uniquely identifies a clinical workflow phase
 const STAGE_COLORS: Record<string, string> = {
   onboarding: '#2196f3',
   testing: '#9c27b0',
@@ -138,7 +140,7 @@ function getStageIndex(stage: string | null): number {
 }
 
 function getStageColor(stage: string | null): string {
-  return stage != null && stage in STAGE_COLORS ? STAGE_COLORS[stage] : '#9e9e9e'
+  return stage != null && stage in STAGE_COLORS ? STAGE_COLORS[stage] : 'var(--text-secondary)'
 }
 
 function getStageLabel(stage: string | null): string {
@@ -434,9 +436,9 @@ function mockScoreForInstrument(key: string, caseId: string): MockScore {
   if (!norm) {
     return {
       score: 0,
-      scoreDisplay: '—',
+      scoreDisplay: ',',
       metricLabel: 'Raw',
-      rangeLow: 0, rangeHigh: 0, rangeDisplay: '—',
+      rangeLow: 0, rangeHigh: 0, rangeDisplay: ',',
       bandLabel: 'Norms unavailable', bandTone: 'watch',
       dateISO,
       validity: 'N/A',
@@ -448,7 +450,7 @@ function mockScoreForInstrument(key: string, caseId: string): MockScore {
       interpretation: 'Norms not yet registered for this instrument; see publisher manual.',
       recommendation: 'Add norm definition to instrumentNorms.ts for full interpretation.',
       publisher: 'Unknown',
-      scoreLabel: '—',
+      scoreLabel: ',',
     }
   }
 
@@ -465,7 +467,7 @@ function mockScoreForInstrument(key: string, caseId: string): MockScore {
   const band = bandForScore(norm, score)
   const outOfRange = score < norm.normalRange[0] || score > norm.normalRange[1]
 
-  // Per-scale elevations — 1..4 scales with realistic metric values.
+  // Per-scale elevations , 1..4 scales with realistic metric values.
   const clinical = norm.clinicalScales
   const elevCount = clinical.length === 0 ? 0 : Math.min(clinical.length, 1 + ((h >>> 6) % 4))
   const elevations = Array.from({ length: elevCount }, (_, i) => {
@@ -489,7 +491,7 @@ function mockScoreForInstrument(key: string, caseId: string): MockScore {
     }
   })
 
-  // Validity scales — instrument-specific. Empty array => validity N/A.
+  // Validity scales , instrument-specific. Empty array => validity N/A.
   const hasValidity = norm.validityScales.length > 0
   const validityScaleDetail = norm.validityScales.slice(0, 4).map((vs, i) => {
     // ~70% passed, 20% questionable, 10% invalid when validity scales exist
@@ -975,7 +977,7 @@ export function TabButton({
           borderRadius: 3,
           fontSize: 12,
           opacity: showClose ? (closeHovered ? 1 : 0.6) : 0,
-          background: closeHovered ? 'rgba(0,0,0,0.1)' : 'transparent',
+          background: closeHovered ? 'color-mix(in srgb, var(--text) 10%, transparent)' : 'transparent',
           flexShrink: 0,
           transition: 'opacity 0.1s',
         }}
@@ -1211,7 +1213,7 @@ function ClinicalOverviewContent({
                   fontWeight: effectiveSubTab === id ? 600 : 400,
                   color:
                     effectiveSubTab === id ? 'var(--accent)' : 'var(--text-secondary)',
-                  background: effectiveSubTab === id ? '#fff' : 'transparent',
+                  background: effectiveSubTab === id ? 'var(--bg)' : 'transparent',
                   border: 'none',
                   borderBottom:
                     effectiveSubTab === id
@@ -1457,7 +1459,7 @@ function CaseHeaderBar({
       style={{
         padding: '8px 18px 6px',
         borderBottom: '1px solid var(--border)',
-        background: '#fff',
+        background: 'var(--bg)',
         flexShrink: 0,
       }}
     >
@@ -1510,7 +1512,7 @@ function CaseHeaderBar({
         <div>
           <HeaderRow
             label="Intake / Due"
-            value={intakeDate || dueDate ? `${intakeDate ?? '—'}${dueDate ? '   Due ' + dueDate : ''}` : null}
+            value={intakeDate || dueDate ? `${intakeDate ?? ','}${dueDate ? '   Due ' + dueDate : ''}` : null}
           />
           <HeaderRow label="Setting" value={setting} />
           <HeaderRow label="Language" value={language} />
@@ -1528,10 +1530,10 @@ function CaseHeaderBar({
         <div style={{
           marginTop: 6,
           padding: '4px 8px',
-          background: '#fff8e1',
-          borderLeft: '3px solid #ff9800',
+          background: 'color-mix(in srgb, var(--warn) 12%, transparent)',
+          borderLeft: '3px solid var(--warn)',
           fontSize: 10,
-          color: '#795548',
+          color: 'var(--text)',
           lineHeight: 1.4,
           borderRadius: '0 4px 4px 0',
         }}>
@@ -1580,7 +1582,7 @@ function HeaderRow({
         whiteSpace: fullWidth ? 'normal' : 'nowrap',
         wordBreak: fullWidth ? 'break-word' : undefined,
       }}>
-        {value ?? '—'}
+        {value ?? ','}
       </span>
     </div>
   )
@@ -1631,7 +1633,7 @@ function DataRow({ label, value, fullText }: { readonly label: string; readonly 
     <tr>
       <td style={dataLabelTd}>{label}</td>
       <td
-        style={{ ...(v ? dataValueTd : dataValueEmptyTd), position: 'relative' as const, ...(hasTip ? { cursor: 'help', borderBottom: '1px dotted rgba(255,255,255,0.25)' } : {}) }}
+        style={{ ...(v ? dataValueTd : dataValueEmptyTd), position: 'relative' as const, ...(hasTip ? { cursor: 'help', borderBottom: '1px dotted color-mix(in srgb, var(--text) 25%, transparent)' } : {}) }}
         onMouseEnter={hasTip ? () => setHover(true) : undefined}
         onMouseLeave={hasTip ? () => setHover(false) : undefined}
       >
@@ -1640,12 +1642,12 @@ function DataRow({ label, value, fullText }: { readonly label: string; readonly 
           <div style={{
             position: 'absolute', left: 0, bottom: '100%', zIndex: 9999,
             maxWidth: 420, padding: '8px 10px', marginBottom: 4,
-            background: '#dce8f5', border: '1px solid #a8c4e0',
-            borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-            fontSize: 12, lineHeight: '1.45', color: '#1a2332', whiteSpace: 'pre-wrap' as const,
+            background: 'var(--panel)', border: '1px solid var(--border)',
+            borderRadius: 4, boxShadow: '0 4px 12px color-mix(in srgb, var(--text) 25%, transparent)',
+            fontSize: 12, lineHeight: '1.45', color: 'var(--text)', whiteSpace: 'pre-wrap' as const,
             pointerEvents: 'none' as const,
           }}>
-            <div style={{ fontWeight: 600, fontSize: 10, textTransform: 'uppercase' as const, color: '#4a6a8a', marginBottom: 3, letterSpacing: '0.04em' }}>Full Intake Text</div>
+            <div style={{ fontWeight: 600, fontSize: 10, textTransform: 'uppercase' as const, color: 'var(--text-secondary)', marginBottom: 3, letterSpacing: '0.04em' }}>Full Intake Text</div>
             {full}
           </div>
         )}
@@ -1979,7 +1981,7 @@ function IntakeSubTab({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 4 }}>
           {intakeRow && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: intakeRow.status === 'complete' ? '#4caf50' : '#ff9800' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: intakeRow.status === 'complete' ? 'var(--success)' : 'var(--warn)' }}>
               {intakeRow.status === 'complete' ? '✓ Complete' : '⏳ Draft'}
             </span>
           )}
@@ -2482,6 +2484,7 @@ function ReferralSubTab({
 // ---------------------------------------------------------------------------
 
 /** Ordered directories matching clinical workflow */
+// themed:skip , document directory colors mirror pipeline stage identity hues
 const DOC_DIRECTORIES = [
   { key: 'Intake', subfolder: '_Inbox', color: '#2196f3' },
   { key: 'Referral', subfolder: 'Collateral', color: '#00897b' },
@@ -2954,7 +2957,7 @@ function TestingSubTab({
               <div style={{
                 position: 'absolute', top: '100%', right: 0, marginTop: 4,
                 background: 'var(--panel)', border: '1px solid var(--border)',
-                borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                borderRadius: 6, boxShadow: '0 4px 16px color-mix(in srgb, var(--text) 15%, transparent)',
                 width: 420, maxHeight: 440, overflowY: 'auto', zIndex: 100,
                 padding: '8px 0',
               }}>
@@ -2988,10 +2991,10 @@ function TestingSubTab({
                       />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {info.isValidity && <span style={{ color: '#ff9800', fontSize: 10 }}>⚠</span>}
+                          {info.isValidity && <span style={{ color: 'var(--warn)', fontSize: 10 }}>⚠</span>}
                           {key}, {info.fullName}
                           {isDefault && <span style={{ fontSize: 9, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 4 }}>(default)</span>}
-                          {isOrdered && <span style={{ fontSize: 9, color: '#2196f3', fontWeight: 700, marginLeft: 4, border: '1px solid #2196f3', borderRadius: 3, padding: '0 3px' }}>ADDED</span>}
+                          {isOrdered && <span style={{ fontSize: 9, color: 'var(--info)', fontWeight: 700, marginLeft: 4, border: '1px solid var(--info)', borderRadius: 3, padding: '0 3px' }}>ADDED</span>}
                         </div>
                         <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
                           {info.category} · {info.duration}
@@ -3027,17 +3030,17 @@ function TestingSubTab({
 
           const scoreCell = showScores
             ? <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{mock.scoreDisplay}</span>
-            : '—'
+            : ','
           const rangeCell = showScores
             ? <span style={{ fontFamily: 'var(--font-mono)' }}>{mock.rangeDisplay}</span>
-            : '—'
+            : ','
           const dateCell = showScores ? mock.dateISO : isOrdered ? 'Ordered' : 'Pending'
-          // Validity: "—" when instrument has no validity scales (per user directive)
+          // Validity: "," when instrument has no validity scales (per user directive)
           const validityCell = !showScores
-            ? '—'
+            ? ','
             : !hasValidityScales
-            ? <span style={{ color: 'var(--text-secondary)' }}>—</span>
-            : <span style={{ color: mock.validity === 'Passed' ? '#2e7d32' : mock.validity === 'Questionable' ? '#ef6c00' : '#c62828', fontWeight: 600 }}>{mock.validity}</span>
+            ? <span style={{ color: 'var(--text-secondary)' }}>,</span>
+            : <span style={{ color: mock.validity === 'Passed' ? 'var(--success)' : mock.validity === 'Questionable' ? 'var(--warn)' : 'var(--danger)', fontWeight: 600 }}>{mock.validity}</span>
           // Flag: REVIEW link when scored; ORDERED when pending.
           const flagIsAlerting = hasValidityScales ? mock.validity !== 'Passed' : mock.bandTone === 'severe' || mock.bandTone === 'invalid' || mock.outOfRange
           const flagNode = showScores ? (
@@ -3049,7 +3052,7 @@ function TestingSubTab({
               }}
               style={{
                 background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
-                color: flagIsAlerting ? '#c62828' : 'var(--accent)',
+                color: flagIsAlerting ? 'var(--danger)' : 'var(--accent)',
                 fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
                 letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'underline',
               }}
@@ -3057,39 +3060,39 @@ function TestingSubTab({
               Review
             </button>
           ) : isOrdered ? (
-            <MockFlag label="ORDERED" color="#1976d2" />
+            <MockFlag label="ORDERED" color="var(--info)" />
           ) : ''
 
-          const labelStyle: React.CSSProperties = { color: '#345', fontWeight: 600 }
+          const labelStyle: React.CSSProperties = { color: 'var(--text)', fontWeight: 600 }
           const sectionHeaderStyle: React.CSSProperties = {
-            fontSize: 11, color: '#345', textTransform: 'uppercase', letterSpacing: '0.06em',
+            fontSize: 11, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.06em',
             marginBottom: 3, fontWeight: 700,
           }
-          const toneColor = mock.bandTone === 'ok' ? '#2e7d32'
-            : mock.bandTone === 'watch' ? '#6d4c00'
-            : mock.bandTone === 'elevated' ? '#b26a00'
-            : mock.bandTone === 'clinical' ? '#c62828'
-            : mock.bandTone === 'severe' ? '#b71c1c'
-            : mock.bandTone === 'invalid' ? '#6a1b9a'
-            : '#234'
+          const toneColor = mock.bandTone === 'ok' ? 'var(--success)'
+            : mock.bandTone === 'watch' ? 'var(--warn)'
+            : mock.bandTone === 'elevated' ? 'var(--warn)'
+            : mock.bandTone === 'clinical' ? 'var(--danger)'
+            : mock.bandTone === 'severe' ? 'var(--danger)'
+            : mock.bandTone === 'invalid' ? 'var(--accent)'
+            : 'var(--text)'
           const tooltip = (
-            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: '#000' }}>
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--text)' }}>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>
                 {key}
                 {info?.isValidity && (
-                  <span style={{ marginLeft: 8, fontSize: 10.5, color: '#b26a00', border: '1px solid #b26a00', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>VALIDITY</span>
+                  <span style={{ marginLeft: 8, fontSize: 10.5, color: 'var(--warn)', border: '1px solid var(--warn)', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>VALIDITY</span>
                 )}
                 {norm && (
-                  <span style={{ marginLeft: 8, fontSize: 10.5, color: '#345', fontWeight: 500 }}>{norm.publisher} · {norm.year}</span>
+                  <span style={{ marginLeft: 8, fontSize: 10.5, color: 'var(--text)', fontWeight: 500 }}>{norm.publisher} · {norm.year}</span>
                 )}
               </div>
               {info && (
-                <div style={{ color: '#234', fontSize: 12, marginBottom: 4 }}>
+                <div style={{ color: 'var(--text)', fontSize: 12, marginBottom: 4 }}>
                   {info.fullName} · {info.category} · {info.duration}
                 </div>
               )}
               {norm && (
-                <div style={{ color: '#456', fontSize: 11.5, marginBottom: 8, fontStyle: 'italic' }}>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 11.5, marginBottom: 8, fontStyle: 'italic' }}>
                   {norm.scoreLabel}
                 </div>
               )}
@@ -3102,16 +3105,16 @@ function TestingSubTab({
                     <span style={labelStyle}>{mock.metricLabel}</span>
                     <span>
                       <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{mock.scoreDisplay}</span>
-                      <span style={{ color: '#456' }}> (normal {mock.rangeDisplay})</span>
-                      {mock.outOfRange && <span style={{ color: '#c62828', fontWeight: 600 }}> · out of normal range</span>}
+                      <span style={{ color: 'var(--text-secondary)' }}> (normal {mock.rangeDisplay})</span>
+                      {mock.outOfRange && <span style={{ color: 'var(--danger)', fontWeight: 600 }}> · out of normal range</span>}
                     </span>
                     <span style={labelStyle}>Band</span>
                     <span style={{ color: toneColor, fontWeight: 700 }}>{mock.bandLabel}</span>
                     <span style={labelStyle}>Validity</span>
                     {hasValidityScales ? (
-                      <span style={{ color: mock.validity === 'Passed' ? '#2e7d32' : mock.validity === 'Questionable' ? '#b26a00' : '#c62828', fontWeight: 700 }}>{mock.validity}</span>
+                      <span style={{ color: mock.validity === 'Passed' ? 'var(--success)' : mock.validity === 'Questionable' ? 'var(--warn)' : 'var(--danger)', fontWeight: 700 }}>{mock.validity}</span>
                     ) : (
-                      <span style={{ color: '#789', fontStyle: 'italic' }}>No validity measure on this instrument</span>
+                      <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>No validity measure on this instrument</span>
                     )}
                   </div>
                   {mock.elevations.length > 0 && (
@@ -3119,10 +3122,10 @@ function TestingSubTab({
                       <div style={sectionHeaderStyle}>Scale Scores</div>
                       {mock.elevations.map((e) => (
                         <div key={e.scale} style={{ fontSize: 12.5 }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', color: e.elevated ? '#c62828' : '#234', fontWeight: 700, minWidth: 60, display: 'inline-block' }}>{e.display}</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', color: e.elevated ? 'var(--danger)' : 'var(--text)', fontWeight: 700, minWidth: 60, display: 'inline-block' }}>{e.display}</span>
                           {' '}<span style={{ fontWeight: 600 }}>{e.scale}</span>
-                          <span style={{ color: '#456' }}> — {e.fullName}</span>
-                          {e.elevated && <span style={{ color: '#c62828', marginLeft: 6, fontSize: 10.5, fontWeight: 700 }}>ELEVATED</span>}
+                          <span style={{ color: 'var(--text-secondary)' }}> , {e.fullName}</span>
+                          {e.elevated && <span style={{ color: 'var(--danger)', marginLeft: 6, fontSize: 10.5, fontWeight: 700 }}>ELEVATED</span>}
                         </div>
                       ))}
                     </div>
@@ -3132,21 +3135,21 @@ function TestingSubTab({
                       <div style={sectionHeaderStyle}>Validity Scales</div>
                       {mock.validityScales.map((v) => (
                         <div key={v.code} style={{ fontSize: 12 }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: v.status === 'Passed' ? '#2e7d32' : v.status === 'Questionable' ? '#b26a00' : '#c62828' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: v.status === 'Passed' ? 'var(--success)' : v.status === 'Questionable' ? 'var(--warn)' : 'var(--danger)' }}>
                             {v.display}
                           </span>{' '}
                           <span style={{ fontWeight: 600 }}>{v.code}</span>
-                          <span style={{ color: '#456' }}> — {v.fullName}</span>
-                          <div style={{ color: '#456', fontSize: 10.5, marginLeft: 14 }}>{v.rule}</div>
+                          <span style={{ color: 'var(--text-secondary)' }}> , {v.fullName}</span>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: 10.5, marginLeft: 14 }}>{v.rule}</div>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div style={{ fontSize: 12.5, fontStyle: 'italic', color: '#123', marginBottom: 6 }}>
+                  <div style={{ fontSize: 12.5, fontStyle: 'italic', color: 'var(--text)', marginBottom: 6 }}>
                     {mock.interpretation}
                   </div>
-                  <div style={{ fontSize: 12, color: '#234', borderTop: '1px solid #7fb3e6', paddingTop: 5 }}>
-                    <span style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5, fontWeight: 700, color: '#345' }}>Recommendation: </span>
+                  <div style={{ fontSize: 12, color: 'var(--text)', borderTop: '1px solid var(--border)', paddingTop: 5 }}>
+                    <span style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10.5, fontWeight: 700, color: 'var(--text)' }}>Recommendation: </span>
                     {mock.recommendation}
                   </div>
                 </>
@@ -3186,7 +3189,7 @@ function TestingSubTab({
               {uploadedFiles.map((name, idx) => (
                 <tr key={`${name}-${idx}`}>
                   <td style={dataLabelTd}>{name}</td>
-                  <td style={{ ...dataValueTd, color: '#4caf50', fontWeight: 600, fontSize: 11 }}>✓ Uploaded</td>
+                  <td style={{ ...dataValueTd, color: 'var(--success)', fontWeight: 600, fontSize: 11 }}>✓ Uploaded</td>
                 </tr>
               ))}
             </tbody>
@@ -3221,8 +3224,8 @@ function ValiditySubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX.E
           alignItems: 'center',
           gap: 12,
           padding: '14px 18px',
-          background: overallPass ? '#e8f5e9' : '#ffebee',
-          border: `1px solid ${overallPass ? '#4caf50' : '#f44336'}`,
+          background: overallPass ? 'color-mix(in srgb, var(--success) 12%, transparent)' : 'color-mix(in srgb, var(--danger) 8%, transparent)',
+          border: `1px solid ${overallPass ? 'var(--success)' : 'var(--danger)'}`,
           borderRadius: 6,
           marginBottom: 16,
         }}
@@ -3233,12 +3236,12 @@ function ValiditySubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX.E
             style={{
               fontSize: 15,
               fontWeight: 700,
-              color: overallPass ? '#2e7d32' : '#c62828',
+              color: overallPass ? 'var(--success)' : 'var(--danger)',
             }}
           >
             {overallPass ? 'PASS, Results Considered Valid' : 'CONCERNS, Validity Questionable'}
           </div>
-          <div style={{ fontSize: 12, color: overallPass ? '#388e3c' : '#d32f2f', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: overallPass ? 'var(--success)' : 'var(--danger)', marginTop: 2 }}>
             {overallPass
               ? 'Effort indicators within acceptable limits. Clinical results interpretable.'
               : 'Validity concerns detected. Review effort measures before interpreting results.'}
@@ -3285,7 +3288,7 @@ function ValiditySubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX.E
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: '#4caf50',
+                    color: 'var(--success)',
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -4196,7 +4199,7 @@ Generate the clinical interview session summary.`,
                 {(activeSession.recordingStatus === 'recording' || activeSession.recordingStatus === 'paused') && (
                   <span style={{
                     fontFamily: 'monospace', fontSize: 13, fontWeight: 600,
-                    color: activeSession.recordingStatus === 'recording' ? '#e54040' : 'var(--text-secondary)',
+                    color: activeSession.recordingStatus === 'recording' ? 'var(--danger)' : 'var(--text-secondary)',
                     minWidth: 48, textAlign: 'right',
                   }}>
                     {liveElapsed}
@@ -4204,8 +4207,8 @@ Generate the clinical interview session summary.`,
                 )}
                 {activeSession.recordingStatus === 'recording' && (
                   <>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#e54040', animation: 'pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
-                    <span style={{ fontSize: 10, fontWeight: 600, color: '#e54040', textTransform: 'uppercase', letterSpacing: '0.04em' }}>LIVE</span>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)', animation: 'pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>LIVE</span>
                   </>
                 )}
 
@@ -4217,8 +4220,8 @@ Generate the clinical interview session summary.`,
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
                       padding: '4px 12px', fontSize: 11, fontWeight: 600,
-                      border: '1px solid #e54040', borderRadius: 4,
-                      background: 'rgba(229,64,64,0.08)', color: '#e54040',
+                      border: '1px solid var(--danger)', borderRadius: 4,
+                      background: 'color-mix(in srgb, var(--danger) 8%, transparent)', color: 'var(--danger)',
                       cursor: 'pointer', fontFamily: 'inherit',
                     }}
                   >
@@ -4244,8 +4247,8 @@ Generate the clinical interview session summary.`,
                       title="Stop recording"
                       style={{
                         padding: '4px 10px', fontSize: 11, fontWeight: 600,
-                        border: '1px solid #e54040', borderRadius: 4,
-                        background: '#e54040', color: '#fff',
+                        border: '1px solid var(--danger)', borderRadius: 4,
+                        background: 'var(--danger)', color: '#fff',
                         cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
@@ -4260,8 +4263,8 @@ Generate the clinical interview session summary.`,
                       title="Resume recording and live transcription"
                       style={{
                         padding: '4px 10px', fontSize: 11, fontWeight: 600,
-                        border: '1px solid #e54040', borderRadius: 4,
-                        background: 'rgba(229,64,64,0.08)', color: '#e54040',
+                        border: '1px solid var(--danger)', borderRadius: 4,
+                        background: 'color-mix(in srgb, var(--danger) 8%, transparent)', color: 'var(--danger)',
                         cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
@@ -4272,8 +4275,8 @@ Generate the clinical interview session summary.`,
                       title="Stop recording"
                       style={{
                         padding: '4px 10px', fontSize: 11, fontWeight: 600,
-                        border: '1px solid #e54040', borderRadius: 4,
-                        background: '#e54040', color: '#fff',
+                        border: '1px solid var(--danger)', borderRadius: 4,
+                        background: 'var(--danger)', color: '#fff',
                         cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
@@ -4314,7 +4317,7 @@ Generate the clinical interview session summary.`,
                       position: 'absolute', right: 0, top: '100%', marginTop: 6, zIndex: 9999,
                       width: 320, padding: '14px 16px',
                       background: 'var(--panel, #fff)', border: '1px solid var(--border)',
-                      borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                      borderRadius: 6, boxShadow: '0 8px 24px color-mix(in srgb, var(--text) 15%, transparent)',
                     }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -4385,14 +4388,14 @@ Generate the clinical interview session summary.`,
                       {/* Whisper engine status */}
                       <div style={{
                         padding: '8px 10px', borderRadius: 4, fontSize: 10, lineHeight: 1.5,
-                        background: whisperStatus?.available ? 'rgba(46,160,67,0.08)' : 'rgba(229,64,64,0.06)',
-                        border: `1px solid ${whisperStatus?.available ? 'rgba(46,160,67,0.2)' : 'rgba(229,64,64,0.15)'}`,
+                        background: whisperStatus?.available ? 'color-mix(in srgb, var(--success) 8%, transparent)' : 'color-mix(in srgb, var(--danger) 6%, transparent)',
+                        border: `1px solid ${whisperStatus?.available ? 'color-mix(in srgb, var(--success) 20%, transparent)' : 'color-mix(in srgb, var(--danger) 15%, transparent)'}`,
                         color: 'var(--text-secondary)',
                       }}>
                         <strong style={{ color: 'var(--text)' }}>Transcription Engine:</strong>{' '}
                         {whisperStatus?.available
-                          ? <span style={{ color: '#2ea043' }}>Whisper.cpp ready ({whisperStatus.model})</span>
-                          : <span style={{ color: '#e54040' }}>Whisper.cpp not installed</span>
+                          ? <span style={{ color: 'var(--success)' }}>Whisper.cpp ready ({whisperStatus.model})</span>
+                          : <span style={{ color: 'var(--danger)' }}>Whisper.cpp not installed</span>
                         }
                         <br />
                         {whisperStatus?.available
@@ -4512,10 +4515,10 @@ Generate the clinical interview session summary.`,
                 {activeSession.source === 'import' ? 'Transcript' : activeSession.source === 'recording' ? 'Live Transcript' : 'Session Notes'}
                 {activeSession.isStreaming && activeSession.recordingStatus === 'recording' && (
                   <span style={{
-                    fontSize: 10, fontWeight: 600, color: '#e54040',
+                    fontSize: 10, fontWeight: 600, color: 'var(--danger)',
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                   }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#e54040', animation: 'pulse 1.2s ease-in-out infinite' }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', animation: 'pulse 1.2s ease-in-out infinite' }} />
                     streaming
                   </span>
                 )}
@@ -4544,9 +4547,9 @@ Generate the clinical interview session summary.`,
                   width: '100%', boxSizing: 'border-box' as const, minHeight: 420,
                   padding: '10px 12px', fontSize: 12.5, fontFamily: 'var(--font-mono)',
                   lineHeight: 1.7, border: '1px solid var(--border)', borderRadius: 4,
-                  background: activeSession.recordingStatus === 'recording' ? 'rgba(229,64,64,0.03)' : 'var(--bg)',
+                  background: activeSession.recordingStatus === 'recording' ? 'color-mix(in srgb, var(--danger) 3%, transparent)' : 'var(--bg)',
                   color: 'var(--text)', resize: 'vertical',
-                  borderColor: activeSession.recordingStatus === 'recording' ? 'rgba(229,64,64,0.3)' : undefined,
+                  borderColor: activeSession.recordingStatus === 'recording' ? 'color-mix(in srgb, var(--danger) 30%, transparent)' : undefined,
                 }}
               />
             </div>
@@ -5532,7 +5535,7 @@ function DiagnosticsSubTab({
       conditionCompletionMap[c.name] !== 'pending')
   }, [allConditions, conditionCompletionMap])
 
-  // Gate 2: Final Formulation — all four sub-sections have content AND clinician has
+  // Gate 2: Final Formulation , all four sub-sections have content AND clinician has
   // clicked "Approve" on each. Per-section approval replaces the old single review toggle.
   const finalFormulationKeys = ['_impressions', '_ruledOut', '_validity', '_prognosis'] as const
   const gate2_finalFormulationComplete = useMemo(() => {
@@ -5624,10 +5627,10 @@ function DiagnosticsSubTab({
             <div style={{
               width: allConditions.length > 0 ? `${(completedCount / allConditions.length) * 100}%` : '0%',
               height: '100%', borderRadius: 3, transition: 'width 0.3s',
-              background: completedCount === allConditions.length ? '#2e7d32' : '#1976d2',
+              background: completedCount === allConditions.length ? 'var(--success)' : 'var(--info)',
             }} />
           </div>
-          <span style={{ fontSize: 10, fontWeight: 600, color: gate1_allConditionsFormulated ? '#2e7d32' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10, fontWeight: 600, color: gate1_allConditionsFormulated ? 'var(--success)' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
             {completedCount}/{allConditions.length} {gate1_allConditionsFormulated ? '✓' : ''}
           </span>
           <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -5646,7 +5649,7 @@ function DiagnosticsSubTab({
                 position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 100,
                 width: 320, maxHeight: 400, overflowY: 'auto',
                 background: 'var(--bg)', border: '1px solid var(--border)',
-                borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                borderRadius: 6, boxShadow: '0 4px 16px color-mix(in srgb, var(--text) 15%, transparent)',
               }}>
                 <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Add Diagnostic Consideration</span>
@@ -5753,9 +5756,9 @@ function DiagnosticsSubTab({
           fontWeight: 700,
           fontFamily: 'inherit',
           letterSpacing: '0.04em',
-          border: '1px solid ' + (active ? '#d95a1a' : 'var(--border)'),
+          border: '1px solid ' + (active ? 'var(--warn)' : 'var(--border)'),
           borderRadius: 3,
-          background: active ? '#d95a1a' : 'var(--bg)',
+          background: active ? 'var(--warn)' : 'var(--bg)',
           color: active ? '#fff' : 'var(--text-secondary)',
           cursor: 'pointer',
         })
@@ -5799,7 +5802,7 @@ function DiagnosticsSubTab({
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {cond.name}
                 </span>
-                <span style={{ fontSize: 11.5, color: '#d95a1a', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>
+                <span style={{ fontSize: 11.5, color: 'var(--warn)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>
                   {cond.dsmCode}
                 </span>
               </div>
@@ -5912,7 +5915,7 @@ function DiagnosticsSubTab({
                 style={{
                   width: '100%', padding: '4px 6px', fontSize: 11, fontFamily: 'inherit',
                   border: '1px solid var(--border)', borderRadius: 3, background: 'var(--bg)',
-                  color: (declinedConditions[cond.name] || ruledOutConditions[cond.name]) ? '#6a6a6a' : 'var(--text)',
+                  color: (declinedConditions[cond.name] || ruledOutConditions[cond.name]) ? 'var(--text-secondary)' : 'var(--text)',
                   marginBottom: 4, cursor: 'pointer', flexShrink: 0,
                 }}
               >
@@ -5927,7 +5930,7 @@ function DiagnosticsSubTab({
               {!expandedConditions[cond.name] ? null : (<>
               {ruledOutConditions[cond.name] ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ padding: '6px 8px', fontSize: 11, color: '#e65100', fontWeight: 600, background: '#fff3e0', border: '1px solid #ffcc80', borderRadius: 4 }}>
+                  <div style={{ padding: '6px 8px', fontSize: 11, color: 'var(--warn)', fontWeight: 600, background: 'color-mix(in srgb, var(--warn) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--warn) 40%, transparent)', borderRadius: 4 }}>
                     RULED OUT
                   </div>
                   <textarea
@@ -5938,7 +5941,7 @@ function DiagnosticsSubTab({
                   />
                 </div>
               ) : declinedConditions[cond.name] ? (
-                <div style={{ flex: 1, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#6a6a6a', fontStyle: 'italic', border: '1px dashed var(--border)', borderRadius: 4, background: 'var(--bg)' }}>
+                <div style={{ flex: 1, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--text-secondary)', fontStyle: 'italic', border: '1px dashed var(--border)', borderRadius: 4, background: 'var(--bg)' }}>
                   No additional clinician comments for this condition.
                 </div>
               ) : (
@@ -6029,9 +6032,9 @@ function DiagnosticsSubTab({
         const isExpanded = !!expandedConditions[field.key]
         const isApproved = !!approvedFormulations[field.key]
         const statusLabel = isApproved ? 'APPROVED' : hasContent ? 'DRAFTED' : 'PENDING'
-        const statusColor = isApproved ? '#1565c0' : hasContent ? '#2e7d32' : 'var(--text-secondary)'
-        const statusBg = isApproved ? 'rgba(21,101,192,0.10)' : hasContent ? 'rgba(46,125,50,0.08)' : 'var(--bg)'
-        const statusBorder = isApproved ? '#1565c0' : hasContent ? '#2e7d32' : 'var(--border)'
+        const statusColor = isApproved ? 'var(--info)' : hasContent ? 'var(--success)' : 'var(--text-secondary)'
+        const statusBg = isApproved ? 'color-mix(in srgb, var(--info) 10%, transparent)' : hasContent ? 'color-mix(in srgb, var(--success) 8%, transparent)' : 'var(--bg)'
+        const statusBorder = isApproved ? 'var(--info)' : hasContent ? 'var(--success)' : 'var(--border)'
         return (
           <Fragment key={field.key}>
             {/* LEFT (70%): formulation-section card, row + optional editable notes */}
@@ -6137,9 +6140,9 @@ function DiagnosticsSubTab({
                 style={{
                   padding: '4px 12px', fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
                   cursor: hasContent ? 'pointer' : 'not-allowed',
-                  background: isApproved ? 'var(--bg)' : (hasContent ? '#1565c0' : 'var(--bg)'),
-                  color: isApproved ? '#1565c0' : (hasContent ? '#fff' : 'var(--text-secondary)'),
-                  border: '1px solid ' + (isApproved ? '#1565c0' : (hasContent ? '#1565c0' : 'var(--border)')),
+                  background: isApproved ? 'var(--bg)' : (hasContent ? 'var(--info)' : 'var(--bg)'),
+                  color: isApproved ? 'var(--info)' : (hasContent ? '#fff' : 'var(--text-secondary)'),
+                  border: '1px solid ' + (isApproved ? 'var(--info)' : (hasContent ? 'var(--info)' : 'var(--border)')),
                   borderRadius: 4,
                   flexShrink: 0,
                 }}
@@ -6169,7 +6172,7 @@ function DiagnosticsSubTab({
                     Drafted Notes
                   </div>
                   {isApproved && (
-                    <span style={{ fontSize: 10.5, fontWeight: 600, color: '#1565c0' }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--info)' }}>
                       ✓ Approved for report
                     </span>
                   )}
@@ -6218,19 +6221,19 @@ function DiagnosticsSubTab({
           <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Writer Agent
           </span>
-          <span style={{ fontSize: 12, fontStyle: 'italic', color: allGatesPassed ? '#2e7d32' : 'var(--text-secondary)' }}>
+          <span style={{ fontSize: 12, fontStyle: 'italic', color: allGatesPassed ? 'var(--success)' : 'var(--text-secondary)' }}>
             {allGatesPassed ? 'Ready to build report' : 'Blocked until clinician attests decisions'}
           </span>
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 14, fontSize: 10.5 }}>
-          <span style={{ color: gate1_allConditionsFormulated ? '#2e7d32' : '#c62828' }}>
+          <span style={{ color: gate1_allConditionsFormulated ? 'var(--success)' : 'var(--danger)' }}>
             {gate1_allConditionsFormulated ? '✓' : '○'} Formulations
           </span>
-          <span style={{ color: gate2_finalFormulationComplete ? '#2e7d32' : '#c62828' }}>
+          <span style={{ color: gate2_finalFormulationComplete ? 'var(--success)' : 'var(--danger)' }}>
             {gate2_finalFormulationComplete ? '✓' : '○'} Review
           </span>
-          <span style={{ color: gate3_attestationSigned ? '#2e7d32' : '#c62828' }}>
+          <span style={{ color: gate3_attestationSigned ? 'var(--success)' : 'var(--danger)' }}>
             {gate3_attestationSigned ? '✓' : '○'} Attestation
           </span>
         </div>
@@ -6318,8 +6321,8 @@ function DiagnosticsSubTab({
               style={{
                 width: '100%', padding: '8px 12px', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
                 cursor: allGatesPassed && !reportBuilding ? 'pointer' : 'not-allowed',
-                background: allGatesPassed ? '#1565c0' : '#ccc',
-                color: allGatesPassed ? '#fff' : '#888',
+                background: allGatesPassed ? 'var(--info)' : 'var(--border)',
+                color: allGatesPassed ? '#fff' : 'var(--text-secondary)',
                 border: 'none', borderRadius: 5,
                 transition: 'background 0.2s',
               }}
@@ -6343,7 +6346,7 @@ function DiagnosticsSubTab({
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        boxShadow: '0 -4px 8px rgba(0,0,0,0.06)',
+        boxShadow: '0 -4px 8px color-mix(in srgb, var(--text) 6%, transparent)',
       }}>
         <div style={{
           fontFamily: 'var(--font-mono)',
@@ -6358,15 +6361,15 @@ function DiagnosticsSubTab({
 
         {/* Gate checklist */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11.5 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: gate1_allConditionsFormulated ? '#2e7d32' : 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: gate1_allConditionsFormulated ? 'var(--success)' : 'var(--text-secondary)' }}>
             <span style={{ fontSize: 13, width: 14, textAlign: 'center' }}>{gate1_allConditionsFormulated ? '✓' : '○'}</span>
             <span>Formulations complete</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: gate2_finalFormulationComplete ? '#2e7d32' : 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: gate2_finalFormulationComplete ? 'var(--success)' : 'var(--text-secondary)' }}>
             <span style={{ fontSize: 13, width: 14, textAlign: 'center' }}>{gate2_finalFormulationComplete ? '✓' : '○'}</span>
             <span>Final formulation drafted</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: gate3_attestationSigned ? '#2e7d32' : 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: gate3_attestationSigned ? 'var(--success)' : 'var(--text-secondary)' }}>
             <span style={{ fontSize: 13, width: 14, textAlign: 'center' }}>{gate3_attestationSigned ? '✓' : '○'}</span>
             <span>Clinician attestation signed</span>
           </div>
@@ -6493,7 +6496,7 @@ function DiagnosticsSubTab({
           style={{
             width: '100%', padding: '9px 12px', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
             cursor: allGatesPassed && !reportBuilding ? 'pointer' : 'not-allowed',
-            background: allGatesPassed ? '#1565c0' : 'var(--bg)',
+            background: allGatesPassed ? 'var(--info)' : 'var(--bg)',
             color: allGatesPassed ? '#fff' : 'var(--text-secondary)',
             border: allGatesPassed ? 'none' : '1px solid var(--border)',
             borderRadius: 5,
@@ -6567,7 +6570,7 @@ function buildReportContent(
 
   const sections: { title: string; body: string }[] = []
 
-  // 1. Identifying Information & Referral — available after Onboarding is complete.
+  // 1. Identifying Information & Referral , available after Onboarding is complete.
   sections.push({
     title: 'Identifying Information & Referral Question',
     body: onboardingDone
@@ -6575,7 +6578,7 @@ function buildReportContent(
       : pendingPlaceholder('Onboarding'),
   })
 
-  // 2. Informed Consent & Procedures — Onboarding captures consent; test battery
+  // 2. Informed Consent & Procedures , Onboarding captures consent; test battery
   //    is selected at Onboarding but administered during Testing.
   const instruments = getInstrumentsForEvalType(caseRow.evaluation_type)
   const instrumentList = instruments.map((i) => {
@@ -6590,7 +6593,7 @@ function buildReportContent(
       : pendingPlaceholder('Onboarding'),
   })
 
-  // 3. Background Information — assembled from intake/onboarding sections.
+  // 3. Background Information , assembled from intake/onboarding sections.
   sections.push({
     title: 'Background Information',
     body: (() => {
@@ -6618,7 +6621,7 @@ function buildReportContent(
     })(),
   })
 
-  // 4. Test Results & Validity — available after Testing is complete.
+  // 4. Test Results & Validity , available after Testing is complete.
   sections.push({
     title: 'Test Results & Validity',
     body: (() => {
@@ -6632,7 +6635,7 @@ function buildReportContent(
     })(),
   })
 
-  // 5. Behavioral Observations — available after Interview is complete.
+  // 5. Behavioral Observations , available after Interview is complete.
   sections.push({
     title: 'Behavioral Observations',
     body: interviewDone
@@ -6640,7 +6643,7 @@ function buildReportContent(
       : pendingPlaceholder('Interview'),
   })
 
-  // 6. Clinical Interview Findings — available after Interview is complete.
+  // 6. Clinical Interview Findings , available after Interview is complete.
   sections.push({
     title: 'Clinical Interview Findings',
     body: interviewDone
@@ -6648,7 +6651,7 @@ function buildReportContent(
       : pendingPlaceholder('Interview'),
   })
 
-  // 7+ Eval-type-specific analyses — require Diagnostics to be complete.
+  // 7+ Eval-type-specific analyses , require Diagnostics to be complete.
   const et = (evalType ?? '').toLowerCase()
   const dxPending = pendingPlaceholder('Diagnostics')
   if (et.includes('cst') || et.includes('competency')) {
@@ -6676,7 +6679,7 @@ function buildReportContent(
     sections.push({ title: 'Capacity Opinion', body: diagnosticsDone ? '[Clinician opinion on decisional capacity with supporting data.]' : dxPending })
   }
 
-  // Diagnostic Impressions — requires Diagnostics to be complete. The actual
+  // Diagnostic Impressions , requires Diagnostics to be complete. The actual
   // formulation content is injected from the Diagnostics tab payload by the
   // ReportSubTab effect; until then this is an outline placeholder.
   sections.push({
@@ -6686,7 +6689,7 @@ function buildReportContent(
       : pendingPlaceholder('Diagnostics'),
   })
 
-  // Summary & Recommendations — requires Review to be complete.
+  // Summary & Recommendations , requires Review to be complete.
   sections.push({
     title: 'Summary & Recommendations',
     body: reviewDone
@@ -6699,15 +6702,15 @@ function buildReportContent(
 
 /** Toolbar button style helper */
 const tbBtn: React.CSSProperties = {
-  width: 28, height: 28, border: '1px solid #d0d0d0', borderRadius: 3,
-  background: '#fff', cursor: 'pointer', fontSize: 12, color: '#444',
+  width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 3,
+  background: 'var(--bg)', cursor: 'pointer', fontSize: 12, color: 'var(--text)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   flexShrink: 0,
 }
-const tbSep: React.CSSProperties = { width: 1, height: 20, background: '#d0d0d0', margin: '0 3px', flexShrink: 0 }
+const tbSep: React.CSSProperties = { width: 1, height: 20, background: 'var(--border)', margin: '0 3px', flexShrink: 0 }
 const tbSelect: React.CSSProperties = {
-  height: 28, border: '1px solid #d0d0d0', borderRadius: 3, background: '#fff',
-  fontSize: 11, color: '#444', cursor: 'pointer', padding: '0 4px',
+  height: 28, border: '1px solid var(--border)', borderRadius: 3, background: 'var(--bg)',
+  fontSize: 11, color: 'var(--text)', cursor: 'pointer', padding: '0 4px',
 }
 
 function ReportSubTab({
@@ -7159,26 +7162,26 @@ function ReportSubTab({
   ])
 
   return (
-    <div style={{ padding: 0, background: '#e8e8e8', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ padding: 0, background: 'var(--panel)', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ══════════════════════════════════════════════════════════════════════
           TOOLBAR ROW 1, File actions + Edit in Word
           ══════════════════════════════════════════════════════════════════════ */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '6px 12px', borderBottom: '1px solid #d0d0d0', background: '#f5f5f5',
+        padding: '6px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)',
         position: 'sticky', top: 0, zIndex: 11,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>Evaluation Report</span>
-          <span style={{ fontSize: 11, color: '#aaa' }}>{activeSections} sections</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Evaluation Report</span>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{activeSections} sections</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <select
             value={selectedTemplate}
             onChange={handleTemplateChange}
             style={{
-              height: 26, border: '1px solid #d0d0d0', borderRadius: 3, background: '#fff',
-              fontSize: 11, color: '#444', cursor: 'pointer', padding: '0 6px', minWidth: 200,
+              height: 26, border: '1px solid var(--border)', borderRadius: 3, background: 'var(--bg)',
+              fontSize: 11, color: 'var(--text)', cursor: 'pointer', padding: '0 6px', minWidth: 200,
             }}
           >
             <option value="">Select Template</option>
@@ -7190,16 +7193,16 @@ function ReportSubTab({
             value={reportStatus}
             onChange={handleReportStatusChange}
             style={{
-              height: 24, border: '1px solid #d0d0d0', borderRadius: 3,
+              height: 24, border: '1px solid var(--border)', borderRadius: 3,
               fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: '0 6px',
-              background: reportStatus === 'final' ? '#e8f5e9'
-                : reportStatus === 'review' ? '#fff3e0'
-                : reportStatus === 'editing' ? '#e3f2fd'
-                : '#f5f5f5',
-              color: reportStatus === 'final' ? '#2e7d32'
-                : reportStatus === 'review' ? '#e65100'
-                : reportStatus === 'editing' ? '#1565c0'
-                : '#666',
+              background: reportStatus === 'final' ? 'color-mix(in srgb, var(--success) 12%, transparent)'
+                : reportStatus === 'review' ? 'color-mix(in srgb, var(--warn) 10%, transparent)'
+                : reportStatus === 'editing' ? 'color-mix(in srgb, var(--info) 8%, transparent)'
+                : 'var(--panel)',
+              color: reportStatus === 'final' ? 'var(--success)'
+                : reportStatus === 'review' ? 'var(--warn)'
+                : reportStatus === 'editing' ? 'var(--info)'
+                : 'var(--text-secondary)',
             }}
           >
             <option value="draft">Draft</option>
@@ -7212,7 +7215,7 @@ function ReportSubTab({
             disabled={isExporting}
             style={{
               padding: '4px 12px', fontSize: 11, fontWeight: 600,
-              background: '#185abd', color: '#fff', border: 'none', borderRadius: 4,
+              background: '#185abd', color: '#fff', border: 'none', borderRadius: 4, /* themed:skip , Microsoft Word brand blue */
               cursor: isExporting ? 'not-allowed' : 'pointer', opacity: isExporting ? 0.6 : 1,
               display: 'flex', alignItems: 'center', gap: 5,
             }}
@@ -7228,7 +7231,7 @@ function ReportSubTab({
           ══════════════════════════════════════════════════════════════════════ */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap',
-        padding: '4px 12px', borderBottom: '1px solid #d0d0d0', background: '#fafafa',
+        padding: '4px 12px', borderBottom: '1px solid var(--border)', background: 'var(--panel)',
         position: 'sticky', top: 39, zIndex: 10,
       }}>
         {/* Undo / Redo */}
@@ -7262,10 +7265,10 @@ function ReportSubTab({
         {/* Text color / Highlight */}
         <button style={{ ...tbBtn, position: 'relative' }} title="Text Color">
           <span>A</span>
-          <span style={{ position: 'absolute', bottom: 2, left: 4, right: 4, height: 3, background: '#222', borderRadius: 1 }} />
+          <span style={{ position: 'absolute', bottom: 2, left: 4, right: 4, height: 3, background: 'var(--text)', borderRadius: 1 }} />
         </button>
         <button style={{ ...tbBtn, position: 'relative' }} title="Highlight">
-          <span style={{ background: '#ffeb3b', padding: '0 3px', borderRadius: 1, fontSize: 11 }}>ab</span>
+          <span style={{ background: '#ffeb3b', padding: '0 3px', borderRadius: 1, fontSize: 11 }}>ab</span>{/* themed:skip , standard highlighter yellow */}
         </button>
         <div style={tbSep} />
 
@@ -7398,7 +7401,7 @@ function ReportSubTab({
         {/* Internal notes sidebar removed; outer rail (Report Drafting Notes) hosts per-section clinician notes. */}
         {false && (
           <div style={{
-            width: 340, flexShrink: 0, borderLeft: '1px solid #d0d0d0',
+            width: 340, flexShrink: 0, borderLeft: '1px solid var(--border)',
             background: 'var(--panel, #fafafa)',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
           }}>
@@ -7425,7 +7428,7 @@ function ReportSubTab({
               <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border, #ddd)' }}>
                 <div style={{
                   fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                  letterSpacing: 0.5, color: '#5b6abf', marginBottom: 6,
+                  letterSpacing: 0.5, color: 'var(--accent)', marginBottom: 6,
                 }}>
                   Guidance
                 </div>
@@ -7480,7 +7483,7 @@ function ReportSubTab({
             >
               <div style={{
                 width: 32, height: 2, borderRadius: 1,
-                background: 'rgba(255,255,255,0.7)',
+                background: 'color-mix(in srgb, var(--bg) 70%, transparent)',
               }} />
             </div>
 
@@ -7518,13 +7521,13 @@ function ReportSubTab({
                   border: '1px solid var(--border, #ddd)', borderRadius: 4,
                   padding: '8px 10px', fontSize: 12, lineHeight: 1.5,
                   fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-                  color: 'var(--text, #222)', background: assistantLoading ? '#f8f8f8' : 'var(--bg, #fff)',
+                  color: 'var(--text, #222)', background: assistantLoading ? 'var(--panel)' : 'var(--bg, #fff)',
                   outline: 'none', boxSizing: 'border-box',
                   opacity: assistantLoading ? 0.6 : 1,
                 }}
               />
               {assistantError && (
-                <div style={{ fontSize: 11, color: '#c62828', marginTop: 4 }}>{assistantError}</div>
+                <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>{assistantError}</div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
                 <span style={{ fontSize: 10, color: 'var(--text-secondary, #888)' }}>⌘+Enter to send</span>
@@ -7533,7 +7536,7 @@ function ReportSubTab({
                   disabled={assistantLoading || !assistantPrompt.trim()}
                   style={{
                     padding: '5px 14px', fontSize: 11, fontWeight: 600,
-                    background: assistantLoading ? '#ccc' : 'var(--accent, #5b6abf)',
+                    background: assistantLoading ? 'var(--border)' : 'var(--accent, #5b6abf)',
                     color: '#fff', border: 'none', borderRadius: 4,
                     cursor: assistantLoading || !assistantPrompt.trim() ? 'not-allowed' : 'pointer',
                     opacity: assistantLoading || !assistantPrompt.trim() ? 0.5 : 1,
@@ -7665,8 +7668,8 @@ function JsonTreeViewer({ content }: { readonly content: string }): React.JSX.El
       <div style={{ padding: '16px 24px' }}>
         <div style={{
           padding: '10px 14px', marginBottom: 16, fontSize: 11,
-          background: 'rgba(239,83,80,0.08)', border: '1px solid rgba(239,83,80,0.2)',
-          borderRadius: 4, color: '#ef5350',
+          background: 'color-mix(in srgb, var(--danger) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+          borderRadius: 4, color: 'var(--danger)',
         }}>
           JSON parse error: {parseError}
         </div>
@@ -7688,6 +7691,7 @@ function JsonTreeViewer({ content }: { readonly content: string }): React.JSX.El
   )
 }
 
+// themed:skip , IDE-style JSON syntax highlighting; each hue denotes a specific value type
 const JSON_COLORS = {
   key: '#9876aa',
   string: '#6a8759',
@@ -8014,7 +8018,7 @@ function ResourceViewerTab({
             Loading...
           </div>
         ) : error ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#ef5350', fontSize: 13 }}>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--danger)', fontSize: 13 }}>
             {error}
           </div>
         ) : encoding === 'pdf-base64' && !showRedacted && content ? (

@@ -38,6 +38,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { CaseRow, FolderNode } from '../../../../shared/types'
 import type { Tab } from '../../types/tabs'
 import { useBranding } from '../../hooks/useBranding'
+import type { CaseSubfolder } from '../../../../shared/types/ipc'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -274,6 +275,15 @@ function convertFolderNode(node: FolderNode, caseId: number | undefined): TreeNo
 // Tree Node Component
 // ---------------------------------------------------------------------------
 
+// Subfolders available for drag-drop targeting
+const DROP_SUBFOLDERS: { value: CaseSubfolder; label: string }[] = [
+  { value: '_Inbox', label: 'Inbox (Unsorted)' },
+  { value: 'Collateral', label: 'Collateral' },
+  { value: 'Testing', label: 'Testing' },
+  { value: 'Interviews', label: 'Interviews' },
+  { value: 'Diagnostics', label: 'Diagnostics' },
+]
+
 interface TreeNodeProps {
   readonly node: TreeNode
   readonly depth: number
@@ -281,6 +291,8 @@ interface TreeNodeProps {
   readonly activeNodeId: string | null
   readonly onSetActive: (id: string) => void
   readonly onNodeClick: (node: TreeNode) => void
+  /** Called when files are dropped on a case folder node */
+  readonly onDropFiles?: (caseId: number, files: FileList) => void
 }
 
 function TreeNodeComponent({
@@ -290,9 +302,15 @@ function TreeNodeComponent({
   activeNodeId,
   onSetActive,
   onNodeClick,
+  onDropFiles,
 }: TreeNodeProps): React.JSX.Element {
   const [expanded, setExpanded] = useState(node.expanded ?? false)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [pendingDropFiles, setPendingDropFiles] = useState<FileList | null>(null)
+  const [selectedSubfolder, setSelectedSubfolder] = useState<CaseSubfolder>('_Inbox')
+  const [dropError, setDropError] = useState<string | null>(null)
   const hasChildren = (node.children?.length ?? 0) > 0
+  const isCaseFolder = node.id.startsWith('case-folder:') && node.caseId != null
 
   const handleChevronClick = useCallback(
     (e: React.MouseEvent) => {
@@ -311,6 +329,91 @@ function TreeNodeComponent({
     },
     [node, onSetActive, onNodeClick],
   )
+
+  // -------------------------------------------------------------------------
+  // Drag-drop handlers (case folder nodes only)
+  // -------------------------------------------------------------------------
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!isCaseFolder) return
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(true)
+    },
+    [isCaseFolder],
+  )
+
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      if (!isCaseFolder) return
+      e.preventDefault()
+      e.stopPropagation()
+      // Only clear if actually leaving this element (not entering a child)
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+        setIsDragOver(false)
+      }
+    },
+    [isCaseFolder],
+  )
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (!isCaseFolder || node.caseId == null) return
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(false)
+
+      const files = e.dataTransfer.files
+      if (files.length === 0) return
+
+      // Show inline subfolder picker
+      setPendingDropFiles(files)
+      setSelectedSubfolder('_Inbox')
+      setDropError(null)
+    },
+    [isCaseFolder, node.caseId],
+  )
+
+  const confirmDrop = useCallback(async () => {
+    if (!pendingDropFiles || node.caseId == null) return
+
+    const errors: string[] = []
+    for (let i = 0; i < pendingDropFiles.length; i++) {
+      const file = pendingDropFiles[i]
+      if (!file) continue
+      const filePath = window.psygil.documents.getDroppedFilePath(file)
+      if (!filePath) {
+        errors.push(`Could not resolve path for ${file.name}`)
+        continue
+      }
+      try {
+        const resp = await window.psygil.documents.ingest({
+          case_id: node.caseId,
+          file_path: filePath,
+          subfolder: selectedSubfolder,
+        })
+        if (resp.status !== 'success') {
+          errors.push(`${file.name}: ${(resp as { message?: string }).message ?? 'ingest failed'}`)
+        }
+      } catch (err) {
+        errors.push(`${file.name}: ${err instanceof Error ? err.message : 'ingest failed'}`)
+      }
+    }
+
+    if (errors.length > 0) {
+      setDropError(errors.join('; '))
+    } else {
+      setPendingDropFiles(null)
+      setDropError(null)
+      onDropFiles?.(node.caseId, pendingDropFiles)
+    }
+  }, [pendingDropFiles, node.caseId, selectedSubfolder, onDropFiles])
+
+  const cancelDrop = useCallback(() => {
+    setPendingDropFiles(null)
+    setDropError(null)
+  }, [])
 
   const indent = 8 + depth * 16
   const isActive = activeNodeId === node.id
@@ -332,19 +435,28 @@ function TreeNodeComponent({
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           transition: 'background 0.1s',
-          background: isActive ? 'var(--accent)' : 'transparent',
+          background: isActive
+            ? 'var(--accent)'
+            : isDragOver
+              ? 'rgba(33,150,243,0.15)'
+              : 'transparent',
+          outline: isDragOver ? '2px solid var(--accent)' : 'none',
+          outlineOffset: -2,
         }}
         onMouseEnter={(e) => {
-          if (!isActive) {
+          if (!isActive && !isDragOver) {
             e.currentTarget.style.background = 'var(--highlight)'
           }
         }}
         onMouseLeave={(e) => {
-          if (!isActive) {
+          if (!isActive && !isDragOver) {
             e.currentTarget.style.background = 'transparent'
           }
         }}
         onClick={handleNodeClick}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {/* Chevron */}
         {hasChildren ? (
@@ -424,6 +536,86 @@ function TreeNodeComponent({
         )}
       </div>
 
+      {/* Inline drop subfolder picker */}
+      {pendingDropFiles && isCaseFolder && (
+        <div
+          style={{
+            marginLeft: indent + 20,
+            marginRight: 8,
+            marginTop: 4,
+            marginBottom: 4,
+            padding: '8px 10px',
+            background: 'var(--panel)',
+            border: '1px solid var(--accent)',
+            borderRadius: 4,
+            fontSize: 12,
+          }}
+        >
+          <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
+            Drop {pendingDropFiles.length} file{pendingDropFiles.length > 1 ? 's' : ''} into:
+          </div>
+          <select
+            value={selectedSubfolder}
+            onChange={(e) => setSelectedSubfolder(e.currentTarget.value as CaseSubfolder)}
+            style={{
+              width: '100%',
+              padding: '4px 6px',
+              fontSize: 12,
+              background: 'var(--bg)',
+              color: 'var(--text)',
+              border: '1px solid var(--border)',
+              borderRadius: 3,
+              marginBottom: 6,
+              fontFamily: 'inherit',
+            }}
+          >
+            {DROP_SUBFOLDERS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          {dropError && (
+            <div style={{ fontSize: 11, color: '#f44336', marginBottom: 6 }}>
+              {dropError}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => { void confirmDrop() }}
+              style={{
+                flex: 1,
+                padding: '4px 0',
+                fontSize: 11,
+                fontWeight: 600,
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 3,
+                cursor: 'pointer',
+              }}
+            >
+              Import
+            </button>
+            <button
+              onClick={cancelDrop}
+              style={{
+                flex: 1,
+                padding: '4px 0',
+                fontSize: 11,
+                background: 'none',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: 3,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Children */}
       {hasChildren && expanded && (
         <div>
@@ -436,6 +628,7 @@ function TreeNodeComponent({
               activeNodeId={activeNodeId}
               onSetActive={onSetActive}
               onNodeClick={onNodeClick}
+              onDropFiles={onDropFiles}
             />
           ))}
         </div>
@@ -727,6 +920,15 @@ export default function LeftColumn({
   )
 
   // =========================================================================
+  // DROP FILES HANDLER, called by TreeNodeComponent after successful ingest
+  // Re-fetches the tree so new files appear immediately.
+  // =========================================================================
+
+  const handleDropFiles = useCallback((_caseId: number, _files: FileList) => {
+    void loadDataRef.current()
+  }, [])
+
+  // =========================================================================
   // RENDER
   // =========================================================================
 
@@ -996,6 +1198,7 @@ export default function LeftColumn({
                   activeNodeId={activeNodeId}
                   onSetActive={setActiveNodeId}
                   onNodeClick={handleNodeClick}
+                  onDropFiles={handleDropFiles}
                 />
               ))}
             </div>

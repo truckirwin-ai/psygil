@@ -17,6 +17,7 @@ import type {
   Specialty,
   WorkspaceSeedSummary,
 } from '../../../../../shared/types/setup'
+import { useLocale } from '../../../i18n/useLocale'
 
 const INSTRUMENT_CATEGORIES: { name: string; instruments: string[] }[] = [
   { name: 'Personality / Psychopathology', instruments: ['MMPI-3', 'PAI', 'MCMI-IV'] },
@@ -54,6 +55,7 @@ export default function StepClinical({
   onConfigUpdate,
   onAdvance,
 }: StepProps): React.JSX.Element {
+  const { strings } = useLocale()
   const specialty = config.practice?.specialty ?? 'forensic'
   const [supportedEvalTypes, setSupportedEvalTypes] = useState<readonly string[]>([])
   const [evalTypes, setEvalTypes] = useState<string[]>(
@@ -121,11 +123,9 @@ export default function StepClinical({
 
   return (
     <div>
-      <h2 style={styles.heading}>Configure your clinical workspace</h2>
+      <h2 style={styles.heading}>{strings.clinical.title}</h2>
       <p style={styles.subheading}>
-        Select the evaluation types you perform and the instruments you use.
-        Psygil pre-loads matching report templates and scoring rubrics. You
-        can change this any time from Settings.
+        {strings.clinical.subtitle}
       </p>
 
       {error !== null && <div style={styles.errorBox}>{error}</div>}

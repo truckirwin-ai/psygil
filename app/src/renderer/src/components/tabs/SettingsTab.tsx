@@ -10,6 +10,8 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Tab } from '../../types/tabs'
 import type { ResourceCategory } from '../../../../shared/types/ipc'
 import BrandingPanel from './settings/BrandingPanel'
+import { setTheme as applyThemeKey, THEME_CHOICES } from '../../app/theme'
+import type { ThemeKey } from '../../app/theme'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -111,7 +113,7 @@ const textInput: React.CSSProperties = {
 const btnPrimary: React.CSSProperties = {
   padding: '7px 14px',
   background: 'var(--accent)',
-  color: '#fff',
+  color: 'var(--field-bg)',
   border: 'none',
   borderRadius: 4,
   cursor: 'pointer',
@@ -134,9 +136,9 @@ const btnSecondary: React.CSSProperties = {
 
 const btnDanger: React.CSSProperties = {
   padding: '7px 14px',
-  background: '#e5404015',
-  color: '#e54040',
-  border: '1px solid #e5404040',
+  background: 'color-mix(in srgb, var(--danger) 8%, transparent)',
+  color: 'var(--danger)',
+  border: '1px solid color-mix(in srgb, var(--danger) 25%, transparent)',
   borderRadius: 4,
   cursor: 'pointer',
   fontSize: 12,
@@ -267,7 +269,7 @@ function ResourceListPanel({
                   </div>
                   <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginTop: 2 }}>
                     {formatBytes(f.fileSize)}
-                    {f.phiStripped && <span style={{ marginLeft: 8, color: '#4caf50', fontWeight: 600 }}>PHI stripped</span>}
+                    {f.phiStripped && <span style={{ marginLeft: 8, color: 'var(--success)', fontWeight: 600 }}>PHI stripped</span>}
                   </div>
                 </div>
                 <button
@@ -465,7 +467,7 @@ function CleanedSampleViewer({ cleaned }: { readonly cleaned: string }): React.J
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{
         padding: '10px 16px', fontSize: 11, color: 'var(--text-secondary)',
-        background: 'rgba(76, 175, 80, 0.04)', borderBottom: '1px solid var(--border)',
+        background: 'color-mix(in srgb, var(--success) 4%, transparent)', borderBottom: '1px solid var(--border)',
         lineHeight: 1.5,
       }}>
         The original file containing PHI/PII was permanently deleted after de-identification. Only this cleaned version is stored.
@@ -703,7 +705,7 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
                   <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span>{formatBytes(f.fileSize)}</span>
                     {f.phiStripped && (
-                      <span style={{ color: '#4caf50', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
                         <span style={{ fontSize: 9 }}>*</span> PHI stripped
                       </span>
                     )}
@@ -723,7 +725,7 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.55)',
+          background: 'rgba(0,0,0,0.55)', /* themed:skip - modal scrim */
           zIndex: 10000,
           display: 'flex',
           alignItems: 'center',
@@ -739,7 +741,7 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.3)', /* themed:skip - shadow */
           }}>
             {/* Modal header */}
             <div style={{
@@ -773,7 +775,7 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
                         fontWeight: 700,
                         flexShrink: 0,
                         background: isDone ? 'var(--accent)' : isActive ? 'var(--accent)' : 'var(--border)',
-                        color: isDone || isActive ? '#fff' : 'var(--text-secondary)',
+                        color: isDone || isActive ? 'var(--field-bg)' : 'var(--text-secondary)',
                         transition: 'all 0.3s',
                       }}>
                         {isDone ? '\u2713' : s.icon}
@@ -857,8 +859,8 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
 
                   {/* Summary badges */}
                   <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-                    <div style={{ padding: '6px 14px', background: 'rgba(76, 175, 80, 0.08)', border: '1px solid rgba(76, 175, 80, 0.2)', borderRadius: 6 }}>
-                      <span style={{ fontSize: 18, fontWeight: 700, color: '#4caf50' }}>{pipeline.totalPhiStripped}</span>
+                    <div style={{ padding: '6px 14px', background: 'color-mix(in srgb, var(--success) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)', borderRadius: 6 }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--success)' }}>{pipeline.totalPhiStripped}</span>
                       <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 6 }}>PHI entities removed</span>
                     </div>
                     <div style={{ padding: '6px 14px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6 }}>
@@ -867,18 +869,18 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
                     </div>
                     <div style={{
                       padding: '6px 14px',
-                      background: pipeline.sidecarAvailable ? 'rgba(76, 175, 80, 0.08)' : 'rgba(255, 152, 0, 0.08)',
-                      border: `1px solid ${pipeline.sidecarAvailable ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)'}`,
+                      background: pipeline.sidecarAvailable ? 'color-mix(in srgb, var(--success) 8%, transparent)' : 'color-mix(in srgb, var(--warn) 8%, transparent)',
+                      border: `1px solid ${pipeline.sidecarAvailable ? 'color-mix(in srgb, var(--success) 20%, transparent)' : 'color-mix(in srgb, var(--warn) 20%, transparent)'}`,
                       borderRadius: 6,
                     }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: pipeline.sidecarAvailable ? '#4caf50' : '#ff9800' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: pipeline.sidecarAvailable ? 'var(--success)' : 'var(--warn)' }}>
                         {pipeline.sidecarAvailable ? 'Presidio NLP (18 HIPAA identifiers)' : 'Regex fallback (limited)'}
                       </span>
                     </div>
                   </div>
 
                   {!pipeline.sidecarAvailable && (
-                    <div style={{ padding: '8px 12px', background: 'rgba(255, 152, 0, 0.06)', border: '1px solid rgba(255, 152, 0, 0.15)', borderRadius: 4, fontSize: 11, color: '#ff9800', lineHeight: 1.5, marginBottom: 10 }}>
+                    <div style={{ padding: '8px 12px', background: 'color-mix(in srgb, var(--warn) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--warn) 15%, transparent)', borderRadius: 4, fontSize: 11, color: 'var(--warn)', lineHeight: 1.5, marginBottom: 10 }}>
                       Presidio sidecar unavailable. Regex patterns caught SSNs, dates, phones, and emails, but may have missed names and facility identifiers.
                     </div>
                   )}
@@ -888,7 +890,7 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
                     <div key={idx} style={{ padding: '8px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4, marginBottom: 4 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{report.filename}</span>
-                        <span style={{ fontSize: 11, color: report.entityCount > 0 ? '#4caf50' : 'var(--text-secondary)', fontWeight: 600 }}>
+                        <span style={{ fontSize: 11, color: report.entityCount > 0 ? 'var(--success)' : 'var(--text-secondary)', fontWeight: 600 }}>
                           {report.entityCount} redacted
                         </span>
                       </div>
@@ -955,8 +957,8 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
                         {pipeline.styleAggregate.topTerms.slice(0, 15).map((t) => (
                           <span key={t.term} style={{
                             padding: '3px 10px',
-                            background: 'rgba(var(--accent-rgb, 74, 144, 226), 0.08)',
-                            border: '1px solid rgba(var(--accent-rgb, 74, 144, 226), 0.2)',
+                            background: 'color-mix(in srgb, var(--accent) 8%, transparent)',
+                            border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                             borderRadius: 12,
                             fontSize: 11,
                             color: 'var(--text)',
@@ -978,8 +980,8 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
                         {pipeline.styleAggregate.hedgingPhrases.slice(0, 10).map((h) => (
                           <span key={h.phrase} style={{
                             padding: '3px 10px',
-                            background: 'rgba(255, 152, 0, 0.08)',
-                            border: '1px solid rgba(255, 152, 0, 0.2)',
+                            background: 'color-mix(in srgb, var(--warn) 8%, transparent)',
+                            border: '1px solid color-mix(in srgb, var(--warn) 20%, transparent)',
                             borderRadius: 12,
                             fontSize: 11,
                             color: 'var(--text)',
@@ -1049,7 +1051,7 @@ function WritingSamplesSection({ onOpenTab }: { readonly onOpenTab?: (tab: Tab) 
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
+          background: 'rgba(0,0,0,0.5)', /* themed:skip - modal scrim */
           zIndex: 10001,
           display: 'flex',
           alignItems: 'center',
@@ -1219,7 +1221,7 @@ function StyleGuideSection(): React.JSX.Element {
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 6 }}>Tense Distribution</div>
               <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-tertiary)' }}>
                 <div style={{ width: `${voiceProfile.tenseDistribution.past}%`, background: 'var(--accent)', transition: 'width 0.3s' }} />
-                <div style={{ width: `${voiceProfile.tenseDistribution.present}%`, background: '#64748b', transition: 'width 0.3s' }} />
+                <div style={{ width: `${voiceProfile.tenseDistribution.present}%`, background: 'var(--text-secondary)', transition: 'width 0.3s' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-secondary)', marginTop: 3 }}>
                 <span>Past tense: {voiceProfile.tenseDistribution.past}%</span>
@@ -1541,7 +1543,7 @@ function TemplatesSection(): React.JSX.Element {
 
   const btnPrimary: React.CSSProperties = {
     padding: '6px 14px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 4,
-    background: 'var(--accent)', color: '#fff', cursor: 'pointer',
+    background: 'var(--accent)', color: 'var(--field-bg)', cursor: 'pointer',
   }
   const btnSecondary: React.CSSProperties = {
     padding: '5px 12px', fontSize: 11, border: '1px solid var(--border)', borderRadius: 4,
@@ -1586,8 +1588,8 @@ function TemplatesSection(): React.JSX.Element {
                     {t.evalType} - {t.sectionCount} sections
                     <span style={{
                       marginLeft: 8, padding: '1px 6px', borderRadius: 3, fontSize: 9, fontWeight: 600,
-                      background: t.source === 'builtin' ? 'rgba(0,120,212,0.1)' : 'rgba(76,175,80,0.1)',
-                      color: t.source === 'builtin' ? 'var(--accent)' : '#4caf50',
+                      background: t.source === 'builtin' ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'color-mix(in srgb, var(--success) 10%, transparent)',
+                      color: t.source === 'builtin' ? 'var(--accent)' : 'var(--success)',
                     }}>
                       {t.source === 'builtin' ? 'Built-in' : 'Custom'}
                     </span>
@@ -1604,7 +1606,7 @@ function TemplatesSection(): React.JSX.Element {
                   </button>
                   <button
                     onClick={() => handleDelete(t.id)}
-                    style={{ ...btnSecondary, color: '#ef5350', borderColor: 'rgba(239,83,80,0.3)' }}
+                    style={{ ...btnSecondary, color: 'var(--danger)', borderColor: 'color-mix(in srgb, var(--danger) 30%, transparent)' }}
                   >
                     Delete
                   </button>
@@ -1646,7 +1648,7 @@ function TemplatesSection(): React.JSX.Element {
         <div
           style={{
             position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.5)', /* themed:skip - modal scrim */ display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
           onClick={() => setAnalysis(null)}
         >
@@ -1731,7 +1733,7 @@ function TemplatesSection(): React.JSX.Element {
               display: 'flex', flexDirection: 'column', gap: 8,
             }}>
               {saveError && (
-                <div style={{ fontSize: 11, color: '#e55', padding: '6px 10px', background: 'rgba(238,85,85,0.08)', borderRadius: 4 }}>
+                <div style={{ fontSize: 11, color: 'var(--danger)', padding: '6px 10px', background: 'color-mix(in srgb, var(--danger) 8%, transparent)', borderRadius: 4 }}>
                   Error: {saveError}
                 </div>
               )}
@@ -1776,8 +1778,8 @@ function DocumentationSection(): React.JSX.Element {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function AppearanceSection(): React.JSX.Element {
-  const [theme, setTheme] = useState(
-    document.documentElement.getAttribute('data-theme') || 'light'
+  const [theme, setThemeState] = useState<ThemeKey>(
+    (document.documentElement.getAttribute('data-theme') as ThemeKey) || 'light'
   )
   const [fontSize, setFontSize] = useState(
     parseInt(localStorage.getItem('psygil-font-size') || '13', 10)
@@ -1786,16 +1788,9 @@ function AppearanceSection(): React.JSX.Element {
     localStorage.getItem('psygil-sidebar-collapsed') === 'true'
   )
 
-  const themes: { id: string; label: string; preview: { bg: string; panel: string; accent: string; text: string } }[] = [
-    { id: 'light', label: 'Light', preview: { bg: '#ffffff', panel: '#f3f3f3', accent: '#0078d4', text: '#1e1e1e' } },
-    { id: 'medium', label: 'Warm', preview: { bg: '#faf8f4', panel: '#e6ddd0', accent: '#8b5e3c', text: '#2c2418' } },
-    { id: 'dark', label: 'Dark', preview: { bg: '#0d1117', panel: '#161b22', accent: '#58a6ff', text: '#c9d1d9' } },
-  ]
-
-  const applyTheme = useCallback((id: string) => {
-    setTheme(id)
-    document.documentElement.setAttribute('data-theme', id)
-    localStorage.setItem('psygil-theme', id)
+  const handleThemeSelect = useCallback((key: ThemeKey) => {
+    setThemeState(key)
+    applyThemeKey(key)
   }, [])
 
   const applyFontSize = useCallback((size: number) => {
@@ -1814,20 +1809,20 @@ function AppearanceSection(): React.JSX.Element {
       {/* Theme picker */}
       <div style={card}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 14 }}>Theme</div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          {themes.map((t) => {
-            const active = theme === t.id
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {THEME_CHOICES.map((t) => {
+            const active = theme === t.key
             return (
               <button
-                key={t.id}
-                onClick={() => applyTheme(t.id)}
+                key={t.key}
+                onClick={() => handleThemeSelect(t.key)}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: 8,
                   padding: 12,
-                  border: active ? `2px solid var(--accent)` : '2px solid var(--border)',
+                  border: active ? '2px solid var(--accent)' : '2px solid var(--border)',
                   borderRadius: 8,
                   background: 'transparent',
                   cursor: 'pointer',
@@ -1835,7 +1830,7 @@ function AppearanceSection(): React.JSX.Element {
                   fontFamily: 'inherit',
                 }}
               >
-                {/* Mini preview */}
+                {/* Mini preview swatch */}
                 <div
                   style={{
                     width: 80,
@@ -1885,6 +1880,8 @@ function AppearanceSection(): React.JSX.Element {
           <span>Large</span>
         </div>
       </div>
+      {/* sidebarCollapsed is read but toggling is a future feature; keep it from being flagged unused */}
+      {sidebarCollapsed && null}
     </div>
   )
 }
@@ -2005,8 +2002,8 @@ function AiModelsSection(): React.JSX.Element {
               disabled={connectionStatus === 'testing'}
               style={{
                 ...btnPrimary,
-                background: connectionStatus === 'connected' ? '#4caf50'
-                  : connectionStatus === 'error' ? '#e54040'
+                background: connectionStatus === 'connected' ? 'var(--success)'
+                  : connectionStatus === 'error' ? 'var(--danger)'
                   : undefined,
                 opacity: connectionStatus === 'testing' ? 0.6 : 1,
               }}
@@ -2035,12 +2032,12 @@ function AiModelsSection(): React.JSX.Element {
         )}
 
         {connectionStatus === 'connected' && connectedModel && (
-          <div style={{ fontSize: 11, color: '#4caf50', marginTop: 4 }}>
+          <div style={{ fontSize: 11, color: 'var(--success)', marginTop: 4 }}>
             Connected to {connectedModel}
           </div>
         )}
         {connectionError && (
-          <div style={{ fontSize: 11, color: '#e54040', marginTop: 4 }}>{connectionError}</div>
+          <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>{connectionError}</div>
         )}
       </div>
 
@@ -2065,7 +2062,7 @@ function AiModelsSection(): React.JSX.Element {
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>PHI Redaction Pipeline</div>
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: '#4caf5018', color: '#4caf50' }}>ALWAYS ON</span>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'color-mix(in srgb, var(--success) 10%, transparent)', color: 'var(--success)' }}>ALWAYS ON</span>
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
           All patient data is redacted to anonymous UNIDs before being sent to the Claude API. PHI is rehydrated only after the response is received and stored locally. This pipeline cannot be disabled, it is a core HIPAA safeguard.
@@ -2082,7 +2079,7 @@ function AiModelsSection(): React.JSX.Element {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, color: 'var(--text)' }}>
           <div>
             <span style={{ ...fieldLabel, marginBottom: 2 }}>Status</span>
-            <div style={{ fontWeight: 600, color: whisperStatus?.sidecarReady ? '#4caf50' : '#e54040' }}>
+            <div style={{ fontWeight: 600, color: whisperStatus?.sidecarReady ? 'var(--success)' : 'var(--danger)' }}>
               {whisperStatus?.sidecarReady ? 'Running' : 'Not available'}
             </div>
           </div>
@@ -2194,7 +2191,7 @@ function PracticeSection(): React.JSX.Element {
 
         <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={handleSave} style={btnPrimary}>Save Profile</button>
-          {saved && <span style={{ fontSize: 11, color: '#4caf50', fontWeight: 600 }}>Saved</span>}
+          {saved && <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 600 }}>Saved</span>}
         </div>
       </div>
 
@@ -2298,7 +2295,7 @@ function DataStorageSection(): React.JSX.Element {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, fontSize: 12 }}>
           <div>
             <span style={{ ...fieldLabel, marginBottom: 2 }}>Encryption</span>
-            <div style={{ fontWeight: 600, color: dbHealth?.encrypted ? '#4caf50' : '#e54040' }}>
+            <div style={{ fontWeight: 600, color: dbHealth?.encrypted ? 'var(--success)' : 'var(--danger)' }}>
               {dbHealth?.encrypted ? 'AES-256 (SQLCipher)' : 'Unknown'}
             </div>
           </div>
@@ -2319,8 +2316,8 @@ function DataStorageSection(): React.JSX.Element {
       </div>
 
       {/* Danger zone */}
-      <div style={{ ...card, borderColor: '#e5404040' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#e54040', marginBottom: 6 }}>Danger Zone</div>
+      <div style={{ ...card, borderColor: 'color-mix(in srgb, var(--danger) 25%, transparent)' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--danger)', marginBottom: 6 }}>Danger Zone</div>
         <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
           These actions are destructive and cannot be undone.
         </div>

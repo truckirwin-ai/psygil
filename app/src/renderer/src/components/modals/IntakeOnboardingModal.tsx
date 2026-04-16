@@ -657,7 +657,7 @@ export default function IntakeOnboardingModal({
           )}
 
           {error && (
-            <div style={{ color: '#d32f2f', fontSize: 13, padding: '8px 12px', background: '#ffebee', borderRadius: 4 }}>
+            <div style={{ color: 'var(--danger)', fontSize: 13, padding: '8px 12px', background: 'color-mix(in srgb, var(--danger) 8%, transparent)', borderRadius: 4 }}>
               {error}
             </div>
           )}
@@ -933,7 +933,7 @@ function IntakeReferralStep({
           </span>
         </div>
         {parseError && (
-          <div style={{ fontSize: 11, color: '#d32f2f', marginTop: 4 }}>{parseError}</div>
+          <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>{parseError}</div>
         )}
       </div>
 
@@ -1665,7 +1665,7 @@ function Field({ label, flex = 1, children }: FieldProps): React.JSX.Element {
 const overlayStyle: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.55)',
+  background: 'rgba(0,0,0,0.55)', /* themed:skip - modal scrim */
   zIndex: 9999,
   display: 'flex',
   alignItems: 'center',
@@ -1782,7 +1782,7 @@ const rowStyle: React.CSSProperties = {
 
 const activeChipStyle: React.CSSProperties = {
   background: 'var(--accent)',
-  color: '#ffffff',
+  color: 'var(--field-bg)',
   border: '1px solid var(--accent)',
   borderRadius: 4,
   padding: '4px 12px',
@@ -1882,8 +1882,8 @@ const clinicianBoxStyle: React.CSSProperties = {
 const patientBadgeStyle: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 600,
-  background: '#fff3cd',
-  color: '#856404',
+  background: 'color-mix(in srgb, var(--warn) 10%, transparent)',
+  color: 'var(--warn)',
   padding: '2px 8px',
   borderRadius: 4,
   letterSpacing: 0.3,
@@ -1892,8 +1892,8 @@ const patientBadgeStyle: React.CSSProperties = {
 const underReviewBadgeStyle: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 600,
-  background: '#fff3cd',
-  color: '#856404',
+  background: 'color-mix(in srgb, var(--warn) 10%, transparent)',
+  color: 'var(--warn)',
   padding: '2px 8px',
   borderRadius: 4,
   letterSpacing: 0.3,
@@ -1934,7 +1934,7 @@ const radioLabelStyle: React.CSSProperties = {
 
 const primaryButtonStyle: React.CSSProperties = {
   background: 'var(--accent)',
-  color: '#ffffff',
+  color: 'var(--field-bg)',
   border: 'none',
   borderRadius: 4,
   padding: '8px 22px',

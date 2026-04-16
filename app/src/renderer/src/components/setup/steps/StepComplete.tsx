@@ -4,9 +4,14 @@
  * Displays a configuration summary, calls setup:complete to mark the
  * wizard as finished, and gives the user two ways to enter the app:
  * Open Psygil (Dashboard) or Create First Case.
+ *
+ * Phase E.2 additions:
+ *  - Template preview: each provisioned template has a "Preview" button
+ *    that opens it in the OS default viewer via window.psygil.templates.open.
+ *  - "Reveal in Finder" button for the workspace storage path.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { StepProps } from '../shared'
 import { styles } from '../shared'
 
@@ -14,6 +19,31 @@ interface StepCompleteProps extends StepProps {
   readonly onComplete: () => void
   readonly onCreateFirstCase?: () => void
 }
+
+interface TemplateRow {
+  readonly id: string
+  readonly evalType: string
+  readonly title: string
+}
+
+// ---------------------------------------------------------------------------
+// Platform label for the reveal-in-finder button
+// ---------------------------------------------------------------------------
+
+function revealButtonLabel(): string {
+  const platform =
+    typeof window !== 'undefined' && 'psygil' in window && typeof (window.psygil as { platform?: string }).platform === 'string'
+      ? (window.psygil as { platform: string }).platform
+      : navigator.platform.toLowerCase()
+
+  if (platform.startsWith('win')) return 'Show in File Explorer'
+  if (platform === 'darwin' || platform.startsWith('mac')) return 'Reveal in Finder'
+  return 'Open folder'
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export default function StepComplete({
   config,
@@ -23,6 +53,16 @@ export default function StepComplete({
 }: StepCompleteProps): React.JSX.Element {
   const [finishing, setFinishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<readonly TemplateRow[]>([])
+
+  // Load provisioned templates for the preview list
+  useEffect(() => {
+    void window.psygil.setup.getSupportedEvalTypes().then((resp) => {
+      if (resp.status === 'success') {
+        setTemplates(resp.data.templates)
+      }
+    })
+  }, [])
 
   const finalize = async (createCase: boolean): Promise<void> => {
     setError(null)
@@ -46,6 +86,19 @@ export default function StepComplete({
     }
   }
 
+  const handleRevealStorage = (): void => {
+    const path = config.storage?.projectRoot
+    if (path !== undefined && path.length > 0) {
+      void window.psygil.workspace.openInFinder(path)
+    }
+  }
+
+  const handlePreviewTemplate = (templateId: string): void => {
+    void window.psygil.templates.open({ id: templateId })
+  }
+
+  const workspacePath = config.storage?.projectRoot ?? null
+
   const summary: { label: string; value: string }[] = [
     {
       label: 'License',
@@ -56,7 +109,7 @@ export default function StepComplete({
     },
     {
       label: 'Storage',
-      value: config.storage?.projectRoot ?? '-',
+      value: workspacePath ?? '-',
     },
     {
       label: 'Practitioner',
@@ -109,6 +162,7 @@ export default function StepComplete({
             style={{
               display: 'flex',
               justifyContent: 'space-between',
+              alignItems: 'center',
               padding: '6px 0',
               borderBottom: '1px solid var(--border)',
               fontSize: 13,
@@ -120,7 +174,75 @@ export default function StepComplete({
             </span>
           </div>
         ))}
+
+        {workspacePath !== null && (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingTop: 8,
+              marginTop: 4,
+            }}
+          >
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              {workspacePath}
+            </span>
+            <button
+              type="button"
+              style={{ ...styles.secondaryButton, fontSize: 12, padding: '4px 10px' }}
+              onClick={handleRevealStorage}
+            >
+              {revealButtonLabel()}
+            </button>
+          </div>
+        )}
       </div>
+
+      {templates.length > 0 && (
+        <div style={styles.card}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            Provisioned templates
+          </div>
+          {templates.map((t) => (
+            <div
+              key={t.id}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '6px 0',
+                borderBottom: '1px solid var(--border)',
+                fontSize: 13,
+              }}
+            >
+              <div>
+                <span style={{ color: 'var(--text)', fontWeight: 500 }}>{t.title}</span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--text-secondary)',
+                    marginLeft: 8,
+                    background: 'var(--panel)',
+                    padding: '1px 6px',
+                    borderRadius: 3,
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  {t.evalType}
+                </span>
+              </div>
+              <button
+                type="button"
+                style={{ ...styles.secondaryButton, fontSize: 12, padding: '4px 10px' }}
+                onClick={() => handlePreviewTemplate(t.id)}
+              >
+                Preview
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={styles.footerActions}>
         <button

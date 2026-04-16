@@ -122,7 +122,7 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(0,0,0,0.65)',
+        background: 'rgba(0,0,0,0.65)', /* themed:skip - modal scrim */
         backdropFilter: 'blur(4px)',
       }}
       onClick={(e) => {
@@ -131,29 +131,29 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
     >
       <div
         style={{
-          background: '#161b22',
-          border: '1px solid #30363d',
+          background: 'var(--panel)',
+          border: '1px solid var(--border)',
           borderRadius: '12px',
           width: '480px',
           maxWidth: '90vw',
           maxHeight: '80vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.5)', /* themed:skip - shadow */
           overflow: 'hidden',
         }}
       >
         {/* Header */}
-        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #21262d' }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#e6edf3' }}>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text)' }}>
                 Update Available
               </div>
-              <div style={{ fontSize: '13px', color: '#8b949e', marginTop: '2px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                 Version {event.version}
                 {event.downloadSize > 0 && (
-                  <span style={{ marginLeft: '8px', color: '#58a6ff' }}>
+                  <span style={{ marginLeft: '8px', color: 'var(--accent)' }}>
                     ({formatBytes(event.downloadSize)})
                   </span>
                 )}
@@ -164,7 +164,7 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#8b949e',
+                color: 'var(--text-secondary)',
                 cursor: 'pointer',
                 fontSize: '18px',
                 lineHeight: 1,
@@ -183,7 +183,7 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
             overflowY: 'auto',
             padding: '16px 24px',
             fontSize: '13px',
-            color: '#c9d1d9',
+            color: 'var(--text)',
             lineHeight: 1.6,
           }}
           dangerouslySetInnerHTML={{ __html: notesHtml }}
@@ -194,13 +194,13 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
           <div style={{ padding: '0 24px 8px' }}>
             <div style={{
               height: '4px',
-              background: '#21262d',
+              background: 'var(--border)',
               borderRadius: '2px',
               overflow: 'hidden',
             }}>
               <div style={{
                 height: '100%',
-                background: '#58a6ff',
+                background: 'var(--accent)',
                 borderRadius: '2px',
                 width: `${download.percent}%`,
                 transition: 'width 0.2s ease',
@@ -222,11 +222,11 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
           <div style={{
             margin: '0 24px 12px',
             padding: '10px 14px',
-            background: '#da363322',
-            border: '1px solid #da3633',
+            background: 'color-mix(in srgb, var(--danger) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
             borderRadius: '6px',
             fontSize: '13px',
-            color: '#f85149',
+            color: 'var(--danger)',
           }}>
             {errorMessage}
           </div>
@@ -237,11 +237,11 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
           <div style={{
             margin: '0 24px 12px',
             padding: '10px 14px',
-            background: '#1a7f3722',
-            border: '1px solid #238636',
+            background: 'color-mix(in srgb, var(--success) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)',
             borderRadius: '6px',
             fontSize: '13px',
-            color: '#3fb950',
+            color: 'var(--success)',
           }}>
             Download complete. The installer will launch and the app will close.
           </div>
@@ -253,17 +253,17 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
           display: 'flex',
           justifyContent: 'flex-end',
           gap: '8px',
-          borderTop: '1px solid #21262d',
+          borderTop: '1px solid var(--border)',
         }}>
           <button
             onClick={handleClose}
             disabled={phase === 'downloading'}
             style={{
               padding: '8px 16px',
-              background: '#21262d',
-              border: '1px solid #30363d',
+              background: 'var(--panel)',
+              border: '1px solid var(--border)',
               borderRadius: '6px',
-              color: '#e6edf3',
+              color: 'var(--text)',
               cursor: phase === 'downloading' ? 'not-allowed' : 'pointer',
               fontSize: '13px',
               opacity: phase === 'downloading' ? 0.5 : 1,
@@ -276,10 +276,10 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
             disabled={phase === 'downloading' || phase === 'ready'}
             style={{
               padding: '8px 16px',
-              background: phase === 'ready' ? '#238636' : '#238636',
+              background: 'var(--success)',
               border: 'none',
               borderRadius: '6px',
-              color: '#fff',
+              color: 'var(--field-bg)',
               cursor: phase === 'downloading' || phase === 'ready' ? 'not-allowed' : 'pointer',
               fontSize: '13px',
               fontWeight: 500,

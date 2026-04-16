@@ -70,7 +70,7 @@ export function BrandingProvider({ children }: { children: ReactNode }): React.J
     let cancelled = false
     void (async () => {
       try {
-        // @ts-ignore — branding namespace added to PsygilApi
+        // @ts-ignore , branding namespace added to PsygilApi
         const resp = await window.psygil.branding.get()
         if (!cancelled && resp.status === 'success') {
           setBranding(resp.data as PracticeBranding)
@@ -84,7 +84,7 @@ export function BrandingProvider({ children }: { children: ReactNode }): React.J
 
   // Subscribe to main-process broadcasts
   useEffect(() => {
-    // @ts-ignore — onChanged added to PsygilApi
+    // @ts-ignore , onChanged added to PsygilApi
     const unsubscribe = window.psygil.branding.onChanged?.((updated: PracticeBranding) => {
       setBranding(updated)
     })

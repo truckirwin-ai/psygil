@@ -21,6 +21,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { IpcResponse } from '../../../../shared/types/ipc'
 import type { UninstallWipeResult } from '../../../../shared/types/ipc'
+import DangerZoneResources from './DangerZoneResources'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -47,8 +48,8 @@ const panelStyle: React.CSSProperties = {
 
 const dangerPanelStyle: React.CSSProperties = {
   ...panelStyle,
-  borderColor: '#C0392B44',
-  background: '#1a0a0a',
+  borderColor: 'color-mix(in srgb, var(--danger) 25%, transparent)',
+  background: 'color-mix(in srgb, var(--danger) 4%, var(--panel))',
 }
 
 const sectionTitleStyle: React.CSSProperties = {
@@ -95,8 +96,8 @@ const btnBase: React.CSSProperties = {
 
 const dangerBtnStyle: React.CSSProperties = {
   ...btnBase,
-  background: '#C0392B',
-  color: '#fff',
+  background: 'var(--danger)',
+  color: 'var(--field-bg)',
 }
 
 const disabledDangerBtnStyle: React.CSSProperties = {
@@ -114,8 +115,8 @@ const secondaryBtnStyle: React.CSSProperties = {
 
 const successPanelStyle: React.CSSProperties = {
   ...panelStyle,
-  borderColor: '#27AE6044',
-  background: '#0a1a0f',
+  borderColor: 'color-mix(in srgb, var(--success) 25%, transparent)',
+  background: 'color-mix(in srgb, var(--success) 4%, var(--panel))',
   textAlign: 'center' as const,
 }
 
@@ -208,7 +209,7 @@ export default function DangerZone({ workspaceFolderName, onComplete }: DangerZo
       <div style={dangerPanelStyle}>
         <div style={sectionTitleStyle}>Danger Zone</div>
         <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-          <strong style={{ color: '#E74C3C' }}>Remove all local data</strong> permanently deletes
+          <strong style={{ color: 'var(--danger)' }}>Remove all local data</strong> permanently deletes
           your encrypted database, API credentials, and configuration. Your case files on disk are
           not deleted automatically: you control those. This action cannot be undone.
         </p>
@@ -230,14 +231,14 @@ export default function DangerZone({ workspaceFolderName, onComplete }: DangerZo
         <div style={sectionTitleStyle}>Confirm: Type workspace folder name</div>
         <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
           To continue, type the workspace folder name exactly:
-          {' '}<code style={{ background: '#2a0a0a', padding: '1px 5px', borderRadius: 3, color: '#E74C3C' }}>
+          {' '}<code style={{ background: 'color-mix(in srgb, var(--danger) 8%, var(--panel))', padding: '1px 5px', borderRadius: 3, color: 'var(--danger)' }}>
             {workspaceFolderName}
           </code>
         </p>
         <div style={{ marginBottom: 14 }}>
           <label style={labelStyle}>Workspace folder name</label>
           <input
-            style={{ ...inputStyle, borderColor: nameInput.length > 0 && !matches ? '#C0392B' : undefined }}
+            style={{ ...inputStyle, borderColor: nameInput.length > 0 && !matches ? 'var(--danger)' : undefined }}
             type="text"
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
@@ -300,7 +301,7 @@ export default function DangerZone({ workspaceFolderName, onComplete }: DangerZo
   function renderDone(): React.JSX.Element {
     return (
       <div style={successPanelStyle}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#27AE60', marginBottom: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--success)', marginBottom: 10 }}>
           Data removed successfully
         </div>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, lineHeight: 1.5 }}>
@@ -323,7 +324,7 @@ export default function DangerZone({ workspaceFolderName, onComplete }: DangerZo
     return (
       <div style={dangerPanelStyle}>
         <div style={sectionTitleStyle}>Wipe failed</div>
-        <p style={{ fontSize: 12.5, color: '#E74C3C', marginBottom: 14, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12.5, color: 'var(--danger)', marginBottom: 14, lineHeight: 1.5 }}>
           {errorMsg}
         </p>
         <button style={secondaryBtnStyle} onClick={handleCancel}>
@@ -340,22 +341,7 @@ export default function DangerZone({ workspaceFolderName, onComplete }: DangerZo
   function renderDemoResources(): React.JSX.Element | null {
     // Do not show after a wipe (no data to load into)
     if (step === 'done') return null
-    return (
-      <div style={panelStyle}>
-        <div style={sectionTitleStyle}>Demo Resources</div>
-        <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-          Load sample writing samples and documentation into your workspace for testing or
-          demonstration purposes.
-        </p>
-        <button
-          style={{ ...secondaryBtnStyle, opacity: 0.5, cursor: 'not-allowed' }}
-          disabled
-          title="Phase E.6 - Coming soon"
-        >
-          Load demo resources (coming soon)
-        </button>
-      </div>
-    )
+    return <DangerZoneResources />
   }
 
   // ---------------------------------------------------------------------------

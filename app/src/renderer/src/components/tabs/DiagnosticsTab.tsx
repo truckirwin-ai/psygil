@@ -383,7 +383,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
         <h1 style={{ fontSize: '16px', marginBottom: '16px' }}>Diagnostics, Clinical Formulation</h1>
 
         {/* RED WARNING BANNER */}
-        <div style={{ background: '#f44336', color: 'white', padding: '16px', borderRadius: '4px', marginBottom: '20px', border: '4px solid #d32f2f' }}>
+        <div style={{ background: 'var(--danger)', color: 'white', padding: '16px', borderRadius: '4px', marginBottom: '20px', border: '4px solid color-mix(in srgb, var(--danger) 80%, #000)' }}>
           <p style={{ fontWeight: 600, fontSize: '14px', margin: '0 0 8px 0' }}>
             ⚠ DOCTOR ALWAYS DIAGNOSES, Never the AI
           </p>
@@ -421,15 +421,15 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
   // Helper: render met status badge
   const MetBadge = ({ status }: { status: string }) => {
     const colors: Record<string, string> = {
-      met: '#4caf50',
-      not_met: '#f44336',
-      insufficient_data: '#ff9800',
+      met: 'var(--success)',
+      not_met: 'var(--danger)',
+      insufficient_data: 'var(--warn)',
     }
     return (
       <span style={{
         display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
         fontSize: '10px', fontWeight: 600, color: '#fff',
-        background: colors[status] || '#999', marginLeft: '6px',
+        background: colors[status] || 'var(--text-secondary)', marginLeft: '6px',
       }}>
         {status.replace(/_/g, ' ')}
       </span>
@@ -447,7 +447,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
       <h1 style={{ fontSize: '16px', marginBottom: '16px' }}>Diagnostics, Clinical Formulation</h1>
 
       {/* ██ RED WARNING BANNER ██ */}
-      <div style={{ background: '#f44336', color: 'white', padding: '16px', borderRadius: '4px', marginBottom: '20px', border: '4px solid #d32f2f' }}>
+      <div style={{ background: 'var(--danger)', color: 'white', padding: '16px', borderRadius: '4px', marginBottom: '20px', border: '4px solid color-mix(in srgb, var(--danger) 80%, #000)' }}>
         <p style={{ fontWeight: 600, fontSize: '14px', margin: '0 0 8px 0' }}>
           ⚠ DOCTOR ALWAYS DIAGNOSES, Never the AI
         </p>
@@ -464,34 +464,34 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
           {decisions.length} diagnoses presented
         </span>
         {undecided > 0 && (
-          <span style={{ padding: '4px 10px', borderRadius: '3px', background: '#fff3e0', color: '#e65100', fontWeight: 600 }}>
+          <span style={{ padding: '4px 10px', borderRadius: '3px', background: 'color-mix(in srgb, var(--warn) 15%, transparent)', color: 'var(--warn)', fontWeight: 600 }}>
             {undecided} undecided
           </span>
         )}
         {rendered > 0 && (
-          <span style={{ padding: '4px 10px', borderRadius: '3px', background: '#e8f5e9', color: '#2e7d32' }}>
+          <span style={{ padding: '4px 10px', borderRadius: '3px', background: 'color-mix(in srgb, var(--success) 12%, transparent)', color: 'var(--success)' }}>
             {rendered} rendered
           </span>
         )}
         {ruledOut > 0 && (
-          <span style={{ padding: '4px 10px', borderRadius: '3px', background: '#ffebee', color: '#c62828' }}>
+          <span style={{ padding: '4px 10px', borderRadius: '3px', background: 'color-mix(in srgb, var(--danger) 10%, transparent)', color: 'var(--danger)' }}>
             {ruledOut} ruled out
           </span>
         )}
         {deferred > 0 && (
-          <span style={{ padding: '4px 10px', borderRadius: '3px', background: '#e3f2fd', color: '#1565c0' }}>
+          <span style={{ padding: '4px 10px', borderRadius: '3px', background: 'color-mix(in srgb, var(--info) 10%, transparent)', color: 'var(--info)' }}>
             {deferred} deferred
           </span>
         )}
       </div>
 
       {/* ===== SECTION 1: VALIDITY ASSESSMENT ===== */}
-      <div style={{ ...cardStyle, borderColor: '#4caf50' }}>
-        <div style={{ ...cardHeaderStyle, background: '#e8f5e9' }}>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: '#2e7d32' }}>
+      <div style={{ ...cardStyle, borderColor: 'var(--success)' }}>
+        <div style={{ ...cardHeaderStyle, background: 'color-mix(in srgb, var(--success) 10%, transparent)' }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--success)' }}>
             Validity & Effort Assessment
           </div>
-          <div style={{ fontSize: '11px', color: '#558b2f', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--success)', marginTop: '4px', opacity: 0.8 }}>
             Processed first, determines interpretability of all test data
           </div>
         </div>
@@ -503,7 +503,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
               {(validity.effort_tests as Array<Record<string, unknown>>).map((test, i) => (
                 <div key={i} style={{ display: 'flex', gap: '12px', fontSize: '12px', padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
                   <strong style={{ minWidth: '100px' }}>{String(test.test_name)}</strong>
-                  <span style={{ color: String(test.status) === 'pass' ? '#4caf50' : String(test.status) === 'fail' ? '#f44336' : '#999' }}>
+                  <span style={{ color: String(test.status) === 'pass' ? 'var(--success)' : String(test.status) === 'fail' ? 'var(--danger)' : 'var(--text-secondary)' }}>
                     {String(test.status).toUpperCase()}
                   </span>
                   <span style={{ color: 'var(--text-secondary)' }}>
@@ -568,9 +568,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
 
         // Decision border color
         let borderColor = 'var(--border)'
-        if (decision?.decision === 'render') borderColor = '#4caf50'
-        if (decision?.decision === 'rule_out') borderColor = '#f44336'
-        if (decision?.decision === 'defer') borderColor = '#2196f3'
+        if (decision?.decision === 'render') borderColor = 'var(--success)'
+        if (decision?.decision === 'rule_out') borderColor = 'var(--danger)'
+        if (decision?.decision === 'defer') borderColor = 'var(--info)'
 
         return (
           <div key={diagKey} style={{ ...cardStyle, borderColor, borderWidth: decision?.decision ? '2px' : '1px' }}>
@@ -593,7 +593,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                 {decision?.decision && (
                   <span style={{
                     padding: '2px 8px', borderRadius: '3px', fontSize: '10px', fontWeight: 600, color: '#fff',
-                    background: decision.decision === 'render' ? '#4caf50' : decision.decision === 'rule_out' ? '#f44336' : '#2196f3',
+                    background: decision.decision === 'render' ? 'var(--success)' : decision.decision === 'rule_out' ? 'var(--danger)' : 'var(--info)',
                   }}>
                     {decision.decision === 'render' ? 'RENDERED' : decision.decision === 'rule_out' ? 'RULED OUT' : 'DEFERRED'}
                   </span>
@@ -624,7 +624,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                         )}
                         {!!critData.supporting_evidence && Array.isArray(critData.supporting_evidence) && (critData.supporting_evidence as unknown[]).length > 0 ? (
                           <div style={{ marginBottom: '4px' }}>
-                            <span style={{ fontSize: '10px', color: '#4caf50', fontWeight: 600 }}>Supporting:</span>
+                            <span style={{ fontSize: '10px', color: 'var(--success)', fontWeight: 600 }}>Supporting:</span>
                             {(critData.supporting_evidence as Array<Record<string, unknown>>).map((ev, i) => (
                               <div key={i} style={{ fontSize: '11px', color: 'var(--text)', paddingLeft: '12px' }}>
                                 • {typeof ev === 'object' ? String(ev.source || JSON.stringify(ev)) : String(ev)}
@@ -637,7 +637,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                         ) : null}
                         {!!critData.contradicting_evidence && Array.isArray(critData.contradicting_evidence) && (critData.contradicting_evidence as unknown[]).length > 0 ? (
                           <div>
-                            <span style={{ fontSize: '10px', color: '#f44336', fontWeight: 600 }}>Contradicting:</span>
+                            <span style={{ fontSize: '10px', color: 'var(--danger)', fontWeight: 600 }}>Contradicting:</span>
                             {(critData.contradicting_evidence as Array<Record<string, unknown>>).map((ev, i) => (
                               <div key={i} style={{ fontSize: '11px', color: 'var(--text)', paddingLeft: '12px' }}>
                                 • {typeof ev === 'object' ? String(ev.source || JSON.stringify(ev)) : String(ev)}
@@ -678,9 +678,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                       onClick={() => setDecision(diagKey, decision?.decision === 'render' ? null : 'render')}
                       style={{
                         ...btnBase,
-                        background: decision?.decision === 'render' ? '#4caf50' : 'var(--panel)',
+                        background: decision?.decision === 'render' ? 'var(--success)' : 'var(--panel)',
                         color: decision?.decision === 'render' ? '#fff' : 'var(--text)',
-                        borderColor: decision?.decision === 'render' ? '#4caf50' : 'var(--border)',
+                        borderColor: decision?.decision === 'render' ? 'var(--success)' : 'var(--border)',
                       }}
                     >
                       {decision?.decision === 'render' ? '✓ Render' : 'Render'}
@@ -689,9 +689,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                       onClick={() => setDecision(diagKey, decision?.decision === 'rule_out' ? null : 'rule_out')}
                       style={{
                         ...btnBase,
-                        background: decision?.decision === 'rule_out' ? '#f44336' : 'var(--panel)',
+                        background: decision?.decision === 'rule_out' ? 'var(--danger)' : 'var(--panel)',
                         color: decision?.decision === 'rule_out' ? '#fff' : 'var(--text)',
-                        borderColor: decision?.decision === 'rule_out' ? '#f44336' : 'var(--border)',
+                        borderColor: decision?.decision === 'rule_out' ? 'var(--danger)' : 'var(--border)',
                       }}
                     >
                       {decision?.decision === 'rule_out' ? '✕ Rule Out' : 'Rule Out'}
@@ -700,9 +700,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                       onClick={() => setDecision(diagKey, decision?.decision === 'defer' ? null : 'defer')}
                       style={{
                         ...btnBase,
-                        background: decision?.decision === 'defer' ? '#2196f3' : 'var(--panel)',
+                        background: decision?.decision === 'defer' ? 'var(--info)' : 'var(--panel)',
                         color: decision?.decision === 'defer' ? '#fff' : 'var(--text)',
-                        borderColor: decision?.decision === 'defer' ? '#2196f3' : 'var(--border)',
+                        borderColor: decision?.decision === 'defer' ? 'var(--info)' : 'var(--border)',
                       }}
                     >
                       {decision?.decision === 'defer' ? '⏸ Defer' : 'Defer'}
@@ -754,12 +754,12 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                         </div>
                         {!!feat.evidence_for_diagnosis_1 && (
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '12px' }}>
-                            <span style={{ color: '#2196f3' }}>Dx 1:</span> {String(feat.evidence_for_diagnosis_1)}
+                            <span style={{ color: 'var(--info)' }}>Dx 1:</span> {String(feat.evidence_for_diagnosis_1)}
                           </div>
                         )}
                         {!!feat.evidence_for_diagnosis_2 && (
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '12px' }}>
-                            <span style={{ color: '#ff9800' }}>Dx 2:</span> {String(feat.evidence_for_diagnosis_2)}
+                            <span style={{ color: 'var(--warn)' }}>Dx 2:</span> {String(feat.evidence_for_diagnosis_2)}
                           </div>
                         )}
                       </div>
@@ -796,7 +796,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
               )}
               {!!psycholegal.standard_elements && Array.isArray(psycholegal.standard_elements) && (
                 (psycholegal.standard_elements as Array<Record<string, unknown>>).map((elem, i) => (
-                  <div key={i} style={{ marginBottom: '8px', paddingLeft: '12px', borderLeft: '3px solid #ff9800' }}>
+                  <div key={i} style={{ marginBottom: '8px', paddingLeft: '12px', borderLeft: '3px solid var(--warn)' }}>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
                       {String(elem.element)}
                     </div>
@@ -812,7 +812,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                 ))
               )}
               {!!psycholegal.critical_gaps && (
-                <div style={{ padding: '8px', background: '#fff3e0', borderRadius: '4px', fontSize: '12px', color: '#e65100', marginTop: '8px' }}>
+                <div style={{ padding: '8px', background: 'color-mix(in srgb, var(--warn) 15%, transparent)', borderRadius: '4px', fontSize: '12px', color: 'var(--warn)', marginTop: '8px' }}>
                   <strong>Gaps:</strong> {String(psycholegal.critical_gaps)}
                 </div>
               )}
@@ -905,12 +905,12 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
           Save Diagnostic Decisions
         </button>
         {formulationSaved && (
-          <span style={{ fontSize: '12px', color: '#4caf50', alignSelf: 'center' }}>
+          <span style={{ fontSize: '12px', color: 'var(--success)', alignSelf: 'center' }}>
             Saved
           </span>
         )}
         {undecided > 0 && (
-          <span style={{ fontSize: '12px', color: '#e65100', alignSelf: 'center' }}>
+          <span style={{ fontSize: '12px', color: 'var(--warn)', alignSelf: 'center' }}>
             {undecided} diagnosis{undecided > 1 ? 'es' : ''} still undecided
           </span>
         )}

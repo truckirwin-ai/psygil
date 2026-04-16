@@ -104,6 +104,31 @@ body.row-resizing .h-splitter {
   color: var(--accent);
 }
 
+/* Form input token routing, fields remain white regardless of chrome theme */
+input,
+textarea,
+select {
+  background: var(--field-bg);
+  color: var(--field-text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* Selection highlight */
+::selection {
+  background: var(--highlight);
+  color: var(--text);
+}
+
 /* Tab bar, hide scrollbar for horizontal overflow (spec §8.1) */
 .tab-bar {
   scrollbar-width: none; /* Firefox */

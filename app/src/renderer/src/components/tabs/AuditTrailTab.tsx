@@ -69,13 +69,13 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'complete':
-        return '#4caf50'
+        return 'var(--success)'
       case 'in_progress':
-        return '#ff9800'
+        return 'var(--warn)'
       case 'error':
-        return '#f44336'
+        return 'var(--danger)'
       default:
-        return '#808080'
+        return 'var(--text-secondary)'
     }
   }
 
@@ -97,9 +97,9 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
       case 'clinician':
         return 'var(--accent)'
       case 'agent':
-        return '#9c27b0'
+        return '#9c27b0' // themed:skip - intentional purple for agent actor type
       case 'system':
-        return '#9e9e9e'
+        return 'var(--text-secondary)'
       default:
         return 'var(--text-secondary)'
     }
@@ -211,13 +211,13 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
       {error && (
         <div
           style={{
-            background: '#ffebee',
-            color: '#c62828',
+            background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+            color: 'var(--danger)',
             padding: '12px',
             borderRadius: '4px',
             marginBottom: '20px',
             fontSize: '12px',
-            border: '1px solid #ef5350',
+            border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
           }}
         >
           <strong>Error:</strong> {error}
@@ -403,7 +403,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '20px', fontWeight: 700, color: '#9c27b0' }}>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: '#9c27b0' /* themed:skip - agent purple */ }}>
                 {entries.filter((e) => e.actorType === 'ai_agent').length}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -477,9 +477,9 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
           style={{
             marginTop: '16px',
             padding: '12px',
-            background: verifyResult.valid ? '#c8e6c9' : '#ffcdd2',
-            color: verifyResult.valid ? '#1b5e20' : '#b71c1c',
-            border: `1px solid ${verifyResult.valid ? '#4caf50' : '#f44336'}`,
+            background: verifyResult.valid ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'color-mix(in srgb, var(--danger) 12%, transparent)',
+            color: verifyResult.valid ? 'var(--success)' : 'var(--danger)',
+            border: `1px solid ${verifyResult.valid ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'color-mix(in srgb, var(--danger) 30%, transparent)'}`,
             borderRadius: '4px',
             fontSize: '12px',
           }}

@@ -1,7 +1,9 @@
-/* Psygil Design Tokens, 7 CSS variables, 3 themes */
-/* Source: 25_UI_Visual_Spec_v4.md §2 */
+/* Psygil Design Tokens - 4 themes, 15 CSS variables each */
+/* Source: 25_UI_Visual_Spec_v4.md - E.7 four-theme rebuild */
 
-/* Cross-theme tokens (typography + soft surfaces blended from marketing site) */
+/* -----------------------------------------------------------------------
+   Shared tokens: typography, spacing, cross-theme surfaces
+   ----------------------------------------------------------------------- */
 :root {
   --font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -9,33 +11,115 @@
   --accent-soft: rgba(0, 120, 212, 0.08);
 }
 
+/* -----------------------------------------------------------------------
+   Light theme (default)
+   ----------------------------------------------------------------------- */
 :root,
 html[data-theme="light"] {
-  --bg: #ffffff;
-  --panel: #f3f3f3;
-  --border: #e0e0e0;
-  --text: #1e1e1e;
-  --text-secondary: #666666;
-  --accent: #0078d4;
-  --highlight: #e8f4fd;
+  /* Chrome */
+  --bg:              #ffffff;
+  --panel:           #f3f3f3;
+  --border:          #e0e0e0;
+  --text:            #1e1e1e;
+  --text-secondary:  #666666;
+  --accent:          #0078d4;
+  --highlight:       #e8f4fd;
+
+  /* Form inputs - always white for readability */
+  --field-bg:        #ffffff;
+  --field-text:      #1e1e1e;
+
+  /* Report preview - always white */
+  --report-bg:       #ffffff;
+  --report-text:     #1e1e1e;
+
+  /* Semantic state colors */
+  --danger:          #d32f2f;
+  --warn:            #e65100;
+  --success:         #2e7d32;
+  --info:            #0277bd;
 }
 
+/* -----------------------------------------------------------------------
+   Warm theme (cream parchment, formerly "medium")
+   ----------------------------------------------------------------------- */
+html[data-theme="warm"] {
+  /* Chrome */
+  --bg:              #faf8f4;
+  --panel:           #e6ddd0;
+  --border:          #cec4b5;
+  --text:            #2c2418;
+  --text-secondary:  #6b5d4f;
+  --accent:          #8b5e3c;
+  --highlight:       #f0e6d6;
+
+  /* Form inputs - always white for readability */
+  --field-bg:        #ffffff;
+  --field-text:      #1e1e1e;
+
+  /* Report preview - always white */
+  --report-bg:       #ffffff;
+  --report-text:     #1e1e1e;
+
+  /* Semantic state colors */
+  --danger:          #c62828;
+  --warn:            #bf360c;
+  --success:         #2e7d32;
+  --info:            #01579b;
+}
+
+/* -----------------------------------------------------------------------
+   Medium theme (neutral gray, new)
+   ----------------------------------------------------------------------- */
 html[data-theme="medium"] {
-  --bg: #faf8f4;
-  --panel: #e6ddd0;
-  --border: #cec4b5;
-  --text: #2c2418;
-  --text-secondary: #6b5d4f;
-  --accent: #8b5e3c;
-  --highlight: #f0e6d6;
+  /* Chrome */
+  --bg:              #2b2f36;
+  --panel:           #1f2329;
+  --border:          #3a4048;
+  --text:            #e6e8ea;
+  --text-secondary:  #a5adb8;
+  --accent:          #7aa2ff;
+  --highlight:       #3a4660;
+
+  /* Form inputs - always white for readability */
+  --field-bg:        #ffffff;
+  --field-text:      #1e1e1e;
+
+  /* Report preview - always white */
+  --report-bg:       #ffffff;
+  --report-text:     #1e1e1e;
+
+  /* Semantic state colors */
+  --danger:          #f28b82;
+  --warn:            #ffb74d;
+  --success:         #81c995;
+  --info:            #82b1ff;
 }
 
+/* -----------------------------------------------------------------------
+   Dark theme (GitHub dark)
+   ----------------------------------------------------------------------- */
 html[data-theme="dark"] {
-  --bg: #0d1117;
-  --panel: #161b22;
-  --border: #30363d;
-  --text: #c9d1d9;
-  --text-secondary: #8b949e;
-  --accent: #58a6ff;
-  --highlight: #1f4b7c;
+  /* Chrome */
+  --bg:              #0d1117;
+  --panel:           #161b22;
+  --border:          #30363d;
+  --text:            #c9d1d9;
+  --text-secondary:  #8b949e;
+  --accent:          #58a6ff;
+  --highlight:       #1f4b7c;
+
+  /* Form inputs - always white for readability */
+  --field-bg:        #ffffff;
+  --field-text:      #1e1e1e;
+
+  /* Report preview - always white */
+  --report-bg:       #ffffff;
+  --report-text:     #1e1e1e;
+
+  /* Semantic state colors */
+  --danger:          #f28b82;
+  --warn:            #ffb74d;
+  --success:         #81c995;
+  --info:            #82b1ff;
 }

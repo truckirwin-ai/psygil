@@ -501,6 +501,10 @@ export interface AiTestConnectionResult {
   readonly connected: boolean
   readonly model?: string
   readonly error?: string
+  readonly tokenUsage?: {
+    readonly inputTokens: number
+    readonly outputTokens: number
+  }
 }
 
 // ---------------------------------------------------------------------------

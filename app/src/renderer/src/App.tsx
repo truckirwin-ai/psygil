@@ -12,11 +12,13 @@ import SetupWizard from './components/setup/SetupWizard'
 import LoginGate from './components/setup/LoginGate'
 import type { Tab, TabState } from './types/tabs'
 import type { CaseRow } from '../../shared/types/ipc'
+import { setTheme as applyTheme, getTheme } from './app/theme'
+import type { ThemeKey } from './app/theme'
 
-const THEMES = ['light', 'medium', 'dark'] as const
-type Theme = (typeof THEMES)[number]
+const THEMES: readonly ThemeKey[] = ['light', 'warm', 'medium', 'dark'] as const
+type Theme = ThemeKey
 
-const STORAGE_KEY_THEME = 'psygil-theme'
+const STORAGE_KEY_THEME = 'psygil_theme'
 const STORAGE_KEY_LEFT_W = 'psygil-left-width'
 const STORAGE_KEY_RIGHT_W = 'psygil-right-width'
 
@@ -34,9 +36,7 @@ const STORAGE_KEY_RIGHT_COLLAPSED = 'psygil-right-collapsed'
 const RIGHT_COLUMN_ENABLED = false
 
 function loadTheme(): Theme {
-  const stored = localStorage.getItem(STORAGE_KEY_THEME)
-  if (stored === 'light' || stored === 'medium' || stored === 'dark') return stored
-  return 'light'
+  return getTheme()
 }
 
 function loadWidth(key: string, fallback: number): number {
@@ -238,8 +238,7 @@ export default function App(): React.JSX.Element {
 
   // Apply theme to <html>
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem(STORAGE_KEY_THEME, theme)
+    applyTheme(theme)
   }, [theme])
 
   const cycleTheme = useCallback(() => {
@@ -522,7 +521,7 @@ export default function App(): React.JSX.Element {
               </button>
               <div style={{
                 width: 24, height: 24, borderRadius: '50%', background: 'var(--accent)',
-                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--field-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 10, fontWeight: 600, flexShrink: 0,
               }}>
                 TI

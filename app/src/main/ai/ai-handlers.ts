@@ -93,6 +93,10 @@ export function registerAiHandlers(): void {
         return ok({
           connected: true,
           model: response.model,
+          tokenUsage: {
+            inputTokens: response.inputTokens,
+            outputTokens: response.outputTokens,
+          },
         })
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Connection test failed'

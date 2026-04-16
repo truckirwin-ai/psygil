@@ -90,7 +90,7 @@ export default function SetupModal({ isOpen, onClose, onWorkspaceSet }: SetupMod
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.5)',
+        background: 'rgba(0,0,0,0.5)', /* themed:skip - modal scrim */
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -172,9 +172,9 @@ export default function SetupModal({ isOpen, onClose, onWorkspaceSet }: SetupMod
                 borderRadius: 4,
                 marginBottom: 16,
                 fontSize: 12,
-                background: status.kind === 'success' ? 'rgba(76,175,80,0.12)' : 'rgba(244,67,54,0.12)',
-                color: status.kind === 'success' ? '#4caf50' : '#f44336',
-                border: `1px solid ${status.kind === 'success' ? 'rgba(76,175,80,0.3)' : 'rgba(244,67,54,0.3)'}`,
+                background: status.kind === 'success' ? 'color-mix(in srgb, var(--success) 12%, transparent)' : 'color-mix(in srgb, var(--danger) 12%, transparent)',
+                color: status.kind === 'success' ? 'var(--success)' : 'var(--danger)',
+                border: `1px solid ${status.kind === 'success' ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'color-mix(in srgb, var(--danger) 30%, transparent)'}`,
               }}
             >
               {status.message}
@@ -188,7 +188,7 @@ export default function SetupModal({ isOpen, onClose, onWorkspaceSet }: SetupMod
               disabled={loading}
               style={{
                 background: 'var(--accent)',
-                color: '#ffffff',
+                color: 'var(--field-bg)',
                 border: 'none',
                 borderRadius: 4,
                 padding: '10px 20px',

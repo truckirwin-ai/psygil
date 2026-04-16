@@ -13,12 +13,7 @@ import type {
   Theme,
   FontSize,
 } from '../../../../../shared/types/setup'
-
-const THEMES: { value: Theme; label: string; sample: string }[] = [
-  { value: 'light', label: 'Light', sample: '#ffffff' },
-  { value: 'medium', label: 'Warm Parchment', sample: '#faf8f4' },
-  { value: 'dark', label: 'Dark', sample: '#0d1117' },
-]
+import { THEME_CHOICES } from '../../../app/theme'
 
 const FONT_SIZES: { value: FontSize; label: string; px: number }[] = [
   { value: 'small', label: 'Small', px: 12 },
@@ -92,28 +87,41 @@ export default function StepAppearance({
 
       <div style={styles.fieldRow}>
         <label style={styles.fieldLabel}>Theme</label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {THEMES.map((t) => {
-            const selected = appearance.theme === t.value
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {THEME_CHOICES.map((t) => {
+            const selected = appearance.theme === (t.key as Theme)
             return (
               <button
-                key={t.value}
+                key={t.key}
                 type="button"
-                onClick={() => update('theme', t.value)}
+                onClick={() => update('theme', t.key as Theme)}
                 style={{
                   border: selected ? '2px solid var(--accent)' : '1px solid var(--border)',
                   borderRadius: 6,
-                  padding: 16,
-                  background: t.sample,
-                  color: t.value === 'dark' ? '#c9d1d9' : '#1e1e1e',
+                  padding: 12,
+                  background: t.preview.bg,
+                  color: t.preview.text,
                   cursor: 'pointer',
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: 600,
                   textAlign: 'left',
                 }}
               >
+                <div
+                  style={{
+                    width: '100%',
+                    height: 28,
+                    borderRadius: 3,
+                    background: t.preview.panel,
+                    marginBottom: 8,
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div style={{ position: 'absolute', top: 8, left: 8, width: 24, height: 3, borderRadius: 1, background: t.preview.accent }} />
+                </div>
                 <div>{t.label}</div>
-                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>{t.sample}</div>
+                <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2, fontWeight: 400 }}>{t.description}</div>
               </button>
             )
           })}

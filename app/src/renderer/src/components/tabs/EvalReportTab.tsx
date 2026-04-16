@@ -95,17 +95,17 @@ interface EditorOutput {
 // ---------------------------------------------------------------------------
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: '#d32f2f',
-  high: '#f44336',
-  medium: '#ff9800',
-  low: '#2196f3',
+  critical: 'var(--danger)',
+  high: 'var(--danger)',
+  medium: 'var(--warn)',
+  low: 'var(--info)',
 }
 
 const SEVERITY_BG: Record<string, string> = {
-  critical: '#ffebee',
-  high: '#ffebee',
-  medium: '#fff3e0',
-  low: '#e3f2fd',
+  critical: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+  high: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+  medium: 'color-mix(in srgb, var(--warn) 12%, transparent)',
+  low: 'color-mix(in srgb, var(--info) 10%, transparent)',
 }
 
 // ---------------------------------------------------------------------------
@@ -349,7 +349,7 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
           {templateSelector}
           <span style={{
             padding: '2px 8px', fontSize: 10, fontWeight: 600, borderRadius: 3,
-            background: 'rgba(0,120,212,0.08)', color: 'var(--text-secondary)',
+            background: 'color-mix(in srgb, var(--accent) 8%, transparent)', color: 'var(--text-secondary)',
           }}>
             Draft
           </span>
@@ -461,7 +461,7 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
 
         <span style={{
           padding: '2px 8px', fontSize: 10, fontWeight: 600, borderRadius: 3,
-          background: 'rgba(0,120,212,0.08)', color: 'var(--text-secondary)',
+          background: 'color-mix(in srgb, var(--accent) 8%, transparent)', color: 'var(--text-secondary)',
         }}>
           Draft
         </span>
@@ -590,13 +590,13 @@ function ReportPreview({
               </span>
               <span style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
                 {s.content_type === 'draft_requiring_revision' && (
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ff9800' }} />
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--warn)' }} />
                 )}
                 {sectionAnnotations.length > 0 && (
                   <span
                     style={{
                       fontSize: '9px',
-                      background: '#f44336',
+                      background: 'var(--danger)',
                       color: '#fff',
                       borderRadius: '8px',
                       padding: '0 4px',
@@ -625,10 +625,10 @@ function ReportPreview({
           <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Report Summary</div>
           <div style={{ color: 'var(--text)' }}>{summary.total_sections} sections</div>
           {summary.sections_requiring_revision > 0 && (
-            <div style={{ color: '#ff9800' }}>{summary.sections_requiring_revision} need revision</div>
+            <div style={{ color: 'var(--warn)' }}>{summary.sections_requiring_revision} need revision</div>
           )}
           {hasEditor && (
-            <div style={{ color: activeAnnotationCount > 0 ? '#f44336' : '#4caf50' }}>
+            <div style={{ color: activeAnnotationCount > 0 ? 'var(--danger)' : 'var(--success)' }}>
               {activeAnnotationCount} active flags
             </div>
           )}
@@ -655,26 +655,26 @@ function ReportPreview({
               flexShrink: 0,
               background:
                 editorOutput.review_summary.overall_assessment === 'ready_for_clinician_review'
-                  ? '#e8f5e9'
-                  : '#fff3e0',
+                  ? 'color-mix(in srgb, var(--success) 10%, transparent)'
+                  : 'color-mix(in srgb, var(--warn) 12%, transparent)',
             }}
           >
             <strong>Editor Review:</strong>
             <span>{editorOutput.review_summary.overall_assessment.replace(/_/g, ' ')}</span>
             <span style={{ color: 'var(--text-secondary)' }}>|</span>
             {editorOutput.review_summary.critical_flags > 0 && (
-              <span style={{ color: '#d32f2f', fontWeight: 600 }}>
+              <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
                 {editorOutput.review_summary.critical_flags} critical
               </span>
             )}
             {editorOutput.review_summary.high_flags > 0 && (
-              <span style={{ color: '#f44336' }}>{editorOutput.review_summary.high_flags} high</span>
+              <span style={{ color: 'var(--danger)' }}>{editorOutput.review_summary.high_flags} high</span>
             )}
             {editorOutput.review_summary.medium_flags > 0 && (
-              <span style={{ color: '#ff9800' }}>{editorOutput.review_summary.medium_flags} medium</span>
+              <span style={{ color: 'var(--warn)' }}>{editorOutput.review_summary.medium_flags} medium</span>
             )}
             {editorOutput.review_summary.low_flags > 0 && (
-              <span style={{ color: '#2196f3' }}>{editorOutput.review_summary.low_flags} low</span>
+              <span style={{ color: 'var(--info)' }}>{editorOutput.review_summary.low_flags} low</span>
             )}
             <span style={{ flex: 1 }} />
             <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
@@ -731,8 +731,8 @@ function ReportPreview({
                   {isDraft ? (
                     <div
                       style={{
-                        border: '2px dashed #ff9800',
-                        background: '#fff8e1',
+                        border: '2px dashed var(--warn)',
+                        background: 'color-mix(in srgb, var(--warn) 6%, transparent)',
                         borderRadius: 4,
                         padding: 16,
                         position: 'relative',
@@ -741,7 +741,7 @@ function ReportPreview({
                       <div
                         style={{
                           display: 'inline-block',
-                          background: '#ff9800',
+                          background: 'var(--warn)',
                           color: 'white',
                           fontSize: 10,
                           fontWeight: 700,
@@ -758,7 +758,7 @@ function ReportPreview({
                         <div
                           style={{
                             fontSize: '11px',
-                            color: '#e65100',
+                            color: 'var(--warn)',
                             marginBottom: '8px',
                             fontStyle: 'italic',
                           }}
@@ -768,7 +768,7 @@ function ReportPreview({
                       )}
                       <div
                         style={{
-                          color: '#333',
+                          color: 'var(--text)',
                           whiteSpace: 'pre-wrap',
                           lineHeight: '1.7',
                           fontSize: '13px',
@@ -798,7 +798,7 @@ function ReportPreview({
 
                   {/* Confidence */}
                   {section.confidence < 0.8 && (
-                    <div style={{ fontSize: '10px', color: '#ff9800', marginTop: '2px' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--warn)', marginTop: '2px' }}>
                       Confidence: {Math.round(section.confidence * 100)}%, review carefully
                     </div>
                   )}
@@ -811,8 +811,8 @@ function ReportPreview({
                           key={ann.flag_id}
                           style={{
                             padding: '8px 12px',
-                            background: SEVERITY_BG[ann.severity] || '#f5f5f5',
-                            borderLeft: `4px solid ${SEVERITY_COLORS[ann.severity] || '#999'}`,
+                            background: SEVERITY_BG[ann.severity] || 'var(--panel)',
+                            borderLeft: `4px solid ${SEVERITY_COLORS[ann.severity] || 'var(--border)'}`,
                             borderRadius: '0 4px 4px 0',
                             marginBottom: '6px',
                             fontSize: '12px',
@@ -835,7 +835,7 @@ function ReportPreview({
                                   fontSize: '10px',
                                   fontWeight: 600,
                                   color: '#fff',
-                                  background: SEVERITY_COLORS[ann.severity] || '#999',
+                                  background: SEVERITY_COLORS[ann.severity] || 'var(--text-secondary)',
                                   marginRight: '6px',
                                 }}
                               >

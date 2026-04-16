@@ -22,12 +22,49 @@ const ANTHROPIC_MODELS: readonly { value: string; label: string }[] = [
   { value: 'claude-haiku-4-5-20250929', label: 'Claude Haiku 4' },
 ]
 
+// ---------------------------------------------------------------------------
+// Pricing lookup (USD per 1M tokens)
+// ---------------------------------------------------------------------------
+
+const PRICING_PER_1M_TOKENS: Record<string, { input: number; output: number }> = {
+  'claude-sonnet-4-20250514': { input: 3.00, output: 15.00 },
+  'claude-opus-4-20250514': { input: 15.00, output: 75.00 },
+  'claude-haiku-4-5-20251001': { input: 0.80, output: 4.00 },
+}
+
+/**
+ * Compute estimated USD cost from token counts and model name.
+ * Returns null if the model is not in the pricing table.
+ */
+export function computeTestCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+): number | null {
+  const pricing = PRICING_PER_1M_TOKENS[model]
+  if (pricing === undefined) return null
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 const UNID_PROBE_TEXT =
   'Patient Sample Synthetic, born 01/01/1990, was evaluated on April 1, 2026 ' +
   'at 1234 Main Street, Denver, CO. Phone: (555) 010-0100. ' +
   'Examiner: Dr. Synthetic Examiner.'
 
 type GateStatus = 'idle' | 'storing' | 'testing' | 'verifying' | 'ok' | 'failed'
+
+interface TestCostState {
+  readonly cost: number | null
+  readonly model: string
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export default function StepAi({
   config,
@@ -42,10 +79,12 @@ export default function StepAi({
   const [status, setStatus] = useState<GateStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [verifiedDetail, setVerifiedDetail] = useState<string | null>(null)
+  const [testCost, setTestCost] = useState<TestCostState | null>(null)
 
   const runFullGate = async (): Promise<void> => {
     setError(null)
     setVerifiedDetail(null)
+    setTestCost(null)
 
     // 1. Store key
     setStatus('storing')
@@ -63,6 +102,14 @@ export default function StepAi({
       setStatus('failed')
       setError(`Connection test failed: ${testResp.message}`)
       return
+    }
+
+    // Capture token cost from the test call
+    if (testResp.data.tokenUsage !== undefined && testResp.data.model !== undefined) {
+      const { inputTokens, outputTokens } = testResp.data.tokenUsage
+      const resolvedModel = testResp.data.model
+      const cost = computeTestCost(resolvedModel, inputTokens, outputTokens)
+      setTestCost({ cost, model: resolvedModel })
     }
 
     // 3. UNID round-trip, uses an in-memory operationId per doc 15
@@ -177,7 +224,14 @@ export default function StepAi({
       {error !== null && <div style={styles.errorBox}>{error}</div>}
       {status === 'ok' && verifiedDetail !== null && (
         <div style={styles.successBox}>
-          UNID pipeline verified. {verifiedDetail}
+          <div>UNID pipeline verified. {verifiedDetail}</div>
+          {testCost !== null && (
+            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+              {testCost.cost !== null
+                ? `Test cost: $${testCost.cost.toFixed(4)}`
+                : `Pricing data not available for ${testCost.model}`}
+            </div>
+          )}
         </div>
       )}
 

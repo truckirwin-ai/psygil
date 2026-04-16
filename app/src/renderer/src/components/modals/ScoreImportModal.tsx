@@ -301,7 +301,7 @@ export default function ScoreImportModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(0,0,0,0.5)',
+        background: 'rgba(0,0,0,0.5)', /* themed:skip - modal scrim */
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !isUploading && !isSaving) onClose()
@@ -496,11 +496,11 @@ function PublisherPathway({
         <div
           style={{
             padding: '10px 14px',
-            background: 'rgba(76,175,80,0.1)',
-            border: '1px solid #4caf50',
+            background: 'color-mix(in srgb, var(--success) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)',
             borderRadius: 4,
             fontSize: 13,
-            color: '#4caf50',
+            color: 'var(--success)',
             marginBottom: 16,
           }}
         >
@@ -513,11 +513,11 @@ function PublisherPathway({
         <div
           style={{
             padding: '10px 14px',
-            background: 'rgba(244,67,54,0.1)',
-            border: '1px solid #f44336',
+            background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
             borderRadius: 4,
             fontSize: 13,
-            color: '#f44336',
+            color: 'var(--danger)',
             marginBottom: 16,
           }}
         >
@@ -537,7 +537,7 @@ function PublisherPathway({
             border: 'none',
             borderRadius: 4,
             background: 'var(--accent)',
-            color: '#ffffff',
+            color: 'var(--field-bg)',
             cursor: isUploading ? 'wait' : 'pointer',
             width: '100%',
           }}
@@ -690,11 +690,11 @@ function ManualPathway({
         <div
           style={{
             padding: '8px 12px',
-            background: 'rgba(244,67,54,0.1)',
-            border: '1px solid #f44336',
+            background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
             borderRadius: 4,
             fontSize: 12,
-            color: '#f44336',
+            color: 'var(--danger)',
             marginBottom: 12,
           }}
         >

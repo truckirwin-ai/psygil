@@ -53,7 +53,7 @@ interface IngestorOutput {
   completeness_flags: Record<string, unknown>
 }
 
-// Stage colors (from design system)
+// themed:skip - pipeline stage identity colors; each maps to a distinct clinical workflow phase
 const STAGE_COLORS: Record<string, string> = {
   Onboarding: '#2196f3',
   Testing: '#9c27b0',
@@ -295,12 +295,12 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
   // Helper: completeness badge
   const CompletenessFlag = ({ status }: { status: string }) => {
     const colorMap: Record<string, string> = {
-      complete: '#4caf50',
-      partial: '#ff9800',
-      missing: '#f44336',
+      complete: 'var(--success)',
+      partial: 'var(--warn)',
+      missing: 'var(--danger)',
     }
     return (
-      <span style={badgeStyle(colorMap[status] || '#999')}>
+      <span style={badgeStyle(colorMap[status] || 'var(--text-secondary)')}>
         {status}
       </span>
     )
@@ -370,6 +370,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
   const OverviewPane = () => {
     const age = ageFromDob(caseData.examinee_dob)
     const stage = caseData.workflow_current_stage || 'onboarding'
+    // themed:skip - pipeline stage identity colors; each maps to a distinct clinical workflow phase
     const stageColors: Record<string, string> = {
       onboarding: '#2196f3',
       testing: '#9c27b0',
@@ -378,7 +379,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
       review: '#ff5722',
       complete: '#4caf50',
     }
-    const stageColor = stageColors[stage] ?? '#999'
+    const stageColor = stageColors[stage] ?? 'var(--text-secondary)'
 
     const presentingComplaint =
       intakeData?.presenting_complaint ||
@@ -406,15 +407,16 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
     const diagnosticsCount = documentsBySubfolder['Diagnostics'] ?? 0
 
     // Heuristic risk flags from onboarding free text
+    // themed:skip for #9c27b0 (purple = AI/agent actor marker, reused here for psychotic/validity severity)
     const riskFlags: { label: string; color: string }[] = []
     const risks = [
-      { rx: /suicid|self.harm|self harm/i, label: 'Suicide history', color: '#e54040' },
-      { rx: /violen|assault|homicid/i, label: 'Violence history', color: '#e54040' },
-      { rx: /weapon|firearm|knife/i, label: 'Weapon access', color: '#e54040' },
-      { rx: /substance use disorder|alcohol use disorder|opioid|methamphetamine/i, label: 'Active substance', color: '#ff9800' },
-      { rx: /TBI|traumatic brain injury|concussion/i, label: 'TBI', color: '#ff9800' },
-      { rx: /psychotic|hallucinat|delusion|schizophrenia/i, label: 'Psychotic features', color: '#9c27b0' },
-      { rx: /malinger|symptom validity|feign|exaggerat/i, label: 'Validity concern', color: '#9c27b0' },
+      { rx: /suicid|self.harm|self harm/i, label: 'Suicide history', color: 'var(--danger)' },
+      { rx: /violen|assault|homicid/i, label: 'Violence history', color: 'var(--danger)' },
+      { rx: /weapon|firearm|knife/i, label: 'Weapon access', color: 'var(--danger)' },
+      { rx: /substance use disorder|alcohol use disorder|opioid|methamphetamine/i, label: 'Active substance', color: 'var(--warn)' },
+      { rx: /TBI|traumatic brain injury|concussion/i, label: 'TBI', color: 'var(--warn)' },
+      { rx: /psychotic|hallucinat|delusion|schizophrenia/i, label: 'Psychotic features', color: '#9c27b0' }, // themed:skip - AI agent actor purple
+      { rx: /malinger|symptom validity|feign|exaggerat/i, label: 'Validity concern', color: '#9c27b0' }, // themed:skip - AI agent actor purple
     ]
     const allText = [mentalHealthHistory, substanceHistory, medicalHistory, legalHistory, presentingComplaint].join(' ')
     for (const r of risks) {
@@ -482,7 +484,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                   </span>
                 )}
                 {deadline && (
-                  <span style={{ background: '#f3a93b', color: '#fff', padding: '2px 8px', borderRadius: 3, fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ background: 'var(--warn)', color: '#fff', padding: '2px 8px', borderRadius: 3, fontSize: 11, fontWeight: 600 }}>
                     Due {deadline}
                   </span>
                 )}
@@ -649,7 +651,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                   </div>
                 )}
                 {!!q.inferred && (
-                  <span style={badgeStyle('#ff9800')}>inferred</span>
+                  <span style={badgeStyle('var(--warn)')}>inferred</span>
                 )}
               </div>
             ))}
@@ -750,7 +752,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                 {/* Missing subtests flag */}
                 {!!t.missing_subtests && (
                   <div style={{ marginTop: '4px' }}>
-                    <span style={badgeStyle('#ff9800')}>incomplete</span>
+                    <span style={badgeStyle('var(--warn)')}>incomplete</span>
                     <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
                       {String(t.missing_subtests)}
                     </span>
@@ -875,7 +877,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                   </div>
                 )}
                 {!!c.conflicting_information && (
-                  <div style={{ marginTop: '6px', padding: '4px 8px', background: '#fff3e0', borderRadius: '3px', fontSize: '11px', color: '#e65100' }}>
+                  <div style={{ marginTop: '6px', padding: '4px 8px', background: 'color-mix(in srgb, var(--warn) 15%, transparent)', borderRadius: '3px', fontSize: '11px', color: 'var(--warn)' }}>
                     Conflict: {String(c.conflicting_information)}
                   </div>
                 )}
@@ -969,7 +971,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
                 <div style={sectionHeaderStyle}>Gaps to Address</div>
                 {Array.isArray((flags as Record<string, unknown>).summary_gaps)
                   ? ((flags as Record<string, unknown>).summary_gaps as string[]).map((gap, i) => (
-                      <div key={i} style={{ fontSize: '12px', color: '#f44336', marginBottom: '4px' }}>
+                      <div key={i} style={{ fontSize: '12px', color: 'var(--danger)', marginBottom: '4px' }}>
                         {i + 1}. {gap}
                       </div>
                     ))
@@ -1023,7 +1025,7 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
       </div>
       {caseData.workflow_current_stage?.toLowerCase() === 'complete' ? (
         <div style={cardStyle}>
-          <div style={{ fontSize: '12px', color: '#4caf50', fontWeight: 600, marginBottom: '6px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 600, marginBottom: '6px' }}>
             ✓ Case Complete
           </div>
           <Field label="Completed" value={caseData.last_modified?.split('T')[0] || ','} />
@@ -1124,11 +1126,11 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
             STAGE_COLORS[
               (caseData.workflow_current_stage || 'onboarding').charAt(0).toUpperCase() +
               (caseData.workflow_current_stage || 'onboarding').slice(1)
-            ] || '#999'
+            ] || 'var(--text-secondary)'
           )}
         </span>
         {hasIngestor && (
-          <span style={{ color: '#4caf50', fontWeight: 500 }}>
+          <span style={{ color: 'var(--success)', fontWeight: 500 }}>
             ✓ Ingestor data available (v{ingestorData?.version})
           </span>
         )}
