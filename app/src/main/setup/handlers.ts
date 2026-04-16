@@ -421,13 +421,14 @@ export function registerSetupHandlers(): void {
     (): IpcResponse<{ config: SetupConfig }> => {
       try {
         const current = loadConfig()
-        // Guard: must have all prior states done
+        // Guard: must have the three minimum-viable steps done. AI,
+        // appearance preferences, and clinical preferences are optional
+        // at first-run and get configured post-setup via Settings. The
+        // FirstRunModal contract only collects name, license, storage.
         const required: SetupState[] = [
           'license_entered',
           'storage_ready',
           'profile_done',
-          'prefs_done',
-          'clinical_done',
         ]
         for (const s of required) {
           // Using state.ts helpers would introduce a cycle; check by name
