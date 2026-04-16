@@ -94,3 +94,9 @@ sidecar/dist-macos/
 /sidecar/.venv-build/
 /sidecar/dist/
 /sidecar/build/
+
+# Signing credentials (personal, filled in per machine after Apple Developer registration)
+/scripts/signing/credentials.env
+
+# Word lock files
+~$*.docx
