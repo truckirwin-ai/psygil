@@ -61,10 +61,15 @@ function resolvePythonExecutable(sidecarDir: string): string {
     return process.env.PSYGIL_PYTHON
   }
   const isWin = process.platform === 'win32'
-  const venvPython = isWin
-    ? join(sidecarDir, 'venv', 'Scripts', 'python.exe')
-    : join(sidecarDir, 'venv', 'bin', 'python')
-  if (existsSync(venvPython)) return venvPython
+  // Check both `.venv` (created by sidecar/setup-dev-venv.sh) and `venv`
+  // (created by scripts/bootstrap-sidecar.sh) so either layout works.
+  const venvDirs = ['.venv', 'venv']
+  for (const dir of venvDirs) {
+    const venvPython = isWin
+      ? join(sidecarDir, dir, 'Scripts', 'python.exe')
+      : join(sidecarDir, dir, 'bin', 'python')
+    if (existsSync(venvPython)) return venvPython
+  }
   return isWin ? 'python' : 'python3'
 }
 
