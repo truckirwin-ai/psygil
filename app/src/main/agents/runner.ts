@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto'
 import { callClaude, type ClaudeResponse } from '../ai/claude-client'
 import { redact, rehydrate, destroyMap } from '../pii/pii_detector'
 import { scanForProhibited } from '../publish/hardRuleScan'
+import { logAuditEntry } from '../audit'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -110,6 +111,25 @@ export async function runAgent<T = unknown>(
   const startTime = Date.now()
   const operationId = randomUUID()
 
+  // Audit: agent_invoked. Captured up front so a crash mid-run still leaves
+  // a trail of which agent was attempted for which case.
+  try {
+    logAuditEntry({
+      caseId: config.caseId,
+      actionType: 'agent_invoked',
+      actorType: 'ai_agent',
+      details: {
+        agent_type: config.agentType,
+        operation_id: operationId,
+        max_tokens: config.maxTokens ?? 4096,
+        temperature: config.temperature ?? 0,
+      },
+      relatedEntityType: 'agent_run',
+    })
+  } catch {
+    // Audit is best-effort; never block agent execution on audit failure.
+  }
+
   try {
     // 1. Concatenate all input texts
     const concatenated = config.inputTexts.join('\n\n')
@@ -167,6 +187,28 @@ export async function runAgent<T = unknown>(
 
     const durationMs = Date.now() - startTime
 
+    // Audit: agent_completed. Success branch captures token usage and
+    // duration so the cost model has authoritative data without touching
+    // agent_results rows (which may contain PHI-derived content).
+    try {
+      logAuditEntry({
+        caseId: config.caseId,
+        actionType: 'agent_completed',
+        actorType: 'ai_agent',
+        details: {
+          agent_type: config.agentType,
+          operation_id: operationId,
+          status: 'success',
+          duration_ms: durationMs,
+          input_tokens: claudeResponse.inputTokens,
+          output_tokens: claudeResponse.outputTokens,
+        },
+        relatedEntityType: 'agent_run',
+      })
+    } catch {
+      // best-effort
+    }
+
     return {
       status: 'success',
       agentType: config.agentType,
@@ -189,6 +231,26 @@ export async function runAgent<T = unknown>(
 
     const durationMs = Date.now() - startTime
     const errorMessage = e instanceof Error ? e.message : 'Unknown error'
+
+    // Audit: agent_completed (error branch). Captures the error message so
+    // the audit trail records every failed agent run alongside successes.
+    try {
+      logAuditEntry({
+        caseId: config.caseId,
+        actionType: 'agent_completed',
+        actorType: 'ai_agent',
+        details: {
+          agent_type: config.agentType,
+          operation_id: operationId,
+          status: 'error',
+          duration_ms: durationMs,
+          error: errorMessage,
+        },
+        relatedEntityType: 'agent_run',
+      })
+    } catch {
+      // best-effort
+    }
 
     return {
       status: 'error',

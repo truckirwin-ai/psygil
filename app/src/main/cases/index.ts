@@ -11,6 +11,7 @@ import { join } from 'path'
 import { existsSync, mkdirSync, renameSync } from 'fs'
 import { getSqlite } from '../db/connection'
 import { loadWorkspacePath, scaffoldCaseSubfolders } from '../workspace'
+import { logAuditEntry } from '../audit'
 import type {
   CaseRow,
   CreateCaseParams,
@@ -78,6 +79,27 @@ export function createCase(params: CreateCaseParams): CaseRow {
   })
 
   const caseId = Number(result.lastInsertRowid)
+
+  // Audit: case_created. actorId is best-effort from params; resolves to the
+  // authed user once Phase B.5 session plumbing lands.
+  try {
+    logAuditEntry({
+      caseId,
+      actionType: 'case_created',
+      actorType: 'clinician',
+      actorId: String(params.primary_clinician_user_id),
+      details: {
+        case_number: params.case_number,
+        evaluation_type: params.evaluation_type ?? null,
+        folder_path: folderPath,
+      },
+      relatedEntityType: 'case',
+      relatedEntityId: caseId,
+    })
+  } catch (e) {
+    process.stderr.write(`[cases] audit log failed for case_created: ${(e as Error).message}\n`)
+  }
+
   return getCaseById(caseId)!
 }
 
@@ -130,6 +152,25 @@ export function updateCase(params: CasesUpdateParams): CaseRow {
 
   const sql = `UPDATE cases SET ${setClauses.join(', ')} WHERE case_id = @case_id`
   sqlite.prepare(sql).run(values)
+
+  // Audit: case_modified. Details capture only the fields the caller actually
+  // touched so the trail shows exactly what changed and when.
+  try {
+    const changed: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(values)) {
+      if (k !== 'case_id') changed[k] = v
+    }
+    logAuditEntry({
+      caseId: params.case_id,
+      actionType: 'case_modified',
+      actorType: 'clinician',
+      details: { fields: Object.keys(changed), values: changed },
+      relatedEntityType: 'case',
+      relatedEntityId: params.case_id,
+    })
+  } catch (e) {
+    process.stderr.write(`[cases] audit log failed for case_modified: ${(e as Error).message}\n`)
+  }
 
   return getCaseById(params.case_id)!
 }
@@ -219,10 +260,23 @@ export function archiveCase(caseId: number): CaseRow {
           .prepare('UPDATE cases SET folder_path = ? WHERE case_id = ?')
           .run(archiveDest, caseId)
       } catch (err) {
-        console.error(`[cases] Failed to move folder to archive: ${err}`)
+        process.stderr.write(`[cases] Failed to move folder to archive: ${err}\n`)
         // DB update still succeeds, folder move is best-effort
       }
     }
+  }
+
+  try {
+    logAuditEntry({
+      caseId,
+      actionType: 'case_archived',
+      actorType: 'clinician',
+      details: { previous_status: existing.case_status, folder_path: existing.folder_path },
+      relatedEntityType: 'case',
+      relatedEntityId: caseId,
+    })
+  } catch (e) {
+    process.stderr.write(`[cases] audit log failed for case_archived: ${(e as Error).message}\n`)
   }
 
   return getCaseById(caseId)!

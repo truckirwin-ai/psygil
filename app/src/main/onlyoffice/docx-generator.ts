@@ -12,6 +12,7 @@ import { join } from 'path'
 import type { WriterOutput, WriterSection, WriterReportSummary } from '../agents/writer'
 import type { EditorOutput, EditorAnnotation } from '../agents/editor'
 import { loadWorkspacePath } from '../workspace'
+import { logAuditEntry } from '../audit'
 
 // Dynamic require for docx to handle module resolution in Electron main process
 let Document: any
@@ -83,6 +84,27 @@ export async function generateReportDocx(
 
   // Write to file
   await fsPromises.writeFile(filePath, bytes)
+
+  // Audit: report_generated. Each draft build is a distinct event; version
+  // lets the trail reconstruct history when a clinician regenerates after
+  // fixing test scores, adding collateral, etc.
+  try {
+    logAuditEntry({
+      caseId,
+      actionType: 'report_generated',
+      actorType: 'system',
+      details: {
+        version,
+        file_path: filePath,
+        section_count: writerOutput.sections.length,
+        sections_requiring_revision: writerOutput.report_summary.sections_requiring_revision,
+        editor_annotations: editorOutput?.annotations?.length ?? 0,
+      },
+      relatedEntityType: 'report_draft',
+    })
+  } catch (e) {
+    process.stderr.write(`[docx-generator] audit log failed for report_generated: ${(e as Error).message}\n`)
+  }
 
   return { filePath, version }
 }

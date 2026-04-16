@@ -12,6 +12,7 @@ import { readFileSync, statSync, existsSync, unlinkSync, copyFileSync, mkdirSync
 import { basename, extname, join } from 'path'
 import { getSqlite } from '../db/connection'
 import { getCaseById } from '../cases'
+import { logAuditEntry } from '../audit'
 import type { DocumentRow } from '../../shared/types'
 
 // ---------------------------------------------------------------------------
@@ -228,6 +229,29 @@ export async function ingestFile(
   })
 
   const docId = Number(result.lastInsertRowid)
+
+  // Audit: document_uploaded. Capture file metadata only, not the indexed
+  // content (which can contain PHI before the UNID pipeline runs).
+  try {
+    logAuditEntry({
+      caseId,
+      actionType: 'document_uploaded',
+      actorType: 'clinician',
+      actorId: String(uploadedByUserId),
+      details: {
+        filename: fileName,
+        subfolder,
+        mime_type: mime,
+        file_size_bytes: stat.size,
+        document_type: docType,
+      },
+      relatedEntityType: 'document',
+      relatedEntityId: docId,
+    })
+  } catch (e) {
+    process.stderr.write(`[documents] audit log failed for document_uploaded: ${(e as Error).message}\n`)
+  }
+
   return getDocument(docId)!
 }
 

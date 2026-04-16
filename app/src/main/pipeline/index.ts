@@ -13,6 +13,7 @@
 import { getSqlite } from '../db/connection'
 import { getCaseById, getIntake } from '../cases'
 import { listDocuments } from '../documents'
+import { logAuditEntry } from '../audit'
 import { isDataConfirmationComplete } from '../data-confirmation'
 import type { PipelineStage, CaseRow } from '../../shared/types'
 
@@ -346,8 +347,28 @@ export function advanceStage(caseId: number): StageAdvancementResult {
         )
     }
   } catch (e) {
-    console.error('[pipeline] Failed to log stage advancement:', (e as Error).message)
+    process.stderr.write(`[pipeline] Failed to log stage advancement: ${(e as Error).message}\n`)
     // Don't fail the operation, DB update succeeded
+  }
+
+  // Audit: gate_completed. Every successful stage advance is one clinical
+  // gate passing. Written to the main audit_log so the AuditTrailTab shows
+  // every transition alongside document uploads, test scores, and agents.
+  try {
+    logAuditEntry({
+      caseId,
+      actionType: 'gate_completed',
+      actorType: 'clinician',
+      details: {
+        from_stage: previousStage,
+        to_stage: newStage,
+        reason: check.reason ?? null,
+      },
+      relatedEntityType: 'case',
+      relatedEntityId: caseId,
+    })
+  } catch (e) {
+    process.stderr.write(`[pipeline] audit log failed for gate_completed: ${(e as Error).message}\n`)
   }
 
   return {

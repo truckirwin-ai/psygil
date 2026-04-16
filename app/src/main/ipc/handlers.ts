@@ -1491,6 +1491,24 @@ function registerAuditHandlers(): void {
         const format = params.format ?? 'csv'
         const data = exportAuditTrail(params.caseId, format)
         const mimeType = format === 'json' ? 'application/json' : 'text/csv'
+
+        // Audit: audit_exported. Logged AFTER the export so a failed export
+        // does not create a misleading row claiming the data left the system.
+        try {
+          logAuditEntry({
+            caseId: params.caseId,
+            actionType: 'audit_exported',
+            actorType: 'clinician',
+            details: {
+              format,
+              byte_size: data.length,
+            },
+            relatedEntityType: 'audit_log',
+          })
+        } catch (e) {
+          process.stderr.write(`[audit:export] audit log failed for audit_exported: ${(e as Error).message}\n`)
+        }
+
         return ok({ data, mimeType })
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to export audit trail'

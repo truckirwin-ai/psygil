@@ -12,6 +12,7 @@
  */
 
 import { getSqlite } from '../db/connection'
+import { logAuditEntry } from '../audit'
 
 // ---------------------------------------------------------------------------
 // Row shape
@@ -169,6 +170,28 @@ export function saveTestScores(params: SaveTestScoresParams): TestScoreRow {
     SELECT * FROM test_scores
     WHERE case_id = ? AND instrument_name = ?
   `).get(params.case_id, params.instrument_name) as RawTestScoreRow
+
+  // Audit: test_score_entered. Captures instrument and entry method but not
+  // the score values themselves (those live in the test_scores row).
+  try {
+    logAuditEntry({
+      caseId: params.case_id,
+      actionType: 'test_score_entered',
+      actorType: 'clinician',
+      details: {
+        instrument_name: params.instrument_name,
+        instrument_abbrev: params.instrument_abbrev,
+        administration_date: params.administration_date,
+        data_entry_method: params.data_entry_method,
+        score_count: params.scores.length,
+        validity_count: params.validity_scores?.length ?? 0,
+      },
+      relatedEntityType: 'test_score',
+      relatedEntityId: raw.score_id,
+    })
+  } catch (e) {
+    process.stderr.write(`[scores] audit log failed for test_score_entered: ${(e as Error).message}\n`)
+  }
 
   return toPublicRow(raw)
 }
