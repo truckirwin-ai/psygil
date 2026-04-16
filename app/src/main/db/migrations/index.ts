@@ -135,6 +135,26 @@ const MIGRATIONS: readonly Migration[] = [
     description: 'Add insurance and physician referral types to patient_intake',
     sql: 'SELECT 1', // placeholder, recreates table with expanded CHECK
   },
+  {
+    id: '009_audit_hash_chain',
+    description: 'Add prev_hash and row_hash columns plus immutability triggers to audit_log',
+    sql: `
+      ALTER TABLE audit_log ADD COLUMN prev_hash TEXT;
+      ALTER TABLE audit_log ADD COLUMN row_hash TEXT;
+
+      CREATE TRIGGER IF NOT EXISTS audit_log_no_update
+      BEFORE UPDATE ON audit_log
+      BEGIN
+        SELECT RAISE(ABORT, 'audit_log is immutable');
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS audit_log_no_delete
+      BEFORE DELETE ON audit_log
+      BEGIN
+        SELECT RAISE(ABORT, 'audit_log is immutable');
+      END;
+    `,
+  },
 ]
 
 /**
@@ -282,6 +302,32 @@ export function runMigrations(sqlite: InstanceType<typeof Database>): void {
           params.push(c.num)
           sqlite.prepare(sql).run(...params)
         }
+      } else if (migration.id === '009_audit_hash_chain') {
+        // Add prev_hash / row_hash only if not already present (idempotent).
+        const auditCols = (sqlite.pragma('table_info(audit_log)') as Array<{ name: string }>).map(c => c.name)
+        if (!auditCols.includes('prev_hash')) {
+          sqlite.exec('ALTER TABLE audit_log ADD COLUMN prev_hash TEXT;')
+        }
+        if (!auditCols.includes('row_hash')) {
+          sqlite.exec('ALTER TABLE audit_log ADD COLUMN row_hash TEXT;')
+        }
+        // Immutability triggers: CREATE OR REPLACE is not available in older SQLite,
+        // so drop first then recreate.
+        sqlite.exec(`
+          DROP TRIGGER IF EXISTS audit_log_no_update;
+          CREATE TRIGGER audit_log_no_update
+          BEFORE UPDATE ON audit_log
+          BEGIN
+            SELECT RAISE(ABORT, 'audit_log is immutable');
+          END;
+
+          DROP TRIGGER IF EXISTS audit_log_no_delete;
+          CREATE TRIGGER audit_log_no_delete
+          BEFORE DELETE ON audit_log
+          BEGIN
+            SELECT RAISE(ABORT, 'audit_log is immutable');
+          END;
+        `)
       } else if (migration.id === '008_expand_intake_referral_types') {
         // Recreate patient_intake with expanded referral_type CHECK
         // to include 'insurance' and 'physician'

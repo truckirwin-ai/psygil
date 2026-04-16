@@ -137,14 +137,24 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
     const { active, over } = event
     if (!over) return
     const caseId = active.id as number
-    const stage = over.id as string
+    const targetStage = over.id as string
     // Only update if dropped on a valid pipeline stage
-    if (!PIPELINE_STAGES.some((s) => s.key === stage)) return
+    if (!PIPELINE_STAGES.some((s) => s.key === targetStage)) return
+
+    // Phase B.4: setStage backdoor closed. Kanban drag-drop now only permits
+    // forward, single-step transitions (current stage to the immediate next
+    // stage) and only through pipeline.advance, which enforces gate
+    // preconditions server-side. Drops onto earlier stages or skipping
+    // multiple stages are refused silently; the case stays put and the UI
+    // refreshes so the card snaps back.
     try {
-      await window.psygil?.pipeline?.setStage({ caseId, stage })
+      const check = await window.psygil?.pipeline?.check?.({ caseId })
+      if (check && check.ok && check.data.nextStage === targetStage) {
+        await window.psygil?.pipeline?.advance?.({ caseId })
+      }
       onRefresh?.()
-    } catch (err) {
-      console.error('[kanban] drop failed:', err)
+    } catch {
+      // best-effort; UI will refresh on next poll
     }
   }, [onRefresh])
 

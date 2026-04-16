@@ -32,7 +32,6 @@ import type {
   PsychometricianGetResultParams,
   PipelineCheckParams,
   PipelineAdvanceParams,
-  PipelineSetStageParams,
   PipelineConditionsParams,
   DiagnosticDecisionSaveParams,
   DiagnosticDecisionListParams,
@@ -242,7 +241,7 @@ const api: PsygilApi = {
   pipeline: {
     check: (params: PipelineCheckParams) => ipcRenderer.invoke('pipeline:check', params),
     advance: (params: PipelineAdvanceParams) => ipcRenderer.invoke('pipeline:advance', params),
-    setStage: (params: PipelineSetStageParams) => ipcRenderer.invoke('pipeline:set-stage', params),
+    // setStage intentionally omitted, see pipeline-handlers.ts comment.
     conditions: (params: PipelineConditionsParams) => ipcRenderer.invoke('pipeline:conditions', params),
   },
 
@@ -319,6 +318,7 @@ const api: PsygilApi = {
     log: (args: { caseId: number; actionType: string; actorType: 'clinician' | 'ai_agent' | 'system'; actorId?: string; details: string | Record<string, unknown>; relatedEntityType?: string; relatedEntityId?: string | number }) => ipcRenderer.invoke('audit:log', args),
     getTrail: (args: { caseId: number }) => ipcRenderer.invoke('audit:getTrail', args),
     export: (args: { caseId: number; format?: 'csv' | 'json' }) => ipcRenderer.invoke('audit:export', args),
+    verifyChain: (args: { caseId?: number }) => ipcRenderer.invoke('audit:verifyChain', args),
   },
 
   testimony: {

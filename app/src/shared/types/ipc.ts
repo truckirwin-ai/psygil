@@ -983,6 +983,16 @@ export interface AuditExportResult {
   readonly mimeType: string
 }
 
+export interface AuditVerifyChainParams {
+  readonly caseId?: number
+}
+
+export interface AuditVerifyChainResult {
+  readonly valid: boolean
+  readonly brokenAtId: number | null
+  readonly totalRows: number
+}
+
 // ---------------------------------------------------------------------------
 // Testimony Preparation
 // ---------------------------------------------------------------------------
@@ -1360,7 +1370,7 @@ export interface PsygilApi {
   readonly pipeline: {
     readonly check: (params: PipelineCheckParams) => Promise<IpcResponse<PipelineCheckResult>>
     readonly advance: (params: PipelineAdvanceParams) => Promise<IpcResponse<PipelineAdvanceResult>>
-    readonly setStage: (params: PipelineSetStageParams) => Promise<IpcResponse<PipelineSetStageResult>>
+    // setStage removed, see src/main/pipeline/pipeline-handlers.ts (Phase B.4).
     readonly conditions: (params: PipelineConditionsParams) => Promise<IpcResponse<PipelineConditionsResult>>
   }
   readonly diagnosticDecisions: {
@@ -1450,6 +1460,7 @@ export interface PsygilApi {
     readonly log: (args: AuditLogParams) => Promise<IpcResponse<AuditLogResult>>
     readonly getTrail: (args: AuditGetTrailParams) => Promise<IpcResponse<AuditGetTrailResult>>
     readonly export: (args: AuditExportParams) => Promise<IpcResponse<AuditExportResult>>
+    readonly verifyChain: (args: AuditVerifyChainParams) => Promise<IpcResponse<AuditVerifyChainResult>>
   }
   readonly testimony: {
     readonly prepare: (args: TestimonyPrepareParams) => Promise<IpcResponse<TestimonyPrepareResult>>

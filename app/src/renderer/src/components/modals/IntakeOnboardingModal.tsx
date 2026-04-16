@@ -530,13 +530,13 @@ export default function IntakeOnboardingModal({
               })
             }
 
-            // Advance pipeline: onboarding → testing
-            await window.psygil?.pipeline?.setStage?.({
-              caseId: targetCaseId,
-              stage: 'testing',
-            })
+            // Advance pipeline: onboarding to testing, server-side gate check.
+            // pipeline.advance enforces preconditions; if intake/documents
+            // are incomplete the gate refuses and the clinician stays on
+            // onboarding. Phase B.4 removed the unchecked setStage path.
+            await window.psygil?.pipeline?.advance?.({ caseId: targetCaseId })
           } catch (err) {
-            console.error('[intake] Post-completion updates failed (non-fatal):', err)
+            // best-effort; main concern is that case/intake is saved
           }
         }
 

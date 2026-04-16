@@ -1101,7 +1101,9 @@ function ClinicalOverviewContent({
   const handleSubTabAdvance = useCallback(async () => {
     if (!subTabAdvance || tab.caseId == null) return
     try {
-      await window.psygil?.pipeline?.setStage?.({ caseId: tab.caseId, stage: subTabAdvance.nextStage })
+      // pipeline.advance enforces gate preconditions server-side; the
+      // removed setStage handler was a backdoor that skipped them.
+      await window.psygil?.pipeline?.advance?.({ caseId: tab.caseId })
       onRefreshCases?.()
       // Switch to the next sub-tab automatically
       const nextSubTabId = activeSubTab === 'intake' ? 'testing'
@@ -6895,25 +6897,12 @@ function ReportSubTab({
     // Map report status → pipeline stage for the Kanban board
     // Review or Editing → move card to "review" column
     // Final → move card to "complete" column
-    // Draft → stays in current stage (diagnostics/report)
-    const stageMap: Record<string, string | null> = {
-      draft: null,        // no stage change
-      review: 'review',
-      editing: 'review',
-      final: 'complete',
-    }
-    const targetStage = stageMap[val]
-    if (targetStage) {
-      try {
-        await window.psygil?.pipeline?.setStage?.({ caseId: caseRow.case_id, stage: targetStage })
-        onRefreshCases?.()
-      } catch {
-        // best effort, localStorage already updated
-      }
-    }
-
-    // Also persist report-specific status to DB if the IPC exists
-    // pipeline.setReportStatus is not in the IPC API; status is stored locally only
+    // Report status is persisted to localStorage above. Pipeline stage
+    // transitions are no longer triggered from this dropdown; they must go
+    // through pipeline.advance (server-side gate-enforced) or the publish
+    // flow for final-stage transitions. Phase B.4 closed the setStage
+    // backdoor that let this dropdown skip gates.
+    onRefreshCases?.()
   }, [reportStatusKey, caseRow.case_id, onRefreshCases])
 
   // ── Edit in Word: generate .docx and open in MS Word ──

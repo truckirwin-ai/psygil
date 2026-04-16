@@ -117,6 +117,7 @@ import {
   getReportStatus,
 } from '../reports'
 import { logAuditEntry, getAuditTrail, exportAuditTrail } from '../audit'
+import { verifyChain } from '../audit/verify'
 import { prepareTestimonyPackage } from '../testimony'
 import { seedResources } from '../seed-resources'
 import { registerSetupHandlers } from '../setup/handlers'
@@ -1513,6 +1514,22 @@ function registerAuditHandlers(): void {
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Failed to export audit trail'
         return fail('AUDIT_EXPORT_FAILED', message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'audit:verifyChain',
+    (
+      _event,
+      params: { caseId?: number }
+    ): IpcResponse<{ valid: boolean; brokenAtId: number | null; totalRows: number }> => {
+      try {
+        const result = verifyChain(params?.caseId)
+        return ok(result)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to verify audit chain'
+        return fail('AUDIT_VERIFY_FAILED', message)
       }
     }
   )

@@ -20,8 +20,6 @@ import type {
   PipelineCheckResult,
   PipelineAdvanceParams,
   PipelineAdvanceResult,
-  PipelineSetStageParams,
-  PipelineSetStageResult,
   PipelineConditionsParams,
   PipelineConditionsResult,
 } from '../../shared/types'
@@ -90,31 +88,18 @@ function handlePipelineAdvance(
 }
 
 // ---------------------------------------------------------------------------
-// Handler: pipeline:set-stage  (arbitrary stage change, e.g. Kanban drag-drop)
+// Handler: pipeline:set-stage  (removed per Phase B.4 ship plan)
+//
+// The arbitrary-stage-change handler was a gate-enforcement backdoor: it
+// updated `workflow_current_stage` without re-validating preconditions,
+// which let any keyboard or scripted caller skip a gate. All legitimate
+// stage advancement now goes through `pipeline:advance`, which enforces
+// gate conditions server-side via checkStageAdvancement().
+//
+// A future supervisor-unlock path (Phase B.4 residual / Phase D) will
+// reintroduce an audited, role-gated override. Until then, there is no
+// IPC surface for unilateral stage setting.
 // ---------------------------------------------------------------------------
-
-function handlePipelineSetStage(
-  _event: Electron.IpcMainInvokeEvent,
-  params: PipelineSetStageParams,
-): IpcResponse<PipelineSetStageResult> {
-  try {
-    const db = getSqlite()
-    const row = db.prepare('SELECT workflow_current_stage FROM cases WHERE case_id = ?').get(params.caseId) as { workflow_current_stage: string } | undefined
-    if (!row) return fail('CASE_NOT_FOUND', `Case ${params.caseId} not found`)
-
-    const previousStage = row.workflow_current_stage || 'onboarding'
-    const newStatus = params.stage === 'complete' ? 'completed' : 'in_progress'
-
-    db.prepare('UPDATE cases SET workflow_current_stage = ?, case_status = ?, last_modified = datetime(\'now\') WHERE case_id = ?')
-      .run(params.stage, newStatus, params.caseId)
-
-    broadcastCasesChanged(params.caseId, params.stage, previousStage)
-    return ok({ success: true, newStage: params.stage, previousStage })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return fail('PIPELINE_SET_STAGE_FAILED', `Failed to set stage: ${message}`)
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Handler: pipeline:conditions
@@ -146,6 +131,6 @@ function handlePipelineConditions(
 export function registerPipelineHandlers(): void {
   ipcMain.handle('pipeline:check', handlePipelineCheck)
   ipcMain.handle('pipeline:advance', handlePipelineAdvance)
-  ipcMain.handle('pipeline:set-stage', handlePipelineSetStage)
+  // pipeline:set-stage intentionally removed, see comment above.
   ipcMain.handle('pipeline:conditions', handlePipelineConditions)
 }
