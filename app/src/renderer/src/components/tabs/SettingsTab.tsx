@@ -2224,15 +2224,39 @@ function DataStorageSection(): React.JSX.Element {
     })()
   }, [])
 
+  const [switchingWorkspace, setSwitchingWorkspace] = useState(false)
+
   const handleChangeWorkspace = useCallback(async () => {
     try {
       const resp = await window.psygil.workspace.pickFolder()
-      if (resp.status === 'success' && resp.data) {
-        await window.psygil.workspace.setPath(resp.data)
-        setWorkspacePath(resp.data)
+      if (resp.status !== 'success' || !resp.data) return
+      const newPath = resp.data as string
+
+      // Confirm: the app needs to restart so the DB connection rebinds
+      // to the new workspace's .psygil/psygil.db file.
+      const confirmed = window.confirm(
+        `Switch workspace to:\n${newPath}\n\nPsygil will restart to load the new workspace. Any unsaved work in open tabs will be lost.`
+      )
+      if (!confirmed) return
+
+      setSwitchingWorkspace(true)
+
+      // Use workspace:switch which does the full flow: stop watcher,
+      // release old lock, acquire new lock, save path, provision
+      // folder structure, sync DB, start watcher.
+      const switchResp = await window.psygil.workspace.switch({ path: newPath })
+      if (switchResp.status !== 'success') {
+        const msg = (switchResp as { message?: string }).message ?? 'Switch failed'
+        setSwitchingWorkspace(false)
+        window.alert(msg)
+        return
       }
+
+      // Relaunch so the main process reopens the DB from the new path.
+      await window.psygil.uninstall.relaunch()
     } catch (err) {
-      console.error('[Settings] Failed to change workspace:', err)
+      setSwitchingWorkspace(false)
+      window.alert(`Workspace switch failed: ${err instanceof Error ? err.message : String(err)}`)
     }
   }, [])
 
@@ -2285,7 +2309,9 @@ function DataStorageSection(): React.JSX.Element {
           }}>
             {workspacePath || 'Not set'}
           </div>
-          <button onClick={handleChangeWorkspace} style={btnSecondary}>Change</button>
+          <button onClick={handleChangeWorkspace} disabled={switchingWorkspace} style={btnSecondary}>
+            {switchingWorkspace ? 'Restarting...' : 'Change'}
+          </button>
         </div>
       </div>
 

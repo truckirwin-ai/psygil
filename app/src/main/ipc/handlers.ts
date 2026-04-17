@@ -496,6 +496,27 @@ function registerWorkspaceHandlers(): void {
     (_event, params: { path: string }): IpcResponse<void> => switchWorkspace(params.path),
   )
 
+  // workspace:rescan forces a full filesystem-to-DB sync on the current
+  // workspace. Picks up case folders added since the last chokidar event
+  // (bulk copies, USB mount, manual mkdir). The left column calls this
+  // before reloading the tree so the DB is fresh.
+  ipcMain.handle(
+    'workspace:rescan',
+    (): IpcResponse<{ synced: boolean }> => {
+      const wsPath = loadWorkspacePath()
+      if (wsPath === null) {
+        return fail('NO_WORKSPACE', 'No workspace path configured')
+      }
+      try {
+        syncWorkspaceToDB(wsPath)
+        return ok({ synced: true })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Rescan failed'
+        return fail('RESCAN_FAILED', message)
+      }
+    }
+  )
+
   ipcMain.handle(
     'workspace:getTree',
     (): IpcResponse<readonly FolderNode[]> => {

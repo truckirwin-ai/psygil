@@ -742,9 +742,15 @@ export default function LeftColumn({
    * The filesystem tree is the source of truth for structure.
    * The DB case list provides metadata overlay (stage, eval type, colors).
    */
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (rescan = false) => {
     setLoading(true)
     try {
+      // Optionally rescan the filesystem to DB first (picks up folders
+      // added since the last chokidar event or since app launch).
+      if (rescan) {
+        await window.psygil?.workspace?.rescan?.()
+      }
+
       // Fetch filesystem tree and DB cases in parallel
       const [treeResp, casesResp] = await Promise.all([
         window.psygil?.workspace?.getTree?.(),
@@ -758,7 +764,7 @@ export default function LeftColumn({
         setCases(casesResp.data.cases)
       }
     } catch (err) {
-      console.error('[LeftColumn] Error loading data:', err)
+      process.stderr?.write?.(`[LeftColumn] Error loading data: ${err}\n`)
     } finally {
       setLoading(false)
     }
@@ -1142,7 +1148,7 @@ export default function LeftColumn({
         </button>
         <button
           onClick={() => {
-            void loadData()
+            void loadData(true)
           }}
           style={{
             background: 'none',
@@ -1157,7 +1163,7 @@ export default function LeftColumn({
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          title="Refresh"
+          title="Rescan workspace and refresh case list"
         >
           ↻
         </button>

@@ -189,6 +189,7 @@ const api: PsygilApi = {
     getPath: () => ipcRenderer.invoke(CH.WS_GET_PATH),
     setPath: (path) => ipcRenderer.invoke(CH.WS_SET_PATH, path),
     switch: (params: { path: string }) => ipcRenderer.invoke(CH.WS_SWITCH, params),
+    rescan: () => ipcRenderer.invoke('workspace:rescan'),
     getTree: () => ipcRenderer.invoke(CH.WS_GET_TREE),
     openInFinder: (path) => ipcRenderer.invoke(CH.WS_OPEN_FINDER, path),
     openNative: (path) => ipcRenderer.invoke(CH.WS_OPEN_NATIVE, path),

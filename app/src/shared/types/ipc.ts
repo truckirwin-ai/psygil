@@ -1333,6 +1333,7 @@ export interface PsygilApi {
     readonly getPath: () => Promise<IpcResponse<string | null>>
     readonly setPath: (path: string) => Promise<IpcResponse<void>>
     readonly switch: (params: { path: string }) => Promise<IpcResponse<void>>
+    readonly rescan: () => Promise<IpcResponse<{ synced: boolean }>>
     readonly getTree: () => Promise<IpcResponse<readonly FolderNode[]>>
     readonly openInFinder: (path: string) => Promise<IpcResponse<void>>
     readonly openNative: (path: string) => Promise<IpcResponse<void>>
