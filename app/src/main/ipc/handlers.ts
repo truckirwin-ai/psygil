@@ -447,9 +447,28 @@ function registerWorkspaceHandlers(): void {
         releaseWorkspaceLock(currentPath)
       }
 
-      // Persist the new path and make sure the folder structure exists.
+      // Persist the new path in config.json AND update the setup config's
+      // storage.projectRoot so the DB connection (which reads from
+      // psygil-setup.json) rebinds to the new workspace on next launch.
       saveWorkspacePath(newPath)
       createFolderStructure(newPath)
+
+      try {
+        const { app: electronApp } = require('electron')
+        const { join: pathJoin } = require('path')
+        const fs = require('fs')
+        const setupPath = pathJoin(electronApp.getPath('userData'), 'psygil-setup.json')
+        if (fs.existsSync(setupPath)) {
+          const raw = fs.readFileSync(setupPath, 'utf-8')
+          const config = JSON.parse(raw)
+          if (!config.storage) config.storage = {}
+          config.storage.projectRoot = newPath
+          config.storage.mode = 'local'
+          fs.writeFileSync(setupPath, JSON.stringify(config, null, 2))
+        }
+      } catch (e) {
+        process.stderr.write(`[workspace:switch] Failed to update psygil-setup.json: ${(e as Error).message}\n`)
+      }
 
       // Acquire the new lock. acquireWorkspaceLock already handles stale-PID
       // recovery: if the lock file exists but the holder PID is dead, the
