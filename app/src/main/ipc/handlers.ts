@@ -437,18 +437,6 @@ function registerWorkspaceHandlers(): void {
       const currentPath = loadWorkspacePath()
 
       // If we are swapping from a different workspace, check that no other
-      // Psygil instance holds the new path. Fail fast; the renderer surfaces
-      // a modal with the holder's PID + hostname.
-      if (currentPath !== newPath) {
-        const held = inspectWorkspaceLock(newPath)
-        if (held !== null && held.pid !== process.pid) {
-          return fail(
-            'WORKSPACE_LOCKED',
-            `Another Psygil instance (PID ${held.pid} on ${held.hostname}, since ${held.acquiredAt}) is using this workspace. Close it first or pick a different folder.`,
-          )
-        }
-      }
-
       // Close the chokidar watcher on the previous workspace so events from
       // there do not leak into the new workspace's state.
       stopWatcher()
@@ -463,8 +451,10 @@ function registerWorkspaceHandlers(): void {
       saveWorkspacePath(newPath)
       createFolderStructure(newPath)
 
-      // Acquire the new lock. If acquisition fails the caller is treated as
-      // the winner only when the holder is us (same PID) or dead (stale).
+      // Acquire the new lock. acquireWorkspaceLock already handles stale-PID
+      // recovery: if the lock file exists but the holder PID is dead, the
+      // stale lock is removed and our PID takes over. Only a live foreign
+      // PID blocks acquisition.
       const lockResult = acquireWorkspaceLock(newPath)
       if (!lockResult.acquired) {
         return fail(
