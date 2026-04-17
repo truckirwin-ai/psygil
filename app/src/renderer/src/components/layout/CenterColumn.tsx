@@ -828,10 +828,33 @@ export default function CenterColumn({
             cases={cases as CaseRow[]}
             onCaseClick={(caseId) => {
               const c = (cases as CaseRow[]).find((r) => r.case_id === caseId)
-              if (c) {
+              if (!c) return
+              const title = `${c.examinee_last_name}, ${c.examinee_first_name}`
+              const stage = (c.workflow_current_stage ?? '').toLowerCase()
+
+              // Open the tab that matches the case's current pipeline stage
+              // so clicking a card in the Diagnostics column lands on the
+              // Diagnostics tab, not the generic Clinical Overview.
+              const stageTabMap: Record<string, { type: TabType; idPrefix: string }> = {
+                testing:     { type: 'tests',            idPrefix: 'tests' },
+                diagnostics: { type: 'diagnostics',      idPrefix: 'diagnostics' },
+                review:      { type: 'report',           idPrefix: 'report' },
+                complete:    { type: 'audit',             idPrefix: 'audit' },
+              }
+
+              const mapped = stageTabMap[stage]
+              if (mapped) {
+                onOpenTab({
+                  id: `${mapped.idPrefix}:${c.case_id}`,
+                  title,
+                  type: mapped.type,
+                  caseId: c.case_id,
+                })
+              } else {
+                // onboarding, interview, or unknown stages open Clinical Overview
                 onOpenTab({
                   id: `overview:${c.case_id}`,
-                  title: `${c.examinee_last_name}, ${c.examinee_first_name}`,
+                  title,
                   type: 'clinical-overview',
                   caseId: c.case_id,
                 })
@@ -1508,6 +1531,26 @@ function CaseHeaderBar({
             value={[referral, attorney, jurisdiction].filter((s) => s != null && s !== '').join(' · ') || null}
           />
           <HeaderRow label="Charges" value={charges} />
+          {/* Risk flags inline under Charges */}
+          {hasRiskFlag && (
+            <div style={{
+              marginTop: 2,
+              marginLeft: 0,
+              padding: '3px 8px',
+              background: 'color-mix(in srgb, var(--warn) 12%, transparent)',
+              borderLeft: '3px solid var(--warn)',
+              fontSize: 10,
+              color: 'var(--text)',
+              lineHeight: 1.4,
+              borderRadius: '0 4px 4px 0',
+            }}>
+              <strong>Flagged: </strong>
+              {hasViolence && <span>Violence hx. </span>}
+              {hasSelfHarm && <span>Self-harm hx. </span>}
+              {hasSubstance && <span>Substance use. </span>}
+              {hasTBI && <span>TBI hx. </span>}
+            </div>
+          )}
         </div>
         <div>
           <HeaderRow
@@ -1524,26 +1567,6 @@ function CaseHeaderBar({
         <HeaderRow label="Concern" value={concern} fullWidth />
         <HeaderRow label="Test Battery" value={battery} fullWidth />
       </div>
-
-      {/* Risk flags banner, forensic-critical */}
-      {hasRiskFlag ? (
-        <div style={{
-          marginTop: 6,
-          padding: '4px 8px',
-          background: 'color-mix(in srgb, var(--warn) 12%, transparent)',
-          borderLeft: '3px solid var(--warn)',
-          fontSize: 10,
-          color: 'var(--text)',
-          lineHeight: 1.4,
-          borderRadius: '0 4px 4px 0',
-        }}>
-          <strong>Flagged: </strong>
-          {hasViolence && <span>Violence hx. </span>}
-          {hasSelfHarm && <span>Self-harm hx. </span>}
-          {hasSubstance && <span>Substance use. </span>}
-          {hasTBI && <span>TBI hx. </span>}
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -1892,6 +1915,10 @@ function IntakeSubTab({
   }, [])
 
   // Save a note to the appropriate onboarding section on blur
+  // Ref to avoid stale closures on onBlur save for clinical notes
+  const clinNotesRef = useRef(clinNotes)
+  clinNotesRef.current = clinNotes
+
   const saveNote = useCallback(async (noteKey: string) => {
     // Map note keys to onboarding sections
     const sectionMap: Record<string, string> = {
@@ -1913,14 +1940,14 @@ function IntakeSubTab({
         section: section as any,
         data: {
           content: existingRow?.content ?? '{}',
-          clinician_notes: clinNotes[noteKey] ?? '',
+          clinician_notes: clinNotesRef.current[noteKey] ?? '',
           status: existingRow?.status ?? 'draft',
         },
       })
     } catch (err) {
-      console.error('[IntakeSubTab] Failed to save clinical note:', err)
+      process.stderr?.write?.(`[IntakeSubTab] Failed to save clinical note: ${err}\n`)
     }
-  }, [caseRow.case_id, onboardingSections, clinNotes])
+  }, [caseRow.case_id, onboardingSections])
 
   // ── Background tab: per-section notes, persisted as JSON in 'background_notes' onboarding row ──
   const [bgNotes, setBgNotes] = useState<Record<string, string>>({})
@@ -1939,17 +1966,21 @@ function IntakeSubTab({
     setBgNotes((prev) => ({ ...prev, [key]: value }))
   }, [])
 
+  // Ref to avoid stale closures on onBlur save
+  const bgNotesRef = useRef(bgNotes)
+  bgNotesRef.current = bgNotes
+
   const saveBgNotes = useCallback(async () => {
     try {
       await window.psygil.onboarding.save({
         case_id: caseRow.case_id,
         section: 'background_notes' as any,
-        data: { content: JSON.stringify(bgNotes), status: 'draft' },
+        data: { content: JSON.stringify(bgNotesRef.current), status: 'draft' },
       })
     } catch (err) {
-      console.error('[IntakeSubTab] Failed to save background notes:', err)
+      process.stderr?.write?.(`[IntakeSubTab] Failed to save background notes: ${err}\n`)
     }
-  }, [caseRow.case_id, bgNotes])
+  }, [caseRow.case_id])
 
   // Register with global flush registry so stage-advance and other
   // cross-cutting navigation force a save before leaving.
@@ -3393,13 +3424,20 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX
     })()
   }, [caseRow.case_id, titles])
 
+  // Refs to always read the latest state in save callbacks (avoids stale
+  // closures where onBlur fires with the pre-onChange sessions array).
+  const sessionsRef = useRef(sessions)
+  sessionsRef.current = sessions
+  const intNotesRef = useRef(intNotes)
+  intNotesRef.current = intNotes
+
   // Save interview data (sessions + notes)
   const saveInterviewData = useCallback(async (
     sessionsOverride?: InterviewSession[],
     notesOverride?: Record<string, Record<string, string>>,
   ) => {
-    const sessionsToSave = sessionsOverride ?? sessions
-    const notesToSave = notesOverride ?? intNotes
+    const sessionsToSave = sessionsOverride ?? sessionsRef.current
+    const notesToSave = notesOverride ?? intNotesRef.current
     try {
       await window.psygil.onboarding.save({
         case_id: caseRow.case_id,
@@ -3410,7 +3448,7 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX
         },
       })
     } catch (err) { console.error('[InterviewsSubTab] Failed to save:', err) }
-  }, [caseRow.case_id, sessions, intNotes])
+  }, [caseRow.case_id])
 
   // Register with global flush registry, stage advance forces a save before leaving.
   useEffect(() => registerFlushHandler(() => saveInterviewData()), [saveInterviewData])

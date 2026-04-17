@@ -135,6 +135,8 @@ interface TemplateProfileData {
   sections: TemplateProfileSection[]
 }
 
+type ReportPhase = 'editing' | 'review' | 'complete'
+
 export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX.Element {
   const [writerOutput, setWriterOutput] = useState<WriterOutput | null>(null)
   const [editorOutput, setEditorOutput] = useState<EditorOutput | null>(null)
@@ -151,6 +153,74 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
   const [evalType, setEvalType] = useState<string>('')
   const [templateProfile, setTemplateProfile] = useState<TemplateProfileData | null>(null)
+
+  // Report workflow phase: Editing (default) -> Review -> Complete
+  const [reportPhase, setReportPhase] = useState<ReportPhase>('editing')
+  const [phaseLoading, setPhaseLoading] = useState(false)
+  const [showAttestation, setShowAttestation] = useState(false)
+  const [attestationName, setAttestationName] = useState('')
+  const [attestationStatement, setAttestationStatement] = useState(
+    'I attest that I have reviewed the contents of this report, that all clinical opinions expressed herein are my own, and that the findings accurately reflect the data gathered during this evaluation.'
+  )
+
+  // Detect the current case stage on mount to set the initial phase
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const resp = await window.psygil.cases.get({ case_id: caseId })
+        if (resp.status === 'success' && resp.data) {
+          const stage = (resp.data as { workflow_current_stage?: string }).workflow_current_stage ?? ''
+          if (stage === 'complete') setReportPhase('complete')
+          else if (stage === 'review') setReportPhase('review')
+          else setReportPhase('editing')
+        }
+      } catch { /* default to editing */ }
+    })()
+  }, [caseId])
+
+  const handleMoveToReview = React.useCallback(async () => {
+    setPhaseLoading(true)
+    try {
+      const resp = await window.psygil.pipeline.advance({ caseId })
+      if (resp.status === 'success') {
+        setReportPhase('review')
+      } else {
+        const msg = 'message' in resp ? (resp as { message?: string }).message : 'Cannot advance'
+        window.alert(msg)
+      }
+    } catch (e) {
+      window.alert(`Failed: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setPhaseLoading(false)
+    }
+  }, [caseId])
+
+  const handleComplete = React.useCallback(async () => {
+    if (!attestationName.trim()) {
+      window.alert('Enter your name to sign the attestation.')
+      return
+    }
+    setPhaseLoading(true)
+    try {
+      const resp = await window.psygil.report.publish({
+        caseId,
+        signedBy: attestationName.trim(),
+        attestationStatement,
+        signatureDate: new Date().toISOString(),
+      })
+      if (resp.status === 'success') {
+        setReportPhase('complete')
+        setShowAttestation(false)
+      } else {
+        const msg = 'message' in resp ? (resp as { message?: string }).message : 'Publish failed'
+        window.alert(msg)
+      }
+    } catch (e) {
+      window.alert(`Publish failed: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setPhaseLoading(false)
+    }
+  }, [caseId, attestationName, attestationStatement])
 
   // Load writer and editor outputs
   useEffect(() => {
@@ -459,13 +529,121 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
         <span style={{ flex: 1 }} />
         {templateSelector}
 
-        <span style={{
-          padding: '2px 8px', fontSize: 10, fontWeight: 600, borderRadius: 3,
-          background: 'color-mix(in srgb, var(--accent) 8%, transparent)', color: 'var(--text-secondary)',
-        }}>
-          Draft
-        </span>
+        {/* Report workflow phase buttons: Editing -> Review -> Complete */}
+        <div style={{ display: 'flex', gap: 0, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--border)' }}>
+          <PhaseButton
+            label="Editing"
+            active={reportPhase === 'editing'}
+            disabled={reportPhase !== 'editing' || phaseLoading}
+            onClick={() => {}}
+            color="var(--accent)"
+          />
+          <PhaseButton
+            label="Review"
+            active={reportPhase === 'review'}
+            disabled={phaseLoading}
+            onClick={() => {
+              if (reportPhase === 'editing') {
+                if (window.confirm('Move this case to Review? The report will be flagged for final review before signing.')) {
+                  void handleMoveToReview()
+                }
+              }
+            }}
+            color="var(--warn)"
+          />
+          <PhaseButton
+            label="Complete"
+            active={reportPhase === 'complete'}
+            disabled={phaseLoading}
+            onClick={() => {
+              if (reportPhase === 'complete') return
+              setShowAttestation(true)
+            }}
+            color="var(--success)"
+          />
+        </div>
       </div>
+
+      {/* Attestation modal overlay */}
+      {showAttestation && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 100,
+          background: 'color-mix(in srgb, var(--text) 40%, transparent)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            width: 480, background: 'var(--panel)', border: '1px solid var(--border)',
+            borderRadius: 8, padding: 24,
+            boxShadow: '0 8px 32px color-mix(in srgb, var(--text) 25%, transparent)',
+          }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
+              Final Report Attestation
+            </h3>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px' }}>
+              By signing below, you certify that this report is complete, accurate, and ready for release.
+              The report will be sealed with a SHA-256 integrity hash and set to read-only. Drafts will be archived.
+            </p>
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>
+              Signed by
+            </label>
+            <input
+              type="text"
+              value={attestationName}
+              onChange={(e) => setAttestationName(e.target.value)}
+              placeholder="e.g. Robert Irwin, Psy.D."
+              autoFocus
+              style={{
+                width: '100%', padding: '8px 10px', fontSize: 13,
+                background: 'var(--field-bg)', color: 'var(--field-text)',
+                border: '1px solid var(--border)', borderRadius: 4,
+                boxSizing: 'border-box', marginBottom: 12,
+              }}
+            />
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>
+              Attestation statement
+            </label>
+            <textarea
+              value={attestationStatement}
+              onChange={(e) => setAttestationStatement(e.target.value)}
+              rows={4}
+              style={{
+                width: '100%', padding: '8px 10px', fontSize: 12, lineHeight: 1.5,
+                background: 'var(--field-bg)', color: 'var(--field-text)',
+                border: '1px solid var(--border)', borderRadius: 4,
+                boxSizing: 'border-box', resize: 'vertical', marginBottom: 16,
+              }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                onClick={() => setShowAttestation(false)}
+                disabled={phaseLoading}
+                style={{
+                  padding: '6px 16px', fontSize: 12,
+                  background: 'var(--panel)', color: 'var(--text-secondary)',
+                  border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleComplete()}
+                disabled={phaseLoading || !attestationName.trim()}
+                style={{
+                  padding: '6px 16px', fontSize: 12, fontWeight: 600,
+                  background: attestationName.trim() ? 'var(--success)' : 'var(--panel)',
+                  color: attestationName.trim() ? '#fff' : 'var(--text-secondary)',
+                  border: '1px solid var(--success)', borderRadius: 4, cursor: 'pointer',
+                }}
+              >
+                {phaseLoading ? 'Publishing...' : 'Sign and Publish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main content area */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -1142,5 +1320,38 @@ function WordToolbar({
         </div>
       )}
     </div>
+  )
+}
+
+/* ──────────────────────────────────────────────
+   Phase button for the Editing / Review / Complete bar
+   ────────────────────────────────────────────── */
+
+function PhaseButton({ label, active, disabled, onClick, color }: {
+  readonly label: string
+  readonly active: boolean
+  readonly disabled: boolean
+  readonly onClick: () => void
+  readonly color: string
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled && !active}
+      style={{
+        padding: '4px 14px',
+        fontSize: 11,
+        fontWeight: active ? 700 : 500,
+        background: active ? color : 'var(--bg)',
+        color: active ? '#fff' : 'var(--text-secondary)',
+        border: 'none',
+        borderRight: '1px solid var(--border)',
+        cursor: disabled && !active ? 'default' : 'pointer',
+        opacity: disabled && !active ? 0.5 : 1,
+        transition: 'background 0.15s, color 0.15s',
+      }}
+    >
+      {label}
+    </button>
   )
 }
