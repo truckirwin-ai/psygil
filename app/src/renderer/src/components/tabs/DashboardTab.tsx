@@ -82,6 +82,7 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
   const [dateSort, setDateSort] = useState<'desc' | 'asc'>('desc')
   const [kanbanOpen, setKanbanOpen] = useState(true)
   const [tableOpen, setTableOpen] = useState(false)
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const [activeDragId, setActiveDragId] = useState<number | null>(null)
   const [cardLayout, setCardLayout] = useState<'horizontal' | 'vertical'>(() => {
     return (localStorage.getItem('psygil-card-layout') as 'horizontal' | 'vertical') ?? 'horizontal'
@@ -182,6 +183,10 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
       setKanbanOpen(false)
     }
   }, [tableOpen])
+
+  const toggleAnalytics = useCallback(() => {
+    setAnalyticsOpen((prev) => !prev)
+  }, [])
 
   const stats = useMemo(() => {
     const stageCounts = { onboarding: 0, testing: 0, interview: 0, diagnostics: 0, review: 0, complete: 0 }
@@ -501,6 +506,364 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
       </table>
       </div>
       </div>
+
+      {/* ── Analytics Dashboard, collapsible third pane ── */}
+      <div style={{
+        flex: analyticsOpen ? 1 : '0 0 auto',
+        minHeight: analyticsOpen ? 0 : undefined,
+        maxHeight: analyticsOpen ? undefined : '28px',
+        overflow: 'hidden',
+        display: 'flex', flexDirection: 'column',
+        paddingTop: '6px',
+        borderTop: '1px solid var(--border)',
+      }}>
+        {/* Header bar */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}
+          onClick={toggleAnalytics}
+        >
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
+            Analytics {analyticsOpen ? '\u25B4' : '\u25BE'}
+          </span>
+          <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
+            {cases.length} cases analyzed
+          </span>
+        </div>
+
+        {analyticsOpen && (
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+
+              {/* ── Pipeline Stage Distribution (Horizontal Bar Chart) ── */}
+              <ChartCard title="Pipeline Stage Distribution">
+                {PIPELINE_STAGES.map((stage) => {
+                  const count = stats.stageCounts[stage.key as keyof typeof stats.stageCounts] ?? 0
+                  const pct = cases.length > 0 ? (count / cases.length) * 100 : 0
+                  const sc = STAGE_CARD_STYLES[stage.key]
+                  return (
+                    <div key={stage.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <span style={{ width: '80px', fontSize: '10px', color: 'var(--text-secondary)', textAlign: 'right', flexShrink: 0 }}>
+                        {stage.label}
+                      </span>
+                      <div style={{ flex: 1, height: '16px', background: 'var(--highlight)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${pct}%`, height: '100%', background: sc?.accent || 'var(--accent)',
+                          borderRadius: '3px', transition: 'width 0.3s',
+                          minWidth: count > 0 ? '4px' : '0px',
+                        }} />
+                      </div>
+                      <span style={{ width: '30px', fontSize: '11px', fontWeight: 600, color: 'var(--text)', textAlign: 'right' }}>
+                        {count}
+                      </span>
+                    </div>
+                  )
+                })}
+              </ChartCard>
+
+              {/* ── Evaluation Type Distribution (Pie Chart via SVG) ── */}
+              <ChartCard title="Evaluation Types">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <PieChart data={evalTypeStats} size={120} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {Object.entries(evalTypeStats).sort((a, b) => b[1] - a[1]).map(([type, count], i) => {
+                      const color = PIE_COLORS[i % PIE_COLORS.length]
+                      return (
+                        <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />
+                          <span style={{ color: 'var(--text)' }}>{type}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--text-secondary)', marginLeft: 'auto' }}>{count}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </ChartCard>
+
+              {/* ── Case Status (Donut: active vs complete) ── */}
+              <ChartCard title="Active vs Complete">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <PieChart
+                    data={{ Active: stats.active, Complete: cases.length - stats.active }}
+                    size={120}
+                    colors={['var(--accent)', 'var(--success)']}
+                    donut
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--accent)' }}>
+                      {stats.active}
+                      <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '4px' }}>active</span>
+                    </div>
+                    <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--success)' }}>
+                      {cases.length - stats.active}
+                      <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '4px' }}>complete</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                      {cases.length > 0 ? Math.round(((cases.length - stats.active) / cases.length) * 100) : 0}% completion rate
+                    </div>
+                  </div>
+                </div>
+              </ChartCard>
+
+              {/* ── Stage Radar / Spider Chart ── */}
+              <ChartCard title="Workload Distribution">
+                <SpiderChart
+                  labels={PIPELINE_STAGES.map((s) => s.label)}
+                  values={PIPELINE_STAGES.map((s) => stats.stageCounts[s.key as keyof typeof stats.stageCounts] ?? 0)}
+                  maxValue={Math.max(...Object.values(stats.stageCounts), 1)}
+                  size={160}
+                />
+              </ChartCard>
+
+              {/* ── Monthly Case Volume (vertical bars) ── */}
+              <ChartCard title="Cases by Month">
+                <MonthlyBarChart cases={cases} />
+              </ChartCard>
+
+              {/* ── Average Time in Stage (horizontal bars) ── */}
+              <ChartCard title="Stage Throughput">
+                <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  Cases per stage (higher = more cases awaiting progression)
+                </div>
+                {PIPELINE_STAGES.filter((s) => s.key !== 'complete').map((stage) => {
+                  const count = stats.stageCounts[stage.key as keyof typeof stats.stageCounts] ?? 0
+                  const maxCount = Math.max(...PIPELINE_STAGES.filter((s) => s.key !== 'complete').map((s) => stats.stageCounts[s.key as keyof typeof stats.stageCounts] ?? 0), 1)
+                  const pct = (count / maxCount) * 100
+                  const sc = STAGE_CARD_STYLES[stage.key]
+                  const isBottleneck = count === maxCount && count > 0
+                  return (
+                    <div key={stage.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
+                      <span style={{ width: '70px', fontSize: '10px', color: 'var(--text-secondary)', textAlign: 'right', flexShrink: 0 }}>{stage.label}</span>
+                      <div style={{ flex: 1, height: '12px', background: 'var(--highlight)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
+                        <div style={{
+                          width: `${pct}%`, height: '100%',
+                          background: isBottleneck ? 'var(--warn)' : (sc?.accent || 'var(--accent)'),
+                          borderRadius: '2px', transition: 'width 0.3s',
+                        }} />
+                      </div>
+                      <span style={{ width: '20px', fontSize: '10px', fontWeight: 600, color: isBottleneck ? 'var(--warn)' : 'var(--text)', textAlign: 'right' }}>{count}</span>
+                      {isBottleneck && <span style={{ fontSize: '9px', color: 'var(--warn)', fontWeight: 600 }}>bottleneck</span>}
+                    </div>
+                  )
+                })}
+              </ChartCard>
+
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ──────────────────────────────────────────────
+   Analytics Chart Components (pure SVG, no deps)
+   ────────────────────────────────────────────── */
+
+const PIE_COLORS = [
+  '#2196f3', '#9c27b0', '#4caf50', '#ff9800', '#e91e63',
+  '#00bcd4', '#ff5722', '#3f51b5', '#8bc34a', '#795548',
+]
+
+function ChartCard({ title, children }: { readonly title: string; readonly children: React.ReactNode }): React.JSX.Element {
+  return (
+    <div style={{
+      background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px',
+      padding: '12px', minHeight: '120px',
+    }}>
+      <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text)', marginBottom: '10px' }}>{title}</div>
+      {children}
+    </div>
+  )
+}
+
+function PieChart({ data, size = 120, colors, donut = false }: {
+  readonly data: Record<string, number>
+  readonly size?: number
+  readonly colors?: readonly string[]
+  readonly donut?: boolean
+}): React.JSX.Element {
+  const entries = Object.entries(data).filter(([, v]) => v > 0)
+  const total = entries.reduce((sum, [, v]) => sum + v, 0)
+  const palette = colors ?? PIE_COLORS
+  const r = size / 2
+  const cx = r
+  const cy = r
+  const outerR = r - 2
+  const innerR = donut ? outerR * 0.55 : 0
+
+  if (total === 0) {
+    return (
+      <svg width={size} height={size}>
+        <circle cx={cx} cy={cy} r={outerR} fill="var(--highlight)" />
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize="11" fill="var(--text-secondary)">No data</text>
+      </svg>
+    )
+  }
+
+  let startAngle = -Math.PI / 2
+  const paths: React.JSX.Element[] = []
+
+  entries.forEach(([key, value], i) => {
+    const sliceAngle = (value / total) * Math.PI * 2
+    const endAngle = startAngle + sliceAngle
+    const largeArc = sliceAngle > Math.PI ? 1 : 0
+
+    const x1Outer = cx + outerR * Math.cos(startAngle)
+    const y1Outer = cy + outerR * Math.sin(startAngle)
+    const x2Outer = cx + outerR * Math.cos(endAngle)
+    const y2Outer = cy + outerR * Math.sin(endAngle)
+
+    let d: string
+    if (donut) {
+      const x1Inner = cx + innerR * Math.cos(startAngle)
+      const y1Inner = cy + innerR * Math.sin(startAngle)
+      const x2Inner = cx + innerR * Math.cos(endAngle)
+      const y2Inner = cy + innerR * Math.sin(endAngle)
+      d = [
+        `M ${x1Outer} ${y1Outer}`,
+        `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2Outer} ${y2Outer}`,
+        `L ${x2Inner} ${y2Inner}`,
+        `A ${innerR} ${innerR} 0 ${largeArc} 0 ${x1Inner} ${y1Inner}`,
+        'Z',
+      ].join(' ')
+    } else {
+      d = [
+        `M ${cx} ${cy}`,
+        `L ${x1Outer} ${y1Outer}`,
+        `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2Outer} ${y2Outer}`,
+        'Z',
+      ].join(' ')
+    }
+
+    paths.push(
+      <path key={key} d={d} fill={palette[i % palette.length]} opacity={0.85}>
+        <title>{key}: {value} ({Math.round((value / total) * 100)}%)</title>
+      </path>
+    )
+    startAngle = endAngle
+  })
+
+  return (
+    <svg width={size} height={size} style={{ flexShrink: 0 }}>
+      {paths}
+      {donut && (
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize="18" fontWeight="700" fill="var(--text)">
+          {total}
+        </text>
+      )}
+    </svg>
+  )
+}
+
+function SpiderChart({ labels, values, maxValue, size = 160 }: {
+  readonly labels: readonly string[]
+  readonly values: readonly number[]
+  readonly maxValue: number
+  readonly size?: number
+}): React.JSX.Element {
+  const cx = size / 2
+  const cy = size / 2
+  const r = size / 2 - 20
+  const n = labels.length
+  const angleStep = (Math.PI * 2) / n
+
+  function polarToXY(angle: number, radius: number): { x: number; y: number } {
+    return {
+      x: cx + radius * Math.cos(angle - Math.PI / 2),
+      y: cy + radius * Math.sin(angle - Math.PI / 2),
+    }
+  }
+
+  // Grid rings
+  const rings = [0.25, 0.5, 0.75, 1.0]
+  const gridElements = rings.map((frac) => {
+    const points = Array.from({ length: n }, (_, i) => {
+      const p = polarToXY(i * angleStep, r * frac)
+      return `${p.x},${p.y}`
+    }).join(' ')
+    return <polygon key={frac} points={points} fill="none" stroke="var(--border)" strokeWidth="0.5" />
+  })
+
+  // Axis lines
+  const axisLines = Array.from({ length: n }, (_, i) => {
+    const p = polarToXY(i * angleStep, r)
+    return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--border)" strokeWidth="0.5" />
+  })
+
+  // Data polygon
+  const dataPoints = values.map((v, i) => {
+    const normR = maxValue > 0 ? (v / maxValue) * r : 0
+    const p = polarToXY(i * angleStep, normR)
+    return `${p.x},${p.y}`
+  }).join(' ')
+
+  // Labels
+  const labelElements = labels.map((label, i) => {
+    const p = polarToXY(i * angleStep, r + 14)
+    return (
+      <text key={i} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central"
+        fontSize="9" fill="var(--text-secondary)">
+        {label}
+      </text>
+    )
+  })
+
+  // Value dots
+  const dots = values.map((v, i) => {
+    const normR = maxValue > 0 ? (v / maxValue) * r : 0
+    const p = polarToXY(i * angleStep, normR)
+    return <circle key={i} cx={p.x} cy={p.y} r="3" fill="var(--accent)" />
+  })
+
+  return (
+    <svg width={size} height={size} style={{ display: 'block', margin: '0 auto' }}>
+      {gridElements}
+      {axisLines}
+      <polygon points={dataPoints} fill="color-mix(in srgb, var(--accent) 20%, transparent)" stroke="var(--accent)" strokeWidth="1.5" />
+      {dots}
+      {labelElements}
+    </svg>
+  )
+}
+
+function MonthlyBarChart({ cases: allCases }: { readonly cases: readonly CaseRow[] }): React.JSX.Element {
+  // Group by YYYY-MM
+  const monthly: Record<string, number> = {}
+  allCases.forEach((c) => {
+    const d = c.created_at ? c.created_at.substring(0, 7) : 'Unknown'
+    monthly[d] = (monthly[d] || 0) + 1
+  })
+
+  const sortedMonths = Object.entries(monthly).sort((a, b) => a[0].localeCompare(b[0]))
+  const maxCount = Math.max(...sortedMonths.map(([, v]) => v), 1)
+
+  if (sortedMonths.length === 0) {
+    return <div style={{ fontSize: '10px', color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>No case date data</div>
+  }
+
+  const barWidth = Math.max(16, Math.min(40, Math.floor(260 / sortedMonths.length) - 4))
+  const chartHeight = 80
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: chartHeight + 20 }}>
+      {sortedMonths.map(([month, count]) => {
+        const barH = (count / maxCount) * chartHeight
+        const label = month.length >= 7 ? month.substring(5, 7) : month
+        return (
+          <div key={month} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+            <span style={{ fontSize: '9px', fontWeight: 600, color: 'var(--text)' }}>{count}</span>
+            <div
+              title={`${month}: ${count} cases`}
+              style={{
+                width: barWidth, height: barH, background: 'var(--accent)',
+                borderRadius: '2px 2px 0 0', transition: 'height 0.3s',
+                opacity: 0.75,
+              }}
+            />
+            <span style={{ fontSize: '8px', color: 'var(--text-secondary)' }}>{label}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }

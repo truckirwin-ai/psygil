@@ -420,6 +420,7 @@ const api: PsygilApi = {
     provisionTemplates: (params) => ipcRenderer.invoke('setup:provisionTemplates', params),
     getSupportedEvalTypes: () => ipcRenderer.invoke('setup:getSupportedEvalTypes'),
     complete: () => ipcRenderer.invoke('setup:complete'),
+    checkLicenseExpiry: () => ipcRenderer.invoke('setup:checkLicenseExpiry'),
   },
 
   uninstall: {

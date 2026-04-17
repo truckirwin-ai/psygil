@@ -10,6 +10,7 @@ import DocumentUploadModal from './components/modals/DocumentUploadModal'
 import ScoreImportModal from './components/modals/ScoreImportModal'
 import SetupWizard from './components/setup/SetupWizard'
 import FirstRunModal from './components/setup/FirstRunModal'
+import TrialExpiredModal from './components/setup/TrialExpiredModal'
 import type { Tab, TabState } from './types/tabs'
 import type { CaseRow } from '../../shared/types/ipc'
 import { setTheme as applyTheme, getTheme } from './app/theme'
@@ -48,28 +49,44 @@ function loadWidth(key: string, fallback: number): number {
   return fallback
 }
 
-type SetupGateState = 'unknown' | 'first-run' | 'app'
+type SetupGateState = 'unknown' | 'first-run' | 'expired' | 'app'
 
 export default function App(): React.JSX.Element {
-  // Auth0 PKCE is available via Settings for organizations that opt in to
-  // the team / shared-account flow, but v1.0 first-run no longer depends
-  // on a browser round trip. The FirstRunModal below captures the
-  // clinician's name, license, and storage folder locally.
-
   // Setup gate: load the persisted setup state on mount and decide whether
-  // to show the FirstRunModal or proceed to the main app.
+  // to show the FirstRunModal, the TrialExpiredModal, or the main app.
   const [setupGate, setSetupGate] = useState<SetupGateState>('unknown')
+  const [trialExpiresAt, setTrialExpiresAt] = useState<string | null>(null)
+
   useEffect(() => {
     let cancelled = false
     void (async () => {
       try {
         const resp = await window.psygil.setup.getConfig()
         if (cancelled) return
-        if (resp.status === 'success' && resp.data.config.setupState === 'complete') {
-          setSetupGate('app')
-        } else {
+
+        if (resp.status !== 'success' || resp.data.config.setupState !== 'complete') {
           setSetupGate('first-run')
+          return
         }
+
+        // Setup is complete. Check trial expiry before allowing access.
+        try {
+          const expiryResp = await window.psygil.setup.checkLicenseExpiry()
+          if (cancelled) return
+          if (
+            expiryResp.status === 'success' &&
+            expiryResp.data.expiry !== null &&
+            expiryResp.data.expiry.expired
+          ) {
+            setTrialExpiresAt(expiryResp.data.expiry.expiresAt)
+            setSetupGate('expired')
+            return
+          }
+        } catch {
+          // Expiry check failure is non-fatal; let the user in.
+        }
+
+        setSetupGate('app')
       } catch {
         // If the setup IPC is unreachable, fall through to the app rather
         // than blocking the user. The app's existing fallbacks handle
@@ -326,6 +343,15 @@ export default function App(): React.JSX.Element {
     return <FirstRunModal onComplete={handleSetupComplete} />
   }
 
+  if (setupGate === 'expired' && trialExpiresAt !== null) {
+    return (
+      <TrialExpiredModal
+        expiresAt={trialExpiresAt}
+        onUnlocked={() => setSetupGate('app')}
+      />
+    )
+  }
+
   return (
     <div
       className="app"
@@ -440,13 +466,14 @@ export default function App(): React.JSX.Element {
             }}>
               <button
                 aria-label="Settings"
+                onClick={() => openTab({ id: 'settings', title: 'Settings', type: 'settings' })}
                 style={{
-                  width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer',
-                  fontSize: 18, padding: 0,
+                  fontSize: 22, padding: 0, borderRadius: 4,
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'none' }}
               >
                 &#9881;
               </button>

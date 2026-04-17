@@ -22,7 +22,7 @@ export const SETUP_STATES = [
 
 export type SetupState = (typeof SETUP_STATES)[number]
 
-export type LicenseTier = 'solo' | 'practice' | 'enterprise'
+export type LicenseTier = 'trial' | 'solo' | 'practice' | 'enterprise'
 export type StorageMode = 'local' | 'network' | 'cloud'
 export type Theme = 'light' | 'warm' | 'medium' | 'dark'
 export type FontSize = 'small' | 'medium' | 'large'
@@ -216,4 +216,14 @@ export interface SetupApi {
     }>
   >
   readonly complete: () => Promise<IpcResponse<{ config: SetupConfig }>>
+  readonly checkLicenseExpiry: () => Promise<
+    IpcResponse<{
+      expiry: {
+        readonly expired: boolean
+        readonly daysRemaining: number
+        readonly expiresAt: string
+        readonly tier: LicenseTier
+      } | null
+    }>
+  >
 }

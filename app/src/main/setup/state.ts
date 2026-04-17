@@ -58,7 +58,7 @@ export function nextState(current: SetupState): SetupState {
 // After "storage_ready", a mirror is also written to {project_root}/.psygil/config.json
 // ---------------------------------------------------------------------------
 
-export type LicenseTier = 'solo' | 'practice' | 'enterprise'
+export type LicenseTier = 'trial' | 'solo' | 'practice' | 'enterprise'
 export type StorageMode = 'local' | 'network' | 'cloud'
 export type Theme = 'light' | 'medium' | 'dark'
 export type FontSize = 'small' | 'medium' | 'large'

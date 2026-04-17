@@ -34,8 +34,8 @@ import {
 } from './state'
 import { validateStoragePath, provisionProjectRoot } from './storage-validation'
 import type { StorageValidationResult } from './storage-validation'
-import { validateLicense } from './license'
-import type { LicenseValidationResult } from './license'
+import { validateLicense, checkLicenseExpiry } from './license'
+import type { LicenseValidationResult, LicenseExpiryStatus } from './license'
 import { provisionTemplates, provisionAllTemplates } from './templates/generator'
 import type { ProvisionTemplateResult } from './templates/generator'
 import { REPORT_TEMPLATES, SUPPORTED_EVAL_TYPES } from './templates/registry'
@@ -66,6 +66,7 @@ export const SETUP_CHANNELS = {
   SAVE_AI: 'setup:saveAi',
   GET_SUPPORTED_EVAL_TYPES: 'setup:getSupportedEvalTypes',
   COMPLETE: 'setup:complete',
+  CHECK_LICENSE_EXPIRY: 'setup:checkLicenseExpiry',
 } as const
 
 // ---------------------------------------------------------------------------
@@ -472,6 +473,23 @@ export function registerSetupHandlers(): void {
         return ok({ config: updated })
       } catch (err) {
         return fail('SETUP_COMPLETE_FAILED', (err as Error).message)
+      }
+    },
+  )
+
+  // -- License expiry check ---------------------------------------------------
+  // Called by the renderer on app mount to decide whether to show the
+  // TrialExpiredModal. Returns null (no expiry) for paid tiers.
+
+  ipcMain.handle(
+    SETUP_CHANNELS.CHECK_LICENSE_EXPIRY,
+    (): IpcResponse<{ expiry: LicenseExpiryStatus | null }> => {
+      try {
+        const config = loadConfig()
+        const expiry = checkLicenseExpiry(config.license)
+        return ok({ expiry })
+      } catch (err) {
+        return fail('LICENSE_EXPIRY_CHECK_FAILED', (err as Error).message)
       }
     },
   )

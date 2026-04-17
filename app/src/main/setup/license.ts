@@ -59,6 +59,53 @@ export interface LicenseValidationResult {
 
 const KEY_REGEX = /^PSGIL-([A-Z0-9]{5})-([A-Z0-9]{5})-([A-Z0-9]{5})-([A-Z0-9]{5})$/
 const REMOTE_TIMEOUT_MS = 5000
+const TRIAL_DURATION_DAYS = 10
+
+// ---------------------------------------------------------------------------
+// Trial expiry helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the ISO 8601 expiry string for a trial license.
+ * Adds `days` calendar days to `activatedAt`.
+ */
+function computeTrialExpiry(activatedAt: string, days: number): string {
+  const d = new Date(activatedAt)
+  d.setDate(d.getDate() + days)
+  return d.toISOString()
+}
+
+/**
+ * Check whether a persisted license is expired. Returns null if the license
+ * has no expiry (paid tier) or if the license is null. Returns a structured
+ * result when the license IS expired or within a grace window.
+ *
+ * Called on app startup and by the renderer to decide whether to show the
+ * TrialExpiredModal.
+ */
+export interface LicenseExpiryStatus {
+  readonly expired: boolean
+  readonly daysRemaining: number
+  readonly expiresAt: string
+  readonly tier: LicenseTier
+}
+
+export function checkLicenseExpiry(license: LicenseInfo | null): LicenseExpiryStatus | null {
+  if (license === null) return null
+  if (license.expiresAt === null) return null
+
+  const now = new Date()
+  const expiry = new Date(license.expiresAt)
+  const msRemaining = expiry.getTime() - now.getTime()
+  const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24))
+
+  return {
+    expired: daysRemaining <= 0,
+    daysRemaining,
+    expiresAt: license.expiresAt,
+    tier: license.tier,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Response signature verification (D.5)
@@ -153,7 +200,9 @@ export function validateLocal(rawKey: string): LicenseValidationResult {
   const block2 = match[2]!
 
   let tier: LicenseTier
-  if (block1.startsWith('SOLO')) {
+  if (block1.startsWith('TRIA')) {
+    tier = 'trial'
+  } else if (block1.startsWith('SOLO')) {
     tier = 'solo'
   } else if (block1.startsWith('PRAC')) {
     tier = 'practice'
@@ -171,14 +220,21 @@ export function validateLocal(rawKey: string): LicenseValidationResult {
   }
 
   const seats = extractSeats(tier, block2)
+  const activatedAt = new Date().toISOString()
+
+  // Trial keys auto-expire 10 days from activation. Paid tiers have no
+  // local expiry (the server can set one via the remote validation path).
+  const expiresAt = tier === 'trial'
+    ? computeTrialExpiry(activatedAt, TRIAL_DURATION_DAYS)
+    : null
 
   return {
     ok: true,
     license: {
       tier,
       seats,
-      expiresAt: null,
-      activatedAt: new Date().toISOString(),
+      expiresAt,
+      activatedAt,
     },
     errorCode: null,
     errorMessage: null,
@@ -351,6 +407,7 @@ export async function validateLicense(
 // ---------------------------------------------------------------------------
 
 function extractSeats(tier: LicenseTier, block2: string): number {
+  if (tier === 'trial') return 1
   if (tier === 'solo') return 1
   const seatMatch = /^SEAT(\d{1,3})$/.exec(block2)
   if (seatMatch !== null) {
