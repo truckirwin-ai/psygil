@@ -343,17 +343,60 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
     return () => { cancelled = true }
   }, [caseId])
 
-  // Decision handlers
+  // Decision handlers: persist immediately on every change so the clinician
+  // never loses a diagnostic decision by navigating away.
   const setDecision = (key: string, decision: 'render' | 'rule_out' | 'defer' | null) => {
     setDecisions((prev) =>
       prev.map((d) => (d.diagnosisKey === key ? { ...d, decision } : d))
     )
+    // Auto-save the decision to DB immediately
+    const entry = decisions.find((d) => d.diagnosisKey === key)
+    if (decision !== null) {
+      void window.psygil.diagnosticDecisions.save({
+        case_id: caseId,
+        diagnosis_key: key,
+        icd_code: entry?.code ?? '',
+        diagnosis_name: entry?.name ?? key,
+        decision,
+        clinician_notes: entry?.clinicianNotes ?? '',
+      }).catch(() => {})
+    } else {
+      void window.psygil.diagnosticDecisions.delete({
+        case_id: caseId,
+        diagnosis_key: key,
+      }).catch(() => {})
+    }
   }
 
   const setNotes = (key: string, notes: string) => {
     setDecisions((prev) =>
       prev.map((d) => (d.diagnosisKey === key ? { ...d, clinicianNotes: notes } : d))
     )
+  }
+
+  // Save clinician notes for a specific diagnosis on blur
+  const saveNotes = (key: string) => {
+    const entry = decisions.find((d) => d.diagnosisKey === key)
+    if (entry?.decision) {
+      void window.psygil.diagnosticDecisions.save({
+        case_id: caseId,
+        diagnosis_key: key,
+        icd_code: entry.code,
+        diagnosis_name: entry.name,
+        decision: entry.decision,
+        clinician_notes: entry.clinicianNotes,
+      }).catch(() => {})
+    }
+  }
+
+  // Save formulation text on blur (uses a value ref to avoid stale closures)
+  const formulationValueRef = React.useRef(formulation)
+  formulationValueRef.current = formulation
+  const saveFormulation = () => {
+    void window.psygil.clinicalFormulation.save({
+      case_id: caseId,
+      formulation_text: formulationValueRef.current,
+    }).catch(() => {})
   }
 
   const toggleExpand = (key: string) => {
@@ -711,6 +754,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                   <textarea
                     value={decision?.clinicianNotes || ''}
                     onChange={(e) => setNotes(diagKey, e.target.value)}
+                    onBlur={() => saveNotes(diagKey)}
                     placeholder="Clinical rationale for this decision..."
                     style={{
                       width: '100%',
@@ -851,6 +895,7 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
         ref={formulationRef}
         value={formulation}
         onChange={(e) => { setFormulation(e.target.value); setFormulationSaved(false) }}
+        onBlur={saveFormulation}
         placeholder="Enter your clinical formulation and rationale for diagnostic decisions. This is the clinician's authoritative narrative."
         style={{
           width: '100%',

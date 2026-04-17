@@ -1452,11 +1452,21 @@ function CaseHeaderBar({
   const setting = parsedOb.contact?.eval_setting ?? 'In-Person'
   const language = parsedOb.contact?.primary_language ?? null
 
-  // Risk flags (forensic-critical, preserved from Diagnostics header)
-  const hasViolence = parsedOb.mental?.violence_history && !parsedOb.mental.violence_history.toLowerCase().includes('denies')
-  const hasSelfHarm = parsedOb.mental?.self_harm_history && !parsedOb.mental.self_harm_history.toLowerCase().includes('denies')
-  const hasSubstance = parsedOb.substance?.drug_use && !parsedOb.substance.drug_use.toLowerCase().includes('denies')
-  const hasTBI = parsedOb.health?.head_injuries && !parsedOb.health.head_injuries.toLowerCase().includes('no reported')
+  // Risk flags (forensic-critical, preserved from Diagnostics header).
+  // Each flag requires the field to have substantive positive content, not
+  // just exist. Empty strings, "none", "denies", "no", and "no reported"
+  // are all treated as negatives.
+  const isPositiveFlag = (val: string | undefined | null): boolean => {
+    if (!val || val.trim().length < 3) return false
+    const lower = val.toLowerCase().trim()
+    return !['none', 'no', 'denies', 'denied', 'n/a', 'no reported', 'no history', 'negative'].some(
+      (neg) => lower === neg || lower.startsWith(neg + ' ') || lower.startsWith('no ')
+    )
+  }
+  const hasViolence = isPositiveFlag(parsedOb.mental?.violence_history)
+  const hasSelfHarm = isPositiveFlag(parsedOb.mental?.self_harm_history)
+  const hasSubstance = isPositiveFlag(parsedOb.substance?.drug_use)
+  const hasTBI = isPositiveFlag(parsedOb.health?.head_injuries)
   const hasRiskFlag = hasViolence || hasSelfHarm || hasSubstance || hasTBI
 
   return (
@@ -6205,6 +6215,25 @@ function DiagnosticsSubTab({
                     if (approvedFormulations[field.key]) {
                       setApprovedFormulations(p => ({ ...p, [field.key]: false }))
                     }
+                  }}
+                  onBlur={async () => {
+                    // Auto-save the diagnostic formulation notes on blur
+                    try {
+                      await window.psygil.onboarding.save({
+                        case_id: caseRow.case_id,
+                        section: 'diagnostic_notes' as never,
+                        data: {
+                          content: JSON.stringify({
+                            impressions: clinicianNotes._impressions ?? '',
+                            ruled_out: clinicianNotes._ruledOut ?? '',
+                            validity: clinicianNotes._validity ?? '',
+                            prognosis: clinicianNotes._prognosis ?? '',
+                            approved: approvedFormulations,
+                          }),
+                          status: 'draft',
+                        },
+                      })
+                    } catch { /* non-fatal */ }
                   }}
                   placeholder={field.placeholder}
                   style={{ ...diagNoteStyle, minHeight: field.minHeight, width: '100%', boxSizing: 'border-box' }}
