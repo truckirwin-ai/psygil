@@ -829,36 +829,18 @@ export default function CenterColumn({
             onCaseClick={(caseId) => {
               const c = (cases as CaseRow[]).find((r) => r.case_id === caseId)
               if (!c) return
-              const title = `${c.examinee_last_name}, ${c.examinee_first_name}`
-              const stage = (c.workflow_current_stage ?? '').toLowerCase()
-
-              // Open the tab that matches the case's current pipeline stage
-              // so clicking a card in the Diagnostics column lands on the
-              // Diagnostics tab, not the generic Clinical Overview.
-              const stageTabMap: Record<string, { type: TabType; idPrefix: string }> = {
-                testing:     { type: 'tests',            idPrefix: 'tests' },
-                diagnostics: { type: 'diagnostics',      idPrefix: 'diagnostics' },
-                review:      { type: 'report',           idPrefix: 'report' },
-                complete:    { type: 'audit',             idPrefix: 'audit' },
-              }
-
-              const mapped = stageTabMap[stage]
-              if (mapped) {
-                onOpenTab({
-                  id: `${mapped.idPrefix}:${c.case_id}`,
-                  title,
-                  type: mapped.type,
-                  caseId: c.case_id,
-                })
-              } else {
-                // onboarding, interview, or unknown stages open Clinical Overview
-                onOpenTab({
-                  id: `overview:${c.case_id}`,
-                  title,
-                  type: 'clinical-overview',
-                  caseId: c.case_id,
-                })
-              }
+              // Always open Clinical Overview. The sub-tabs within it
+              // (Intake, Testing, Interviews, Diagnostics, Reports) handle
+              // stage-specific content. Opening non-overview tab types
+              // directly (tests, diagnostics, report, audit) causes blank
+              // screens because those components rely on case data that
+              // only ClinicalOverviewContent loads.
+              onOpenTab({
+                id: `overview:${c.case_id}`,
+                title: `${c.examinee_last_name}, ${c.examinee_first_name}`,
+                type: 'clinical-overview',
+                caseId: c.case_id,
+              })
             }}
             onRefresh={onRefreshCases}
           />
