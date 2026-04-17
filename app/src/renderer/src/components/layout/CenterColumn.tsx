@@ -908,12 +908,7 @@ export default function CenterColumn({
         </div>
       </div>
 
-      {/* Pipeline bar, 80px */}
-      <PipelinePanel
-        currentStage={activeCaseStage}
-        caseId={activeCaseId}
-        onStageAdvanced={onRefreshCases}
-      />
+      {/* Pipeline panel removed; stage indicators moved to Dashboard Analytics header */}
     </div>
   )
 }

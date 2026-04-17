@@ -184,6 +184,7 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
 
   const toggleAnalytics = useCallback(() => {
     setAnalyticsOpen((prev) => !prev)
+    // Analytics takes full height; no need to change kanban/table state
   }, [])
 
   const stats = useMemo(() => {
@@ -280,6 +281,8 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
         </div>
       </div>
 
+      {/* ── Stage cards + Kanban + Case List: hidden when Analytics is expanded ── */}
+      {!analyticsOpen && (<>
       {/* ── Stage cards, click to toggle Kanban ── */}
       <div
         style={{
@@ -505,6 +508,8 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
       </div>
       </div>
 
+      </>)}
+
       {/* ── Analytics Dashboard, collapsible third pane ── */}
       <div style={{
         flex: analyticsOpen ? 1 : '0 0 auto',
@@ -515,7 +520,7 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
         paddingTop: '6px',
         borderTop: '1px solid var(--border)',
       }}>
-        {/* Header bar */}
+        {/* Header bar with pipeline stage indicators */}
         <div
           style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}
           onClick={toggleAnalytics}
@@ -523,6 +528,29 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
             Analytics {analyticsOpen ? '\u25B4' : '\u25BE'}
           </span>
+
+          {/* Pipeline stage pills */}
+          <div style={{ display: 'flex', gap: '4px', marginLeft: '12px' }} onClick={(e) => e.stopPropagation()}>
+            {PIPELINE_STAGES.map((stage) => {
+              const count = stats.stageCounts[stage.key as keyof typeof stats.stageCounts] ?? 0
+              const sc = STAGE_CARD_STYLES[stage.key]
+              return (
+                <span key={stage.key} style={{
+                  fontSize: '10px',
+                  padding: '1px 7px',
+                  borderRadius: '3px',
+                  border: `1px solid ${sc?.accent ?? 'var(--border)'}`,
+                  background: count > 0 ? (sc?.accent ?? 'var(--accent)') : 'transparent',
+                  color: count > 0 ? '#fff' : 'var(--text-secondary)',
+                  fontWeight: count > 0 ? 600 : 400,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {count} {stage.label}
+                </span>
+              )
+            })}
+          </div>
+
           <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
             {cases.length} cases analyzed
           </span>
@@ -993,12 +1021,6 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
         </div>
         <div style={LABEL}>Case #</div>
         <div style={VALUE}>{c.case_number}</div>
-        {complaint && (
-          <>
-            <div style={LABEL}>Complaint</div>
-            <div style={{ ...VALUE, fontStyle: 'italic', color: 'var(--text-secondary)' }}>{complaint}</div>
-          </>
-        )}
         {referral && (
           <>
             <div style={LABEL}>Referral</div>
@@ -1060,20 +1082,6 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
       <div style={{ color: 'var(--text-secondary)', fontSize: '10px', marginBottom: '2px' }}>
         {c.case_number}
       </div>
-
-      {/* Complaint, wraps naturally, 2-line clamp */}
-      {complaint && (
-        <div style={{
-          color: 'var(--text-secondary)', fontSize: '10px', fontStyle: 'italic',
-          marginBottom: '2px',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical' as const,
-          overflow: 'hidden',
-        }}>
-          {complaint}
-        </div>
-      )}
 
       {/* Referral source */}
       {referral && (
