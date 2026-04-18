@@ -26,6 +26,7 @@ type SettingsSection =
   | 'ai-models'
   | 'practice'
   | 'data-storage'
+  | 'privacy'
   | 'about'
 
 interface ResourceFile {
@@ -58,6 +59,7 @@ const SECTIONS: SectionDef[] = [
   { id: 'documentation', label: 'Documentation', icon: '📖' },
   { id: 'appearance', label: 'Appearance', icon: '🎨' },
   { id: 'ai-models', label: 'AI & Models', icon: '🤖' },
+  { id: 'privacy', label: 'Privacy & Compliance', icon: '🔒' },
   { id: 'about', label: 'About', icon: 'ℹ' },
 ]
 
@@ -359,6 +361,7 @@ export default function SettingsTab({ onOpenTab }: { readonly onOpenTab?: (tab: 
         {activeSection === 'ai-models' && <AiModelsSection />}
         {activeSection === 'practice' && <PracticeSection />}
         {activeSection === 'data-storage' && <DataStorageSection />}
+        {activeSection === 'privacy' && <PrivacyComplianceSection />}
         {activeSection === 'about' && <AboutSection />}
       </div>
     </div>
@@ -2750,6 +2753,113 @@ function DataStorageSection(): React.JSX.Element {
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION: About
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION: Privacy & Compliance
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function PrivacyComplianceSection(): React.JSX.Element {
+  const commitments = [
+    {
+      title: 'Patient data never leaves this device',
+      detail: 'All PHI is processed locally using SQLCipher AES-256 encryption. No patient data is transmitted to cloud servers. The UNID redaction pipeline replaces all identifiers with cryptographic tokens before any AI API call.',
+    },
+    {
+      title: 'No data is ever used to train AI models',
+      detail: 'Psygil does not fine-tune, train, or improve any AI model using your clinical data, case notes, test scores, or report content. Your data is used exclusively for generating your reports in your current session.',
+    },
+    {
+      title: 'You retain 100% ownership of all data and outputs',
+      detail: 'Every report, case file, test score, and clinical note belongs to you. Psygil claims no license, no rights, and no interest in any content you create or any data you enter.',
+    },
+    {
+      title: 'HIPAA-aligned architecture',
+      detail: 'Local-first data storage, encrypted at rest (SQLCipher AES-256), encrypted in transit (TLS 1.3 for API calls), role-based access controls, and comprehensive audit logging with SHA-256 hash chain verification.',
+    },
+    {
+      title: 'Business Associate Agreement available on request',
+      detail: 'Psygil will execute a BAA with any clinical user or institution. Contact support@psygil.com to initiate.',
+    },
+    {
+      title: 'Complete audit trail for every action',
+      detail: 'Every clinical decision, AI interaction, report generation, and data modification is logged with timestamps, actor attribution, and tamper-evident hash chaining for expert testimony defensibility.',
+    },
+    {
+      title: 'Audio transcription runs entirely offline',
+      detail: 'Clinical interview transcription uses faster-whisper running locally on your machine. Audio data never leaves your device. No cloud speech services are used.',
+    },
+  ]
+
+  return (
+    <div>
+      <div style={sectionTitle}>Privacy & Compliance</div>
+      <div style={sectionDesc}>
+        Psygil's data commitments to you, your patients, and your practice
+      </div>
+
+      <div style={{
+        ...card,
+        background: 'color-mix(in srgb, var(--success) 6%, var(--panel))',
+        border: '1px solid color-mix(in srgb, var(--success) 25%, var(--border))',
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--success)', marginBottom: 8 }}>
+          Psygil Data Commitment
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>
+          These commitments are architectural, not policy. Psygil is built from the ground up as a local-first
+          application. Your clinical data never passes through our servers. We have no mechanism to access,
+          collect, or train on your patient data, because the architecture makes it impossible.
+        </div>
+      </div>
+
+      {commitments.map((c, i) => (
+        <div key={i} style={{ ...card, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{
+            width: 22, height: 22, flexShrink: 0, marginTop: 1,
+            borderRadius: '50%',
+            background: 'color-mix(in srgb, var(--success) 15%, transparent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, color: 'var(--success)', fontWeight: 700,
+          }}>
+            ✓
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>
+              {c.title}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              {c.detail}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div style={{ ...card, marginTop: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>
+          Compliance Standards
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {['HIPAA', 'FERPA', 'APA Ethics Code', 'Daubert/Frye Standards', 'SOC 2 (in progress)'].map((badge) => (
+            <span key={badge} style={{
+              padding: '4px 10px', fontSize: 11, fontWeight: 600,
+              borderRadius: 4,
+              background: 'color-mix(in srgb, var(--accent) 10%, var(--panel))',
+              color: 'var(--accent)',
+              border: '1px solid color-mix(in srgb, var(--accent) 20%, var(--border))',
+            }}>
+              {badge}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 12, lineHeight: 1.5 }}>
+        For questions about Psygil's privacy architecture or to request a BAA, contact support@psygil.com.
+        Full privacy policy available at psygil.com/privacy.
+      </div>
+    </div>
+  )
+}
 
 function AboutSection(): React.JSX.Element {
   return (
