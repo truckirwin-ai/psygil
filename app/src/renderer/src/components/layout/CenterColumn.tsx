@@ -99,14 +99,14 @@ function withMultiNotesPanel(
 // Pipeline stage constants
 // ---------------------------------------------------------------------------
 
-// themed:skip , pipeline stage identity colors; each hue uniquely identifies a clinical workflow phase
+// Pipeline stage identity colors via CSS custom properties
 const PIPELINE_STAGE_LIST = [
-  { key: 'onboarding', label: 'Onboarding', color: '#2196f3' },
-  { key: 'testing', label: 'Testing', color: '#9c27b0' },
-  { key: 'interview', label: 'Interview', color: '#e91e63' },
-  { key: 'diagnostics', label: 'Diagnostics', color: '#ff9800' },
-  { key: 'review', label: 'Review', color: '#ff5722' },
-  { key: 'complete', label: 'Complete', color: '#4caf50' },
+  { key: 'onboarding', label: 'Onboarding', color: 'var(--stage-onboarding)' },
+  { key: 'testing', label: 'Testing', color: 'var(--stage-testing)' },
+  { key: 'interview', label: 'Interview', color: 'var(--stage-interview)' },
+  { key: 'diagnostics', label: 'Diagnostics', color: 'var(--stage-diagnostics)' },
+  { key: 'review', label: 'Review', color: 'var(--stage-review)' },
+  { key: 'complete', label: 'Complete', color: 'var(--stage-complete)' },
 ] as const
 
 type StageKey = (typeof PIPELINE_STAGE_LIST)[number]['key']
@@ -114,14 +114,14 @@ type StageKey = (typeof PIPELINE_STAGE_LIST)[number]['key']
 // Kept for the bottom pipeline bar
 const PIPELINE_STAGES = PIPELINE_STAGE_LIST
 
-// themed:skip , pipeline stage identity colors; each hue uniquely identifies a clinical workflow phase
+// Pipeline stage identity colors via CSS custom properties
 const STAGE_COLORS: Record<string, string> = {
-  onboarding: '#2196f3',
-  testing: '#9c27b0',
-  interview: '#e91e63',
-  diagnostics: '#ff9800',
-  review: '#ff5722',
-  complete: '#4caf50',
+  onboarding: 'var(--stage-onboarding)',
+  testing: 'var(--stage-testing)',
+  interview: 'var(--stage-interview)',
+  diagnostics: 'var(--stage-diagnostics)',
+  review: 'var(--stage-review)',
+  complete: 'var(--stage-complete)',
 }
 
 const STAGE_ORDER: StageKey[] = [
@@ -2364,7 +2364,7 @@ const clinNoteTextareaStyle: React.CSSProperties = {
   lineHeight: 1.5, minHeight: 60,
 }
 const clinNotesColumnStyle: React.CSSProperties = {
-  background: 'var(--sidebar-bg, #f5f5f5)', borderRadius: 6, padding: '0 12px 12px',
+  background: 'var(--sidebar-bg, var(--gray-100))', borderRadius: 6, padding: '0 12px 12px',
 }
 const snapshotLabelStyle: React.CSSProperties = {
   fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
@@ -2502,14 +2502,14 @@ function ReferralSubTab({
 // ---------------------------------------------------------------------------
 
 /** Ordered directories matching clinical workflow */
-// themed:skip , document directory colors mirror pipeline stage identity hues
+// Document directory colors via CSS custom properties
 const DOC_DIRECTORIES = [
-  { key: 'Intake', subfolder: '_Inbox', color: '#2196f3' },
-  { key: 'Referral', subfolder: 'Collateral', color: '#00897b' },
-  { key: 'Testing', subfolder: 'Testing', color: '#9c27b0' },
-  { key: 'Interview', subfolder: 'Interviews', color: '#e91e63' },
-  { key: 'Diagnostics', subfolder: 'Diagnostics', color: '#ff9800' },
-  { key: 'Reports', subfolder: 'Reports', color: '#4caf50' },
+  { key: 'Intake', subfolder: '_Inbox', color: 'var(--stage-onboarding)' },
+  { key: 'Referral', subfolder: 'Collateral', color: 'var(--stage-referral, var(--accent))' },
+  { key: 'Testing', subfolder: 'Testing', color: 'var(--stage-testing)' },
+  { key: 'Interview', subfolder: 'Interviews', color: 'var(--stage-interview)' },
+  { key: 'Diagnostics', subfolder: 'Diagnostics', color: 'var(--stage-diagnostics)' },
+  { key: 'Reports', subfolder: 'Reports', color: 'var(--stage-complete)' },
 ] as const
 
 interface DocEntry {
@@ -2997,7 +2997,7 @@ function TestingSubTab({
                         padding: '5px 12px', cursor: isDefault ? 'default' : 'pointer',
                         opacity: isDefault ? 0.7 : 1,
                       }}
-                      onMouseEnter={(e) => { if (!isDefault) (e.currentTarget as HTMLLabelElement).style.background = 'var(--sidebar-bg, #f0f0f0)' }}
+                      onMouseEnter={(e) => { if (!isDefault) (e.currentTarget as HTMLLabelElement).style.background = 'var(--sidebar-bg, var(--panel))' }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLLabelElement).style.background = 'transparent' }}
                     >
                       <input
@@ -4186,7 +4186,7 @@ Generate the clinical interview session summary.`,
       {showNewSessionInput && (
         <div style={{
           display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10,
-          padding: '8px 12px', background: 'var(--sidebar-bg, #f5f5f5)', borderRadius: 6,
+          padding: '8px 12px', background: 'var(--sidebar-bg, var(--gray-100))', borderRadius: 6,
         }}>
           <input
             ref={newTitleRef}
@@ -5687,7 +5687,7 @@ function DiagnosticsSubTab({
                 ) : (
                   Object.entries(catalogByCategory).map(([category, entries]) => (
                     <div key={category}>
-                      <div style={{ padding: '6px 10px 3px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-secondary)', background: 'var(--sidebar-bg, #f5f5f5)' }}>
+                      <div style={{ padding: '6px 10px 3px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-secondary)', background: 'var(--sidebar-bg, var(--gray-100))' }}>
                         {category}
                       </div>
                       {entries.map(entry => (
@@ -5700,7 +5700,7 @@ function DiagnosticsSubTab({
                             background: 'none', border: 'none', borderBottom: '1px solid var(--border)',
                             cursor: 'pointer', color: 'var(--text)',
                           }}
-                          onMouseEnter={(e) => { (e.target as HTMLElement).style.background = 'var(--sidebar-bg, #f5f5f5)' }}
+                          onMouseEnter={(e) => { (e.target as HTMLElement).style.background = 'var(--sidebar-bg, var(--gray-100))' }}
                           onMouseLeave={(e) => { (e.target as HTMLElement).style.background = 'none' }}
                         >
                           <span style={{ fontWeight: 600 }}>{entry.name}</span>
@@ -7359,20 +7359,20 @@ function ReportSubTab({
             maxWidth: 816,
             margin: '0 auto', padding: '56px 72px',
             background: '#fff', border: '1px solid #c8c8c8',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+            boxShadow: '0 2px 8px var(--overlay-light)',
             minHeight: 1056,
             fontFamily: "'Times New Roman', Times, serif",
-            fontSize: 13, lineHeight: 1.8, color: '#222',
+            fontSize: 13, lineHeight: 1.8, color: 'var(--text)',
           }}>
             {/* Document header */}
             <div style={{ textAlign: 'center', marginBottom: 32 }}>
               <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
                 Confidential Forensic Evaluation Report
               </div>
-              <div style={{ fontSize: 12, color: '#666', marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
                 {evalType}
               </div>
-              <div style={{ borderBottom: '2px solid #333', width: 120, margin: '0 auto' }} />
+              <div style={{ borderBottom: '2px solid var(--text)', width: 120, margin: '0 auto' }} />
             </div>
 
             {/* Report header fields */}
@@ -7385,7 +7385,7 @@ function ReportSubTab({
               <div><strong>Date of Report:</strong> {new Date().toLocaleDateString()}</div>
             </div>
 
-            <div style={{ borderTop: '1px solid #ccc', marginBottom: 24 }} />
+            <div style={{ borderTop: '1px solid var(--border)', marginBottom: 24 }} />
 
             {/* Report sections, contentEditable, flows like printed page */}
             {(Object.keys(sectionContent).length > 0
@@ -7405,8 +7405,8 @@ function ReportSubTab({
               >
                 <div style={{
                   fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
-                  letterSpacing: 0.5, marginBottom: 8, color: '#111',
-                  borderBottom: '1px solid #ddd', paddingBottom: 4,
+                  letterSpacing: 0.5, marginBottom: 8, color: 'var(--text)',
+                  borderBottom: '1px solid var(--border)', paddingBottom: 4,
                 }}>
                   {sectionTitles[idx] ?? reportSections[idx]?.title ?? `Section ${idx + 1}`}
                 </div>
@@ -7420,7 +7420,7 @@ function ReportSubTab({
                   }}
                   style={{
                     fontSize: 13, fontFamily: "'Times New Roman', Times, serif",
-                    lineHeight: 1.8, color: '#222',
+                    lineHeight: 1.8, color: 'var(--text)',
                     whiteSpace: 'pre-wrap', wordWrap: 'break-word',
                     outline: 'none', cursor: 'text',
                     padding: '2px 0', minHeight: 20,

@@ -633,15 +633,15 @@ function getStatusColor(status: AgentStatusResult['status']): string {
   switch (status) {
     case 'idle':
     case 'done':
-      return '#4caf50' // green
+      return 'var(--stage-complete)'
     case 'queued':
-      return '#9e9e9e' // gray
+      return 'var(--text-secondary)'
     case 'running':
-      return '#ff9800' // orange
+      return 'var(--stage-diagnostics)'
     case 'error':
-      return '#f44336' // red
+      return 'var(--danger)'
     default:
-      return '#9e9e9e'
+      return 'var(--text-secondary)'
   }
 }
 
@@ -772,7 +772,7 @@ function AgentStatusRow({
           </span>
         )}
         {agentStatus.status === 'error' && agentStatus.operationId && (
-          <span style={{ color: '#f44336' }} title="Error">
+          <span style={{ color: 'var(--danger)' }} title="Error">
             Error
           </span>
         )}

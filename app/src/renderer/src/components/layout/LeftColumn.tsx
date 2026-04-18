@@ -74,12 +74,12 @@ interface LeftColumnProps {
 // ---------------------------------------------------------------------------
 
 const STAGE_COLORS: Record<string, string> = {
-  onboarding: '#2196f3',
-  testing: '#9c27b0',
-  interview: '#e91e63',
-  diagnostics: '#ff9800',
-  review: '#ff5722',
-  complete: '#4caf50',
+  onboarding: 'var(--stage-onboarding)',
+  testing: 'var(--stage-testing)',
+  interview: 'var(--stage-interview)',
+  diagnostics: 'var(--stage-diagnostics)',
+  review: 'var(--stage-review)',
+  complete: 'var(--stage-complete)',
 }
 
 // Map subfolder names to Lucide icons (14px monoline)

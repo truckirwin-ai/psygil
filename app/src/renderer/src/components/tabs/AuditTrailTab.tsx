@@ -97,7 +97,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
       case 'clinician':
         return 'var(--accent)'
       case 'agent':
-        return '#9c27b0' // themed:skip - intentional purple for agent actor type
+        return 'var(--stage-testing)'
       case 'system':
         return 'var(--text-secondary)'
       default:
@@ -403,7 +403,7 @@ export const AuditTrailTab: React.FC<AuditTrailTabProps> = ({ caseId }) => {
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '20px', fontWeight: 700, color: '#9c27b0' /* themed:skip - agent purple */ }}>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--stage-testing)' }}>
                 {entries.filter((e) => e.actorType === 'ai_agent').length}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>

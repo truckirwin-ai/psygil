@@ -59,7 +59,7 @@ export default function Statusbar(): React.JSX.Element {
               width: 8,
               height: 8,
               borderRadius: '50%',
-              background: '#4caf50',
+              background: 'var(--stage-complete)',
               display: 'inline-block',
             }}
           />

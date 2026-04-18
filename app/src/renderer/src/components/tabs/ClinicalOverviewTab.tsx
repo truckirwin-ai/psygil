@@ -53,14 +53,13 @@ interface IngestorOutput {
   completeness_flags: Record<string, unknown>
 }
 
-// themed:skip - pipeline stage identity colors; each maps to a distinct clinical workflow phase
 const STAGE_COLORS: Record<string, string> = {
-  Onboarding: '#2196f3',
-  Testing: '#9c27b0',
-  Interview: '#e91e63',
-  Diagnostics: '#ff9800',
-  Review: '#ff5722',
-  Complete: '#4caf50',
+  Onboarding: 'var(--stage-onboarding)',
+  Testing: 'var(--stage-testing)',
+  Interview: 'var(--stage-interview)',
+  Diagnostics: 'var(--stage-diagnostics)',
+  Review: 'var(--stage-review)',
+  Complete: 'var(--stage-complete)',
 }
 
 // Stage indices for determining progression
@@ -370,14 +369,13 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
   const OverviewPane = () => {
     const age = ageFromDob(caseData.examinee_dob)
     const stage = caseData.workflow_current_stage || 'onboarding'
-    // themed:skip - pipeline stage identity colors; each maps to a distinct clinical workflow phase
     const stageColors: Record<string, string> = {
-      onboarding: '#2196f3',
-      testing: '#9c27b0',
-      interview: '#e91e63',
-      diagnostics: '#ff9800',
-      review: '#ff5722',
-      complete: '#4caf50',
+      onboarding: 'var(--stage-onboarding)',
+      testing: 'var(--stage-testing)',
+      interview: 'var(--stage-interview)',
+      diagnostics: 'var(--stage-diagnostics)',
+      review: 'var(--stage-review)',
+      complete: 'var(--stage-complete)',
     }
     const stageColor = stageColors[stage] ?? 'var(--text-secondary)'
 
@@ -407,7 +405,6 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
     const diagnosticsCount = documentsBySubfolder['Diagnostics'] ?? 0
 
     // Heuristic risk flags from onboarding free text
-    // themed:skip for #9c27b0 (purple = AI/agent actor marker, reused here for psychotic/validity severity)
     const riskFlags: { label: string; color: string }[] = []
     const risks = [
       { rx: /suicid|self.harm|self harm/i, label: 'Suicide history', color: 'var(--danger)' },
@@ -415,8 +412,8 @@ export const ClinicalOverviewTab: React.FC<ClinicalOverviewTabProps> = ({
       { rx: /weapon|firearm|knife/i, label: 'Weapon access', color: 'var(--danger)' },
       { rx: /substance use disorder|alcohol use disorder|opioid|methamphetamine/i, label: 'Active substance', color: 'var(--warn)' },
       { rx: /TBI|traumatic brain injury|concussion/i, label: 'TBI', color: 'var(--warn)' },
-      { rx: /psychotic|hallucinat|delusion|schizophrenia/i, label: 'Psychotic features', color: '#9c27b0' }, // themed:skip - AI agent actor purple
-      { rx: /malinger|symptom validity|feign|exaggerat/i, label: 'Validity concern', color: '#9c27b0' }, // themed:skip - AI agent actor purple
+      { rx: /psychotic|hallucinat|delusion|schizophrenia/i, label: 'Psychotic features', color: 'var(--stage-testing)' },
+      { rx: /malinger|symptom validity|feign|exaggerat/i, label: 'Validity concern', color: 'var(--stage-testing)' },
     ]
     const allText = [mentalHealthHistory, substanceHistory, medicalHistory, legalHistory, presentingComplaint].join(' ')
     for (const r of risks) {

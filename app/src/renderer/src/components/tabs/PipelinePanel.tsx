@@ -18,14 +18,14 @@ interface PipelinePanelProps {
   readonly onStageAdvanced?: () => void
 }
 
-// Stage colors (from design system, these are MANDATORY)
+// Stage colors use CSS custom properties from tokens.css
 const STAGE_COLORS: Record<string, string> = {
-  onboarding: '#2196f3',
-  testing: '#9c27b0',
-  interview: '#e91e63',
-  diagnostics: '#ff9800',
-  review: '#ff5722',
-  complete: '#4caf50',
+  onboarding: 'var(--stage-onboarding)',
+  testing: 'var(--stage-testing)',
+  interview: 'var(--stage-interview)',
+  diagnostics: 'var(--stage-diagnostics)',
+  review: 'var(--stage-review)',
+  complete: 'var(--stage-complete)',
 }
 
 // Stage indices for determining progression
@@ -144,7 +144,7 @@ export const PipelinePanel: React.FC<PipelinePanelProps> = ({
               fontWeight: 400,
               textTransform: 'none',
               letterSpacing: 0,
-              color: '#f44336',
+              color: 'var(--danger)',
               maxWidth: 300,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -250,7 +250,7 @@ export const PipelinePanel: React.FC<PipelinePanelProps> = ({
                   fontWeight: 600,
                   border: 'none',
                   borderRadius: 3,
-                  background: '#4caf50',
+                  background: 'var(--success)',
                   color: '#fff',
                   cursor: advancing ? 'wait' : 'pointer',
                   whiteSpace: 'nowrap',

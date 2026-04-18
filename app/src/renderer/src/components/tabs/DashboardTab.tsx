@@ -43,12 +43,12 @@ const PIPELINE_STAGES = [
  *  Text uses the dark base hue directly; it reads well on both light and
  *  dark backgrounds because the bg is tinted toward the same hue. */
 const STAGE_CARD_STYLES: Record<string, { bg: string; border: string; text: string; accent: string }> = {
-  onboarding:  { bg: 'color-mix(in srgb, #00897b 12%, var(--bg))', border: 'color-mix(in srgb, #00897b 25%, var(--border))', text: '#00695c', accent: 'color-mix(in srgb, #00897b 70%, var(--bg))' },
-  testing:     { bg: 'color-mix(in srgb, #8e24aa 12%, var(--bg))', border: 'color-mix(in srgb, #8e24aa 25%, var(--border))', text: '#6a1b9a', accent: 'color-mix(in srgb, #8e24aa 70%, var(--bg))' },
-  interview:   { bg: 'color-mix(in srgb, #d81b60 12%, var(--bg))', border: 'color-mix(in srgb, #d81b60 25%, var(--border))', text: '#ad1457', accent: 'color-mix(in srgb, #d81b60 70%, var(--bg))' },
-  diagnostics: { bg: 'color-mix(in srgb, #f57c00 12%, var(--bg))', border: 'color-mix(in srgb, #f57c00 25%, var(--border))', text: '#e65100', accent: 'color-mix(in srgb, #f57c00 70%, var(--bg))' },
-  review:      { bg: 'color-mix(in srgb, #e64a19 12%, var(--bg))', border: 'color-mix(in srgb, #e64a19 25%, var(--border))', text: '#bf360c', accent: 'color-mix(in srgb, #e64a19 70%, var(--bg))' },
-  complete:    { bg: 'color-mix(in srgb, #43a047 12%, var(--bg))', border: 'color-mix(in srgb, #43a047 25%, var(--border))', text: '#2e7d32', accent: 'color-mix(in srgb, #43a047 70%, var(--bg))' },
+  onboarding:  { bg: 'color-mix(in srgb, var(--stage-onboarding) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-onboarding) 25%, var(--border))', text: 'var(--stage-onboarding)', accent: 'color-mix(in srgb, var(--stage-onboarding) 70%, var(--bg))' },
+  testing:     { bg: 'color-mix(in srgb, var(--stage-testing) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-testing) 25%, var(--border))', text: 'var(--stage-testing)', accent: 'color-mix(in srgb, var(--stage-testing) 70%, var(--bg))' },
+  interview:   { bg: 'color-mix(in srgb, var(--stage-interview) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-interview) 25%, var(--border))', text: 'var(--stage-interview)', accent: 'color-mix(in srgb, var(--stage-interview) 70%, var(--bg))' },
+  diagnostics: { bg: 'color-mix(in srgb, var(--stage-diagnostics) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-diagnostics) 25%, var(--border))', text: 'var(--stage-diagnostics)', accent: 'color-mix(in srgb, var(--stage-diagnostics) 70%, var(--bg))' },
+  review:      { bg: 'color-mix(in srgb, var(--stage-review) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-review) 25%, var(--border))', text: 'var(--stage-review)', accent: 'color-mix(in srgb, var(--stage-review) 70%, var(--bg))' },
+  complete:    { bg: 'color-mix(in srgb, var(--stage-complete) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-complete) 25%, var(--border))', text: 'var(--stage-complete)', accent: 'color-mix(in srgb, var(--stage-complete) 70%, var(--bg))' },
 }
 
 function mapStageToKey(stage: string | null): string {
@@ -257,14 +257,14 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
         <h1 style={{ fontSize: '16px', margin: 0, fontWeight: 600 }}>Practice Dashboard</h1>
         <span style={{ fontSize: '12px', color: 'var(--text)', fontWeight: 600 }}>{cases.length} Total</span>
         <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>{stats.active} Active</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '2px', background: 'var(--panel, #f0f0f0)', borderRadius: '4px', border: '1px solid var(--border, #ddd)', padding: '2px' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '2px', background: 'var(--panel)', borderRadius: '4px', border: '1px solid var(--border)', padding: '2px' }}>
           <button
             onClick={() => { setCardLayout('horizontal'); localStorage.setItem('psygil-card-layout', 'horizontal') }}
             title="Horizontal layout"
             style={{
               padding: '3px 8px', fontSize: '11px', fontWeight: 600, border: 'none', borderRadius: '3px', cursor: 'pointer',
-              background: cardLayout === 'horizontal' ? 'var(--accent, #5b6abf)' : 'transparent',
-              color: cardLayout === 'horizontal' ? '#fff' : 'var(--text-secondary, #888)',
+              background: cardLayout === 'horizontal' ? 'var(--accent)' : 'transparent',
+              color: cardLayout === 'horizontal' ? '#fff' : 'var(--text-secondary)',
             }}
           >
             ☰
@@ -274,8 +274,8 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
             title="Vertical layout (iPad)"
             style={{
               padding: '3px 8px', fontSize: '11px', fontWeight: 600, border: 'none', borderRadius: '3px', cursor: 'pointer',
-              background: cardLayout === 'vertical' ? 'var(--accent, #5b6abf)' : 'transparent',
-              color: cardLayout === 'vertical' ? '#fff' : 'var(--text-secondary, #888)',
+              background: cardLayout === 'vertical' ? 'var(--accent)' : 'transparent',
+              color: cardLayout === 'vertical' ? '#fff' : 'var(--text-secondary)',
             }}
           >
             ☷
@@ -366,13 +366,13 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
           style={{
             height: '6px', flexShrink: 0,
             cursor: 'row-resize', userSelect: 'none',
-            background: splitterDragging.current ? 'var(--accent, #1565c0)' : 'transparent',
+            background: splitterDragging.current ? 'var(--accent)' : 'transparent',
             borderTop: '1px solid var(--border)',
             borderBottom: '1px solid var(--border)',
             transition: 'background 0.1s',
             margin: '2px 0',
           }}
-          onPointerEnter={(e) => { (e.target as HTMLElement).style.background = 'var(--border, #ccc)' }}
+          onPointerEnter={(e) => { (e.target as HTMLElement).style.background = 'var(--border)' }}
           onPointerLeave={(e) => { if (!splitterDragging.current) (e.target as HTMLElement).style.background = 'transparent' }}
         />
       )}

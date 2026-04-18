@@ -51,10 +51,10 @@ const DATA_CATEGORIES: DataCategory[] = [
 ]
 
 const STATUS_COLORS: Record<ConfirmationStatus, string> = {
-  unreviewed: '#9e9e9e',
-  confirmed: '#4caf50',
-  corrected: '#ff9800',
-  flagged: '#f44336',
+  unreviewed: 'var(--text-secondary)',
+  confirmed: 'var(--stage-complete)',
+  corrected: 'var(--stage-diagnostics)',
+  flagged: 'var(--danger)',
 }
 
 const STATUS_LABELS: Record<ConfirmationStatus, string> = {
@@ -343,7 +343,7 @@ export default function DataConfirmationTab({
             borderRadius: 4,
             fontSize: 11,
             fontWeight: 600,
-            background: allRequiredConfirmed ? '#4caf50' : 'var(--border)',
+            background: allRequiredConfirmed ? 'var(--stage-complete)' : 'var(--border)',
             color: allRequiredConfirmed ? '#fff' : 'var(--text-secondary)',
           }}>
             {allRequiredConfirmed ? 'Ready to Advance' : 'Review Required'}
@@ -388,7 +388,7 @@ export default function DataConfirmationTab({
                 }} />
                 {cat.label}
                 {cat.required && (
-                  <span style={{ fontSize: 9, color: '#f44336' }}>*</span>
+                  <span style={{ fontSize: 9, color: 'var(--danger)' }}>*</span>
                 )}
               </button>
             )
