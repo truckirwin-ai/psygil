@@ -34,11 +34,15 @@
 // See: docs/engineering/26_Workspace_Folder_Architecture.md
 // =============================================================================
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { CaseRow, FolderNode } from '../../../../shared/types'
 import type { Tab } from '../../types/tabs'
 import { useBranding } from '../../hooks/useBranding'
 import type { CaseSubfolder } from '../../../../shared/types/ipc'
+import {
+  ClipboardList, FileText, FolderClosed, FolderOpen, BarChart3, Mic, Scale,
+  FileEdit, Archive, FileType, Sheet, Image, Music, Video, File, Briefcase,
+} from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,7 +51,7 @@ import type { CaseSubfolder } from '../../../../shared/types/ipc'
 interface TreeNode {
   readonly id: string
   readonly label: string
-  readonly icon: string
+  readonly icon: React.ReactNode
   readonly badge?: string
   readonly stageColor?: string
   readonly expanded?: boolean
@@ -78,32 +82,32 @@ const STAGE_COLORS: Record<string, string> = {
   complete: '#4caf50',
 }
 
-// Map subfolder names → icons for known case subfolders
-const SUBFOLDER_ICONS: Record<string, string> = {
-  intake: '📋',
-  referral: '📄',
-  collateral: '📁',
-  testing: '📊',
-  interviews: '🎙',
-  diagnostics: '⚖',
-  reports: '📝',
-  archive: '📦',
+// Map subfolder names to Lucide icons (14px monoline)
+const SUBFOLDER_ICONS: Record<string, React.ReactNode> = {
+  intake: <ClipboardList size={14} />,
+  referral: <FileText size={14} />,
+  collateral: <FolderClosed size={14} />,
+  testing: <BarChart3 size={14} />,
+  interviews: <Mic size={14} />,
+  diagnostics: <Scale size={14} />,
+  reports: <FileEdit size={14} />,
+  archive: <Archive size={14} />,
 }
 
-// Map file extensions → icons
-function fileIcon(name: string): string {
+// Map file extensions to Lucide icons
+function fileIcon(name: string): React.ReactNode {
   const ext = name.split('.').pop()?.toLowerCase() ?? ''
   switch (ext) {
-    case 'pdf': return '📕'
-    case 'doc': case 'docx': return '📄'
-    case 'xls': case 'xlsx': return '📊'
-    case 'txt': return '📝'
-    case 'png': case 'jpg': case 'jpeg': case 'gif': case 'webp': return '🖼'
-    case 'mp3': case 'wav': case 'ogg': case 'm4a': return '🎵'
-    case 'mp4': case 'mov': case 'avi': return '🎬'
-    case 'json': return '{ }'
-    case 'csv': return '📊'
-    default: return '📄'
+    case 'pdf': return <FileType size={13} />
+    case 'doc': case 'docx': return <FileText size={13} />
+    case 'xls': case 'xlsx': return <Sheet size={13} />
+    case 'txt': return <FileEdit size={13} />
+    case 'png': case 'jpg': case 'jpeg': case 'gif': case 'webp': return <Image size={13} />
+    case 'mp3': case 'wav': case 'ogg': case 'm4a': return <Music size={13} />
+    case 'mp4': case 'mov': case 'avi': return <Video size={13} />
+    case 'json': return <File size={13} />
+    case 'csv': return <Sheet size={13} />
+    default: return <File size={13} />
   }
 }
 
@@ -128,7 +132,7 @@ function buildTreeFromFilesystem(
   tree.push({
     id: 'dashboard',
     label: 'Dashboard',
-    icon: '📊',
+    icon: <BarChart3 size={14} />,
     tabType: 'dashboard',
   })
 
@@ -187,7 +191,7 @@ function buildTreeFromFilesystem(
       children.unshift({
         id: `${caseId}-overview`,
         label: 'Clinical Overview',
-        icon: '📋',
+        icon: <ClipboardList size={14} />,
         tabType: 'clinical-overview',
         caseId,
       })
@@ -196,7 +200,7 @@ function buildTreeFromFilesystem(
     caseChildren.push({
       id: `case-folder:${folder.path}`,
       label,
-      icon: '📁',
+      icon: <Briefcase size={14} />,
       stageColor,
       children,
       caseId,
@@ -208,7 +212,7 @@ function buildTreeFromFilesystem(
   tree.push({
     id: 'cases-folder',
     label: 'Cases',
-    icon: '📁',
+    icon: <FolderClosed size={14} />,
     children: caseChildren,
   })
 
@@ -242,7 +246,7 @@ function convertFolderNode(node: FolderNode, caseId: number | undefined): TreeNo
   const lowerName = node.name.toLowerCase()
 
   if (node.isDirectory) {
-    const icon = SUBFOLDER_ICONS[lowerName] ?? '📁'
+    const icon = SUBFOLDER_ICONS[lowerName] ?? <FolderClosed size={14} />
     const children = (node.children ?? []).map((c) => convertFolderNode(c, caseId))
     return {
       id: `fs:${node.path}`,

@@ -10,9 +10,9 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Tab } from '../../types/tabs'
 import type { ResourceCategory } from '../../../../shared/types/ipc'
 import BrandingPanel from './settings/BrandingPanel'
-// INSTRUMENT_NORMS used by the InstrumentLibrarySection for runtime lookup
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { INSTRUMENT_NORMS } from '../../data/instrumentNorms'
+import { Building2, HardDrive, PenTool, Ruler, FileText, BookOpen, Palette, Brain, FlaskConical, Shield, Info } from 'lucide-react'
 import { setTheme as applyThemeKey, THEME_CHOICES } from '../../app/theme'
 import type { ThemeKey } from '../../app/theme'
 
@@ -47,25 +47,25 @@ interface ResourceFile {
 interface SectionDef {
   id: SettingsSection
   label: string
-  icon: string
+  icon: React.ReactNode
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Section definitions
+// Section definitions (Lucide icons, 14px monoline stroke)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SECTIONS: SectionDef[] = [
-  { id: 'practice', label: 'Practice', icon: '🏥' },
-  { id: 'data-storage', label: 'Data & Storage', icon: '💾' },
-  { id: 'writing-samples', label: 'Writing Samples', icon: '✍' },
-  { id: 'style-guide', label: 'Style Guide', icon: '📐' },
-  { id: 'templates', label: 'Templates', icon: '📋' },
-  { id: 'documentation', label: 'Documentation', icon: '📖' },
-  { id: 'appearance', label: 'Appearance', icon: '🎨' },
-  { id: 'ai-models', label: 'AI & Models', icon: '🤖' },
-  { id: 'instruments', label: 'Assessment Library', icon: '🧪' },
-  { id: 'privacy', label: 'Privacy & Compliance', icon: '🔒' },
-  { id: 'about', label: 'About', icon: 'ℹ' },
+  { id: 'practice', label: 'Practice', icon: <Building2 size={14} /> },
+  { id: 'data-storage', label: 'Data & Storage', icon: <HardDrive size={14} /> },
+  { id: 'writing-samples', label: 'Writing Samples', icon: <PenTool size={14} /> },
+  { id: 'style-guide', label: 'Style Guide', icon: <Ruler size={14} /> },
+  { id: 'templates', label: 'Templates', icon: <FileText size={14} /> },
+  { id: 'documentation', label: 'Documentation', icon: <BookOpen size={14} /> },
+  { id: 'appearance', label: 'Appearance', icon: <Palette size={14} /> },
+  { id: 'ai-models', label: 'AI & Models', icon: <Brain size={14} /> },
+  { id: 'instruments', label: 'Assessment Library', icon: <FlaskConical size={14} /> },
+  { id: 'privacy', label: 'Privacy & Compliance', icon: <Shield size={14} /> },
+  { id: 'about', label: 'About', icon: <Info size={14} /> },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -349,7 +349,7 @@ export default function SettingsTab({ onOpenTab }: { readonly onOpenTab?: (tab: 
                 borderLeft: active ? '3px solid var(--accent)' : '3px solid transparent',
               }}
             >
-              <span style={{ fontSize: 14, width: 20, textAlign: 'center', flexShrink: 0 }}>{s.icon}</span>
+              <span style={{ width: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: active ? 1 : 0.6 }}>{s.icon}</span>
               {s.label}
             </button>
           )
