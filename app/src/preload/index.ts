@@ -330,6 +330,8 @@ const api: PsygilApi = {
     publish: (args: { caseId: number; signedBy: string; attestationStatement: string; signatureDate: string }) => ipcRenderer.invoke('report:publish', args),
     verifyIntegrity: (args: { caseId: number }) => ipcRenderer.invoke('report:verifyIntegrity', args),
     exportAndOpen: (args: { caseId: number; fullName: string; evalType: string; sections: { title: string; body: string }[] }) => ipcRenderer.invoke('report:exportAndOpen', args),
+    saveDocx: (args: { caseId: number }) => ipcRenderer.invoke('report:saveDocx', args),
+    savePdf: (args: { caseId: number }) => ipcRenderer.invoke('report:savePdf', args),
     loadTemplate: () => ipcRenderer.invoke('report:loadTemplate'),
   },
 

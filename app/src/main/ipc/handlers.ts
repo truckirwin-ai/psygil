@@ -1454,6 +1454,105 @@ function registerReportHandlers(): void {
   )
 
   // ------------------------------------------------------------------
+  // report:saveDocx, Save generated DOCX to user-chosen location
+  // ------------------------------------------------------------------
+  ipcMain.handle(
+    'report:saveDocx',
+    async (
+      event,
+      params: { caseId: number }
+    ): Promise<IpcResponse<{ filePath: string }>> => {
+      try {
+        const wsPath = loadWorkspacePath()
+        if (!wsPath) return fail('NO_WORKSPACE', 'Workspace not configured')
+
+        const { join: joinPath } = require('path')
+        const fs = require('fs')
+
+        // Find the latest draft DOCX
+        const draftsDir = joinPath(wsPath, `case_${params.caseId}`, 'report', 'drafts')
+        let latestDraft = ''
+        let latestVersion = 0
+        try {
+          const existing = fs.readdirSync(draftsDir) as string[]
+          for (const f of existing) {
+            const m = (f as string).match(/^draft_v(\d+)\.docx$/)
+            if (m) {
+              const v = parseInt(m[1], 10)
+              if (v > latestVersion) {
+                latestVersion = v
+                latestDraft = joinPath(draftsDir, f)
+              }
+            }
+          }
+        } catch { /* no drafts */ }
+
+        if (!latestDraft) {
+          return fail('NO_DRAFT', 'No report draft found. Generate a DOCX first.')
+        }
+
+        // Show save dialog
+        const parentWindow = BrowserWindow.fromWebContents(event.sender)
+        const result = await dialog.showSaveDialog(parentWindow ?? BrowserWindow.getAllWindows()[0], {
+          title: 'Export Report as Word Document',
+          defaultPath: joinPath(app.getPath('documents'), `Report_Case_${params.caseId}_v${latestVersion}.docx`),
+          filters: [{ name: 'Word Document', extensions: ['docx'] }],
+        })
+
+        if (result.canceled || !result.filePath) {
+          return fail('CANCELLED', 'Export cancelled')
+        }
+
+        fs.copyFileSync(latestDraft, result.filePath)
+        return ok({ filePath: result.filePath })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to export DOCX'
+        return fail('EXPORT_FAILED', message)
+      }
+    }
+  )
+
+  // ------------------------------------------------------------------
+  // report:savePdf, Export report preview as PDF via printToPDF
+  // ------------------------------------------------------------------
+  ipcMain.handle(
+    'report:savePdf',
+    async (
+      event,
+      params: { caseId: number }
+    ): Promise<IpcResponse<{ filePath: string }>> => {
+      try {
+        // Show save dialog
+        const parentWindow = BrowserWindow.fromWebContents(event.sender)
+        const result = await dialog.showSaveDialog(parentWindow ?? BrowserWindow.getAllWindows()[0], {
+          title: 'Export Report as PDF',
+          defaultPath: require('path').join(app.getPath('documents'), `Report_Case_${params.caseId}.pdf`),
+          filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
+        })
+
+        if (result.canceled || !result.filePath) {
+          return fail('CANCELLED', 'Export cancelled')
+        }
+
+        // Use Electron's printToPDF to generate from current page
+        const webContents = event.sender
+        const pdfBuffer = await webContents.printToPDF({
+          printBackground: true,
+          landscape: false,
+          pageSize: 'Letter',
+          margins: { top: 0.75, bottom: 0.75, left: 0.75, right: 0.75 },
+        })
+
+        require('fs').writeFileSync(result.filePath, pdfBuffer)
+        return ok({ filePath: result.filePath })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to export PDF'
+        return fail('EXPORT_FAILED', message)
+      }
+    }
+  )
+
+  // ------------------------------------------------------------------
   // report:loadTemplate, Pick a .docx template, extract text, strip PHI
   // ------------------------------------------------------------------
   ipcMain.handle(

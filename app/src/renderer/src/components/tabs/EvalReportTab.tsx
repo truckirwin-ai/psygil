@@ -526,6 +526,56 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
           </>
         )}
 
+        {/* Export buttons: Word + PDF */}
+        {hasWriter && (
+          <>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await window.psygil.report.saveDocx({ caseId })
+                  if (res.status !== 'success') {
+                    const msg = 'message' in res ? (res as { message?: string }).message : 'Export failed'
+                    window.alert(msg)
+                  }
+                } catch (e) {
+                  window.alert(`Export failed: ${e instanceof Error ? e.message : String(e)}`)
+                }
+              }}
+              title="Export report as Word document (.docx)"
+              style={{
+                padding: '4px 10px', fontSize: '11px',
+                border: '1px solid var(--border)', borderRadius: '4px',
+                backgroundColor: 'var(--bg)', color: 'var(--text)',
+                cursor: 'pointer',
+              }}
+            >
+              Export .docx
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await window.psygil.report.savePdf({ caseId })
+                  if (res.status !== 'success') {
+                    const msg = 'message' in res ? (res as { message?: string }).message : 'Export failed'
+                    window.alert(msg)
+                  }
+                } catch (e) {
+                  window.alert(`Export failed: ${e instanceof Error ? e.message : String(e)}`)
+                }
+              }}
+              title="Export report as PDF document"
+              style={{
+                padding: '4px 10px', fontSize: '11px',
+                border: '1px solid var(--border)', borderRadius: '4px',
+                backgroundColor: 'var(--bg)', color: 'var(--text)',
+                cursor: 'pointer',
+              }}
+            >
+              Export .pdf
+            </button>
+          </>
+        )}
+
         <span style={{ flex: 1 }} />
         {templateSelector}
 
