@@ -20,14 +20,14 @@ interface DashboardTabProps {
 
 // themed:skip - eval-type categorical colors, each is a distinct semantic marker not a theme token
 const EVAL_TYPE_COLORS: Record<string, string> = {
-  CST: 'color-mix(in srgb, #2196f3 65%, var(--bg))',
-  Custody: 'color-mix(in srgb, #9c27b0 65%, var(--bg))',
-  Risk: 'color-mix(in srgb, #f44336 60%, var(--bg))',
-  'PTSD Dx': 'color-mix(in srgb, #ff9800 60%, var(--bg))',
-  'ADHD Dx': 'color-mix(in srgb, #4caf50 60%, var(--bg))',
-  Malingering: 'color-mix(in srgb, #795548 70%, var(--bg))',
-  Fitness: 'color-mix(in srgb, #607d8b 70%, var(--bg))',
-  Capacity: 'color-mix(in srgb, #00bcd4 60%, var(--bg))',
+  CST: 'color-mix(in srgb, var(--stage-onboarding) 65%, var(--bg))',
+  Custody: 'color-mix(in srgb, var(--stage-testing) 65%, var(--bg))',
+  Risk: 'color-mix(in srgb, var(--danger) 60%, var(--bg))',
+  'PTSD Dx': 'color-mix(in srgb, var(--stage-diagnostics) 60%, var(--bg))',
+  'ADHD Dx': 'color-mix(in srgb, var(--stage-complete) 60%, var(--bg))',
+  Malingering: 'color-mix(in srgb, var(--warn) 70%, var(--bg))',
+  Fitness: 'color-mix(in srgb, var(--text-secondary) 70%, var(--bg))',
+  Capacity: 'color-mix(in srgb, var(--info) 60%, var(--bg))',
 }
 
 const PIPELINE_STAGES = [

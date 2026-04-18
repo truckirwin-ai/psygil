@@ -361,7 +361,7 @@ export default function OnlyOfficeEditor({
           <div
             style={{
               fontSize: '13px',
-              color: '#d32f2f',
+              color: 'var(--danger)',
               marginBottom: '8px',
             }}
           >

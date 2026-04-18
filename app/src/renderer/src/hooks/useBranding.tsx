@@ -30,7 +30,7 @@ const DEFAULT_BRANDING: PracticeBranding = {
   practiceName: '',
   logoPath: undefined,
   logoData: undefined,
-  primaryColor: '#2E75B6',
+  primaryColor: '#4f46e5',
   tagline: undefined,
   showAttribution: true,
 }

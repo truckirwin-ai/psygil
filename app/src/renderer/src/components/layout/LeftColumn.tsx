@@ -574,7 +574,7 @@ function TreeNodeComponent({
             ))}
           </select>
           {dropError && (
-            <div style={{ fontSize: 11, color: '#f44336', marginBottom: 6 }}>
+            <div style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 6 }}>
               {dropError}
             </div>
           )}

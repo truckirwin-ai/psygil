@@ -235,7 +235,7 @@ export default function StepClinical({
                 </div>
               )}
               {workspaceSummary.failed > 0 && (
-                <div style={{ fontSize: 11, marginTop: 4, color: '#b45309' }}>
+                <div style={{ fontSize: 11, marginTop: 4, color: 'var(--warn)' }}>
                   {workspaceSummary.failed} failed to write (see main console)
                 </div>
               )}

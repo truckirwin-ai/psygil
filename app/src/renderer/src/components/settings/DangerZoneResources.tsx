@@ -88,7 +88,7 @@ export default function DangerZoneResources({ onComplete }: DangerZoneResourcesP
         Load sample writing samples and documentation into your workspace for testing or demonstration purposes.
       </p>
       {error !== null && (
-        <p style={{ fontSize: 12, color: '#E74C3C', marginBottom: 12 }}>
+        <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 12 }}>
           {error}
         </p>
       )}

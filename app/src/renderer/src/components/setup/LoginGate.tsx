@@ -53,7 +53,7 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps): React.JS
       </p>
 
       {error !== null && (
-        <p role="alert" style={{ color: '#c0392b', fontSize: '0.875rem', margin: 0 }}>
+        <p role="alert" style={{ color: 'var(--danger)', fontSize: '0.875rem', margin: 0 }}>
           {error}
         </p>
       )}
@@ -67,7 +67,7 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps): React.JS
           fontWeight: 500,
           borderRadius: '6px',
           border: 'none',
-          background: loading ? '#a0a0a0' : '#2563eb',
+          background: loading ? 'var(--gray-400)' : 'var(--accent)',
           color: '#fff',
           cursor: loading ? 'not-allowed' : 'pointer',
           minWidth: '140px',

@@ -243,7 +243,7 @@ export default function StepSidecar({ config, onConfigUpdate, onAdvance }: StepP
             style={{
               ...styles.secondaryButton,
               borderColor: 'rgba(245, 158, 11, 0.6)',
-              color: '#b45309',
+              color: 'var(--warn)',
             }}
             onClick={async () => {
               await window.psygil.setup.advance({ targetState: 'sidecar_verified' })

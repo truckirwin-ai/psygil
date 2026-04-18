@@ -88,7 +88,7 @@ function createWindow(): BrowserWindow {
       const cfg = JSON.parse(raw)
       const theme = cfg?.appearance?.theme
       if (theme === 'dark') {
-        bgColor = '#2b2f36'
+        bgColor = '#1a1a2e'
         nativeTheme.themeSource = 'dark'
       } else if (theme === 'warm') {
         bgColor = '#faf8f4'

@@ -394,7 +394,7 @@ const mockTableHeaderStyle: React.CSSProperties = {
   padding: '8px 10px',
   textAlign: 'left',
   borderBottom: '1px solid var(--border)',
-  background: 'var(--bg-soft, #fafafa)',
+  background: 'var(--bg-soft, var(--gray-50))',
   whiteSpace: 'nowrap',
 }
 
@@ -413,7 +413,7 @@ const mockTableSummaryStyle: React.CSSProperties = {
   gap: '4px 24px',
   padding: '8px 10px',
   marginBottom: 10,
-  background: 'var(--bg-soft, #fafafa)',
+  background: 'var(--bg-soft, var(--gray-50))',
   border: '1px solid var(--border)',
   borderRadius: 4,
 }
@@ -447,7 +447,7 @@ interface MockTableRowProps {
 function MockTableRow({ row, columns }: MockTableRowProps): React.JSX.Element {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
   const hasTip = Boolean(row.tooltip)
-  const bgOnHover = hasTip ? 'var(--bg-soft, #fafafa)' : undefined
+  const bgOnHover = hasTip ? 'var(--bg-soft, var(--gray-50))' : undefined
   return (
     <tr
       style={{ position: 'relative', background: pos ? bgOnHover : undefined }}

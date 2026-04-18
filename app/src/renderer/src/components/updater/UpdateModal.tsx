@@ -206,7 +206,7 @@ export function UpdateModal({ onClose }: UpdateModalProps): React.ReactElement |
                 transition: 'width 0.2s ease',
               }} />
             </div>
-            <div style={{ fontSize: '12px', color: '#8b949e', marginTop: '4px', textAlign: 'center' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', textAlign: 'center' }}>
               {download.percent}%
               {download.totalBytes > 0 && (
                 <span>
