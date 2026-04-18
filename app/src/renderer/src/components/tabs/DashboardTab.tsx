@@ -39,14 +39,16 @@ const PIPELINE_STAGES = [
   { key: 'complete', label: 'Complete' },
 ]
 
-/** Stage card colors, blended with --bg so they adapt to the active theme */
+/** Stage card colors, blended with --bg so they adapt to the active theme.
+ *  Text uses the dark base hue directly; it reads well on both light and
+ *  dark backgrounds because the bg is tinted toward the same hue. */
 const STAGE_CARD_STYLES: Record<string, { bg: string; border: string; text: string; accent: string }> = {
-  onboarding:  { bg: 'color-mix(in srgb, #00897b 12%, var(--bg))', border: 'color-mix(in srgb, #00897b 25%, var(--border))', text: 'color-mix(in srgb, #80cbc4 80%, var(--text))', accent: 'color-mix(in srgb, #00897b 70%, var(--bg))' },
-  testing:     { bg: 'color-mix(in srgb, #8e24aa 12%, var(--bg))', border: 'color-mix(in srgb, #8e24aa 25%, var(--border))', text: 'color-mix(in srgb, #ce93d8 80%, var(--text))', accent: 'color-mix(in srgb, #8e24aa 70%, var(--bg))' },
-  interview:   { bg: 'color-mix(in srgb, #d81b60 12%, var(--bg))', border: 'color-mix(in srgb, #d81b60 25%, var(--border))', text: 'color-mix(in srgb, #f48fb1 80%, var(--text))', accent: 'color-mix(in srgb, #d81b60 70%, var(--bg))' },
-  diagnostics: { bg: 'color-mix(in srgb, #f57c00 12%, var(--bg))', border: 'color-mix(in srgb, #f57c00 25%, var(--border))', text: 'color-mix(in srgb, #ffcc80 80%, var(--text))', accent: 'color-mix(in srgb, #f57c00 70%, var(--bg))' },
-  review:      { bg: 'color-mix(in srgb, #e64a19 12%, var(--bg))', border: 'color-mix(in srgb, #e64a19 25%, var(--border))', text: 'color-mix(in srgb, #ffab91 80%, var(--text))', accent: 'color-mix(in srgb, #e64a19 70%, var(--bg))' },
-  complete:    { bg: 'color-mix(in srgb, #43a047 12%, var(--bg))', border: 'color-mix(in srgb, #43a047 25%, var(--border))', text: 'color-mix(in srgb, #a5d6a7 80%, var(--text))', accent: 'color-mix(in srgb, #43a047 70%, var(--bg))' },
+  onboarding:  { bg: 'color-mix(in srgb, #00897b 12%, var(--bg))', border: 'color-mix(in srgb, #00897b 25%, var(--border))', text: '#00695c', accent: 'color-mix(in srgb, #00897b 70%, var(--bg))' },
+  testing:     { bg: 'color-mix(in srgb, #8e24aa 12%, var(--bg))', border: 'color-mix(in srgb, #8e24aa 25%, var(--border))', text: '#6a1b9a', accent: 'color-mix(in srgb, #8e24aa 70%, var(--bg))' },
+  interview:   { bg: 'color-mix(in srgb, #d81b60 12%, var(--bg))', border: 'color-mix(in srgb, #d81b60 25%, var(--border))', text: '#ad1457', accent: 'color-mix(in srgb, #d81b60 70%, var(--bg))' },
+  diagnostics: { bg: 'color-mix(in srgb, #f57c00 12%, var(--bg))', border: 'color-mix(in srgb, #f57c00 25%, var(--border))', text: '#e65100', accent: 'color-mix(in srgb, #f57c00 70%, var(--bg))' },
+  review:      { bg: 'color-mix(in srgb, #e64a19 12%, var(--bg))', border: 'color-mix(in srgb, #e64a19 25%, var(--border))', text: '#bf360c', accent: 'color-mix(in srgb, #e64a19 70%, var(--bg))' },
+  complete:    { bg: 'color-mix(in srgb, #43a047 12%, var(--bg))', border: 'color-mix(in srgb, #43a047 25%, var(--border))', text: '#2e7d32', accent: 'color-mix(in srgb, #43a047 70%, var(--bg))' },
 }
 
 function mapStageToKey(stage: string | null): string {
