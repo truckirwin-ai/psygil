@@ -1478,8 +1478,8 @@ function CaseHeaderBar({
         <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{fullName}</div>
         <span
           style={{
-            background: stageColor,
-            color: '#fff',
+            background: `color-mix(in srgb, ${stageColor} 12%, var(--bg))`,
+            color: stageColor,
             fontSize: 10,
             fontWeight: 700,
             borderRadius: 3,
@@ -1487,6 +1487,7 @@ function CaseHeaderBar({
             letterSpacing: 0.5,
             textTransform: 'uppercase',
             flexShrink: 0,
+            border: `1px solid color-mix(in srgb, ${stageColor} 20%, var(--border))`,
           }}
         >
           {stageLabel}
@@ -5775,18 +5776,21 @@ function DiagnosticsSubTab({
           }
         }
 
-        const actionButtonStyle = (active: boolean): React.CSSProperties => ({
-          padding: '5px 12px',
-          fontSize: 10.5,
-          fontWeight: 700,
-          fontFamily: 'inherit',
-          letterSpacing: '0.04em',
-          border: '1px solid ' + (active ? 'var(--warn)' : 'var(--border)'),
-          borderRadius: 3,
-          background: active ? 'var(--warn)' : 'var(--bg)',
-          color: active ? '#fff' : 'var(--text-secondary)',
-          cursor: 'pointer',
-        })
+        const decisionColors: Record<string, string> = { render: 'var(--success)', defer: 'var(--warn)', reject: 'var(--danger)' }
+        const actionButtonStyle = (active: boolean, kind?: string): React.CSSProperties => {
+          const c = kind ? decisionColors[kind] ?? 'var(--accent)' : 'var(--accent)'
+          return {
+            padding: '5px 10px',
+            fontSize: 11,
+            fontWeight: 600,
+            fontFamily: 'inherit',
+            border: '1px solid ' + (active ? c : 'var(--border)'),
+            borderRadius: 4,
+            background: active ? c : 'var(--bg)',
+            color: active ? '#fff' : 'var(--text-secondary)',
+            cursor: 'pointer',
+          }
+        }
 
         return (
         <Fragment key={cond.name}>
@@ -5852,9 +5856,9 @@ function DiagnosticsSubTab({
                 <option value="Unspecified">Unspecified</option>
               </select>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <button onClick={() => applyDecision('render')} style={actionButtonStyle(decision === 'render')}>RENDER</button>
-                <button onClick={() => applyDecision('defer')} style={actionButtonStyle(decision === 'defer')}>DEFER</button>
-                <button onClick={() => applyDecision('reject')} style={actionButtonStyle(decision === 'reject')}>REJECT</button>
+                <button onClick={() => applyDecision('render')} style={actionButtonStyle(decision === 'render', 'render')}>RENDER</button>
+                <button onClick={() => applyDecision('defer')} style={actionButtonStyle(decision === 'defer', 'defer')}>DEFER</button>
+                <button onClick={() => applyDecision('reject')} style={actionButtonStyle(decision === 'reject', 'reject')}>REJECT</button>
               </div>
             </div>
             {expandedConditions[cond.name] && (
@@ -6365,9 +6369,9 @@ function DiagnosticsSubTab({
               style={{
                 width: '100%', padding: '8px 12px', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
                 cursor: allGatesPassed && !reportBuilding ? 'pointer' : 'not-allowed',
-                background: allGatesPassed ? 'var(--info)' : 'var(--border)',
+                background: allGatesPassed ? 'var(--accent)' : 'var(--border)',
                 color: allGatesPassed ? '#fff' : 'var(--text-secondary)',
-                border: 'none', borderRadius: 5,
+                border: 'none', borderRadius: 6,
                 transition: 'background 0.2s',
               }}
               title={allGatesPassed ? 'Save diagnostic decisions and build report' : 'Complete all gates to unlock'}
@@ -6540,10 +6544,10 @@ function DiagnosticsSubTab({
           style={{
             width: '100%', padding: '9px 12px', fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
             cursor: allGatesPassed && !reportBuilding ? 'pointer' : 'not-allowed',
-            background: allGatesPassed ? 'var(--info)' : 'var(--bg)',
+            background: allGatesPassed ? 'var(--accent)' : 'var(--bg)',
             color: allGatesPassed ? '#fff' : 'var(--text-secondary)',
             border: allGatesPassed ? 'none' : '1px solid var(--border)',
-            borderRadius: 5,
+            borderRadius: 6,
             transition: 'background 0.2s',
           }}
           title={allGatesPassed ? 'Save diagnostic decisions and build report' : 'Complete all gates to unlock'}
