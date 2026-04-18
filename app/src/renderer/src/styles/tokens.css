@@ -75,11 +75,11 @@ html[data-theme="dark"] {
   /* Chrome */
   --bg:              #2b2f36;
   --panel:           #1f2329;
-  --border:          #3a4048;
-  --text:            #e6e8ea;
-  --text-secondary:  #a5adb8;
-  --accent:          #7aa2ff;
-  --highlight:       #3a4660;
+  --border:          #31363e;
+  --text:            #c8ccd2;
+  --text-secondary:  #7d8590;
+  --accent:          #6b93db;
+  --highlight:       #2d3340;
 
   /* Form inputs - always white for readability */
   --field-bg:        #ffffff;
@@ -89,10 +89,10 @@ html[data-theme="dark"] {
   --report-bg:       #ffffff;
   --report-text:     #1e1e1e;
 
-  /* Semantic state colors */
-  --danger:          #f28b82;
-  --warn:            #ffb74d;
-  --success:         #81c995;
-  --info:            #82b1ff;
+  /* Semantic state colors - muted for less contrast */
+  --danger:          #c9706a;
+  --warn:            #c99a4d;
+  --success:         #6ba87a;
+  --info:            #6b8fc9;
 }
 
