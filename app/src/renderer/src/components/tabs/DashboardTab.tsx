@@ -43,12 +43,12 @@ const PIPELINE_STAGES = [
  *  Text uses the dark base hue directly; it reads well on both light and
  *  dark backgrounds because the bg is tinted toward the same hue. */
 const STAGE_CARD_STYLES: Record<string, { bg: string; border: string; text: string; accent: string }> = {
-  onboarding:  { bg: 'color-mix(in srgb, var(--stage-onboarding) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-onboarding) 25%, var(--border))', text: 'var(--stage-onboarding)', accent: 'color-mix(in srgb, var(--stage-onboarding) 70%, var(--bg))' },
-  testing:     { bg: 'color-mix(in srgb, var(--stage-testing) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-testing) 25%, var(--border))', text: 'var(--stage-testing)', accent: 'color-mix(in srgb, var(--stage-testing) 70%, var(--bg))' },
-  interview:   { bg: 'color-mix(in srgb, var(--stage-interview) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-interview) 25%, var(--border))', text: 'var(--stage-interview)', accent: 'color-mix(in srgb, var(--stage-interview) 70%, var(--bg))' },
-  diagnostics: { bg: 'color-mix(in srgb, var(--stage-diagnostics) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-diagnostics) 25%, var(--border))', text: 'var(--stage-diagnostics)', accent: 'color-mix(in srgb, var(--stage-diagnostics) 70%, var(--bg))' },
-  review:      { bg: 'color-mix(in srgb, var(--stage-review) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-review) 25%, var(--border))', text: 'var(--stage-review)', accent: 'color-mix(in srgb, var(--stage-review) 70%, var(--bg))' },
-  complete:    { bg: 'color-mix(in srgb, var(--stage-complete) 12%, var(--bg))', border: 'color-mix(in srgb, var(--stage-complete) 25%, var(--border))', text: 'var(--stage-complete)', accent: 'color-mix(in srgb, var(--stage-complete) 70%, var(--bg))' },
+  onboarding:  { bg: 'var(--bg)', border: 'var(--border)', text: 'var(--stage-onboarding)', accent: 'var(--stage-onboarding)' },
+  testing:     { bg: 'var(--bg)', border: 'var(--border)', text: 'var(--stage-testing)', accent: 'var(--stage-testing)' },
+  interview:   { bg: 'var(--bg)', border: 'var(--border)', text: 'var(--stage-interview)', accent: 'var(--stage-interview)' },
+  diagnostics: { bg: 'var(--bg)', border: 'var(--border)', text: 'var(--stage-diagnostics)', accent: 'var(--stage-diagnostics)' },
+  review:      { bg: 'var(--bg)', border: 'var(--border)', text: 'var(--stage-review)', accent: 'var(--stage-review)' },
+  complete:    { bg: 'var(--bg)', border: 'var(--border)', text: 'var(--stage-complete)', accent: 'var(--stage-complete)' },
 }
 
 function mapStageToKey(stage: string | null): string {
@@ -301,13 +301,17 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
           const count = stats.stageCounts[stage.key as keyof typeof stats.stageCounts] ?? 0
           return (
             <div key={stage.key} style={{
-              background: sc.bg, border: `1px solid ${sc.border}`,
-              borderRadius: kanbanOpen ? '4px 4px 0 0' : '4px',
-              padding: '6px 8px', textAlign: 'center',
-              display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '5px',
+              background: 'var(--bg)', border: `1px solid var(--border)`,
+              borderRadius: kanbanOpen ? '6px 6px 0 0' : '6px',
+              padding: '8px 10px', textAlign: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
             }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: sc.text }}>
-                {stage.label} ({count}) {kanbanOpen ? '▴' : '▾'}
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: sc.text, flexShrink: 0 }} />
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
+                {stage.label}
+              </span>
+              <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--panel)', padding: '1px 5px', borderRadius: 8 }}>
+                {count}
               </span>
             </div>
           )
@@ -912,9 +916,9 @@ function KanbanColumn({ stageKey, cases: columnCases, onCaseClick, cardLayout = 
     <div
       ref={setNodeRef}
       style={{
-        background: isOver ? 'var(--highlight)' : 'var(--panel)',
-        border: `1px solid ${isOver ? 'var(--border)' : 'var(--border)'}`,
-        borderTop: 'none', borderRadius: '0 0 4px 4px',
+        background: isOver ? 'var(--highlight)' : 'var(--gray-50)',
+        border: `1px solid var(--border)`,
+        borderTop: 'none', borderRadius: '0 0 6px 6px',
         padding: '4px', overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
@@ -999,9 +1003,9 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
     return (
       <div
         style={{
-          background: 'var(--bg)', border: `1px solid ${sc.border}`,
-          borderLeft: `4px solid ${sc.accent}`,
-          borderRadius: '4px', padding: '10px 12px',
+          background: 'var(--bg)', border: `1px solid var(--border)`,
+          borderLeft: `2px solid ${sc.accent}`,
+          borderRadius: '6px', padding: '10px 12px',
           cursor: isDragging ? 'grabbing' : 'grab',
           lineHeight: '1.4',
           userSelect: 'none',
@@ -1014,7 +1018,7 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
             {c.examinee_last_name}, {(c.examinee_first_name ?? '').charAt(0)}.
           </span>
           <span style={{
-            background: sc.accent, color: '#fff', padding: '2px 8px',
+            background: `color-mix(in srgb, ${sc.accent} 12%, var(--bg))`, color: sc.accent, padding: '2px 8px',
             borderRadius: '3px', fontSize: '10px', fontWeight: 600, flexShrink: 0,
           }}>
             {evalType}
@@ -1054,9 +1058,9 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
   return (
     <div
       style={{
-        background: 'var(--bg)', border: `1px solid ${sc.border}`,
-        borderLeft: `3px solid ${sc.accent}`,
-        borderRadius: '3px', padding: '6px 8px',
+        background: 'var(--bg)', border: `1px solid var(--border)`,
+        borderLeft: `2px solid ${sc.accent}`,
+        borderRadius: '6px', padding: '8px 10px',
         cursor: isDragging ? 'grabbing' : 'grab',
         lineHeight: '1.4',
         fontSize: '11px',
@@ -1072,8 +1076,8 @@ function KanbanCardContent({ c, sc, isDragging, cardLayout = 'horizontal' }: {
           {c.examinee_last_name}, {(c.examinee_first_name ?? '').charAt(0)}.
         </span>
         <span style={{
-          background: sc.accent, color: '#fff', padding: '1px 5px',
-          borderRadius: '2px', fontSize: '9px', fontWeight: 600, flexShrink: 0,
+          background: `color-mix(in srgb, ${sc.accent} 12%, var(--bg))`, color: sc.accent, padding: '1px 5px',
+          borderRadius: '3px', fontSize: '9px', fontWeight: 600, flexShrink: 0,
         }}>
           {evalType}
         </span>
