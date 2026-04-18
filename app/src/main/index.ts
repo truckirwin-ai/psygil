@@ -96,8 +96,6 @@ function createWindow(): BrowserWindow {
     height: 900,
     title: 'Psygil',
     backgroundColor: bgColor,
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 12, y: 10 },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
