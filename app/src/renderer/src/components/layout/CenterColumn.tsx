@@ -5457,6 +5457,19 @@ function DiagnosticsSubTab({
   const [showAddDropdown, setShowAddDropdown] = useState(false)
   const [hoveredCondition, setHoveredCondition] = useState<string | null>(null)
 
+  // Load Diagnostician agent output for structured criteria display
+  const [diagAgentOutput, setDiagAgentOutput] = useState<Record<string, unknown> | null>(null)
+  useEffect(() => {
+    void (async () => {
+      try {
+        const resp = await window.psygil.diagnostician.getResult({ caseId: caseRow.case_id })
+        if (resp.status === 'success' && resp.data) {
+          setDiagAgentOutput(resp.data as Record<string, unknown>)
+        }
+      } catch { /* no agent output yet */ }
+    })()
+  }, [caseRow.case_id])
+
   const parsedOb = useMemo(() => {
     const map: Record<string, Record<string, string>> = {}
     for (const row of onboardingSections) {
@@ -5976,36 +5989,84 @@ function DiagnosticsSubTab({
                 <button onClick={() => applyDecision('reject')} style={actionButtonStyle(decision === 'reject', 'reject')}>REJECT</button>
               </div>
             </div>
-            {expandedConditions[cond.name] && (
-              <div style={{
-                borderTop: '1px solid var(--border)',
-                padding: '8px 14px 10px 40px',
-                fontSize: 11.5,
-                lineHeight: 1.5,
-                color: 'var(--text-secondary)',
-                background: 'var(--bg-soft)',
-              }}>
-                <div style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  color: 'var(--text-secondary)',
-                  marginBottom: 4,
-                }}>
-                  DSM-5-TR Criteria Summary
+            {expandedConditions[cond.name] && (() => {
+              // Check if Diagnostician agent has structured criteria for this condition
+              const diagMap = (diagAgentOutput?.diagnostic_evidence_map ?? {}) as Record<string, Record<string, unknown>>
+              // Match by DSM code or name (fuzzy: underscored name or plain name)
+              const matchKey = Object.keys(diagMap).find((k) => {
+                const entry = diagMap[k] as Record<string, unknown>
+                const entryCode = String(entry.icd_code ?? '')
+                const entryName = k.replace(/_/g, ' ').toLowerCase()
+                return entryCode === cond.dsmCode || entryName === cond.name.toLowerCase()
+              })
+              const diagEntry = matchKey ? diagMap[matchKey] as Record<string, unknown> : null
+              const criteria = diagEntry?.criteria_analysis as Record<string, Record<string, unknown>> | undefined
+
+              if (criteria && Object.keys(criteria).length > 0) {
+                // Structured criteria view (matches mockup)
+                const metBadge = (status: string) => {
+                  const colors: Record<string, string> = { met: 'var(--success)', not_met: 'var(--danger)', insufficient_data: 'var(--warn)' }
+                  return <span style={{ display: 'inline-block', padding: '1px 5px', borderRadius: 3, fontSize: 9, fontWeight: 700, color: '#fff', background: colors[status] || 'var(--text-secondary)', marginLeft: 6 }}>{status.replace(/_/g, ' ')}</span>
+                }
+                return (
+                  <div style={{ borderTop: '1px solid var(--border)', padding: '10px 14px 10px 40px', fontSize: 11.5, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                      {diagEntry?.psycholegal_standard ? String(diagEntry.psycholegal_standard) : 'DSM-5-TR Criteria Analysis'}:
+                    </div>
+                    {Object.entries(criteria).map(([critKey, critData]) => (
+                      <div key={critKey} style={{ marginBottom: 8, paddingLeft: 10, borderLeft: '2px solid var(--border)' }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>{critKey.replace(/_/g, ' ').toUpperCase()}</span>
+                          {critData.met_status && metBadge(String(critData.met_status))}
+                        </div>
+                        {critData.description && <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: 1.4, marginBottom: 3 }}>{String(critData.description)}</div>}
+                        {Array.isArray(critData.supporting_evidence) && (critData.supporting_evidence as unknown[]).length > 0 && (
+                          <div style={{ marginBottom: 3 }}>
+                            <div style={{ fontSize: 10, color: 'var(--success)', fontWeight: 600, marginTop: 2 }}>Supporting:</div>
+                            {(critData.supporting_evidence as Array<Record<string, unknown>>).map((ev, i) => (
+                              <div key={i} style={{ fontSize: 11, color: 'var(--text)', paddingLeft: 10, lineHeight: 1.4 }}>
+                                &#8226; {typeof ev === 'object' ? String(ev.source || JSON.stringify(ev)) : String(ev)}
+                                {typeof ev === 'object' && ev.strength && <span style={{ color: 'var(--text-secondary)', marginLeft: 4, fontSize: 10 }}>({String(ev.strength)})</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {Array.isArray(critData.contradicting_evidence) && (critData.contradicting_evidence as unknown[]).length > 0 && (
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 600, marginTop: 2 }}>Contradicting:</div>
+                            {(critData.contradicting_evidence as Array<Record<string, unknown>>).map((ev, i) => (
+                              <div key={i} style={{ fontSize: 11, color: 'var(--text)', paddingLeft: 10, lineHeight: 1.4 }}>
+                                &#8226; {typeof ev === 'object' ? String(ev.source || JSON.stringify(ev)) : String(ev)}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {/* Onset & Course */}
+                    {diagEntry?.onset_and_course && (
+                      <div style={{ marginTop: 6, fontSize: 11.5 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2 }}>Onset & Course:</div>
+                        {typeof diagEntry.onset_and_course === 'object'
+                          ? Object.entries(diagEntry.onset_and_course as Record<string, unknown>).map(([k, v]) => (
+                              <div key={k} style={{ color: 'var(--text)' }}><span style={{ color: 'var(--text-secondary)' }}>{k.replace(/_/g, ' ')}: </span>{String(v)}</div>
+                            ))
+                          : <div style={{ color: 'var(--text)' }}>{String(diagEntry.onset_and_course)}</div>
+                        }
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              // Fallback: plain DSM excerpt
+              return (
+                <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px 10px 40px', fontSize: 11.5, lineHeight: 1.5, color: 'var(--text-secondary)', background: 'var(--bg-soft, var(--gray-50))' }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>DSM-5-TR Criteria Summary</div>
+                  <div>{cond.dsmExcerpt}</div>
                 </div>
-                <div style={{
-                  display: '-webkit-box',
-                  WebkitLineClamp: 5,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                }}>
-                  {cond.dsmExcerpt}
-                </div>
-              </div>
-            )}
+              )
+            })()}
             </div>
 
             {/* ════ RIGHT (30%): Collapsible clinician formulation cell.
