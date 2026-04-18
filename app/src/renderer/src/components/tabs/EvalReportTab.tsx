@@ -360,6 +360,41 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
     ? editorOutput.annotations.filter((a) => !dismissedFlags.has(a.flag_id)).length
     : 0
 
+  // Consistency check summary for pre-export badge
+  const consistencyChecks = React.useMemo(() => {
+    if (!writerOutput) return null
+    const checks: { label: string; pass: boolean }[] = []
+    const sections = writerOutput.sections
+
+    // Check 1: All sections have content
+    const emptySections = sections.filter((s) => !s.content || s.content.trim().length < 20)
+    checks.push({ label: 'All sections have content', pass: emptySections.length === 0 })
+
+    // Check 2: No draft sections remaining
+    const draftSections = sections.filter((s) => s.content_type === 'draft_requiring_revision')
+    checks.push({ label: 'No draft sections pending revision', pass: draftSections.length === 0 })
+
+    // Check 3: No critical editor flags
+    const criticalFlags = editorOutput
+      ? editorOutput.annotations.filter((a) => a.severity === 'critical' && !dismissedFlags.has(a.flag_id))
+      : []
+    checks.push({ label: 'No critical flags', pass: criticalFlags.length === 0 })
+
+    // Check 4: No high editor flags
+    const highFlags = editorOutput
+      ? editorOutput.annotations.filter((a) => a.severity === 'high' && !dismissedFlags.has(a.flag_id))
+      : []
+    checks.push({ label: 'No high-severity flags', pass: highFlags.length === 0 })
+
+    // Check 5: Diagnoses present in summary
+    const hasDiagnoses = (writerOutput.report_summary.selected_diagnoses?.length ?? 0) > 0
+    checks.push({ label: 'Diagnoses documented', pass: hasDiagnoses })
+
+    const passCount = checks.filter((c) => c.pass).length
+    const allPass = passCount === checks.length
+    return { checks, passCount, total: checks.length, allPass }
+  }, [writerOutput, editorOutput, dismissedFlags])
+
   // -------------------------------------------------------------------------
   // If we have Writer output, render the live report
   // -------------------------------------------------------------------------
@@ -578,6 +613,25 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
 
         <span style={{ flex: 1 }} />
         {templateSelector}
+
+        {/* Consistency check badge */}
+        {consistencyChecks && (
+          <div
+            title={consistencyChecks.checks.map((c) => `${c.pass ? '  ' : '  '} ${c.label}`).join('\n')}
+            style={{
+              padding: '3px 8px', fontSize: 10, fontWeight: 600,
+              borderRadius: 3,
+              background: consistencyChecks.allPass
+                ? 'color-mix(in srgb, var(--success) 12%, var(--panel))'
+                : 'color-mix(in srgb, var(--warn) 12%, var(--panel))',
+              color: consistencyChecks.allPass ? 'var(--success)' : 'var(--warn)',
+              cursor: 'default',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {consistencyChecks.allPass ? 'Ready' : `${consistencyChecks.passCount}/${consistencyChecks.total} checks`}
+          </div>
+        )}
 
         {/* Report workflow phase buttons: Editing -> Review -> Complete */}
         <div style={{ display: 'flex', gap: 0, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--border)' }}>
