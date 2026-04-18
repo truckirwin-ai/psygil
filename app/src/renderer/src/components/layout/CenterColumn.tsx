@@ -1272,7 +1272,7 @@ function ClinicalOverviewContent({
               padding: '4px 14px',
               fontSize: 11,
               fontWeight: 600,
-              background: 'var(--accent, #5b6abf)',
+              background: 'var(--accent)',
               color: '#fff',
               border: 'none',
               borderRadius: 4,
@@ -7397,7 +7397,7 @@ function ReportSubTab({
                 data-section-idx={idx}
                 style={{
                   marginBottom: 24,
-                  borderLeft: focusedSectionIdx === idx ? '3px solid var(--accent, #5b6abf)' : '3px solid transparent',
+                  borderLeft: focusedSectionIdx === idx ? '3px solid var(--accent)' : '3px solid transparent',
                   paddingLeft: 12,
                   transition: 'border-color 0.15s',
                 }}
@@ -7432,12 +7432,12 @@ function ReportSubTab({
             ))}
 
             {/* Signature block */}
-            <div style={{ marginTop: 48, borderTop: '1px solid #ccc', paddingTop: 24 }}>
+            <div style={{ marginTop: 48, borderTop: '1px solid var(--border)', paddingTop: 24 }}>
               <div style={{ marginBottom: 48 }} />
-              <div style={{ borderTop: '1px solid #333', width: 280, marginBottom: 4 }} />
+              <div style={{ borderTop: '1px solid var(--text)', width: 280, marginBottom: 4 }} />
               <div style={{ fontSize: 12 }}>[Clinician Name, Credentials]</div>
-              <div style={{ fontSize: 12, color: '#666' }}>Licensed Psychologist</div>
-              <div style={{ fontSize: 12, color: '#666' }}>Date: _______________</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Licensed Psychologist</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Date: _______________</div>
             </div>
           </div>
         </div>
@@ -7446,21 +7446,21 @@ function ReportSubTab({
         {false && (
           <div style={{
             width: 340, flexShrink: 0, borderLeft: '1px solid var(--border)',
-            background: 'var(--panel, #fafafa)',
+            background: 'var(--panel, var(--gray-50))',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
           }}>
             {/* ── Section header ── */}
             <div style={{
-              padding: '10px 14px', borderBottom: '1px solid var(--border, #ddd)',
-              background: 'var(--bg, #fff)',
+              padding: '10px 14px', borderBottom: '1px solid var(--border)',
+              background: 'var(--bg)',
             }}>
               <div style={{
                 fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                letterSpacing: 0.5, color: 'var(--text-secondary, #888)', marginBottom: 3,
+                letterSpacing: 0.5, color: 'var(--text-secondary)', marginBottom: 3,
               }}>
                 Section {focusedSectionIdx + 1} of {activeSections}
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text, #222)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
                 {sectionTitles[focusedSectionIdx] ?? reportSections[focusedSectionIdx]?.title ?? `Section ${focusedSectionIdx + 1}`}
               </div>
             </div>
@@ -7469,7 +7469,7 @@ function ReportSubTab({
             <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
 
               {/* Editor Guidance, dynamic per section & eval type */}
-              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border, #ddd)' }}>
+              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{
                   fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
                   letterSpacing: 0.5, color: 'var(--accent)', marginBottom: 6,
@@ -7479,7 +7479,7 @@ function ReportSubTab({
                 <ul style={{ margin: 0, paddingLeft: 14, listStyleType: 'disc' }}>
                   {currentGuidance.map((item, i) => (
                     <li key={i} style={{
-                      fontSize: 11, color: 'var(--text-secondary, #666)',
+                      fontSize: 11, color: 'var(--text-secondary)',
                       lineHeight: 1.5, marginBottom: 3,
                     }}>
                       {item}
@@ -7489,10 +7489,10 @@ function ReportSubTab({
               </div>
 
               {/* Clinical Notes, per-section */}
-              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border, #ddd)' }}>
+              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{
                   fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                  letterSpacing: 0.5, color: 'var(--text-secondary, #888)', marginBottom: 6,
+                  letterSpacing: 0.5, color: 'var(--text-secondary)', marginBottom: 6,
                 }}>
                   Clinical Notes
                 </div>
@@ -7505,10 +7505,10 @@ function ReportSubTab({
                   placeholder="Notes, observations, items to verify..."
                   style={{
                     width: '100%', minHeight: 80, resize: 'vertical',
-                    border: '1px solid var(--border, #ddd)', borderRadius: 4,
+                    border: '1px solid var(--border)', borderRadius: 4,
                     padding: '8px 10px', fontSize: 12, lineHeight: 1.5,
                     fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-                    color: 'var(--text, #222)', background: 'var(--bg, #fff)',
+                    color: 'var(--text)', background: 'var(--bg)',
                     outline: 'none', boxSizing: 'border-box',
                   }}
                 />
@@ -7521,7 +7521,7 @@ function ReportSubTab({
               onMouseDown={handleSplitterMouseDown}
               style={{
                 height: 6, flexShrink: 0, cursor: 'row-resize',
-                background: 'linear-gradient(180deg, var(--border, #ddd) 0%, var(--accent, #5b6abf) 50%, var(--border, #ddd) 100%)',
+                background: 'linear-gradient(180deg, var(--border) 0%, var(--accent) 50%, var(--border) 100%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
@@ -7535,17 +7535,17 @@ function ReportSubTab({
             <div style={{
               height: assistantHeight, flexShrink: 0,
               padding: '10px 14px',
-              background: 'var(--bg, #fff)',
+              background: 'var(--bg)',
               display: 'flex', flexDirection: 'column', overflow: 'hidden',
             }}>
               <div style={{
                 fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: 0.5, color: 'var(--accent, #5b6abf)', marginBottom: 6,
+                letterSpacing: 0.5, color: 'var(--accent)', marginBottom: 6,
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
                 <span style={{ fontSize: 13 }}>✦</span>
                 Writing Assistant
-                <span style={{ fontSize: 9, fontWeight: 400, textTransform: 'none', color: 'var(--text-secondary, #888)', marginLeft: 'auto' }}>
+                <span style={{ fontSize: 9, fontWeight: 400, textTransform: 'none', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
                   scoped to this section only
                 </span>
               </div>
@@ -7562,10 +7562,10 @@ function ReportSubTab({
                 placeholder={'e.g. "Expand the medication compliance paragraph"\n"Rewrite in third person past tense"\n"Add a sentence about effort indicators"'}
                 style={{
                   width: '100%', flex: 1, minHeight: 0, resize: 'none',
-                  border: '1px solid var(--border, #ddd)', borderRadius: 4,
+                  border: '1px solid var(--border)', borderRadius: 4,
                   padding: '8px 10px', fontSize: 12, lineHeight: 1.5,
                   fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-                  color: 'var(--text, #222)', background: assistantLoading ? 'var(--panel)' : 'var(--bg, #fff)',
+                  color: 'var(--text)', background: assistantLoading ? 'var(--panel)' : 'var(--bg)',
                   outline: 'none', boxSizing: 'border-box',
                   opacity: assistantLoading ? 0.6 : 1,
                 }}
@@ -7574,13 +7574,13 @@ function ReportSubTab({
                 <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>{assistantError}</div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-secondary, #888)' }}>⌘+Enter to send</span>
+                <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>⌘+Enter to send</span>
                 <button
                   onClick={() => void handleAssistantSubmit()}
                   disabled={assistantLoading || !assistantPrompt.trim()}
                   style={{
                     padding: '5px 14px', fontSize: 11, fontWeight: 600,
-                    background: assistantLoading ? 'var(--border)' : 'var(--accent, #5b6abf)',
+                    background: assistantLoading ? 'var(--border)' : 'var(--accent)',
                     color: '#fff', border: 'none', borderRadius: 4,
                     cursor: assistantLoading || !assistantPrompt.trim() ? 'not-allowed' : 'pointer',
                     opacity: assistantLoading || !assistantPrompt.trim() ? 0.5 : 1,
