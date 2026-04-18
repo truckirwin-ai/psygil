@@ -50,9 +50,9 @@ interface DiagnosticDecision {
 // ---------------------------------------------------------------------------
 
 const sectionHeader: React.CSSProperties = {
-  fontSize: '14px',
-  fontWeight: 600,
-  marginBottom: '12px',
+  fontSize: '13px',
+  fontWeight: 700,
+  marginBottom: '10px',
   paddingBottom: '6px',
   borderBottom: '1px solid var(--border)',
   color: 'var(--text)',
@@ -60,36 +60,42 @@ const sectionHeader: React.CSSProperties = {
 
 const cardStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
-  borderRadius: '4px',
-  marginBottom: '16px',
+  borderRadius: '6px',
+  marginBottom: '8px',
   overflow: 'hidden',
 }
 
 const cardHeaderStyle: React.CSSProperties = {
-  background: 'var(--highlight)',
-  padding: '12px',
+  background: 'var(--gray-50, var(--panel))',
+  padding: '8px 14px',
   borderBottom: '1px solid var(--border)',
+  cursor: 'pointer',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
 }
 
 const cardBodyStyle: React.CSSProperties = {
-  padding: '12px',
+  padding: '12px 14px',
 }
 
 const labelStyle: React.CSSProperties = {
   fontSize: '11px',
   color: 'var(--text-secondary)',
-  marginBottom: '2px',
+  fontWeight: 600,
+  marginBottom: '4px',
 }
 
 const btnBase: React.CSSProperties = {
-  padding: '6px 12px',
+  padding: '5px 10px',
   borderRadius: '4px',
-  fontSize: '12px',
-  fontWeight: 500,
+  fontSize: '11px',
+  fontWeight: 600,
   cursor: 'pointer',
   border: '1px solid var(--border)',
-  background: 'var(--panel)',
-  color: 'var(--text)',
+  background: 'var(--bg)',
+  color: 'var(--text-secondary)',
+  fontFamily: 'inherit',
 }
 
 // ---------------------------------------------------------------------------
@@ -468,11 +474,12 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
       not_met: 'var(--danger)',
       insufficient_data: 'var(--warn)',
     }
+    const c = colors[status] || 'var(--text-secondary)'
     return (
       <span style={{
-        display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
-        fontSize: '10px', fontWeight: 600, color: '#fff',
-        background: colors[status] || 'var(--text-secondary)', marginLeft: '6px',
+        display: 'inline-block', padding: '1px 5px', borderRadius: '3px',
+        fontSize: '9px', fontWeight: 700, color: '#fff',
+        background: c, marginLeft: '6px',
       }}>
         {status.replace(/_/g, ' ')}
       </span>
@@ -619,31 +626,34 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
           <div key={diagKey} style={{ ...cardStyle, borderColor, borderWidth: decision?.decision ? '2px' : '1px' }}>
             {/* Diagnosis header, click to expand */}
             <div
-              style={{ ...cardHeaderStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              style={cardHeaderStyle}
               onClick={() => toggleExpand(diagKey)}
             >
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
-                  {String(diag.icd_code || '')}, {diagKey.replace(/_/g, ' ')}
-                </div>
-                {!!diag.functional_impact && (
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    {String(diag.functional_impact)}
-                  </div>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                <span style={{
+                  fontSize: '12px', color: 'var(--text-secondary)', flexShrink: 0,
+                  display: 'inline-block', transition: 'transform 0.15s',
+                  transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                }}>&#9654;</span>
+                <span style={{
+                  fontSize: '11px', fontWeight: 700, color: 'var(--accent)',
+                  background: 'var(--highlight)', padding: '1px 5px', borderRadius: '3px', flexShrink: 0,
+                }}>
+                  {String(diag.icd_code || '')}
+                </span>
+                <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {diagKey.replace(/_/g, ' ')}
+                </span>
               </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                 {decision?.decision && (
                   <span style={{
-                    padding: '2px 8px', borderRadius: '3px', fontSize: '10px', fontWeight: 600, color: '#fff',
+                    padding: '2px 6px', borderRadius: '3px', fontSize: '9px', fontWeight: 700, color: '#fff',
                     background: decision.decision === 'render' ? 'var(--success)' : decision.decision === 'rule_out' ? 'var(--danger)' : 'var(--info)',
                   }}>
                     {decision.decision === 'render' ? 'RENDERED' : decision.decision === 'rule_out' ? 'RULED OUT' : 'DEFERRED'}
                   </span>
                 )}
-                <span style={{ fontSize: '16px', color: 'var(--text-secondary)' }}>
-                  {isExpanded ? '▾' : '▸'}
-                </span>
               </div>
             </div>
 
@@ -653,9 +663,9 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                 {/* Criteria analysis */}
                 {criteria != null && Object.keys(criteria).length > 0 ? (
                   <div style={{ marginBottom: '12px' }}>
-                    <div style={{ ...labelStyle, fontWeight: 600, marginBottom: '8px' }}>DSM-5-TR Criteria Analysis:</div>
+                    <div style={{ ...labelStyle, marginBottom: '6px' }}>DSM-5-TR Criteria Analysis:</div>
                     {Object.entries(criteria).map(([critKey, critData]) => (
-                      <div key={critKey} style={{ marginBottom: '10px', paddingLeft: '12px', borderLeft: '3px solid var(--border)' }}>
+                      <div key={critKey} style={{ marginBottom: '8px', paddingLeft: '10px', borderLeft: '2px solid var(--border)' }}>
                         <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>
                           {critKey.replace(/_/g, ' ').toUpperCase()}
                           <MetBadge status={String(critData.met_status || 'unknown')} />
