@@ -304,9 +304,8 @@ export default function DashboardTab({ cases, onCaseClick, onRefresh }: Dashboar
               padding: '6px 8px', textAlign: 'center',
               display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '5px',
             }}>
-              <span style={{ fontSize: '16px', fontWeight: 700, color: sc.text }}>{count}</span>
               <span style={{ fontSize: '13px', fontWeight: 700, color: sc.text }}>
-                {stage.label} {kanbanOpen ? '▴' : '▾'}
+                {stage.label} ({count}) {kanbanOpen ? '▴' : '▾'}
               </span>
             </div>
           )
