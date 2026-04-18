@@ -69,9 +69,9 @@ html[data-theme="warm"] {
 }
 
 /* -----------------------------------------------------------------------
-   Medium theme (neutral gray, new)
+   Dark theme (neutral gray)
    ----------------------------------------------------------------------- */
-html[data-theme="medium"] {
+html[data-theme="dark"] {
   /* Chrome */
   --bg:              #2b2f36;
   --panel:           #1f2329;
@@ -96,30 +96,3 @@ html[data-theme="medium"] {
   --info:            #82b1ff;
 }
 
-/* -----------------------------------------------------------------------
-   Dark theme (GitHub dark)
-   ----------------------------------------------------------------------- */
-html[data-theme="dark"] {
-  /* Chrome */
-  --bg:              #0d1117;
-  --panel:           #161b22;
-  --border:          #30363d;
-  --text:            #c9d1d9;
-  --text-secondary:  #8b949e;
-  --accent:          #58a6ff;
-  --highlight:       #1f4b7c;
-
-  /* Form inputs - always white for readability */
-  --field-bg:        #ffffff;
-  --field-text:      #1e1e1e;
-
-  /* Report preview - always white */
-  --report-bg:       #ffffff;
-  --report-text:     #1e1e1e;
-
-  /* Semantic state colors */
-  --danger:          #f28b82;
-  --warn:            #ffb74d;
-  --success:         #81c995;
-  --info:            #82b1ff;
-}

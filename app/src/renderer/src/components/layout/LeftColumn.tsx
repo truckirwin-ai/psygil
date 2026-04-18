@@ -217,13 +217,7 @@ function buildTreeFromFilesystem(
     tree.push(convertFolderNode(entry, undefined))
   }
 
-  // Settings at bottom (virtual, not a filesystem entry)
-  tree.push({
-    id: 'settings',
-    label: 'Settings',
-    icon: '⚙',
-    tabType: 'settings',
-  })
+  // Settings removed from tree; accessible via the gear icon in the titlebar.
 
   return tree
 }

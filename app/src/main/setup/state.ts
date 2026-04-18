@@ -60,7 +60,7 @@ export function nextState(current: SetupState): SetupState {
 
 export type LicenseTier = 'trial' | 'solo' | 'practice' | 'enterprise'
 export type StorageMode = 'local' | 'network' | 'cloud'
-export type Theme = 'light' | 'medium' | 'dark'
+export type Theme = 'light' | 'warm' | 'dark'
 export type FontSize = 'small' | 'medium' | 'large'
 export type Specialty = 'forensic' | 'clinical' | 'neuro' | 'school' | 'other'
 

@@ -50,14 +50,14 @@ interface SectionDef {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SECTIONS: SectionDef[] = [
+  { id: 'practice', label: 'Practice', icon: '🏥' },
+  { id: 'data-storage', label: 'Data & Storage', icon: '💾' },
   { id: 'writing-samples', label: 'Writing Samples', icon: '✍' },
   { id: 'style-guide', label: 'Style Guide', icon: '📐' },
   { id: 'templates', label: 'Templates', icon: '📋' },
   { id: 'documentation', label: 'Documentation', icon: '📖' },
   { id: 'appearance', label: 'Appearance', icon: '🎨' },
   { id: 'ai-models', label: 'AI & Models', icon: '🤖' },
-  { id: 'practice', label: 'Practice', icon: '🏥' },
-  { id: 'data-storage', label: 'Data & Storage', icon: '💾' },
   { id: 'about', label: 'About', icon: 'ℹ' },
 ]
 

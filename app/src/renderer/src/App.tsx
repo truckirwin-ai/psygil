@@ -16,7 +16,7 @@ import type { CaseRow } from '../../shared/types/ipc'
 import { setTheme as applyTheme, getTheme } from './app/theme'
 import type { ThemeKey } from './app/theme'
 
-const THEMES: readonly ThemeKey[] = ['light', 'warm', 'medium', 'dark'] as const
+const THEMES: readonly ThemeKey[] = ['light', 'warm', 'dark'] as const
 type Theme = ThemeKey
 
 const STORAGE_KEY_THEME = 'psygil_theme'
@@ -468,14 +468,15 @@ export default function App(): React.JSX.Element {
                 aria-label="Settings"
                 onClick={() => openTab({ id: 'settings', title: 'Settings', type: 'settings' })}
                 style={{
-                  width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  height: 28, display: 'flex', alignItems: 'center', gap: 4,
                   background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer',
-                  fontSize: 22, padding: 0, borderRadius: 4,
+                  fontSize: 12, padding: '0 6px', borderRadius: 4,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'none' }}
               >
-                &#9881;
+                <span style={{ fontSize: 18 }}>&#9881;</span>
+                <span style={{ fontWeight: 500 }}>Settings</span>
               </button>
               <button
                 aria-label="Theme"
