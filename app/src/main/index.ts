@@ -10,7 +10,7 @@ for (const stream of [process.stdout, process.stderr]) {
   })
 }
 
-import { app, BrowserWindow, protocol, net } from 'electron'
+import { app, BrowserWindow, protocol, net, nativeTheme } from 'electron'
 import { pathToFileURL } from 'url'
 import { configurePortableMode } from './portable'
 
@@ -74,9 +74,10 @@ function createWindow(): BrowserWindow {
   // electron-vite sets ELECTRON_RENDERER_URL in dev mode; NODE_ENV may not be set
   const isDev = !!process.env['ELECTRON_RENDERER_URL'] || process.env.NODE_ENV === 'development'
 
-  // Read the persisted theme to set the initial window background color.
-  // On macOS, setting backgroundColor to a dark value makes the native
-  // title bar (traffic lights + drag region) render in dark mode.
+  // Read the persisted theme and tell Electron's nativeTheme to match.
+  // This controls the macOS window title bar chrome color (traffic lights
+  // area, title text, and drag region). nativeTheme.themeSource overrides
+  // the system preference for this app only.
   let bgColor = '#ffffff'
   try {
     const fs = require('fs')
@@ -86,10 +87,17 @@ function createWindow(): BrowserWindow {
       const raw = fs.readFileSync(setupPath, 'utf-8')
       const cfg = JSON.parse(raw)
       const theme = cfg?.appearance?.theme
-      if (theme === 'dark') bgColor = '#2b2f36'
-      else if (theme === 'warm') bgColor = '#faf8f4'
+      if (theme === 'dark') {
+        bgColor = '#2b2f36'
+        nativeTheme.themeSource = 'dark'
+      } else if (theme === 'warm') {
+        bgColor = '#faf8f4'
+        nativeTheme.themeSource = 'light'
+      } else {
+        nativeTheme.themeSource = 'light'
+      }
     }
-  } catch { /* default to white */ }
+  } catch { /* default to white + system theme */ }
 
   const win = new BrowserWindow({
     width: 1440,
