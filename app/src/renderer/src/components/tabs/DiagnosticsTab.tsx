@@ -666,23 +666,23 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                     <div style={{ ...labelStyle, marginBottom: '6px' }}>DSM-5-TR Criteria Analysis:</div>
                     {Object.entries(criteria).map(([critKey, critData]) => (
                       <div key={critKey} style={{ marginBottom: '8px', paddingLeft: '10px', borderLeft: '2px solid var(--border)' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', marginBottom: '4px' }}>
-                          {critKey.replace(/_/g, ' ').toUpperCase()}
+                        <div style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text)', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{critKey.replace(/_/g, ' ').toUpperCase()}</span>
                           <MetBadge status={String(critData.met_status || 'unknown')} />
                         </div>
                         {!!critData.description && (
-                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px', fontStyle: 'italic' }}>
+                          <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', marginBottom: '3px', fontStyle: 'italic', lineHeight: '1.4' }}>
                             {String(critData.description)}
                           </div>
                         )}
                         {!!critData.supporting_evidence && Array.isArray(critData.supporting_evidence) && (critData.supporting_evidence as unknown[]).length > 0 ? (
-                          <div style={{ marginBottom: '4px' }}>
-                            <span style={{ fontSize: '10px', color: 'var(--success)', fontWeight: 600 }}>Supporting:</span>
+                          <div style={{ marginBottom: '3px' }}>
+                            <div style={{ fontSize: '10px', color: 'var(--success)', fontWeight: 600, marginTop: '2px' }}>Supporting:</div>
                             {(critData.supporting_evidence as Array<Record<string, unknown>>).map((ev, i) => (
-                              <div key={i} style={{ fontSize: '11px', color: 'var(--text)', paddingLeft: '12px' }}>
-                                • {typeof ev === 'object' ? String(ev.source || JSON.stringify(ev)) : String(ev)}
+                              <div key={i} style={{ fontSize: '11px', color: 'var(--text)', paddingLeft: '10px', lineHeight: '1.4' }}>
+                                &#8226; {typeof ev === 'object' ? String(ev.source || JSON.stringify(ev)) : String(ev)}
                                 {typeof ev === 'object' && !!ev.strength && (
-                                  <span style={{ color: 'var(--text-secondary)', marginLeft: '4px' }}>({String(ev.strength)})</span>
+                                  <span style={{ color: 'var(--text-secondary)', marginLeft: '4px', fontSize: '10px' }}>({String(ev.strength)})</span>
                                 )}
                               </div>
                             ))}
@@ -690,10 +690,10 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                         ) : null}
                         {!!critData.contradicting_evidence && Array.isArray(critData.contradicting_evidence) && (critData.contradicting_evidence as unknown[]).length > 0 ? (
                           <div>
-                            <span style={{ fontSize: '10px', color: 'var(--danger)', fontWeight: 600 }}>Contradicting:</span>
+                            <div style={{ fontSize: '10px', color: 'var(--danger)', fontWeight: 600, marginTop: '2px' }}>Contradicting:</div>
                             {(critData.contradicting_evidence as Array<Record<string, unknown>>).map((ev, i) => (
-                              <div key={i} style={{ fontSize: '11px', color: 'var(--text)', paddingLeft: '12px' }}>
-                                • {typeof ev === 'object' ? String(ev.source || JSON.stringify(ev)) : String(ev)}
+                              <div key={i} style={{ fontSize: '11px', color: 'var(--text)', paddingLeft: '10px', lineHeight: '1.4' }}>
+                                &#8226; {typeof ev === 'object' ? String(ev.source || JSON.stringify(ev)) : String(ev)}
                               </div>
                             ))}
                           </div>
@@ -722,17 +722,17 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                 )}
 
                 {/* ██ DECISION CONTROLS, NO "ACCEPT ALL" ██ */}
-                <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '4px', marginTop: '12px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', marginBottom: '8px' }}>
+                <div style={{ padding: '10px 12px', background: 'var(--gray-100, var(--panel))', borderRadius: '6px', marginTop: '10px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>
                     Your Decision:
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '4px', marginBottom: '6px', flexWrap: 'wrap' }}>
                     <button
                       onClick={() => setDecision(diagKey, decision?.decision === 'render' ? null : 'render')}
                       style={{
                         ...btnBase,
-                        background: decision?.decision === 'render' ? 'var(--success)' : 'var(--panel)',
-                        color: decision?.decision === 'render' ? '#fff' : 'var(--text)',
+                        background: decision?.decision === 'render' ? 'var(--success)' : 'var(--bg)',
+                        color: decision?.decision === 'render' ? '#fff' : 'var(--text-secondary)',
                         borderColor: decision?.decision === 'render' ? 'var(--success)' : 'var(--border)',
                       }}
                     >
@@ -742,8 +742,8 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                       onClick={() => setDecision(diagKey, decision?.decision === 'rule_out' ? null : 'rule_out')}
                       style={{
                         ...btnBase,
-                        background: decision?.decision === 'rule_out' ? 'var(--danger)' : 'var(--panel)',
-                        color: decision?.decision === 'rule_out' ? '#fff' : 'var(--text)',
+                        background: decision?.decision === 'rule_out' ? 'var(--danger)' : 'var(--bg)',
+                        color: decision?.decision === 'rule_out' ? '#fff' : 'var(--text-secondary)',
                         borderColor: decision?.decision === 'rule_out' ? 'var(--danger)' : 'var(--border)',
                       }}
                     >
@@ -753,8 +753,8 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                       onClick={() => setDecision(diagKey, decision?.decision === 'defer' ? null : 'defer')}
                       style={{
                         ...btnBase,
-                        background: decision?.decision === 'defer' ? 'var(--info)' : 'var(--panel)',
-                        color: decision?.decision === 'defer' ? '#fff' : 'var(--text)',
+                        background: decision?.decision === 'defer' ? 'var(--info)' : 'var(--bg)',
+                        color: decision?.decision === 'defer' ? '#fff' : 'var(--text-secondary)',
                         borderColor: decision?.decision === 'defer' ? 'var(--info)' : 'var(--border)',
                       }}
                     >
@@ -768,14 +768,15 @@ export const DiagnosticsTab: React.FC<DiagnosticsTabProps> = ({ caseId }) => {
                     placeholder="Clinical rationale for this decision..."
                     style={{
                       width: '100%',
-                      minHeight: '60px',
-                      padding: '8px',
+                      minHeight: '48px',
+                      padding: '6px 8px',
                       border: '1px solid var(--border)',
                       borderRadius: '4px',
-                      background: 'var(--panel)',
+                      background: 'var(--bg)',
                       color: 'var(--text)',
                       fontFamily: 'inherit',
-                      fontSize: '12px',
+                      fontSize: '11px',
+                      lineHeight: '1.4',
                       resize: 'vertical',
                     }}
                   />
