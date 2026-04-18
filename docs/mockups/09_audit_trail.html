@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Psygil - Audit Trail</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#fff;color:#1a1a2e;-webkit-font-smoothing:antialiased}
+  .app{display:flex;height:100vh}
+  .sb{width:200px;background:#fff;border-right:1px solid #eaeaec;display:flex;flex-direction:column;flex-shrink:0}
+  .sb-hd{padding:16px 16px 14px;display:flex;align-items:center;gap:8px}
+  .sb-logo{width:24px;height:24px;background:#4f46e5;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px}
+  .sb-name{font-size:14px;font-weight:700}
+  .sb-nav{padding:4px 8px;flex:1}
+  .ni{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:13px;font-weight:500;color:#5c5c70;cursor:pointer}
+  .ni:hover{background:#f5f5f7}.ni.on{background:#f0eeff;color:#4f46e5;font-weight:600}
+  .ndiv{height:1px;background:#eaeaec;margin:6px 8px}
+
+  .mn{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .tb{padding:8px 20px;background:#fff;border-bottom:1px solid #eaeaec;display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .bc{font-size:13px;color:#a0a0b0}.bc b{color:#1a1a2e;font-weight:600}
+  .tb-r{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #eaeaec;background:#fff;color:#1a1a2e}
+  .btn:hover{background:#f5f5f7}.btn.p{background:#4f46e5;color:#fff;border-color:#4f46e5}
+  .av{width:26px;height:26px;border-radius:50%;background:#eaeaec;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#5c5c70}
+
+  .ch{padding:16px 20px 0;background:#fff;border-bottom:1px solid #eaeaec}
+  .ch-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ch-name{font-size:18px;font-weight:700}
+  .badge{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:600}
+  .b-stage{background:#fff3e0;color:#e65100}.b-type{background:#f0eeff;color:#4f46e5}
+  .ch-meta{display:flex;gap:20px;font-size:12px;color:#5c5c70;margin-bottom:12px}
+  .ch-meta strong{color:#1a1a2e;font-weight:600}
+  .tabs{display:flex;gap:0}
+  .tab{padding:8px 14px;font-size:12px;font-weight:500;color:#a0a0b0;cursor:pointer;border-bottom:2px solid transparent;position:relative;bottom:-1px}
+  .tab.on{color:#4f46e5;border-bottom-color:#4f46e5;font-weight:600}
+  .tab .cnt{font-size:9px;font-weight:700;background:#eaeaec;padding:1px 4px;border-radius:8px;margin-left:4px}
+  .tab.on .cnt{background:#f0eeff;color:#4f46e5}
+
+  .content{flex:1;overflow-y:auto;padding:16px 20px;background:#fafafb}
+
+  /* Stats bar */
+  .stats-bar{display:flex;gap:0;border:1px solid #eaeaec;border-radius:6px;margin-bottom:14px;background:#fff;overflow:hidden}
+  .stat-box{flex:1;padding:10px 14px;border-right:1px solid #eaeaec;text-align:center}
+  .stat-box:last-child{border-right:none}
+  .stat-num{font-size:20px;font-weight:700;color:#1a1a2e}
+  .stat-lbl{font-size:10px;color:#a0a0b0;font-weight:500;margin-top:1px}
+
+  /* Filter bar */
+  .filter-bar{display:flex;gap:6px;margin-bottom:12px;align-items:center}
+  .filter-sel{padding:4px 8px;border-radius:4px;font-size:11px;border:1px solid #eaeaec;background:#fff;color:#5c5c70;font-family:inherit}
+
+  /* Integrity badge */
+  .integrity{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;margin-bottom:14px}
+  .integrity.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#059669}
+  .integrity.fail{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+
+  /* Audit table */
+  .atbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid #eaeaec;border-radius:6px;overflow:hidden}
+  .atbl th{text-align:left;padding:7px 10px;font-size:10px;font-weight:600;color:#a0a0b0;border-bottom:1px solid #eaeaec;background:#fafafb;text-transform:uppercase;letter-spacing:0.3px}
+  .atbl td{padding:6px 10px;font-size:11.5px;color:#1a1a2e;border-bottom:1px solid #f3f3f5}
+  .atbl tr:hover td{background:#fafafb}
+
+  .a-time{font-variant-numeric:tabular-nums;color:#a0a0b0;font-size:10px;white-space:nowrap}
+  .a-action{font-weight:500}
+  .a-actor{font-weight:600;font-size:10px;padding:1px 5px;border-radius:3px;display:inline-block}
+  .a-clinician{background:#f0eeff;color:#4f46e5}
+  .a-ai{background:#f3e8ff;color:#7c3aed}
+  .a-system{background:#f5f5f7;color:#a0a0b0}
+  .a-status{font-size:10px;font-weight:600}
+  .a-complete{color:#059669}
+  .a-progress{color:#d97706}
+  .a-error{color:#dc2626}
+
+  .a-hash{font-family:'JetBrains Mono',monospace;font-size:9px;color:#a0a0b0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* Export panel */
+  .export-row{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid #eaeaec}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sb">
+    <div class="sb-hd"><div class="sb-logo">P</div><div class="sb-name">Psygil</div></div>
+    <nav class="sb-nav"><a class="ni">Home</a><a class="ni on">Cases</a><a class="ni">Reports</a><a class="ni">Audit Trail</a><div class="ndiv"></div><a class="ni">Settings</a></nav>
+  </aside>
+
+  <div class="mn">
+    <div class="tb">
+      <div class="bc">Cases / <b>Vasquez, Maria</b> / <b>Audit Trail</b></div>
+      <div class="tb-r"><button class="btn">Export CSV</button><button class="btn">Export JSON</button><button class="btn p">Verify Chain</button><div class="av">RI</div></div>
+    </div>
+
+    <div class="ch">
+      <div class="ch-row"><div class="ch-name">Vasquez, Maria</div><span class="badge b-stage">Diagnostics</span><span class="badge b-type">CST</span></div>
+      <div class="ch-meta"><span>DOB: <strong>03/15/1988</strong></span><span>Case #: <strong>2026-0047</strong></span></div>
+      <div class="tabs">
+        <div class="tab">Overview</div><div class="tab">Testing</div><div class="tab">Interview</div>
+        <div class="tab">Diagnostics</div><div class="tab">Report</div><div class="tab">Attestation</div><div class="tab on">Audit <span class="cnt">142</span></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- Integrity check -->
+      <div class="integrity ok">&#10003; Hash chain verified. 142 entries, 0 breaks. Last verified: 2 minutes ago.</div>
+
+      <!-- Stats -->
+      <div class="stats-bar">
+        <div class="stat-box"><div class="stat-num">142</div><div class="stat-lbl">Total Events</div></div>
+        <div class="stat-box"><div class="stat-num">48</div><div class="stat-lbl">Clinician</div></div>
+        <div class="stat-box"><div class="stat-num">67</div><div class="stat-lbl">AI Agent</div></div>
+        <div class="stat-box"><div class="stat-num">27</div><div class="stat-lbl">System</div></div>
+        <div class="stat-box"><div class="stat-num">0</div><div class="stat-lbl">Errors</div></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <span style="font-size:11px;color:#a0a0b0;font-weight:600">Filter:</span>
+        <select class="filter-sel"><option>All Actors</option><option>Clinician</option><option>AI Agent</option><option>System</option></select>
+        <select class="filter-sel"><option>All Actions</option><option>case_created</option><option>document_uploaded</option><option>test_score_entered</option><option>agent_invoked</option><option>agent_completed</option><option>diagnosis_selected</option><option>report_generated</option></select>
+        <select class="filter-sel"><option>All Time</option><option>Today</option><option>This Week</option><option>This Month</option></select>
+        <span style="flex:1"></span>
+        <span style="font-size:10px;color:#a0a0b0">Auto-refresh: 10s</span>
+      </div>
+
+      <!-- Audit table -->
+      <table class="atbl">
+        <thead>
+          <tr><th>Timestamp</th><th>Action</th><th>Actor</th><th>Details</th><th>Status</th><th>Hash</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="a-time">Apr 18, 10:42:18</td><td class="a-action">diagnosis_selected</td><td><span class="a-actor a-clinician">Clinician</span></td><td>Confirmed 296.44 Bipolar I Disorder</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">a4f2e8c1d9b3...</td></tr>
+          <tr><td class="a-time">Apr 18, 10:42:12</td><td class="a-action">diagnosis_selected</td><td><span class="a-actor a-clinician">Clinician</span></td><td>Ruled out 295.90 Schizophrenia</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">b7c4f1a2e8d6...</td></tr>
+          <tr><td class="a-time">Apr 18, 10:38:44</td><td class="a-action">agent_completed</td><td><span class="a-actor a-ai">Diagnostician</span></td><td>Proposed 3 differential diagnoses (2,831 tokens)</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">c2d8e3f4a1b9...</td></tr>
+          <tr><td class="a-time">Apr 18, 10:38:02</td><td class="a-action">agent_invoked</td><td><span class="a-actor a-system">System</span></td><td>Diagnostician agent started for case 2026-0047</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">d5e9f2a3b7c1...</td></tr>
+          <tr><td class="a-time">Apr 18, 10:15:33</td><td class="a-action">agent_completed</td><td><span class="a-actor a-ai">Ingestor</span></td><td>Processed 8 documents, 42 data points extracted (1,247 tokens)</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">e1f3a4b8c2d7...</td></tr>
+          <tr><td class="a-time">Apr 18, 10:14:58</td><td class="a-action">agent_invoked</td><td><span class="a-actor a-system">System</span></td><td>Ingestor agent started for case 2026-0047</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">f4a2b6c9d1e8...</td></tr>
+          <tr><td class="a-time">Apr 18, 09:45:12</td><td class="a-action">test_score_entered</td><td><span class="a-actor a-clinician">Clinician</span></td><td>MacCAT-CA scores uploaded (Understanding 12, Reasoning 6, Appreciation 8)</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">a8b3c7d2e4f1...</td></tr>
+          <tr><td class="a-time">Apr 18, 09:30:44</td><td class="a-action">document_uploaded</td><td><span class="a-actor a-clinician">Clinician</span></td><td>MMPI-3 Results.pdf uploaded to Testing folder</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">b1c5d8e2f3a9...</td></tr>
+          <tr><td class="a-time">Apr 18, 09:30:22</td><td class="a-action">document_uploaded</td><td><span class="a-actor a-clinician">Clinician</span></td><td>PAI Results.pdf uploaded to Testing folder</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">c4d7e1f5a2b8...</td></tr>
+          <tr><td class="a-time">Apr 18, 09:22:15</td><td class="a-action">gate_completed</td><td><span class="a-actor a-system">System</span></td><td>Advanced from Interview to Diagnostics (all gate conditions met)</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">d2e6f3a8b1c4...</td></tr>
+          <tr><td class="a-time">Apr 15, 14:22:08</td><td class="a-action">session_added</td><td><span class="a-actor a-clinician">Clinician</span></td><td>Interview Session 3: Collateral (Atty Blackwell), 22 min</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">e5f1a9b3c8d2...</td></tr>
+          <tr><td class="a-time">Apr 12, 13:45:33</td><td class="a-action">session_added</td><td><span class="a-actor a-clinician">Clinician</span></td><td>Interview Session 2: Competency Questions, 45 min</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">f8a4b2c6d9e1...</td></tr>
+          <tr><td class="a-time">Apr 10, 12:01:44</td><td class="a-action">session_added</td><td><span class="a-actor a-clinician">Clinician</span></td><td>Interview Session 1: Clinical Interview, 2h 31m (transcribed offline)</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">a3b7c1d5e8f2...</td></tr>
+          <tr><td class="a-time">Apr 8, 16:30:11</td><td class="a-action">test_score_entered</td><td><span class="a-actor a-clinician">Clinician</span></td><td>TOMM Trial 1: 45/50, Trial 2: 49/50 (Pass)</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">b6c2d8e4f1a3...</td></tr>
+          <tr><td class="a-time">Apr 4, 10:15:22</td><td class="a-action">document_uploaded</td><td><span class="a-actor a-clinician">Clinician</span></td><td>Medical Records.pdf, Police Report.pdf uploaded to Records</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">c9d3e7f2a4b8...</td></tr>
+          <tr><td class="a-time">Apr 2, 09:00:05</td><td class="a-action">case_created</td><td><span class="a-actor a-clinician">Clinician</span></td><td>Case 2026-0047 created: Vasquez, Maria (CST evaluation)</td><td><span class="a-status a-complete">Complete</span></td><td class="a-hash">d1e5f8a2b6c3...</td></tr>
+        </tbody>
+      </table>
+
+      <div class="export-row">
+        <span style="font-size:11px;color:#a0a0b0">Showing 16 of 142 entries</span>
+        <span style="flex:1"></span>
+        <button class="btn" style="font-size:11px;padding:4px 10px">Previous</button>
+        <button class="btn" style="font-size:11px;padding:4px 10px">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Psygil - Interview</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,sans-serif;background:#fff;color:#1a1a2e;-webkit-font-smoothing:antialiased}
+  .app{display:flex;height:100vh}
+  .sb{width:200px;background:#fff;border-right:1px solid #eaeaec;display:flex;flex-direction:column;flex-shrink:0}
+  .sb-hd{padding:16px 16px 14px;display:flex;align-items:center;gap:8px}
+  .sb-logo{width:24px;height:24px;background:#4f46e5;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px}
+  .sb-name{font-size:14px;font-weight:700}
+  .sb-nav{padding:4px 8px;flex:1}
+  .ni{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:13px;font-weight:500;color:#5c5c70;cursor:pointer}
+  .ni:hover{background:#f5f5f7}.ni.on{background:#f0eeff;color:#4f46e5;font-weight:600}
+  .ndiv{height:1px;background:#eaeaec;margin:6px 8px}
+
+  .mn{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .tb{padding:8px 20px;background:#fff;border-bottom:1px solid #eaeaec;display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .bc{font-size:13px;color:#a0a0b0}.bc b{color:#1a1a2e;font-weight:600}
+  .tb-r{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #eaeaec;background:#fff;color:#1a1a2e}
+  .btn:hover{background:#f5f5f7}.btn.p{background:#4f46e5;color:#fff;border-color:#4f46e5}
+  .btn.rec{background:#dc2626;color:#fff;border-color:#dc2626}
+  .av{width:26px;height:26px;border-radius:50%;background:#eaeaec;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#5c5c70}
+
+  .ch{padding:16px 20px 0;background:#fff;border-bottom:1px solid #eaeaec}
+  .ch-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ch-name{font-size:18px;font-weight:700}
+  .badge{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:600}
+  .b-stage{background:#fce4ec;color:#ad1457}.b-type{background:#f0eeff;color:#4f46e5}
+  .ch-meta{display:flex;gap:20px;font-size:12px;color:#5c5c70;margin-bottom:12px}
+  .ch-meta strong{color:#1a1a2e;font-weight:600}
+  .tabs{display:flex;gap:0}
+  .tab{padding:8px 14px;font-size:12px;font-weight:500;color:#a0a0b0;cursor:pointer;border-bottom:2px solid transparent;position:relative;bottom:-1px}
+  .tab.on{color:#4f46e5;border-bottom-color:#4f46e5;font-weight:600}
+  .tab .cnt{font-size:9px;font-weight:700;background:#eaeaec;padding:1px 4px;border-radius:8px;margin-left:4px}
+
+  .content{flex:1;display:flex;overflow:hidden}
+  .left-p{flex:7;overflow-y:auto;padding:16px 20px;background:#fafafb}
+  .right-p{flex:3;overflow-y:auto;padding:14px;background:#fff;border-left:1px solid #eaeaec}
+
+  .card{background:#fff;border:1px solid #eaeaec;border-radius:6px;margin-bottom:10px}
+  .card-in{padding:12px 16px}
+  .card-hd{font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .card-hd .tag{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:#f0eeff;color:#4f46e5}
+  .card-hd .dur{font-size:10px;color:#a0a0b0;font-weight:400;margin-left:auto}
+
+  .note-hd{font-size:11px;font-weight:700;color:#a0a0b0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+  .note-area{width:100%;min-height:80px;padding:8px 10px;border:1px solid #eaeaec;border-radius:6px;font-family:inherit;font-size:12px;color:#1a1a2e;line-height:1.5;resize:vertical;background:#fafafb}
+  .note-area:focus{outline:none;border-color:#4f46e5;background:#fff}
+  .note-saved{font-size:10px;color:#a0a0b0;margin-top:4px}
+  .note-section{margin-bottom:14px}
+
+  /* Transcript */
+  .tx-line{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #f3f3f5;font-size:12px;line-height:1.5}
+  .tx-line:last-child{border-bottom:none}
+  .tx-time{color:#a0a0b0;font-size:10px;width:50px;flex-shrink:0;padding-top:2px;font-variant-numeric:tabular-nums}
+  .tx-speaker{font-weight:600;width:80px;flex-shrink:0}
+  .tx-speaker.dr{color:#4f46e5}
+  .tx-speaker.pt{color:#5c5c70}
+  .tx-text{color:#1a1a2e;flex:1}
+
+  /* Recording status */
+  .rec-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;background:#fef2f2;border:1px solid #fecaca;margin-bottom:12px;font-size:11px;color:#991b1b}
+  .rec-dot{width:8px;height:8px;border-radius:50%;background:#dc2626;animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .rec-bar .dur{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* MSE grid */
+  .mse{display:grid;grid-template-columns:100px 1fr;gap:1px 8px;font-size:12px}
+  .mse-l{color:#a0a0b0;font-weight:500;padding:3px 0}
+  .mse-v{color:#1a1a2e;padding:3px 0}
+
+  /* Session list */
+  .sess{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f3f3f5;font-size:12px}
+  .sess:last-child{border-bottom:none}
+  .sess-name{color:#1a1a2e;font-weight:500}
+  .sess-meta{color:#a0a0b0;font-size:10px}
+  .sess-dur{color:#5c5c70;font-weight:600;font-size:11px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sb">
+    <div class="sb-hd"><div class="sb-logo">P</div><div class="sb-name">Psygil</div></div>
+    <nav class="sb-nav"><a class="ni">Home</a><a class="ni on">Cases</a><a class="ni">Reports</a><a class="ni">Audit Trail</a><div class="ndiv"></div><a class="ni">Settings</a></nav>
+  </aside>
+
+  <div class="mn">
+    <div class="tb">
+      <div class="bc">Cases / <b>Vasquez, Maria</b> / <b>Interview</b></div>
+      <div class="tb-r"><button class="btn rec">&#9679; Recording</button><button class="btn">Stop</button><button class="btn p">New Session</button><div class="av">RI</div></div>
+    </div>
+
+    <div class="ch">
+      <div class="ch-row"><div class="ch-name">Vasquez, Maria</div><span class="badge b-stage">Interview</span><span class="badge b-type">CST</span></div>
+      <div class="ch-meta"><span>DOB: <strong>03/15/1988</strong></span><span>Case #: <strong>2026-0047</strong></span></div>
+      <div class="tabs">
+        <div class="tab">Overview</div><div class="tab">Testing <span class="cnt">4</span></div><div class="tab on">Interview</div>
+        <div class="tab">Diagnostics</div><div class="tab">Report</div><div class="tab">Attestation</div><div class="tab">Audit</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="left-p">
+        <!-- Active recording -->
+        <div class="rec-bar">
+          <div class="rec-dot"></div>
+          Recording in progress (faster-whisper, offline)
+          <span class="dur">02:31:14</span>
+        </div>
+
+        <!-- Session list -->
+        <div class="card"><div class="card-in">
+          <div class="card-hd">Interview Sessions</div>
+          <div class="sess"><span class="sess-name">Session 1: Clinical Interview</span><span class="sess-meta">Apr 10, 9:30 AM</span><span class="sess-dur">2h 31m</span></div>
+          <div class="sess"><span class="sess-name">Session 2: Competency Questions</span><span class="sess-meta">Apr 12, 1:00 PM</span><span class="sess-dur">45m</span></div>
+          <div class="sess"><span class="sess-name">Session 3: Collateral (Atty Blackwell)</span><span class="sess-meta">Apr 14, 10:00 AM</span><span class="sess-dur">22m</span></div>
+        </div></div>
+
+        <!-- Transcript -->
+        <div class="card"><div class="card-in">
+          <div class="card-hd">Transcript: Session 1 <span class="tag">Transcribed</span><span class="dur">2h 31m</span></div>
+          <div class="tx-line"><span class="tx-time">00:00:12</span><span class="tx-speaker dr">Dr. Irwin</span><span class="tx-text">Good morning, Ms. Vasquez. Thank you for meeting with me today. As I mentioned, I've been asked by the court to conduct a competency evaluation. Do you understand why we're meeting?</span></div>
+          <div class="tx-line"><span class="tx-time">00:00:28</span><span class="tx-speaker pt">Ms. Vasquez</span><span class="tx-text">Yes. My lawyer said you're going to see if I can go to trial or not.</span></div>
+          <div class="tx-line"><span class="tx-time">00:00:35</span><span class="tx-speaker dr">Dr. Irwin</span><span class="tx-text">That's right. I'm going to ask you some questions about your background, your health history, and about the legal situation. Everything you tell me will be included in my report to the court. Do you understand that?</span></div>
+          <div class="tx-line"><span class="tx-time">00:00:52</span><span class="tx-speaker pt">Ms. Vasquez</span><span class="tx-text">Yes, I understand.</span></div>
+          <div class="tx-line"><span class="tx-time">00:01:05</span><span class="tx-speaker dr">Dr. Irwin</span><span class="tx-text">Let's start with some background. Can you tell me where you were born and where you grew up?</span></div>
+          <div class="tx-line"><span class="tx-time">00:01:15</span><span class="tx-speaker pt">Ms. Vasquez</span><span class="tx-text">I was born here in Colorado Springs. I grew up on the south side, near Fort Carson. My parents are still there.</span></div>
+          <div class="tx-line"><span class="tx-time">00:01:30</span><span class="tx-speaker dr">Dr. Irwin</span><span class="tx-text">And your education? How far did you go in school?</span></div>
+          <div class="tx-line"><span class="tx-time">00:01:38</span><span class="tx-speaker pt">Ms. Vasquez</span><span class="tx-text">I graduated from Mitchell High School. Then I did some classes at Pikes Peak but I didn't finish. I was going to do nursing but then I got pregnant with my first.</span></div>
+          <div class="tx-line"><span class="tx-time">00:02:05</span><span class="tx-speaker dr">Dr. Irwin</span><span class="tx-text">I'd like to ask about your psychiatric history. Have you ever been diagnosed with a mental health condition?</span></div>
+          <div class="tx-line"><span class="tx-time">00:02:18</span><span class="tx-speaker pt">Ms. Vasquez</span><span class="tx-text">Yes. Bipolar. They told me that the first time I went to the hospital. That was in 2019. I went again in 2022 because I stopped taking my medication.</span></div>
+          <div style="text-align:center;padding:10px;font-size:11px;color:#a0a0b0">[Transcript continues... 2h 28m remaining]</div>
+        </div></div>
+
+        <!-- Mental Status Exam -->
+        <div class="card"><div class="card-in">
+          <div class="card-hd">Mental Status Examination <span class="tag">Clinician Entry</span></div>
+          <div class="mse">
+            <div class="mse-l">Appearance</div><div class="mse-v">Age-appropriate, dressed in orange jumpsuit, adequate hygiene</div>
+            <div class="mse-l">Behavior</div><div class="mse-v">Cooperative, appropriate eye contact, no psychomotor abnormalities</div>
+            <div class="mse-l">Speech</div><div class="mse-v">Normal rate, rhythm, volume; slightly pressured at times</div>
+            <div class="mse-l">Mood</div><div class="mse-v">"Worried" (self-reported)</div>
+            <div class="mse-l">Affect</div><div class="mse-v">Congruent with mood, full range, reactive</div>
+            <div class="mse-l">Thought Process</div><div class="mse-v">Linear, goal-directed, no loosening of associations</div>
+            <div class="mse-l">Thought Content</div><div class="mse-v">Denies SI/HI; no delusions elicited; worried about custody of children</div>
+            <div class="mse-l">Perception</div><div class="mse-v">Denies AH/VH; no evidence of perceptual disturbance</div>
+            <div class="mse-l">Cognition</div><div class="mse-v">Alert, oriented x4; intact attention; memory grossly intact</div>
+            <div class="mse-l">Insight</div><div class="mse-v">Fair; acknowledges bipolar diagnosis, understands need for medication</div>
+            <div class="mse-l">Judgment</div><div class="mse-v">Fair to poor; limited appreciation of legal strategy options</div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- Notes panel -->
+      <div class="right-p">
+        <div class="note-section">
+          <div class="note-hd">Interview Notes</div>
+          <textarea class="note-area" style="min-height:120px">Cooperative throughout. Able to provide coherent personal history. Mood symptoms appear partially managed on lithium but some residual hypomanic features (mildly pressured speech). Key concern: limited understanding of plea options and defense strategy when questioned directly. Able to identify attorney and judge roles but struggled with concepts of plea bargaining and trial procedures.
+
+Collateral from Atty Blackwell: reports difficulty communicating legal strategy; defendant perseverates on custody concerns rather than engaging with criminal defense planning.</textarea>
+          <div class="note-saved">Auto-saved 1 min ago</div>
+        </div>
+
+        <div class="note-section">
+          <div class="note-hd">Competency-Specific Notes</div>
+          <textarea class="note-area">Understanding of charges: Adequate. Knows she is charged with assault. Can describe the incident.
+
+Understanding of courtroom roles: Adequate for judge, prosecutor, defense attorney. Limited understanding of jury function.
+
+Ability to assist in defense: Impaired. Difficulty articulating possible defense strategies. Perseverates on child custody concerns rather than criminal charges. May reflect mood-related cognitive narrowing rather than fixed deficit.</textarea>
+          <div class="note-saved">Auto-saved 5 min ago</div>
+        </div>
+
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid #eaeaec">
+          <div class="note-hd">Session Summary</div>
+          <div style="font-size:11px;line-height:1.6">
+            <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#5c5c70">Total time</span><span style="font-weight:600">3h 38m</span></div>
+            <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#5c5c70">Sessions</span><span style="font-weight:600">3</span></div>
+            <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#5c5c70">Transcription</span><span style="color:#059669;font-weight:600">Offline (local)</span></div>
+            <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#5c5c70">MSE</span><span style="color:#059669;font-weight:600">Complete</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
