@@ -74,10 +74,30 @@ function createWindow(): BrowserWindow {
   // electron-vite sets ELECTRON_RENDERER_URL in dev mode; NODE_ENV may not be set
   const isDev = !!process.env['ELECTRON_RENDERER_URL'] || process.env.NODE_ENV === 'development'
 
+  // Read the persisted theme to set the initial window background color.
+  // On macOS, setting backgroundColor to a dark value makes the native
+  // title bar (traffic lights + drag region) render in dark mode.
+  let bgColor = '#ffffff'
+  try {
+    const fs = require('fs')
+    const { join: pjoin } = require('path')
+    const setupPath = pjoin(app.getPath('userData'), 'psygil-setup.json')
+    if (fs.existsSync(setupPath)) {
+      const raw = fs.readFileSync(setupPath, 'utf-8')
+      const cfg = JSON.parse(raw)
+      const theme = cfg?.appearance?.theme
+      if (theme === 'dark') bgColor = '#2b2f36'
+      else if (theme === 'warm') bgColor = '#faf8f4'
+    }
+  } catch { /* default to white */ }
+
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     title: 'Psygil',
+    backgroundColor: bgColor,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 12, y: 10 },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
