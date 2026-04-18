@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Psygil - Interactive Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#ffffff;--panel:#fafafb;--border:#eaeaec;--text:#1a1a2e;--text-sec:#5c5c70;
+  --accent:#4f46e5;--highlight:#f0eeff;--danger:#dc2626;--warn:#d97706;--success:#059669;--info:#2563eb;
+  --gray-50:#fafafb;--gray-100:#f5f5f7;
+  --stage-onboarding:#0d9488;--stage-testing:#7c3aed;--stage-interview:#db2777;
+  --stage-diagnostics:#ea580c;--stage-review:#dc2626;--stage-complete:#059669;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-size:13px;line-height:1.4}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d0d0d8;border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:#b0b0be}
+
+/* === DEMO BANNER === */
+.demo-banner{height:32px;background:#4f46e5;display:flex;align-items:center;justify-content:center;gap:16px;padding:0 16px;flex-shrink:0}
+.demo-banner span{color:#fff;font-size:12px;font-weight:500}
+.demo-banner a{padding:4px 12px;border-radius:4px;font-size:11px;font-weight:600;color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,0.8);cursor:pointer;transition:background .15s}
+.demo-banner a:hover{background:rgba(255,255,255,0.15)}
+
+/* === TITLE BAR === */
+.titlebar{height:36px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;flex-shrink:0;gap:0;user-select:none}
+.tb-left{display:flex;align-items:center;gap:8px;min-width:268px}
+.tb-logo{width:24px;height:24px;background:#4f46e5;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;flex-shrink:0}
+.tb-brand{font-size:14px;font-weight:700;color:var(--text);letter-spacing:0.5px}
+.tb-sep{width:1px;height:18px;background:var(--border);margin:0 4px}
+.tb-actions{display:flex;align-items:center;gap:2px}
+.tb-btn{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-sec);cursor:pointer;border-radius:4px;font-size:14px}
+.tb-btn:hover{background:var(--gray-100);color:var(--text)}
+.tb-tabs{display:flex;align-items:stretch;flex:1;height:100%;overflow-x:auto;gap:0}
+.tb-tab{display:flex;align-items:center;gap:6px;padding:0 14px;font-size:12px;font-weight:500;color:var(--text-sec);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .12s}
+.tb-tab:hover{color:var(--text);background:rgba(0,0,0,0.02)}
+.tb-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tb-tab .tab-close{font-size:10px;opacity:0.4;margin-left:4px}
+.tb-tab .tab-close:hover{opacity:1}
+.tb-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
+.tb-settings{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;color:var(--text-sec);font-weight:500}
+.tb-settings:hover{background:var(--gray-100);color:var(--text)}
+.tb-sun{font-size:14px;color:var(--text-sec);cursor:pointer;padding:4px}
+.tb-avatar{width:24px;height:24px;background:#4f46e5;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0}
+.tb-user{font-size:12px;font-weight:500;color:var(--text)}
+
+/* === MAIN LAYOUT === */
+.app-wrap{display:flex;flex-direction:column;height:100vh}
+.main-area{display:flex;flex:1;overflow:hidden}
+
+/* === LEFT COLUMN === */
+.left-col{width:280px;background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.left-nav{padding:6px 8px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text-sec);cursor:pointer;user-select:none}
+.nav-item:hover{background:var(--gray-100);color:var(--text)}
+.nav-item.active{background:var(--highlight);color:var(--accent);font-weight:600}
+.nav-item .nav-icon{width:16px;text-align:center;font-size:13px;opacity:0.7}
+.nav-item.active .nav-icon{opacity:1}
+.nav-item .nav-count{margin-left:auto;font-size:10px;font-weight:600;color:var(--text-sec);background:var(--gray-100);padding:1px 6px;border-radius:8px}
+
+.case-tree-wrap{flex:1;overflow-y:auto;padding:0 4px 8px}
+.tree-label{padding:8px 10px 4px;font-size:10px;font-weight:700;color:#a0a0b0;text-transform:uppercase;letter-spacing:0.8px}
+.tree-item{display:flex;align-items:center;padding:3px 0;padding-left:8px;cursor:pointer;border-radius:4px;font-size:13px;color:var(--text);white-space:nowrap;gap:5px}
+.tree-item:hover{background:var(--gray-100)}
+.tree-item.selected{background:var(--highlight);color:var(--accent)}
+.tree-chevron{width:14px;font-size:9px;color:var(--text-sec);flex-shrink:0;text-align:center}
+.tree-icon{font-size:12px;flex-shrink:0;width:16px;text-align:center}
+.tree-name{flex:1;overflow:hidden;text-overflow:ellipsis}
+.tree-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-right:8px}
+
+/* Admin assistant */
+.admin-panel{border-top:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.admin-header{height:32px;display:flex;align-items:center;padding:0 12px;background:var(--panel);font-size:10px;font-weight:700;color:var(--text-sec);letter-spacing:0.8px;text-transform:uppercase;gap:6px}
+.admin-header .clear-btn{margin-left:auto;font-size:10px;font-weight:500;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0}
+.admin-body{padding:10px 12px;font-size:11px;color:var(--text-sec);line-height:1.5;max-height:80px;overflow-y:auto}
+.admin-input{display:flex;align-items:center;padding:6px 10px;border-top:1px solid var(--border);gap:6px}
+.admin-input input{flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;font-family:inherit;outline:none;background:var(--bg);color:var(--text)}
+.admin-input input:focus{border-color:var(--accent)}
+.admin-input button{width:28px;height:28px;border:none;background:var(--accent);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+
+/* === SPLITTER === */
+.splitter{width:6px;background:var(--panel);cursor:col-resize;flex-shrink:0;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+.splitter:hover{background:#e0e0e8}
+
+/* === CENTER COLUMN === */
+.center-col{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.center-tabs{height:32px;display:flex;align-items:stretch;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;padding:0 4px}
+.center-tab{display:flex;align-items:center;padding:0 14px;font-size:12px;font-weight:500;color:var(--text-sec);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .1s}
+.center-tab:hover{color:var(--text)}
+.center-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.center-content{flex:1;overflow-y:auto;padding:0}
+
+/* === STATUS BAR === */
+.statusbar{height:24px;background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;font-size:11px;color:var(--text-sec);flex-shrink:0;gap:16px}
+.statusbar .status-dot{width:6px;height:6px;border-radius:50%;background:var(--success)}
+.sb-right{margin-left:auto;display:flex;gap:16px}
+
+/* ================================================
+   SCREEN: DASHBOARD
+   ================================================ */
+.dashboard{padding:16px 20px}
+.dash-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.dash-header h2{font-size:16px;font-weight:700}
+.dash-stat{font-size:13px;color:var(--text-sec);font-weight:500}
+.dash-stat .green{color:var(--success)}
+.dash-view-toggle{margin-left:auto;display:flex;gap:2px}
+.dash-view-toggle button{width:28px;height:28px;border:1px solid var(--border);background:var(--bg);border-radius:4px;cursor:pointer;font-size:13px;color:var(--text-sec);display:flex;align-items:center;justify-content:center}
+.dash-view-toggle button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Kanban */
+.kanban{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px}
+.kanban-col{min-width:200px;flex:1;display:flex;flex-direction:column}
+.kanban-col-header{display:flex;align-items:center;gap:6px;padding:8px 10px;font-size:12px;font-weight:600;color:var(--text);background:var(--panel);border:1px solid var(--border);border-radius:8px 8px 0 0}
+.kanban-col-header .col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.kanban-col-header .col-count{margin-left:auto;font-size:11px;font-weight:500;color:var(--text-sec)}
+.kanban-col-body{flex:1;background:var(--panel);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:6px;display:flex;flex-direction:column;gap:6px;min-height:120px}
+.kanban-card{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;position:relative;transition:box-shadow .12s}
+.kanban-card:hover{box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.kanban-card .card-accent{position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:1px}
+.kanban-card .card-name{font-size:12px;font-weight:600;color:var(--text);margin-left:6px}
+.kanban-card .card-badge{display:inline-block;font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;margin:4px 0 3px 6px}
+.kanban-card .card-meta{font-size:10px;color:var(--text-sec);margin-left:6px;line-height:1.6}
+.kanban-card .card-date{font-size:10px;color:var(--danger);margin-left:6px}
+
+/* Dashboard bottom bar */
+.dash-bottom{display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 0;flex-wrap:wrap}
+.dash-bottom .case-list-btn{font-size:12px;font-weight:600;color:var(--text);cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg)}
+.type-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--text-sec);padding:3px 8px;border-radius:12px;background:var(--gray-100)}
+.type-pill .pill-dot{width:6px;height:6px;border-radius:50%}
+.analytics-bar{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.analytics-pill{font-size:10px;font-weight:600;padding:3px 10px;border-radius:12px;color:#fff}
+
+/* ================================================
+   SCREEN: CASE VIEW
+   ================================================ */
+.case-view{padding:16px 20px;display:flex;gap:20px}
+.case-main{flex:1;min-width:0}
+.case-sidebar{width:280px;flex-shrink:0}
+
+.case-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.case-header h2{font-size:16px;font-weight:700}
+.case-header .stage-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px}
+.case-header .case-num{font-size:12px;color:var(--text-sec);font-weight:500}
+.case-advance-btn{margin-left:auto;padding:6px 14px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.case-advance-btn:hover{background:#4338ca}
+
+.demo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px}
+.demo-field{padding:6px 0}
+.demo-field .field-label{font-size:9px;font-weight:700;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px}
+.demo-field .field-value{font-size:12px;font-weight:500;color:var(--text)}
+
+.concern-row,.battery-row{padding:8px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:12px}
+.concern-row .concern-dot{width:8px;height:8px;border-radius:50%;background:var(--success)}
+
+.case-sub-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px}
+.case-sub-tab{padding:8px 14px;font-size:12px;font-weight:500;color:var(--text-sec);cursor:pointer;border-bottom:2px solid transparent}
+.case-sub-tab:hover{color:var(--text)}
+.case-sub-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+
+.form-section{margin-bottom:16px}
+.form-section h4{font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.form-field{display:flex;flex-direction:column;gap:3px}
+.form-field label{font-size:10px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.4px}
+.form-field input,.form-field select{padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text);outline:none}
+.form-field input:focus,.form-field select:focus{border-color:var(--accent)}
+
+/* Clinical notes sidebar */
+.clinical-notes h4{font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px}
+.clinical-notes textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:11px;font-family:inherit;resize:vertical;min-height:80px;outline:none;color:var(--text);line-height:1.5}
+.clinical-notes textarea:focus{border-color:var(--accent)}
+.clinical-notes .note-block{margin-bottom:10px}
+.clinical-notes .note-label{font-size:10px;font-weight:600;color:var(--text-sec);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.4px}
+
+/* ================================================
+   SCREEN: TESTING
+   ================================================ */
+.testing-view{padding:16px 20px;display:flex;gap:20px}
+.testing-main{flex:1;min-width:0}
+.testing-sidebar{width:280px;flex-shrink:0}
+.testing-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.testing-header h3{font-size:14px;font-weight:700}
+.testing-actions{display:flex;gap:6px;margin-left:auto}
+.testing-actions button{padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;color:var(--text)}
+.testing-actions button:hover{background:var(--gray-100)}
+.testing-stats{display:flex;gap:16px;margin-bottom:14px}
+.testing-stat{text-align:center}
+.testing-stat .stat-label{font-size:9px;font-weight:700;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.6px}
+.testing-stat .stat-value{font-size:14px;font-weight:700;color:var(--text)}
+
+.test-table{width:100%;border-collapse:collapse;font-size:12px}
+.test-table th{text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.6px;border-bottom:2px solid var(--border);background:var(--panel)}
+.test-table td{padding:8px 10px;border-bottom:1px solid var(--border)}
+.test-table tr:hover{background:var(--gray-50)}
+.flag-review{font-size:10px;font-weight:600;color:var(--warn);padding:2px 6px;border-radius:4px;background:#fef3c7}
+.flag-pass{font-size:10px;font-weight:600;color:var(--success);padding:2px 6px;border-radius:4px;background:#ecfdf5}
+
+/* ================================================
+   SCREEN: DIAGNOSTICS
+   ================================================ */
+.diag-view{padding:16px 20px;display:flex;gap:20px}
+.diag-main{flex:1;min-width:0}
+.diag-sidebar{width:280px;flex-shrink:0}
+.diag-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.diag-header h3{font-size:14px;font-weight:700}
+.diag-progress{display:flex;align-items:center;gap:6px;margin-left:8px}
+.diag-progress .prog-bar{width:80px;height:5px;background:var(--gray-100);border-radius:3px;overflow:hidden}
+.diag-progress .prog-fill{height:100%;background:var(--accent);border-radius:3px;width:0%}
+.diag-counter{font-size:11px;font-weight:600;color:var(--text-sec)}
+.diag-add-btn{padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg);font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;color:var(--text);margin-left:auto}
+
+.diag-condition{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+.diag-condition-header{display:flex;align-items:center;gap:8px;cursor:pointer}
+.diag-condition-header .cond-chevron{font-size:10px;color:var(--text-sec)}
+.diag-condition-header .cond-name{font-size:13px;font-weight:600}
+.diag-condition-header .cond-status{font-size:11px;color:var(--text-sec);margin-left:8px}
+.diag-condition-actions{display:flex;gap:6px;margin-left:auto}
+.diag-condition-actions button{padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:0.4px}
+.diag-condition-actions .render-btn{color:var(--success);border-color:var(--success)}
+.diag-condition-actions .defer-btn{color:var(--warn);border-color:var(--warn)}
+.diag-condition-actions .reject-btn{color:var(--danger);border-color:var(--danger)}
+
+.diag-final{border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:16px}
+.diag-final h4{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.diag-final .rebuild-btn{font-size:10px;font-weight:500;color:var(--accent);cursor:pointer;margin-left:auto}
+.diag-section{border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.diag-section-header{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600}
+.diag-section-header .section-badge{font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:#dbeafe;color:#1d4ed8}
+.diag-section-header .section-actions{margin-left:auto;display:flex;gap:6px}
+.diag-section-header .section-actions button{padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);font-size:10px;font-weight:500;cursor:pointer;font-family:inherit;color:var(--text-sec)}
+
+.diag-gates h4{font-size:12px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px}
+.gate-item{display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 0;color:var(--text-sec)}
+.gate-item .gate-check{width:14px;height:14px;border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--success)}
+
+/* ================================================
+   SCREEN: INTERVIEWS
+   ================================================ */
+.interview-view{padding:16px 20px;display:flex;gap:20px}
+.interview-main{flex:1;min-width:0}
+.interview-sidebar{width:280px;flex-shrink:0}
+.session-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px}
+.session-tab{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:12px;font-weight:500;color:var(--text-sec);cursor:pointer;border-bottom:2px solid transparent}
+.session-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.session-tab .doc-badge{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:var(--gray-100);color:var(--text-sec)}
+.session-controls{display:flex;gap:6px;margin-left:auto;align-items:center}
+.record-btn{padding:5px 12px;border:none;border-radius:6px;background:var(--danger);color:#fff;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px}
+.interview-textarea{width:100%;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;font-family:inherit;resize:vertical;min-height:120px;outline:none;color:var(--text);line-height:1.5}
+.interview-textarea:focus{border-color:var(--accent)}
+.interview-label{font-size:11px;font-weight:700;color:var(--text-sec);text-transform:uppercase;letter-spacing:0.6px;margin:10px 0 6px}
+.interview-actions{display:flex;gap:8px;margin-top:14px}
+.interview-actions button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;color:var(--text)}
+.interview-actions button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* ================================================
+   SCREEN: SETTINGS
+   ================================================ */
+.settings-view{display:flex;height:100%}
+.settings-nav{width:220px;border-right:1px solid var(--border);padding:12px 8px;overflow-y:auto;flex-shrink:0}
+.settings-nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;font-size:12px;font-weight:500;color:var(--text-sec);cursor:pointer;border-left:2px solid transparent;margin-bottom:1px}
+.settings-nav-item:hover{background:var(--gray-100);color:var(--text)}
+.settings-nav-item.active{color:var(--accent);font-weight:600;border-left-color:var(--accent);background:var(--highlight)}
+.settings-nav-item .sn-icon{width:16px;text-align:center;font-size:13px;opacity:0.6}
+.settings-nav-item.active .sn-icon{opacity:1}
+.settings-content{flex:1;padding:20px 24px;overflow-y:auto}
+.settings-content h2{font-size:16px;font-weight:700;margin-bottom:16px}
+.sample-list{display:flex;flex-direction:column;gap:6px}
+.sample-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px}
+.sample-item .sample-name{flex:1;font-weight:500}
+.sample-item .sample-pages{font-size:10px;color:var(--text-sec)}
+.sample-actions{display:flex;gap:4px}
+.sample-actions button{padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);font-size:10px;font-weight:500;cursor:pointer;font-family:inherit;color:var(--text-sec)}
+.sample-actions button:hover{background:var(--gray-100)}
+.sample-actions .remove-btn{color:var(--danger);border-color:transparent}
+.sample-actions .remove-btn:hover{background:#fef2f2}
+
+/* Utility */
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app-wrap">
+
+<!-- DEMO BANNER -->
+<div class="demo-banner">
+  <span>Interactive Demo: Explore Psygil's forensic evaluation workflow. No account required.</span>
+  <a href="https://psygil.com" target="_blank">Get Started</a>
+</div>
+
+<!-- TITLE BAR -->
+<div class="titlebar">
+  <div class="tb-left">
+    <div class="tb-logo">P</div>
+    <span class="tb-brand">PSYGIL</span>
+    <div class="tb-sep"></div>
+    <div class="tb-actions">
+      <button class="tb-btn" title="Collapse rail">&#9664;</button>
+      <button class="tb-btn" title="Menu">&#9776;</button>
+      <button class="tb-btn" title="New">+</button>
+      <button class="tb-btn" title="Refresh">&#8635;</button>
+      <button class="tb-btn" title="Collapse">&#9664;</button>
+    </div>
+  </div>
+  <div class="tb-tabs" id="topTabs">
+    <div class="tb-tab active" data-tab="dashboard" onclick="showScreen('dashboard')">
+      <span>Dashboard</span>
+    </div>
+  </div>
+  <div class="tb-right">
+    <div class="tb-settings" onclick="showScreen('settings')">
+      <span>&#9881;</span>
+      <span>Settings</span>
+    </div>
+    <div class="tb-sun">&#9788;</div>
+    <div class="tb-avatar">TI</div>
+    <span class="tb-user">Dr. Irwin</span>
+  </div>
+</div>
+
+<!-- MAIN AREA -->
+<div class="main-area">
+
+  <!-- LEFT COLUMN -->
+  <div class="left-col">
+    <div class="left-nav">
+      <div class="nav-item active" id="navDashboard" onclick="showScreen('dashboard')">
+        <span class="nav-icon">&#9636;</span>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" id="navCases" onclick="toggleCaseTree()">
+        <span class="nav-icon">&#128193;</span>
+        <span>Cases</span>
+        <span class="nav-count">34</span>
+      </div>
+    </div>
+    <div class="case-tree-wrap" id="caseTree">
+      <div class="tree-label">Active Cases</div>
+      <div id="caseTreeItems"></div>
+    </div>
+    <div class="admin-panel">
+      <div class="admin-header">
+        <span>&#9670;</span> Admin Assistant
+        <span class="clear-btn">Clear</span>
+      </div>
+      <div class="admin-body">I have access to your full caseload. Ask me which cases need attention, what to focus on this week, or for practice analytics.</div>
+      <div class="admin-input">
+        <input type="text" placeholder="Ask about your caseload...">
+        <button>&#10148;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPLITTER -->
+  <div class="splitter"></div>
+
+  <!-- CENTER COLUMN -->
+  <div class="center-col">
+    <div class="center-tabs" id="centerTabs">
+      <!-- populated dynamically -->
+    </div>
+    <div class="center-content" id="centerContent">
+      <!-- screens rendered here -->
+    </div>
+  </div>
+
+</div>
+
+<!-- STATUS BAR -->
+<div class="statusbar">
+  <span class="status-dot"></span>
+  <span>Connected</span>
+  <span>LLM: Psygil AI (Sonnet)</span>
+  <span>PHI: UNID Redaction &#10003;</span>
+  <span>Storage: Local</span>
+  <div class="sb-right">
+    <span>12 active cases</span>
+    <span>v0.1.0-alpha</span>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ── DATA ──
+const STAGES = [
+  {key:'onboarding',label:'Onboarding',color:'#0d9488'},
+  {key:'testing',label:'Testing',color:'#7c3aed'},
+  {key:'interview',label:'Interview',color:'#db2777'},
+  {key:'report',label:'Report',color:'#ea580c'},
+  {key:'review',label:'Review',color:'#dc2626'},
+  {key:'complete',label:'Complete',color:'#059669'}
+];
+const EVAL_TYPES = ['CST','Custody','Risk Assessment','Fitness for Duty','Sexual Offense','Mitigation','Juvenile Waiver','Immigration'];
+const REFERRALS = [
+  'Jefferson County Sheriff Office','Public Defender Office','District Attorney, 12th Circuit',
+  'Family Court, Division 3','State Hospital Board','County Probation Dept','Private Attorney (Johnson & Associates)',
+  'Dept of Corrections','Immigration Court','Juvenile Justice Authority','Veterans Affairs',
+  'County Mental Health','Private Practice Referral','Federal Public Defender'
+];
+const CONCERNS = ['Competency to stand trial','Parental fitness','Violence risk','Occupational fitness','Sexual recidivism','Mitigation factors','Developmental maturity','Asylum claim'];
+
+function randDate(daysBack){
+  const d=new Date();d.setDate(d.getDate()-Math.floor(Math.random()*daysBack));
+  return d.toISOString().slice(0,10);
+}
+function daysAgo(ds){
+  const d=new Date(ds),now=new Date();
+  return Math.floor((now-d)/(1000*60*60*24));
+}
+
+const LAST_NAMES=['Mitchell','Foster','Alvarez','Chen','Okafor','Petrov','Johnson','Williams','Garcia','Brown','Davis','Martinez','Anderson','Taylor','Thomas','Harris','Robinson','Clark','Lewis','Lee','Walker','Hall','Allen','Young','King','Wright','Scott','Torres','Nguyen','Hill','Flores','Green','Adams','Nelson','Baker','Rivera','Campbell','Morgan','Reed'];
+const FIRST_INITS='ABCDEFGHJKLMNPRSTW';
+
+const cases=[];
+const stageDistribution=[6,5,7,7,4,5];
+let caseNum=600;
+for(let si=0;si<6;si++){
+  for(let ci=0;ci<stageDistribution[si];ci++){
+    const ln=LAST_NAMES[(si*7+ci)%LAST_NAMES.length];
+    const fi=FIRST_INITS[(si*5+ci)%FIRST_INITS.length];
+    const et=EVAL_TYPES[(si+ci)%EVAL_TYPES.length];
+    const ref=REFERRALS[(si*3+ci)%REFERRALS.length];
+    const concern=CONCERNS[(si+ci)%CONCERNS.length];
+    const intake=randDate(60);
+    const due=randDate(-30);
+    caseNum+=Math.floor(Math.random()*4)+1;
+    cases.push({
+      id:'2026-0'+caseNum,
+      lastName:ln,firstInit:fi,
+      evalType:et,
+      stage:STAGES[si],
+      stageIndex:si,
+      referral:ref,
+      concern:concern,
+      intake:intake,
+      due:due,
+      dob:'1988-07-14',
+      gender:'Male',
+      work:'Unemployed',
+      education:'High School Diploma',
+      family:'Single, no dependents',
+      charges:'Assault in the 2nd Degree',
+      setting:'Outpatient',
+      language:'English'
+    });
+  }
+}
+
+// ── STATE ──
+let currentScreen='dashboard';
+let selectedCase=null;
+let caseSubTab='intake';
+let openTabs=[{id:'dashboard',label:'Dashboard',type:'dashboard'}];
+let activeTopTab='dashboard';
+
+// ── RENDER CASE TREE ──
+function renderCaseTree(){
+  const el=document.getElementById('caseTreeItems');
+  let html='';
+  cases.forEach((c,i)=>{
+    const sel=selectedCase&&selectedCase.id===c.id?' selected':'';
+    html+=`<div class="tree-item${sel}" style="padding-left:${8+16}px" onclick="openCase(${i})">
+      <span class="tree-chevron">&#9656;</span>
+      <span class="tree-icon">&#128196;</span>
+      <span class="tree-name">${c.lastName}, ${c.firstInit}., ${c.evalType}</span>
+      <span class="tree-dot" style="background:${c.stage.color}"></span>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ── RENDER TOP TABS ──
+function renderTopTabs(){
+  const el=document.getElementById('topTabs');
+  let html='';
+  openTabs.forEach(t=>{
+    const act=activeTopTab===t.id?' active':'';
+    const close=t.id==='dashboard'?'':`<span class="tab-close" onclick="event.stopPropagation();closeTab('${t.id}')">&#10005;</span>`;
+    html+=`<div class="tb-tab${act}" data-tab="${t.id}" onclick="switchTopTab('${t.id}')">${t.label}${close}</div>`;
+  });
+  el.innerHTML=html;
+}
+
+function switchTopTab(id){
+  activeTopTab=id;
+  const tab=openTabs.find(t=>t.id===id);
+  if(!tab)return;
+  if(tab.type==='dashboard'){showScreen('dashboard');}
+  else if(tab.type==='case'){
+    const c=cases.find(x=>x.id===tab.caseId);
+    if(c){selectedCase=c;showScreen('case');}
+  }
+  else if(tab.type==='settings'){showScreen('settings');}
+  renderTopTabs();
+}
+
+function closeTab(id){
+  openTabs=openTabs.filter(t=>t.id!==id);
+  if(activeTopTab===id){
+    activeTopTab=openTabs[openTabs.length-1].id;
+    switchTopTab(activeTopTab);
+  }
+  renderTopTabs();
+}
+
+// ── CENTER TABS ──
+function renderCenterTabs(tabs,active,callback){
+  const el=document.getElementById('centerTabs');
+  if(!tabs||tabs.length===0){el.innerHTML='';return;}
+  let html='';
+  tabs.forEach(t=>{
+    const act=active===t.key?' active':'';
+    html+=`<div class="center-tab${act}" onclick="${callback}('${t.key}')">${t.label}</div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ── SHOW SCREEN ──
+function showScreen(screen){
+  currentScreen=screen;
+  // update nav
+  document.getElementById('navDashboard').classList.toggle('active',screen==='dashboard');
+  document.getElementById('navCases').classList.toggle('active',screen==='case'||screen==='testing'||screen==='interviews'||screen==='diagnostics');
+
+  if(screen==='dashboard'){
+    activeTopTab='dashboard';
+    renderCenterTabs(null);
+    renderDashboard();
+  }else if(screen==='case'){
+    renderCenterTabs([
+      {key:'intake',label:'Intake'},{key:'testing',label:'Testing'},
+      {key:'interviews',label:'Interviews'},{key:'diagnostics',label:'Diagnostics'},
+      {key:'reports',label:'Reports'},{key:'documents',label:'Documents'}
+    ],caseSubTab,'switchCaseTab');
+    renderCaseView();
+  }else if(screen==='testing'){
+    renderCenterTabs([
+      {key:'intake',label:'Intake'},{key:'testing',label:'Testing'},
+      {key:'interviews',label:'Interviews'},{key:'diagnostics',label:'Diagnostics'},
+      {key:'reports',label:'Reports'},{key:'documents',label:'Documents'}
+    ],'testing','switchCaseTab');
+    renderTestingView();
+  }else if(screen==='interviews'){
+    renderCenterTabs([
+      {key:'intake',label:'Intake'},{key:'testing',label:'Testing'},
+      {key:'interviews',label:'Interviews'},{key:'diagnostics',label:'Diagnostics'},
+      {key:'reports',label:'Reports'},{key:'documents',label:'Documents'}
+    ],'interviews','switchCaseTab');
+    renderInterviewView();
+  }else if(screen==='diagnostics'){
+    renderCenterTabs([
+      {key:'intake',label:'Intake'},{key:'testing',label:'Testing'},
+      {key:'interviews',label:'Interviews'},{key:'diagnostics',label:'Diagnostics'},
+      {key:'reports',label:'Reports'},{key:'documents',label:'Documents'}
+    ],'diagnostics','switchCaseTab');
+    renderDiagnosticsView();
+  }else if(screen==='settings'){
+    renderCenterTabs(null);
+    renderSettings();
+    // add settings tab
+    if(!openTabs.find(t=>t.id==='settings')){
+      openTabs.push({id:'settings',label:'Settings',type:'settings'});
+    }
+    activeTopTab='settings';
+  }
+  renderTopTabs();
+  renderCaseTree();
+}
+
+function switchCaseTab(key){
+  caseSubTab=key;
+  if(key==='intake')showScreen('case');
+  else if(key==='testing')showScreen('testing');
+  else if(key==='interviews')showScreen('interviews');
+  else if(key==='diagnostics')showScreen('diagnostics');
+  else showScreen('case');
+}
+
+function openCase(idx){
+  const c=cases[idx];
+  selectedCase=c;
+  caseSubTab='intake';
+  const tabId='case-'+c.id;
+  if(!openTabs.find(t=>t.id===tabId)){
+    openTabs.push({id:tabId,label:c.lastName+', '+c.firstInit+'.',type:'case',caseId:c.id});
+  }
+  activeTopTab=tabId;
+  showScreen('case');
+}
+
+function toggleCaseTree(){
+  const tree=document.getElementById('caseTree');
+  tree.style.display=tree.style.display==='none'?'':'none';
+}
+
+// ── DASHBOARD ──
+function renderDashboard(){
+  const el=document.getElementById('centerContent');
+  const grouped={};
+  STAGES.forEach(s=>grouped[s.key]=[]);
+  cases.forEach(c=>grouped[c.stage.key].push(c));
+
+  // Count eval types
+  const evalCounts={};
+  cases.forEach(c=>{evalCounts[c.evalType]=(evalCounts[c.evalType]||0)+1;});
+
+  let kanbanHtml='<div class="kanban">';
+  STAGES.forEach((s,si)=>{
+    const colCases=grouped[s.key];
+    kanbanHtml+=`<div class="kanban-col">
+      <div class="kanban-col-header">
+        <span class="col-dot" style="background:${s.color}"></span>
+        ${s.label}
+        <span class="col-count">${colCases.length}</span>
+      </div>
+      <div class="kanban-col-body">`;
+    colCases.forEach((c,ci)=>{
+      const da=daysAgo(c.intake);
+      const badgeBg=hexToTint(s.color);
+      kanbanHtml+=`<div class="kanban-card" onclick="openCase(${cases.indexOf(c)})">
+        <div class="card-accent" style="background:${s.color}"></div>
+        <div class="card-name">${c.lastName}, ${c.firstInit}.</div>
+        <div class="card-badge" style="background:${badgeBg};color:${s.color}">${c.evalType}</div>
+        <div class="card-meta">${c.id}</div>
+        <div class="card-meta">${c.referral}</div>
+        <div class="card-date">${c.intake} (-${da}d)</div>
+      </div>`;
+    });
+    kanbanHtml+=`</div></div>`;
+  });
+  kanbanHtml+='</div>';
+
+  // Type pills
+  let pillsHtml='';
+  const pillColors={'CST':'#4f46e5','Custody':'#d97706','Risk Assessment':'#dc2626','Fitness for Duty':'#0d9488','Sexual Offense':'#9333ea','Mitigation':'#2563eb','Juvenile Waiver':'#db2777','Immigration':'#ea580c'};
+  Object.keys(evalCounts).forEach(et=>{
+    const col=pillColors[et]||'#5c5c70';
+    pillsHtml+=`<span class="type-pill"><span class="pill-dot" style="background:${col}"></span> ${et} ${evalCounts[et]}</span> `;
+  });
+
+  // Analytics pills
+  let analyticsHtml='';
+  STAGES.forEach(s=>{
+    analyticsHtml+=`<span class="analytics-pill" style="background:${s.color}">${grouped[s.key].length} ${s.label}</span>`;
+  });
+
+  el.innerHTML=`<div class="dashboard">
+    <div class="dash-header">
+      <h2>Practice Dashboard</h2>
+      <span class="dash-stat">34 Total</span>
+      <span class="dash-stat"><span class="green">29 Active</span></span>
+      <div class="dash-view-toggle">
+        <button class="active" title="Grid view">&#9638;</button>
+        <button title="List view">&#9776;</button>
+      </div>
+    </div>
+    ${kanbanHtml}
+    <div class="dash-bottom">
+      <span class="case-list-btn">Case List &#9662;</span>
+      ${pillsHtml}
+    </div>
+    <div class="analytics-bar">
+      ${analyticsHtml}
+    </div>
+  </div>`;
+}
+
+// ── CASE VIEW ──
+function renderCaseView(){
+  if(!selectedCase)return;
+  const c=selectedCase;
+  const badgeBg=hexToTint(c.stage.color);
+  const el=document.getElementById('centerContent');
+
+  el.innerHTML=`<div class="case-view">
+    <div class="case-main">
+      <div class="case-header">
+        <h2>${c.lastName}, ${c.firstInit.length>1?c.firstInit:c.firstInit+'.'}</h2>
+        <span class="stage-badge" style="background:${badgeBg};color:${c.stage.color}">${c.stage.label.toUpperCase()}</span>
+        <span class="case-num">Case #: ${c.id}</span>
+        <button class="case-advance-btn">Move to ${STAGES[Math.min(c.stageIndex+1,5)].label} &#8594;</button>
+      </div>
+
+      <div class="demo-grid">
+        <div class="demo-field"><div class="field-label">DOB / Gender</div><div class="field-value">${c.dob} / ${c.gender}</div></div>
+        <div class="demo-field"><div class="field-label">Work</div><div class="field-value">${c.work}</div></div>
+        <div class="demo-field"><div class="field-label">Education</div><div class="field-value">${c.education}</div></div>
+        <div class="demo-field"><div class="field-label">Family</div><div class="field-value">${c.family}</div></div>
+        <div class="demo-field"><div class="field-label">Eval / Stage</div><div class="field-value">${c.evalType} / ${c.stage.label}</div></div>
+        <div class="demo-field"><div class="field-label">Referral</div><div class="field-value">${c.referral}</div></div>
+        <div class="demo-field"><div class="field-label">Charges</div><div class="field-value">${c.charges}</div></div>
+        <div class="demo-field"><div class="field-label">Intake / Due</div><div class="field-value">${c.intake} / ${c.due}</div></div>
+        <div class="demo-field"><div class="field-label">Setting</div><div class="field-value">${c.setting}</div></div>
+        <div class="demo-field"><div class="field-label">Language</div><div class="field-value">${c.language}</div></div>
+      </div>
+
+      <div class="concern-row">
+        <span class="concern-dot"></span>
+        <strong>Concern:</strong> ${c.concern}
+      </div>
+      <div class="battery-row">
+        <strong>Test Battery:</strong> MMPI-3, PAI, WAIS-V, TOMM, SIRS-2, M-FAST
+      </div>
+
+      <div class="case-sub-tabs">
+        <div class="case-sub-tab active">Background</div>
+        <div class="case-sub-tab">Referral</div>
+        <div class="case-sub-tab">Medical History</div>
+        <div class="case-sub-tab">Clinical History</div>
+      </div>
+
+      <div class="form-section">
+        <h4>Identity and Living Situation</h4>
+        <div class="form-grid">
+          <div class="form-field"><label>Full Name</label><input value="${c.lastName}, ${c.firstInit}." readonly></div>
+          <div class="form-field"><label>Date of Birth</label><input value="${c.dob}" readonly></div>
+          <div class="form-field"><label>Gender</label><input value="${c.gender}" readonly></div>
+          <div class="form-field"><label>Marital Status</label><input value="Single" readonly></div>
+          <div class="form-field"><label>Current Residence</label><input value="County Detention Center" readonly></div>
+          <div class="form-field"><label>Prior Residence</label><input value="123 Main St, Unit 4B" readonly></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>Education and Employment</h4>
+        <div class="form-grid">
+          <div class="form-field"><label>Highest Education</label><input value="${c.education}" readonly></div>
+          <div class="form-field"><label>Employment Status</label><input value="${c.work}" readonly></div>
+          <div class="form-field"><label>Occupation</label><input value="N/A" readonly></div>
+          <div class="form-field"><label>Military Service</label><input value="None" readonly></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>Family History</h4>
+        <div class="form-grid">
+          <div class="form-field"><label>Family Status</label><input value="${c.family}" readonly></div>
+          <div class="form-field"><label>Children</label><input value="0" readonly></div>
+          <div class="form-field"><label>Family Psych History</label><input value="Mother: MDD; Father: AUD" readonly></div>
+          <div class="form-field"><label>Childhood Trauma</label><input value="Reported neglect ages 5-10" readonly></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="case-sidebar">
+      <div class="clinical-notes">
+        <h4>Clinical Notes</h4>
+        <div class="note-block">
+          <div class="note-label">Background Summary</div>
+          <textarea>Evaluee is a ${c.gender.toLowerCase()} individual referred for ${c.evalType} evaluation by ${c.referral}. Current charges include ${c.charges}. Intake completed ${c.intake}.</textarea>
+        </div>
+        <div class="note-block">
+          <div class="note-label">Initial Observations</div>
+          <textarea>Evaluee was cooperative during initial contact. Oriented to person, place, and time. Speech was normal in rate and rhythm. No overt signs of psychosis noted during initial screening.</textarea>
+        </div>
+        <div class="note-block">
+          <div class="note-label">Risk Factors</div>
+          <textarea>History of substance use (alcohol, cannabis). Prior mental health treatment reported. Family history of mood disorders. Current legal involvement as noted.</textarea>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── TESTING VIEW ──
+function renderTestingView(){
+  if(!selectedCase)return;
+  const c=selectedCase;
+  const el=document.getElementById('centerContent');
+  const badgeBg=hexToTint(c.stage.color);
+
+  el.innerHTML=`<div class="testing-view">
+    <div class="testing-main">
+      <div class="case-header">
+        <h2>${c.lastName}, ${c.firstInit}.</h2>
+        <span class="stage-badge" style="background:${badgeBg};color:${c.stage.color}">${c.stage.label.toUpperCase()}</span>
+        <span class="case-num">Case #: ${c.id}</span>
+      </div>
+
+      <div class="testing-header">
+        <h3>Test Battery</h3>
+        <div class="testing-actions">
+          <button>+ Order Measures</button>
+          <button>+ Upload Score Reports</button>
+        </div>
+      </div>
+
+      <div class="testing-stats">
+        <div class="testing-stat"><div class="stat-label">Evaluation Type</div><div class="stat-value">${c.evalType}</div></div>
+        <div class="testing-stat"><div class="stat-label">Total Instruments</div><div class="stat-value">6</div></div>
+        <div class="testing-stat"><div class="stat-label">Validity Measures</div><div class="stat-value">3</div></div>
+        <div class="testing-stat"><div class="stat-label">Scored</div><div class="stat-value">6/6</div></div>
+      </div>
+
+      <table class="test-table">
+        <thead>
+          <tr><th>Instrument</th><th>Date</th><th>Score</th><th>Range</th><th>Validity</th><th>Flag</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>MMPI-3</strong></td><td>2026-03-18</td><td>31T</td><td>Low</td><td>Questionable</td><td><span class="flag-review">REVIEW</span></td></tr>
+          <tr><td><strong>PAI</strong></td><td>2026-03-18</td><td>71T</td><td>Elevated</td><td>Passed</td><td><span class="flag-pass">OK</span></td></tr>
+          <tr><td><strong>WAIS-V</strong></td><td>2026-03-19</td><td>91</td><td>Average</td><td>Passed</td><td><span class="flag-pass">OK</span></td></tr>
+          <tr><td><strong>TOMM</strong></td><td>2026-03-19</td><td>40/50</td><td>Adequate</td><td>Passed</td><td><span class="flag-pass">OK</span></td></tr>
+          <tr><td><strong>SIRS-2</strong></td><td>2026-03-20</td><td>Probable Feigning</td><td>Elevated</td><td>Passed</td><td><span class="flag-pass">OK</span></td></tr>
+          <tr><td><strong>M-FAST</strong></td><td>2026-03-20</td><td>3</td><td>Low</td><td>Passed</td><td><span class="flag-pass">OK</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="testing-sidebar">
+      <div class="clinical-notes">
+        <h4>Testing Notes</h4>
+        <div class="note-block">
+          <div class="note-label">Battery Selection</div>
+          <textarea>Standard CST battery selected: MMPI-3 (personality/psychopathology), PAI (personality/clinical), WAIS-V (cognitive), TOMM (effort), SIRS-2 (malingering), M-FAST (malingering screen). Battery addresses both competency-related abilities and response style validity.</textarea>
+        </div>
+        <div class="note-block">
+          <div class="note-label">Validity and Effort</div>
+          <textarea>MMPI-3 validity scales suggest possible over-reporting (F=31T is atypically low). TOMM performance adequate at 40/50. SIRS-2 indicates probable feigning on select scales. Recommend integrating with clinical interview data before forming conclusions.</textarea>
+        </div>
+        <div class="note-block">
+          <div class="note-label">Testing Observations</div>
+          <textarea>Evaluee arrived on time and was cooperative throughout testing. Appeared to give adequate effort on cognitive measures. Completed all instruments within expected time frames. No behavioral concerns noted during administration.</textarea>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── INTERVIEWS VIEW ──
+function renderInterviewView(){
+  if(!selectedCase)return;
+  const c=selectedCase;
+  const el=document.getElementById('centerContent');
+  const badgeBg=hexToTint(c.stage.color);
+
+  el.innerHTML=`<div class="interview-view">
+    <div class="interview-main">
+      <div class="case-header">
+        <h2>${c.lastName}, ${c.firstInit}.</h2>
+        <span class="stage-badge" style="background:${badgeBg};color:${c.stage.color}">${c.stage.label.toUpperCase()}</span>
+        <span class="case-num">Case #: ${c.id}</span>
+      </div>
+
+      <div class="session-tabs">
+        <div class="session-tab active">
+          1. collateral notes
+          <span class="doc-badge">Document</span>
+        </div>
+        <div class="session-controls">
+          <button class="record-btn">&#9679; Record</button>
+          <span style="font-size:14px;color:var(--text-sec);cursor:pointer">&#9881;</span>
+        </div>
+      </div>
+
+      <div class="interview-label">Session Summary</div>
+      <textarea class="interview-textarea" style="min-height:100px">Collateral interview conducted with defense attorney regarding evaluee's behavioral history, prior mental health treatment, and functional capacity observations. Attorney reported client has difficulty following multi-step instructions and frequently requires repetition of legal concepts.</textarea>
+
+      <div class="interview-label">Transcript</div>
+      <textarea class="interview-textarea" style="min-height:160px">[Content from collateral_notes.md]
+
+Defense Attorney: "My client has been struggling to understand the proceedings since day one. I have to explain things multiple times."
+
+Evaluator: "Can you give me specific examples of when your client seemed unable to follow the process?"
+
+Defense Attorney: "During the arraignment, he could not articulate the charges against him even after I explained them three times. He also cannot identify who the judge, prosecutor, or I are in terms of our roles."
+
+Evaluator: "Has he had any prior mental health treatment that you are aware of?"
+
+Defense Attorney: "His family mentioned he was hospitalized briefly about two years ago, but I do not have records yet. I have requested them."</textarea>
+
+      <div class="interview-actions">
+        <button>+ Import Transcripts</button>
+        <button>+ New Session</button>
+        <button class="primary" onclick="switchCaseTab('diagnostics')">Go to Diagnostics &#8594;</button>
+      </div>
+    </div>
+
+    <div class="interview-sidebar">
+      <div class="clinical-notes">
+        <h4>Clinical Notes</h4>
+        <div class="note-block">
+          <div class="note-label">Mental Status Observations</div>
+          <textarea>Evaluee presented as alert but with limited engagement. Eye contact intermittent. Speech was slow, with notable word-finding difficulties. Affect was flat. Thought process was linear but concrete. No delusional content elicited.</textarea>
+        </div>
+        <div class="note-block">
+          <div class="note-label">Interview Content</div>
+          <textarea>Evaluee demonstrated limited understanding of courtroom roles. Could not distinguish between judge and prosecutor functions. Showed concrete thinking patterns when asked about legal strategy options.</textarea>
+        </div>
+        <div class="note-block">
+          <div class="note-label">Collateral Planning</div>
+          <textarea>Follow up with: (1) Family members regarding psychiatric history, (2) Prior treatment provider for records, (3) Jail mental health staff for behavioral observations during detention.</textarea>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── DIAGNOSTICS VIEW ──
+function renderDiagnosticsView(){
+  if(!selectedCase)return;
+  const c=selectedCase;
+  const el=document.getElementById('centerContent');
+  const badgeBg=hexToTint(c.stage.color);
+
+  el.innerHTML=`<div class="diag-view">
+    <div class="diag-main">
+      <div class="case-header">
+        <h2>${c.lastName}, ${c.firstInit}.</h2>
+        <span class="stage-badge" style="background:${badgeBg};color:${c.stage.color}">${c.stage.label.toUpperCase()}</span>
+        <span class="case-num">Case #: ${c.id}</span>
+      </div>
+
+      <div class="diag-header">
+        <h3>Diagnostic Considerations</h3>
+        <div class="diag-progress">
+          <div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div>
+          <span class="diag-counter">0/1</span>
+        </div>
+        <button class="diag-add-btn">+ Add</button>
+      </div>
+
+      <div class="diag-condition">
+        <div class="diag-condition-header">
+          <span class="cond-chevron">&#9654;</span>
+          <span class="cond-name">Adjustment Disorder F43.2x</span>
+          <span class="cond-status">Not formulated</span>
+          <div class="diag-condition-actions">
+            <button class="render-btn">Render</button>
+            <button class="defer-btn">Defer</button>
+            <button class="reject-btn">Reject</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="diag-final">
+        <h4>Final Diagnostic Formulation <span class="rebuild-btn">&#8635; Rebuild from above</span></h4>
+
+        <div class="diag-section">
+          <div class="diag-section-header">
+            <span>&#9654;</span>
+            Diagnostic Impressions
+            <span class="section-badge">DRAFTED</span>
+            <div class="section-actions">
+              <button>Save</button>
+              <button>&#10003; Approve</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="diag-section">
+          <div class="diag-section-header">
+            <span>&#9654;</span>
+            Conditions Ruled Out
+          </div>
+        </div>
+
+        <div class="diag-section">
+          <div class="diag-section-header">
+            <span>&#9654;</span>
+            Response Style and Validity
+          </div>
+        </div>
+
+        <div class="diag-section">
+          <div class="diag-section-header">
+            <span>&#9654;</span>
+            Prognosis and Recommendations
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="diag-sidebar">
+      <div class="clinical-notes">
+        <h4>Clinical Formulations</h4>
+        <div class="note-block">
+          <div class="note-label">Formulation Type</div>
+          <select style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text)">
+            <option>Biopsychosocial</option>
+            <option>Cognitive-Behavioral</option>
+            <option>Psychodynamic</option>
+          </select>
+        </div>
+        <div class="note-block">
+          <div class="note-label">Formulation Notes</div>
+          <textarea>Evaluee presents with symptoms consistent with adjustment difficulties in the context of legal involvement. History includes family psychiatric loading (maternal MDD, paternal AUD) and reported childhood neglect. Current testing suggests possible over-reporting, requiring clinical integration before diagnostic conclusions.</textarea>
+        </div>
+        <div class="diag-gates" style="margin-top:14px">
+          <h4>Report Gates</h4>
+          <div class="gate-item"><span class="gate-check">&#10003;</span> All instruments scored</div>
+          <div class="gate-item"><span class="gate-check"></span> Diagnostic formulation approved</div>
+          <div class="gate-item"><span class="gate-check"></span> Response style addressed</div>
+          <div class="gate-item"><span class="gate-check"></span> Competency opinions rendered</div>
+          <div class="gate-item"><span class="gate-check"></span> Report draft generated</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── SETTINGS VIEW ──
+function renderSettings(){
+  const el=document.getElementById('centerContent');
+  const navItems=[
+    {key:'practice',label:'Practice',icon:'&#9881;'},
+    {key:'data',label:'Data and Storage',icon:'&#128190;'},
+    {key:'writing',label:'Writing Samples',icon:'&#9998;',active:true},
+    {key:'style',label:'Style Guide',icon:'&#128196;'},
+    {key:'templates',label:'Templates',icon:'&#128203;'},
+    {key:'docs',label:'Documentation',icon:'&#128214;'},
+    {key:'appearance',label:'Appearance',icon:'&#127912;'},
+    {key:'ai',label:'AI and Models',icon:'&#129302;'},
+    {key:'assessment',label:'Assessment Library',icon:'&#128202;'},
+    {key:'privacy',label:'Privacy and Compliance',icon:'&#128274;'},
+    {key:'about',label:'About',icon:'&#8505;'}
+  ];
+
+  const samples=[
+    'Mitchell_CST_Report_2025.docx','Foster_Custody_Eval_2025.docx','Alvarez_Risk_Assessment_2025.docx',
+    'Chen_Mitigation_Report_2025.docx','Okafor_FFD_Report_2024.docx','Petrov_CST_Report_2024.docx',
+    'Johnson_Sexual_Offense_2024.docx','Williams_Juvenile_Waiver_2024.docx','Garcia_Immigration_Eval_2024.docx',
+    'Brown_CST_Report_2024.docx','Davis_Custody_Report_2023.docx','Martinez_Risk_Report_2023.docx',
+    'Anderson_FFD_Report_2023.docx','Taylor_Mitigation_2023.docx','Thomas_CST_Report_2023.docx',
+    'Harris_Custody_Report_2023.docx','Robinson_Risk_Assessment_2022.docx','Clark_CST_Report_2022.docx',
+    'Lewis_Juvenile_Waiver_2022.docx'
+  ];
+
+  let navHtml='';
+  navItems.forEach(n=>{
+    navHtml+=`<div class="settings-nav-item${n.active?' active':''}"><span class="sn-icon">${n.icon}</span>${n.label}</div>`;
+  });
+
+  let samplesHtml='';
+  samples.forEach((s,i)=>{
+    const pages=Math.floor(Math.random()*20)+8;
+    samplesHtml+=`<div class="sample-item">
+      <span style="font-size:14px;opacity:0.5">&#128196;</span>
+      <span class="sample-name">${s}</span>
+      <span class="sample-pages">${pages} pages</span>
+      <div class="sample-actions">
+        <button>Compare</button>
+        <button>Open</button>
+        <button class="remove-btn">&#10005;</button>
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML=`<div class="settings-view">
+    <div class="settings-nav">${navHtml}</div>
+    <div class="settings-content">
+      <h2>Writing Samples</h2>
+      <p style="font-size:12px;color:var(--text-sec);margin-bottom:16px">Upload your existing reports to train the AI writing assistant on your personal writing style. The more samples you provide, the more closely generated drafts will match your voice.</p>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button style="padding:6px 14px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">+ Upload Samples</button>
+        <button style="padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;color:var(--text)">Analyze All</button>
+      </div>
+      <div class="sample-list">${samplesHtml}</div>
+    </div>
+  </div>`;
+}
+
+// ── UTIL ──
+function hexToTint(hex){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},0.1)`;
+}
+
+// ── INIT ──
+renderCaseTree();
+renderDashboard();
+renderTopTabs();
+</script>
+</body>
+</html>
