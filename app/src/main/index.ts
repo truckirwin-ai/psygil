@@ -99,11 +99,22 @@ function createWindow(): BrowserWindow {
     }
   } catch { /* default to white + system theme */ }
 
+  const isDark = bgColor !== '#ffffff' && bgColor !== '#faf8f4'
+
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     title: 'Psygil',
     backgroundColor: bgColor,
+    // On macOS, titleBarStyle 'hidden' + a custom drag region at the top
+    // of the renderer is the only reliable way to get a dark title bar
+    // when the system appearance is set to light. We use 'hiddenInset'
+    // which keeps the traffic lights but removes the title text and makes
+    // the title bar area transparent, inheriting the app's --bg color.
+    ...(process.platform === 'darwin' ? {
+      titleBarStyle: isDark ? 'hiddenInset' as const : 'default' as const,
+      ...(isDark ? { trafficLightPosition: { x: 12, y: 12 } } : {}),
+    } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
