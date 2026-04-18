@@ -1,5 +1,5 @@
-/* Psygil Design Tokens - 4 themes, 15 CSS variables each */
-/* Source: 25_UI_Visual_Spec_v4.md - E.7 four-theme rebuild */
+/* Psygil Design Tokens - Mercury reskin, 3 themes */
+/* Consolidated palette: ~20 semantic tokens, zero raw hex in components */
 
 /* -----------------------------------------------------------------------
    Shared tokens: typography, spacing, cross-theme surfaces
@@ -7,41 +7,61 @@
 :root {
   --font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --bg-soft: #e9ecef;
-  --accent-soft: rgba(0, 120, 212, 0.08);
+
+  /* Grayscale ramp (light mode defaults) */
+  --gray-50:  #fafafb;
+  --gray-100: #f5f5f7;
+  --gray-200: #eaeaec;
+  --gray-300: #d0d0d8;
+  --gray-400: #a0a0b0;
+  --gray-500: #5c5c70;
+  --gray-900: #1a1a2e;
+
+  /* Overlays */
+  --overlay-light:  rgba(0,0,0,0.1);
+  --overlay-medium: rgba(0,0,0,0.4);
+  --overlay-heavy:  rgba(0,0,0,0.55);
 }
 
 /* -----------------------------------------------------------------------
-   Light theme (default)
+   Light theme (default) - Mercury palette
    ----------------------------------------------------------------------- */
 :root,
 html[data-theme="light"] {
   /* Chrome */
   --bg:              #ffffff;
-  --panel:           #f3f3f3;
-  --border:          #e0e0e0;
-  --text:            #1e1e1e;
-  --text-secondary:  #666666;
-  --accent:          #0078d4;
-  --highlight:       #e8f4fd;
+  --panel:           #fafafb;
+  --border:          #eaeaec;
+  --text:            #1a1a2e;
+  --text-secondary:  #5c5c70;
+  --accent:          #4f46e5;
+  --highlight:       #f0eeff;
 
   /* Form inputs - always white for readability */
   --field-bg:        #ffffff;
-  --field-text:      #1e1e1e;
+  --field-text:      #1a1a2e;
 
   /* Report preview - always white */
   --report-bg:       #ffffff;
-  --report-text:     #1e1e1e;
+  --report-text:     #1a1a2e;
 
   /* Semantic state colors */
-  --danger:          #d32f2f;
-  --warn:            #e65100;
-  --success:         #2e7d32;
-  --info:            #0277bd;
+  --danger:          #dc2626;
+  --warn:            #d97706;
+  --success:         #059669;
+  --info:            #2563eb;
+
+  /* Pipeline stage colors */
+  --stage-onboarding:   #0d9488;
+  --stage-testing:      #7c3aed;
+  --stage-interview:    #db2777;
+  --stage-diagnostics:  #ea580c;
+  --stage-review:       #dc2626;
+  --stage-complete:     #059669;
 }
 
 /* -----------------------------------------------------------------------
-   Warm theme (cream parchment, formerly "medium")
+   Warm theme (cream parchment)
    ----------------------------------------------------------------------- */
 html[data-theme="warm"] {
   /* Chrome */
@@ -66,20 +86,37 @@ html[data-theme="warm"] {
   --warn:            #bf360c;
   --success:         #2e7d32;
   --info:            #01579b;
+
+  /* Pipeline stage colors (warmer tones) */
+  --stage-onboarding:   #0d9488;
+  --stage-testing:      #7c3aed;
+  --stage-interview:    #db2777;
+  --stage-diagnostics:  #ea580c;
+  --stage-review:       #c62828;
+  --stage-complete:     #2e7d32;
+
+  /* Grayscale overrides for warm */
+  --gray-50:  #f5f2ed;
+  --gray-100: #ede8e0;
+  --gray-200: #cec4b5;
+  --gray-300: #b5a898;
+  --gray-400: #8a7d6e;
+  --gray-500: #6b5d4f;
+  --gray-900: #2c2418;
 }
 
 /* -----------------------------------------------------------------------
-   Dark theme (neutral gray)
+   Dark theme (Mercury dark)
    ----------------------------------------------------------------------- */
 html[data-theme="dark"] {
   /* Chrome */
-  --bg:              #2b2f36;
-  --panel:           #1f2329;
-  --border:          #31363e;
-  --text:            #c8ccd2;
-  --text-secondary:  #7d8590;
-  --accent:          #6b93db;
-  --highlight:       #2d3340;
+  --bg:              #1a1a2e;
+  --panel:           #12121e;
+  --border:          #2a2a3e;
+  --text:            #d4d4dc;
+  --text-secondary:  #6e6e82;
+  --accent:          #818cf8;
+  --highlight:       #2a2a40;
 
   /* Form inputs - always white for readability */
   --field-bg:        #ffffff;
@@ -89,10 +126,26 @@ html[data-theme="dark"] {
   --report-bg:       #ffffff;
   --report-text:     #1e1e1e;
 
-  /* Semantic state colors, further muted for ambient dark feel */
-  --danger:          #a8605b;
-  --warn:            #a8854a;
-  --success:         #5e9169;
-  --info:            #5e7faa;
-}
+  /* Semantic state colors, muted for dark */
+  --danger:          #f87171;
+  --warn:            #fbbf24;
+  --success:         #34d399;
+  --info:            #60a5fa;
 
+  /* Pipeline stage colors, muted pastels for dark */
+  --stage-onboarding:   #5eead4;
+  --stage-testing:      #c4b5fd;
+  --stage-interview:    #f9a8d4;
+  --stage-diagnostics:  #fdba74;
+  --stage-review:       #fca5a5;
+  --stage-complete:     #86efac;
+
+  /* Grayscale overrides for dark */
+  --gray-50:  #1e1e30;
+  --gray-100: #24243a;
+  --gray-200: #2a2a3e;
+  --gray-300: #3a3a52;
+  --gray-400: #6e6e82;
+  --gray-500: #9898aa;
+  --gray-900: #d4d4dc;
+}

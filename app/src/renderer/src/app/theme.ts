@@ -29,7 +29,7 @@ export const THEME_CHOICES: readonly ThemeChoice[] = [
     key: 'light',
     label: 'Light',
     description: 'Bright white interface, ideal for well-lit environments.',
-    preview: { bg: '#ffffff', panel: '#f3f3f3', accent: '#0078d4', text: '#1e1e1e' },
+    preview: { bg: '#ffffff', panel: '#fafafb', accent: '#4f46e5', text: '#1a1a2e' },
   },
   {
     key: 'warm',
@@ -41,7 +41,7 @@ export const THEME_CHOICES: readonly ThemeChoice[] = [
     key: 'dark',
     label: 'Dark',
     description: 'Neutral gray with higher contrast, reduced eye strain.',
-    preview: { bg: '#2b2f36', panel: '#1f2329', accent: '#7aa2ff', text: '#e6e8ea' },
+    preview: { bg: '#1a1a2e', panel: '#12121e', accent: '#818cf8', text: '#d4d4dc' },
   },
 ] as const
 
