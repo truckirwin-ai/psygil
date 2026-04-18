@@ -1447,6 +1447,8 @@ export interface PsygilApi {
     readonly publish: (args: SubmitAttestationParams) => Promise<IpcResponse<PublishResult>>
     readonly verifyIntegrity: (args: VerifyIntegrityParams) => Promise<IpcResponse<VerifyIntegrityResult>>
     readonly exportAndOpen: (args: { caseId: number; fullName: string; evalType: string; sections: { title: string; body: string }[] }) => Promise<IpcResponse<{ filePath: string }>>
+    readonly saveDocx: (args: { caseId: number }) => Promise<IpcResponse<{ filePath: string }>>
+    readonly savePdf: (args: { caseId: number }) => Promise<IpcResponse<{ filePath: string }>>
     readonly loadTemplate: () => Promise<IpcResponse<{ sections: { title: string; body: string }[] }>>
   }
   readonly templates: {

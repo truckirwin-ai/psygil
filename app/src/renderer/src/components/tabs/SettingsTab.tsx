@@ -10,6 +10,9 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Tab } from '../../types/tabs'
 import type { ResourceCategory } from '../../../../shared/types/ipc'
 import BrandingPanel from './settings/BrandingPanel'
+// INSTRUMENT_NORMS used by the InstrumentLibrarySection for runtime lookup
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { INSTRUMENT_NORMS } from '../../data/instrumentNorms'
 import { setTheme as applyThemeKey, THEME_CHOICES } from '../../app/theme'
 import type { ThemeKey } from '../../app/theme'
 
@@ -26,6 +29,7 @@ type SettingsSection =
   | 'ai-models'
   | 'practice'
   | 'data-storage'
+  | 'instruments'
   | 'privacy'
   | 'about'
 
@@ -59,6 +63,7 @@ const SECTIONS: SectionDef[] = [
   { id: 'documentation', label: 'Documentation', icon: '📖' },
   { id: 'appearance', label: 'Appearance', icon: '🎨' },
   { id: 'ai-models', label: 'AI & Models', icon: '🤖' },
+  { id: 'instruments', label: 'Assessment Library', icon: '🧪' },
   { id: 'privacy', label: 'Privacy & Compliance', icon: '🔒' },
   { id: 'about', label: 'About', icon: 'ℹ' },
 ]
@@ -361,6 +366,7 @@ export default function SettingsTab({ onOpenTab }: { readonly onOpenTab?: (tab: 
         {activeSection === 'ai-models' && <AiModelsSection />}
         {activeSection === 'practice' && <PracticeSection />}
         {activeSection === 'data-storage' && <DataStorageSection />}
+        {activeSection === 'instruments' && <InstrumentLibrarySection />}
         {activeSection === 'privacy' && <PrivacyComplianceSection />}
         {activeSection === 'about' && <AboutSection />}
       </div>
@@ -2753,6 +2759,238 @@ function DataStorageSection(): React.JSX.Element {
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION: About
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION: Instrument Library
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface InstrumentCatalogEntry {
+  readonly abbrev: string
+  readonly fullName: string
+  readonly category: 'forensic' | 'neuropsych' | 'clinical' | 'malingering' | 'risk' | 'adaptive' | 'substance'
+  readonly publisher: string
+  readonly year: number
+  readonly hasNorms: boolean
+  readonly description: string
+}
+
+const INSTRUMENT_CATALOG: InstrumentCatalogEntry[] = [
+  // Forensic core
+  { abbrev: 'MMPI-3', fullName: 'Minnesota Multiphasic Personality Inventory-3', category: 'forensic', publisher: 'Pearson', year: 2020, hasNorms: true, description: 'Broadband personality and psychopathology assessment with validity scales for response style detection' },
+  { abbrev: 'PAI', fullName: 'Personality Assessment Inventory', category: 'forensic', publisher: 'PAR', year: 2007, hasNorms: true, description: 'Multi-scale personality and clinical syndrome assessment with forensic validity indicators' },
+  { abbrev: 'MCMI-IV', fullName: 'Millon Clinical Multiaxial Inventory-IV', category: 'forensic', publisher: 'Pearson', year: 2015, hasNorms: true, description: 'Personality disorders and clinical syndromes aligned with DSM-5 diagnostic criteria' },
+  { abbrev: 'PCL-R', fullName: 'Psychopathy Checklist-Revised', category: 'risk', publisher: 'MHS', year: 2003, hasNorms: true, description: 'Gold standard for psychopathy assessment in forensic and correctional settings' },
+  { abbrev: 'SIRS-2', fullName: 'Structured Interview of Reported Symptoms-2', category: 'malingering', publisher: 'PAR', year: 2010, hasNorms: true, description: 'Detection of feigned or exaggerated psychological symptoms in forensic evaluations' },
+  { abbrev: 'M-FAST', fullName: 'Miller Forensic Assessment of Symptoms Test', category: 'malingering', publisher: 'PAR', year: 2001, hasNorms: true, description: 'Brief screening for malingered psychiatric illness in forensic populations' },
+  { abbrev: 'SIMS', fullName: 'Structured Inventory of Malingered Symptomatology', category: 'malingering', publisher: 'PAR', year: 2005, hasNorms: true, description: 'Broad screening for feigned cognitive and psychiatric symptoms' },
+  { abbrev: 'TOMM', fullName: 'Test of Memory Malingering', category: 'malingering', publisher: 'MHS', year: 1996, hasNorms: true, description: 'Performance validity test detecting exaggerated memory impairment' },
+  { abbrev: 'FBS', fullName: 'Fake Bad Scale (MMPI-2/3 embedded)', category: 'malingering', publisher: 'Pearson', year: 1991, hasNorms: true, description: 'MMPI validity scale detecting somatic and cognitive symptom exaggeration in personal injury' },
+  // Risk assessment
+  { abbrev: 'HCR-20v3', fullName: 'Historical Clinical Risk Management-20 v3', category: 'risk', publisher: 'Mental Health, Law, & Policy Institute', year: 2013, hasNorms: true, description: 'Structured professional judgment for violence risk across 20 factors' },
+  { abbrev: 'SARA', fullName: 'Spousal Assault Risk Assessment Guide', category: 'risk', publisher: 'Multi-Health Systems', year: 2015, hasNorms: true, description: 'Structured risk assessment for intimate partner violence recidivism' },
+  // Neuropsych
+  { abbrev: 'WAIS-V', fullName: 'Wechsler Adult Intelligence Scale-V', category: 'neuropsych', publisher: 'Pearson', year: 2024, hasNorms: true, description: 'Gold standard adult intelligence and cognitive ability assessment (FSIQ, indices, subtests)' },
+  { abbrev: 'MoCA', fullName: 'Montreal Cognitive Assessment', category: 'neuropsych', publisher: 'MoCA Inc.', year: 2004, hasNorms: true, description: 'Brief cognitive screening for mild cognitive impairment and dementia' },
+  // Clinical / Trauma
+  { abbrev: 'CAPS-5', fullName: 'Clinician-Administered PTSD Scale for DSM-5', category: 'clinical', publisher: 'NCPTSD', year: 2018, hasNorms: true, description: 'Structured clinical interview for PTSD diagnosis and severity per DSM-5 criteria' },
+  { abbrev: 'PCL-5', fullName: 'PTSD Checklist for DSM-5', category: 'clinical', publisher: 'NCPTSD', year: 2013, hasNorms: true, description: 'Self-report measure of PTSD symptom severity aligned with DSM-5' },
+  { abbrev: 'TSI-2', fullName: 'Trauma Symptom Inventory-2', category: 'clinical', publisher: 'PAR', year: 2011, hasNorms: true, description: 'Assessment of acute and chronic trauma symptoms including dissociation and sexual concerns' },
+  { abbrev: 'DES-II', fullName: 'Dissociative Experiences Scale-II', category: 'clinical', publisher: 'Public Domain', year: 1993, hasNorms: true, description: 'Self-report screening for dissociative symptoms and disorders' },
+  { abbrev: 'BDI-II', fullName: 'Beck Depression Inventory-II', category: 'clinical', publisher: 'Pearson', year: 1996, hasNorms: true, description: 'Self-report measure of depressive symptom severity in adolescents and adults' },
+  { abbrev: 'BAI', fullName: 'Beck Anxiety Inventory', category: 'clinical', publisher: 'Pearson', year: 1993, hasNorms: true, description: 'Self-report measure of anxiety symptom severity with somatic emphasis' },
+  // ADHD / Attention
+  { abbrev: 'CAARS', fullName: 'Conners Adult ADHD Rating Scales', category: 'clinical', publisher: 'MHS', year: 1999, hasNorms: true, description: 'Multi-informant rating scale for adult ADHD symptoms and impairment' },
+  { abbrev: 'CPT-3', fullName: 'Conners Continuous Performance Test-3', category: 'neuropsych', publisher: 'MHS', year: 2014, hasNorms: true, description: 'Computerized continuous performance test measuring sustained attention and response inhibition' },
+  // Substance
+  { abbrev: 'AUDIT', fullName: 'Alcohol Use Disorders Identification Test', category: 'substance', publisher: 'WHO', year: 2001, hasNorms: true, description: 'Brief screening for hazardous, harmful, and dependent alcohol use' },
+  // Adaptive behavior
+  { abbrev: 'ABAS-3', fullName: 'Adaptive Behavior Assessment System-3', category: 'adaptive', publisher: 'Pearson', year: 2015, hasNorms: true, description: 'Adaptive functioning across conceptual, social, and practical domains for disability determinations' },
+  { abbrev: 'Vineland-3', fullName: 'Vineland Adaptive Behavior Scales-3', category: 'adaptive', publisher: 'Pearson', year: 2016, hasNorms: true, description: 'Comprehensive adaptive behavior assessment for intellectual disability and developmental evaluations' },
+  // Additional planned instruments (no norms yet but supported in pipeline)
+  { abbrev: 'WISC-V', fullName: 'Wechsler Intelligence Scale for Children-V', category: 'neuropsych', publisher: 'Pearson', year: 2014, hasNorms: false, description: 'Child intelligence assessment for ages 6-16 with five primary index scores' },
+  { abbrev: 'BASC-3', fullName: 'Behavior Assessment System for Children-3', category: 'clinical', publisher: 'Pearson', year: 2015, hasNorms: false, description: 'Multi-informant behavior and emotion assessment for children and adolescents' },
+  { abbrev: 'ADOS-2', fullName: 'Autism Diagnostic Observation Schedule-2', category: 'clinical', publisher: 'WPS', year: 2012, hasNorms: false, description: 'Semi-structured observation assessment for autism spectrum disorder' },
+  { abbrev: 'MacCAT-CA', fullName: 'MacArthur Competence Assessment Tool - Criminal Adjudication', category: 'forensic', publisher: 'PAR', year: 1999, hasNorms: false, description: 'Structured assessment of competency to stand trial across understanding, reasoning, and appreciation' },
+  { abbrev: 'ECST-R', fullName: 'Evaluation of Competency to Stand Trial - Revised', category: 'forensic', publisher: 'PAR', year: 2004, hasNorms: false, description: 'Competency evaluation tool with feigning detection scales' },
+  { abbrev: 'Static-99R', fullName: 'Static-99R', category: 'risk', publisher: 'Public Safety Canada', year: 2012, hasNorms: false, description: 'Actuarial risk assessment for sexual recidivism in adult male offenders' },
+  { abbrev: 'LSI-R', fullName: 'Level of Service Inventory-Revised', category: 'risk', publisher: 'MHS', year: 1995, hasNorms: false, description: 'Quantitative assessment of criminal risk and need factors for case planning' },
+  { abbrev: 'PHQ-9', fullName: 'Patient Health Questionnaire-9', category: 'clinical', publisher: 'Pfizer', year: 1999, hasNorms: false, description: 'Brief depression severity screening aligned with DSM criteria' },
+  { abbrev: 'GAD-7', fullName: 'Generalized Anxiety Disorder 7-Item Scale', category: 'clinical', publisher: 'Pfizer', year: 2006, hasNorms: false, description: 'Brief screening for generalized anxiety disorder severity' },
+  { abbrev: 'WAIS-IV', fullName: 'Wechsler Adult Intelligence Scale-IV', category: 'neuropsych', publisher: 'Pearson', year: 2008, hasNorms: false, description: 'Widely used adult intelligence and cognitive ability assessment (predecessor to WAIS-V)' },
+  { abbrev: 'WMS-IV', fullName: 'Wechsler Memory Scale-IV', category: 'neuropsych', publisher: 'Pearson', year: 2009, hasNorms: false, description: 'Comprehensive memory assessment including auditory, visual, and working memory indices' },
+  { abbrev: 'D-KEFS', fullName: 'Delis-Kaplan Executive Function System', category: 'neuropsych', publisher: 'Pearson', year: 2001, hasNorms: false, description: 'Comprehensive assessment of executive functions across 9 standalone tests' },
+  { abbrev: 'CVLT-3', fullName: 'California Verbal Learning Test-3', category: 'neuropsych', publisher: 'Pearson', year: 2017, hasNorms: false, description: 'Verbal learning and memory assessment with recall, recognition, and process measures' },
+  { abbrev: 'RBANS', fullName: 'Repeatable Battery for Assessment of Neuropsychological Status', category: 'neuropsych', publisher: 'Pearson', year: 2012, hasNorms: false, description: 'Brief neuropsychological screening battery covering 5 cognitive domains' },
+  { abbrev: 'BRIEF-2', fullName: 'Behavior Rating Inventory of Executive Function-2', category: 'neuropsych', publisher: 'PAR', year: 2015, hasNorms: false, description: 'Behavior rating scale measuring everyday executive function in children and adolescents' },
+  { abbrev: 'Conners-3', fullName: 'Conners 3rd Edition', category: 'clinical', publisher: 'MHS', year: 2008, hasNorms: false, description: 'Multi-informant assessment of ADHD and comorbid conditions in youth ages 6-18' },
+  { abbrev: 'WIAT-4', fullName: 'Wechsler Individual Achievement Test-4', category: 'neuropsych', publisher: 'Pearson', year: 2020, hasNorms: false, description: 'Academic achievement assessment for reading, math, and written expression' },
+  { abbrev: 'PSI-4', fullName: 'Parenting Stress Index-4', category: 'forensic', publisher: 'PAR', year: 2012, hasNorms: false, description: 'Assessment of parenting stress across child and parent domains for custody evaluations' },
+  { abbrev: 'RCMAS-2', fullName: "Revised Children's Manifest Anxiety Scale-2", category: 'clinical', publisher: 'WPS', year: 2008, hasNorms: false, description: "Measure of anxiety severity in children and adolescents with validity scale" },
+]
+
+const CATEGORY_LABELS: Record<string, string> = {
+  forensic: 'Forensic',
+  neuropsych: 'Neuropsychological',
+  clinical: 'Clinical',
+  malingering: 'Effort/Malingering',
+  risk: 'Risk Assessment',
+  adaptive: 'Adaptive Behavior',
+  substance: 'Substance Use',
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  forensic: 'var(--accent)',
+  neuropsych: '#7b61ff',
+  clinical: 'var(--info)',
+  malingering: 'var(--warn)',
+  risk: 'var(--danger)',
+  adaptive: 'var(--success)',
+  substance: '#8d6e63',
+}
+
+function InstrumentLibrarySection(): React.JSX.Element {
+  const [filterCategory, setFilterCategory] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filtered = INSTRUMENT_CATALOG.filter((inst) => {
+    if (filterCategory !== 'all' && inst.category !== filterCategory) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      return inst.abbrev.toLowerCase().includes(q) ||
+        inst.fullName.toLowerCase().includes(q) ||
+        inst.publisher.toLowerCase().includes(q) ||
+        inst.description.toLowerCase().includes(q)
+    }
+    return true
+  })
+
+  const normsCount = INSTRUMENT_CATALOG.filter((i) => i.hasNorms).length
+  const categories = [...new Set(INSTRUMENT_CATALOG.map((i) => i.category))]
+
+  return (
+    <div>
+      <div style={sectionTitle}>Assessment Library</div>
+      <div style={sectionDesc}>
+        {INSTRUMENT_CATALOG.length} supported instruments ({normsCount} with scoring norms)
+      </div>
+
+      {/* Search + filter bar */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search instruments..."
+          style={{
+            flex: 1, minWidth: 200, padding: '6px 10px', fontSize: 12,
+            border: '1px solid var(--border)', borderRadius: 4,
+            background: 'var(--field-bg)', color: 'var(--field-text)',
+          }}
+        />
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          style={{
+            padding: '6px 10px', fontSize: 12,
+            border: '1px solid var(--border)', borderRadius: 4,
+            background: 'var(--field-bg)', color: 'var(--field-text)',
+          }}
+        >
+          <option value="all">All Categories</option>
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>{CATEGORY_LABELS[cat] || cat}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Category badges summary */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+        {categories.map((cat) => {
+          const count = INSTRUMENT_CATALOG.filter((i) => i.category === cat).length
+          return (
+            <button
+              key={cat}
+              onClick={() => setFilterCategory(filterCategory === cat ? 'all' : cat)}
+              style={{
+                padding: '3px 8px', fontSize: 10, fontWeight: 600,
+                border: '1px solid',
+                borderColor: filterCategory === cat ? CATEGORY_COLORS[cat] : 'var(--border)',
+                borderRadius: 3,
+                background: filterCategory === cat
+                  ? `color-mix(in srgb, ${CATEGORY_COLORS[cat]} 12%, var(--panel))`
+                  : 'var(--panel)',
+                color: CATEGORY_COLORS[cat],
+                cursor: 'pointer',
+              }}
+            >
+              {CATEGORY_LABELS[cat] || cat} ({count})
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Instrument list */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {filtered.map((inst) => (
+          <div key={inst.abbrev} style={{
+            ...card,
+            marginBottom: 0,
+            padding: '10px 14px',
+            display: 'flex',
+            gap: 10,
+            alignItems: 'flex-start',
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{inst.abbrev}</span>
+                <span style={{
+                  padding: '1px 5px', fontSize: 9, fontWeight: 600,
+                  borderRadius: 2,
+                  background: `color-mix(in srgb, ${CATEGORY_COLORS[inst.category]} 12%, var(--panel))`,
+                  color: CATEGORY_COLORS[inst.category],
+                }}>
+                  {CATEGORY_LABELS[inst.category]}
+                </span>
+                {inst.hasNorms && (
+                  <span style={{
+                    padding: '1px 5px', fontSize: 9, fontWeight: 600,
+                    borderRadius: 2,
+                    background: 'color-mix(in srgb, var(--success) 12%, var(--panel))',
+                    color: 'var(--success)',
+                  }}>
+                    Scoring Norms
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                {inst.fullName}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4, opacity: 0.8 }}>
+                {inst.description}
+              </div>
+            </div>
+            <div style={{ flexShrink: 0, textAlign: 'right', fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              <div>{inst.publisher}</div>
+              <div>{inst.year}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-secondary)', fontSize: 12 }}>
+          No instruments match your search.
+        </div>
+      )}
+
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 16, lineHeight: 1.5, fontStyle: 'italic' }}>
+        Instruments with "Scoring Norms" include built-in interpretive bands and validity scale thresholds.
+        All instruments support score import and contextual interpretation in reports.
+        Publisher scoring software (Q-global, PARiConnect) is required for proprietary instruments.
+      </div>
+    </div>
+  )
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION: Privacy & Compliance
