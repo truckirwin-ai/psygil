@@ -1891,172 +1891,532 @@ function AppearanceSection(): React.JSX.Element {
 // SECTION: AI & Models
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function AiModelsSection(): React.JSX.Element {
-  // API key state
-  const [apiKey, setApiKey] = useState('')
-  const [hasKey, setHasKey] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>('idle')
-  const [connectionError, setConnectionError] = useState('')
-  const [connectedModel, setConnectedModel] = useState('')
-  const [saving, setSaving] = useState(false)
+// ─────────────────────────────────────────────────────────────────────────────
+// AI mode types (local to Settings; AiConfig from shared/types/setup is the
+// persisted shape)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Model selection
-  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-20250514')
+type AiMode = 'passthrough' | 'byok'
+type ByokProvider = 'anthropic' | 'openai' | 'google'
+type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'error'
+
+interface ByokProviderDef {
+  readonly label: string
+  readonly placeholder: string
+  readonly models: readonly { readonly value: string; readonly label: string }[]
+}
+
+const BYOK_PROVIDERS: Record<ByokProvider, ByokProviderDef> = {
+  anthropic: {
+    label: 'Anthropic (Claude)',
+    placeholder: 'sk-ant-...',
+    models: [
+      { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (recommended)' },
+      { value: 'claude-opus-4-20250514', label: 'Claude Opus 4 (highest quality)' },
+      { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fastest)' },
+    ],
+  },
+  openai: {
+    label: 'OpenAI (ChatGPT)',
+    placeholder: 'sk-...',
+    models: [
+      { value: 'gpt-4o', label: 'GPT-4o (recommended)' },
+      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+      { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+    ],
+  },
+  google: {
+    label: 'Google (Gemini)',
+    placeholder: 'AIza...',
+    models: [
+      { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (recommended)' },
+      { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (faster)' },
+    ],
+  },
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Usage bar sub-component
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface UsageBarProps {
+  readonly used: number
+  readonly cap: number | null
+}
+
+function UsageBar({ used, cap }: UsageBarProps): React.JSX.Element {
+  if (cap === null) {
+    return (
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+        Evaluations this month: {used} (no cap, your key)
+      </div>
+    )
+  }
+  const pct = Math.min((used / cap) * 100, 100)
+  const barColor =
+    pct >= 100 ? 'var(--danger)' : pct >= 80 ? 'var(--warn)' : 'var(--success)'
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+        Evaluations this month: {used} of {cap} included
+      </div>
+      <div
+        style={{
+          height: 6,
+          borderRadius: 3,
+          background: 'var(--border)',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            width: `${pct}%`,
+            background: barColor,
+            borderRadius: 3,
+            transition: 'width 0.3s ease',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mode radio button
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ModeRadioProps {
+  readonly id: string
+  readonly checked: boolean
+  readonly onChange: () => void
+  readonly label: string
+  readonly sublabel: string
+}
+
+function ModeRadio({ id, checked, onChange, label, sublabel }: ModeRadioProps): React.JSX.Element {
+  return (
+    <label
+      htmlFor={id}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: '12px 14px',
+        borderRadius: 5,
+        border: checked
+          ? '1.5px solid var(--accent)'
+          : '1.5px solid var(--border)',
+        background: checked
+          ? 'color-mix(in srgb, var(--accent) 6%, var(--panel))'
+          : 'var(--panel)',
+        cursor: 'pointer',
+        flex: 1,
+      }}
+    >
+      <input
+        id={id}
+        type="radio"
+        checked={checked}
+        onChange={onChange}
+        style={{ marginTop: 2, accentColor: 'var(--accent)' }}
+      />
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{label}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>{sublabel}</div>
+      </div>
+    </label>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AiModelsSection
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AiModelsSection(): React.JSX.Element {
+  // Mode
+  const [mode, setMode] = useState<AiMode>('passthrough')
+
+  // Passthrough state
+  const [passthroughStatus, setPassthroughStatus] = useState<ConnectionStatus>('idle')
+  const [passthroughError, setPassthroughError] = useState('')
+  const [passthroughModel, setPassthroughModel] = useState('Claude Sonnet')
+  const [usageLoaded, setUsageLoaded] = useState(false)
+  const [usageCount, setUsageCount] = useState(0)
+
+  // BYOK state
+  const [byokProvider, setByokProvider] = useState<ByokProvider>('anthropic')
+  const [byokModel, setByokModel] = useState('claude-sonnet-4-20250514')
+  const [byokKey, setByokKey] = useState('')
+  const [byokHasKey, setByokHasKey] = useState(false)
+  const [byokStatus, setByokStatus] = useState<ConnectionStatus>('idle')
+  const [byokError, setByokError] = useState('')
+  const [byokSaving, setByokSaving] = useState(false)
 
   // Transcription
-  const [whisperStatus, setWhisperStatus] = useState<{ available: boolean; model: string | null; sidecarReady: boolean } | null>(null)
+  const [whisperStatus, setWhisperStatus] = useState<{
+    available: boolean
+    model: string | null
+    sidecarReady: boolean
+  } | null>(null)
   const [transcriptionLang, setTranscriptionLang] = useState('en')
 
-  // Load existing state on mount
+  // Load saved AI config and existing key on mount
   useEffect(() => {
     void (async () => {
       try {
+        const configResp = await window.psygil.setup.getConfig()
+        if (configResp.status === 'success' && configResp.data.config.ai) {
+          const saved = configResp.data.config.ai
+          if (saved.mode === 'byok') setMode('byok')
+          if (saved.provider && saved.provider in BYOK_PROVIDERS) {
+            setByokProvider(saved.provider as ByokProvider)
+          }
+          if (saved.model) setByokModel(saved.model)
+        }
+      } catch { /* ignore */ }
+
+      try {
         const hasResp = await window.psygil.apiKey.has()
-        if (hasResp.status === 'success') setHasKey(hasResp.data.hasKey)
+        if (hasResp.status === 'success') setByokHasKey(hasResp.data.hasKey)
+      } catch { /* ignore */ }
+
+      try {
+        const expiryResp = await window.psygil.setup.checkLicenseExpiry()
+        if (expiryResp.status === 'success') {
+          setUsageLoaded(true)
+          // Derive usage count from days remaining as a proxy until a real
+          // usage endpoint is available. Show 0 for now if expiry data lacks it.
+          setUsageCount(0)
+        }
       } catch { /* ignore */ }
 
       try {
         const whisperResp = await window.psygil.whisper.status()
-        if (whisperResp.status === 'success') setWhisperStatus(whisperResp.data as any)
+        if (whisperResp.status === 'success') {
+          setWhisperStatus(
+            whisperResp.data as { available: boolean; model: string | null; sidecarReady: boolean },
+          )
+        }
       } catch { /* ignore */ }
     })()
   }, [])
 
-  const handleSaveKey = useCallback(async () => {
-    if (!apiKey.trim()) return
-    setSaving(true)
-    try {
-      const resp = await window.psygil.apiKey.store({ key: apiKey.trim() })
-      if (resp.status === 'success') {
-        setHasKey(true)
-        setApiKey('')
-        setConnectionStatus('idle')
-      }
-    } catch (err) {
-      console.error('[Settings] Failed to save API key:', err)
-    } finally {
-      setSaving(false)
-    }
-  }, [apiKey])
-
-  const handleDeleteKey = useCallback(async () => {
-    if (!window.confirm('Remove your Claude API key? AI features will stop working.')) return
-    try {
-      await window.psygil.apiKey.delete()
-      setHasKey(false)
-      setConnectionStatus('idle')
-      setConnectedModel('')
-    } catch (err) {
-      console.error('[Settings] Failed to delete API key:', err)
-    }
+  // When BYOK provider changes, reset model to first option for that provider
+  const handleProviderChange = useCallback((provider: ByokProvider) => {
+    setByokProvider(provider)
+    const firstModel = BYOK_PROVIDERS[provider].models[0]?.value ?? ''
+    setByokModel(firstModel)
+    setByokStatus('idle')
+    setByokError('')
   }, [])
 
-  const handleTestConnection = useCallback(async () => {
-    setConnectionStatus('testing')
-    setConnectionError('')
+  const handleModeSwitch = useCallback(
+    async (next: AiMode) => {
+      setMode(next)
+      setPassthroughStatus('idle')
+      setPassthroughError('')
+      setByokStatus('idle')
+      setByokError('')
+
+      if (next === 'passthrough') {
+        try {
+          await window.psygil.setup.saveAi({
+            ai: {
+              mode: 'passthrough',
+              provider: null,
+              model: null,
+              configured: true,
+              verifiedAt: new Date().toISOString(),
+            },
+          })
+        } catch { /* non-fatal, user can retry */ }
+      }
+    },
+    [],
+  )
+
+  const handleTestPassthrough = useCallback(async () => {
+    setPassthroughStatus('testing')
+    setPassthroughError('')
     try {
       const result = await window.psygil.ai.testConnection({})
       if (result.status === 'success' && result.data.connected) {
-        setConnectionStatus('connected')
-        setConnectedModel(result.data.model || '')
+        setPassthroughStatus('connected')
+        if (result.data.model) setPassthroughModel(result.data.model)
       } else {
-        setConnectionStatus('error')
-        setConnectionError((result.status === 'success' ? result.data.error : result.message) || 'Connection failed')
+        setPassthroughStatus('error')
+        const msg =
+          result.status === 'success' ? result.data.error : result.message
+        setPassthroughError(msg || 'Connection failed')
       }
     } catch {
-      setConnectionStatus('error')
-      setConnectionError('Failed to reach API')
+      setPassthroughStatus('error')
+      setPassthroughError('Failed to reach Psygil AI')
     }
   }, [])
 
+  const handleTestAndSaveByok = useCallback(async () => {
+    if (!byokKey.trim() && !byokHasKey) return
+    setByokSaving(true)
+    setByokStatus('testing')
+    setByokError('')
+    try {
+      if (byokKey.trim()) {
+        const storeResp = await window.psygil.apiKey.store({ key: byokKey.trim() })
+        if (storeResp.status !== 'success') {
+          setByokStatus('error')
+          setByokError('Failed to store key')
+          return
+        }
+        setByokHasKey(true)
+        setByokKey('')
+      }
+
+      const testResp = await window.psygil.ai.testConnection({})
+      if (testResp.status === 'success' && testResp.data.connected) {
+        await window.psygil.setup.saveAi({
+          ai: {
+            mode: 'byok',
+            provider: byokProvider,
+            model: byokModel,
+            configured: true,
+            verifiedAt: new Date().toISOString(),
+          },
+        })
+        setByokStatus('connected')
+      } else {
+        setByokStatus('error')
+        const msg =
+          testResp.status === 'success' ? testResp.data.error : testResp.message
+        setByokError(msg || 'Connection test failed')
+      }
+    } catch {
+      setByokStatus('error')
+      setByokError('Failed to reach API')
+    } finally {
+      setByokSaving(false)
+    }
+  }, [byokKey, byokHasKey, byokProvider, byokModel])
+
+  const handleRemoveByokKey = useCallback(async () => {
+    if (!window.confirm('Remove your stored API key?')) return
+    try {
+      await window.psygil.apiKey.delete()
+      setByokHasKey(false)
+      setByokStatus('idle')
+    } catch { /* ignore */ }
+  }, [])
+
+  const currentProviderDef = BYOK_PROVIDERS[byokProvider]
+
   return (
     <div>
-      <div style={sectionTitle}>AI & Models</div>
+      <div style={sectionTitle}>AI &amp; Models</div>
       <div style={sectionDesc}>
-        Configure the Claude API connection, model selection, and local transcription engine. These settings will eventually be bundled into your Psygil subscription.
+        Choose how Psygil connects to AI. Psygil AI is included with your license. Use your own key if you prefer a specific provider or higher volume.
       </div>
 
-      {/* API Key */}
-      <div style={card}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Claude API Key</div>
-        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-          Your API key is encrypted using your operating system's secure keychain (macOS Keychain / Windows DPAPI). It never leaves this machine.
+      {/* Mode picker */}
+      <div style={{ ...card, marginBottom: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>
+          AI Connection Mode
         </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <ModeRadio
+            id="mode-passthrough"
+            checked={mode === 'passthrough'}
+            onChange={() => void handleModeSwitch('passthrough')}
+            label="Psygil AI (included)"
+            sublabel="AI is included in your license. No API key needed."
+          />
+          <ModeRadio
+            id="mode-byok"
+            checked={mode === 'byok'}
+            onChange={() => void handleModeSwitch('byok')}
+            label="Use your own API key"
+            sublabel="Connect Anthropic, OpenAI, or Google directly."
+          />
+        </div>
+      </div>
 
-        {hasKey ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{
-              flex: 1,
-              padding: '7px 10px',
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 4,
-              fontSize: 12.5,
-              color: 'var(--text-secondary)',
-              fontFamily: 'monospace',
-            }}>
-              sk-ant-••••••••••••••••
+      {/* Passthrough panel */}
+      {mode === 'passthrough' && (
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
+                Psygil AI
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                Model: {passthroughStatus === 'connected' ? passthroughModel : 'Claude Sonnet'}
+              </div>
             </div>
             <button
-              onClick={handleTestConnection}
-              disabled={connectionStatus === 'testing'}
+              onClick={() => void handleTestPassthrough()}
+              disabled={passthroughStatus === 'testing'}
               style={{
                 ...btnPrimary,
-                background: connectionStatus === 'connected' ? 'var(--success)'
-                  : connectionStatus === 'error' ? 'var(--danger)'
-                  : undefined,
-                opacity: connectionStatus === 'testing' ? 0.6 : 1,
+                background:
+                  passthroughStatus === 'connected'
+                    ? 'var(--success)'
+                    : passthroughStatus === 'error'
+                      ? 'var(--danger)'
+                      : undefined,
+                opacity: passthroughStatus === 'testing' ? 0.6 : 1,
               }}
             >
-              {connectionStatus === 'testing' ? 'Testing...'
-                : connectionStatus === 'connected' ? '✓ Connected'
-                : connectionStatus === 'error' ? '✕ Failed'
-                : 'Test Connection'}
-            </button>
-            <button onClick={handleDeleteKey} style={{ ...btnDanger, background: 'transparent' }}>Remove</button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-ant-api03-..."
-              style={{ ...textInput, flex: 1, fontFamily: 'monospace' }}
-              onKeyDown={(e) => e.key === 'Enter' && void handleSaveKey()}
-            />
-            <button onClick={handleSaveKey} disabled={saving || !apiKey.trim()} style={{ ...btnPrimary, opacity: saving || !apiKey.trim() ? 0.5 : 1 }}>
-              {saving ? 'Saving...' : 'Save Key'}
+              {passthroughStatus === 'testing'
+                ? 'Testing...'
+                : passthroughStatus === 'connected'
+                  ? 'Connected'
+                  : passthroughStatus === 'error'
+                    ? 'Failed'
+                    : 'Test Connection'}
             </button>
           </div>
-        )}
-
-        {connectionStatus === 'connected' && connectedModel && (
-          <div style={{ fontSize: 11, color: 'var(--success)', marginTop: 4 }}>
-            Connected to {connectedModel}
+          {passthroughError && (
+            <div style={{ fontSize: 11.5, color: 'var(--danger)', marginBottom: 10 }}>
+              {passthroughError}
+            </div>
+          )}
+          <div
+            style={{
+              borderTop: '1px solid var(--border)',
+              paddingTop: 12,
+              marginTop: 4,
+            }}
+          >
+            {usageLoaded ? (
+              <UsageBar used={usageCount} cap={30} />
+            ) : (
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                Usage tracking available when connected to Psygil AI.
+              </div>
+            )}
           </div>
-        )}
-        {connectionError && (
-          <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>{connectionError}</div>
-        )}
-      </div>
-
-      {/* Model selection */}
-      <div style={card}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>AI Model</div>
-        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-          Select the Claude model used for all AI operations, report writing, diagnostics mapping, document ingestion, and interview summaries.
         </div>
-        <select
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-          style={{ ...textInput, cursor: 'pointer', maxWidth: 360 }}
-        >
-          <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (Recommended, fast, accurate)</option>
-          <option value="claude-opus-4-20250514">Claude Opus 4 (Highest quality, slower, higher cost)</option>
-          <option value="claude-haiku-4-20250514">Claude Haiku 4 (Fastest, lower cost, lighter analysis)</option>
-        </select>
-      </div>
+      )}
+
+      {/* BYOK panel */}
+      {mode === 'byok' && (
+        <div style={card}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>
+            Your API Key
+          </div>
+
+          {/* Provider selector */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={fieldLabel}>Provider</label>
+            <select
+              value={byokProvider}
+              onChange={(e) => handleProviderChange(e.target.value as ByokProvider)}
+              style={{ ...textInput, cursor: 'pointer', maxWidth: 320 }}
+            >
+              {(Object.entries(BYOK_PROVIDERS) as [ByokProvider, ByokProviderDef][]).map(
+                ([key, def]) => (
+                  <option key={key} value={key}>
+                    {def.label}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+
+          {/* API key input */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={fieldLabel}>API Key</label>
+            {byokHasKey && !byokKey ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div
+                  style={{
+                    flex: 1,
+                    padding: '7px 10px',
+                    background: 'var(--bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontSize: 12.5,
+                    color: 'var(--text-secondary)',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {currentProviderDef.placeholder.slice(0, 6)}••••••••••••
+                </div>
+                <button onClick={() => setByokKey(' ')} style={btnSecondary}>
+                  Replace
+                </button>
+                <button onClick={() => void handleRemoveByokKey()} style={btnDanger}>
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <input
+                type="password"
+                value={byokKey.trim() === '' && byokKey !== '' ? '' : byokKey}
+                onChange={(e) => setByokKey(e.target.value)}
+                placeholder={currentProviderDef.placeholder}
+                style={{ ...textInput, fontFamily: 'monospace' }}
+                autoComplete="off"
+              />
+            )}
+          </div>
+
+          {/* Model selector */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={fieldLabel}>Model</label>
+            <select
+              value={byokModel}
+              onChange={(e) => setByokModel(e.target.value)}
+              style={{ ...textInput, cursor: 'pointer', maxWidth: 360 }}
+            >
+              {currentProviderDef.models.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Test and Save */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <button
+              onClick={() => void handleTestAndSaveByok()}
+              disabled={byokSaving || byokStatus === 'testing' || (!byokKey.trim() && !byokHasKey)}
+              style={{
+                ...btnPrimary,
+                background:
+                  byokStatus === 'connected'
+                    ? 'var(--success)'
+                    : byokStatus === 'error'
+                      ? 'var(--danger)'
+                      : undefined,
+                opacity:
+                  byokSaving || byokStatus === 'testing' || (!byokKey.trim() && !byokHasKey)
+                    ? 0.5
+                    : 1,
+              }}
+            >
+              {byokSaving || byokStatus === 'testing'
+                ? 'Testing...'
+                : byokStatus === 'connected'
+                  ? 'Saved and Connected'
+                  : byokStatus === 'error'
+                    ? 'Retry'
+                    : 'Test and Save'}
+            </button>
+          </div>
+          {byokError && (
+            <div style={{ fontSize: 11.5, color: 'var(--danger)', marginBottom: 8 }}>
+              {byokError}
+            </div>
+          )}
+
+          {/* Usage (BYOK has no cap) */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+            <UsageBar used={usageCount} cap={null} />
+          </div>
+        </div>
+      )}
 
       {/* PHI Redaction */}
       <div style={card}>
@@ -2065,7 +2425,7 @@ function AiModelsSection(): React.JSX.Element {
           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3, background: 'color-mix(in srgb, var(--success) 10%, transparent)', color: 'var(--success)' }}>ALWAYS ON</span>
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          All patient data is redacted to anonymous UNIDs before being sent to the Claude API. PHI is rehydrated only after the response is received and stored locally. This pipeline cannot be disabled, it is a core HIPAA safeguard.
+          All patient data is redacted to anonymous UNIDs before being sent to the AI. PHI is rehydrated only after the response is received and stored locally. This pipeline cannot be disabled, it is a core HIPAA safeguard.
         </div>
       </div>
 
@@ -2085,7 +2445,7 @@ function AiModelsSection(): React.JSX.Element {
           </div>
           <div>
             <span style={{ ...fieldLabel, marginBottom: 2 }}>Model</span>
-            <div>{whisperStatus?.model || 'base.en'}</div>
+            <div>{whisperStatus?.model ?? 'base.en'}</div>
           </div>
         </div>
 

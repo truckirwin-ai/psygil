@@ -299,6 +299,16 @@ export default function FirstRunModal({ onComplete }: FirstRunModalProps): React
               autoCapitalize="off"
               autoCorrect="off"
             />
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 11,
+                color: 'var(--text-secondary)',
+                lineHeight: 1.4,
+              }}
+            >
+              Your license includes Psygil AI. No separate API key is needed.
+            </div>
           </Field>
 
           <Field

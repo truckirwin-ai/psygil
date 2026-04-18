@@ -1,4 +1,42 @@
+import { useEffect, useState } from 'react'
+
+function deriveLlmLabel(
+  mode: string | null,
+  provider: string | null,
+  model: string | null,
+): string {
+  if (mode === 'byok') {
+    if (provider === 'openai') {
+      const name = model === 'gpt-4o' ? 'GPT-4o' : model === 'gpt-4-turbo' ? 'GPT-4 Turbo' : (model ?? 'GPT')
+      return `LLM: ${name} (your key)`
+    }
+    if (provider === 'google') {
+      const name = model === 'gemini-1.5-pro' ? 'Gemini 1.5 Pro' : model === 'gemini-1.5-flash' ? 'Gemini 1.5 Flash' : (model ?? 'Gemini')
+      return `LLM: ${name} (your key)`
+    }
+    // anthropic or unknown
+    const name = model?.includes('opus') ? 'Claude Opus 4' : model?.includes('haiku') ? 'Claude Haiku 4.5' : 'Claude Sonnet 4'
+    return `LLM: ${name} (your key)`
+  }
+  // passthrough or unconfigured
+  return 'LLM: Psygil AI (Sonnet)'
+}
+
 export default function Statusbar(): React.JSX.Element {
+  const [llmLabel, setLlmLabel] = useState('LLM: Psygil AI (Sonnet)')
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const resp = await window.psygil.setup.getConfig()
+        if (resp.status === 'success' && resp.data.config.ai) {
+          const { mode, provider, model } = resp.data.config.ai
+          setLlmLabel(deriveLlmLabel(mode, provider, model))
+        }
+      } catch { /* non-fatal */ }
+    })()
+  }, [])
+
   return (
     <div
       style={{
@@ -27,7 +65,7 @@ export default function Statusbar(): React.JSX.Element {
           />
           Connected
         </span>
-        <span>LLM: Claude Sonnet</span>
+        <span>{llmLabel}</span>
         <span>PHI: UNID Redaction &#10003;</span>
         <span>Storage: Local</span>
       </div>
