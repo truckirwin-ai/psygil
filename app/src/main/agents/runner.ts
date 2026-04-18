@@ -8,7 +8,7 @@
  */
 
 import { randomUUID } from 'crypto'
-import { callClaude, type ClaudeResponse } from '../ai/claude-client'
+import { completeAi, type AiCompletionResponse } from '../ai/provider'
 import { redact, rehydrate, destroyMap } from '../pii/pii_detector'
 import { scanForProhibited } from '../publish/hardRuleScan'
 import { logAuditEntry } from '../audit'
@@ -105,7 +105,7 @@ const REDACTION_CONTEXT_MAP: Record<AgentType, 'intake' | 'report' | 'review' | 
  * @returns AgentResult with structured output
  */
 export async function runAgent<T = unknown>(
-  apiKey: string,
+  apiKeyOrNull: string | null,
   config: AgentConfig
 ): Promise<AgentResult<T>> {
   const startTime = Date.now()
@@ -139,24 +139,25 @@ export async function runAgent<T = unknown>(
     const redactionResult = await redact(concatenated, operationId, redactionContext)
     const redactedText = redactionResult.redactedText
 
-    // 3. Call Claude API with redacted text
-    let claudeResponse: ClaudeResponse
+    // 3. Call AI provider with redacted text. The provider abstraction
+    // routes through either the Psygil passthrough proxy (Trial/Solo)
+    // or a direct BYOK client (Practice/Enterprise with their own key).
+    let aiResponse: AiCompletionResponse
     try {
-      claudeResponse = await callClaude(apiKey, {
+      aiResponse = await completeAi({
         systemPrompt: config.systemPrompt,
         userMessage: redactedText,
-        model: 'claude-sonnet-4-20250514',
         maxTokens: config.maxTokens ?? 4096,
         temperature: config.temperature ?? 0,
       })
     } catch (e) {
-      // If Claude fails, clean up UNID map before throwing
+      // If the AI call fails, clean up UNID map before throwing
       await destroyMap(operationId)
       throw e
     }
 
     // 4. Rehydrate response text
-    const rehydrationResult = await rehydrate(claudeResponse.content, operationId)
+    const rehydrationResult = await rehydrate(aiResponse.content, operationId)
     const fullText = rehydrationResult.fullText
 
     // 4a. HARD RULE guard (per CLAUDE.md): reject any Claude output that
@@ -200,8 +201,8 @@ export async function runAgent<T = unknown>(
           operation_id: operationId,
           status: 'success',
           duration_ms: durationMs,
-          input_tokens: claudeResponse.inputTokens,
-          output_tokens: claudeResponse.outputTokens,
+          input_tokens: aiResponse.inputTokens,
+          output_tokens: aiResponse.outputTokens,
         },
         relatedEntityType: 'agent_run',
       })
@@ -216,8 +217,8 @@ export async function runAgent<T = unknown>(
       operationId,
       result: parsedResult,
       tokenUsage: {
-        input: claudeResponse.inputTokens,
-        output: claudeResponse.outputTokens,
+        input: aiResponse.inputTokens,
+        output: aiResponse.outputTokens,
       },
       durationMs,
     }

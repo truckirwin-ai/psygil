@@ -19,7 +19,6 @@
 import { getSqlite } from '../db/connection'
 import { getCaseById, getIntake } from '../cases'
 import { listDocuments } from '../documents'
-import { retrieveApiKey } from '../ai/key-storage'
 import { runAgent, type AgentConfig, type AgentResult } from './runner'
 
 // ---------------------------------------------------------------------------
@@ -187,17 +186,7 @@ export async function runIngestorAgent(caseId: number): Promise<AgentResult<Inge
   const intake = getIntake(caseId)
 
   // 4. Retrieve API key
-  const apiKey = retrieveApiKey()
-  if (!apiKey) {
-    return {
-      status: 'error',
-      agentType: 'ingestor',
-      caseId,
-      operationId: '',
-      error: 'Anthropic API key not configured. Set your API key in Settings.',
-      durationMs: 0,
-    }
-  }
+  // API key resolution handled by provider.ts (passthrough or BYOK)
 
   // 5. Build the ingestor input payload
   // Format: JSON preamble with case metadata, then each document's text
@@ -247,7 +236,7 @@ export async function runIngestorAgent(caseId: number): Promise<AgentResult<Inge
   }
 
   // 7. Run through the generic agent runner (redact → Claude → rehydrate → destroy)
-  const result = await runAgent<IngestorOutput>(apiKey, config)
+  const result = await runAgent<IngestorOutput>(null, config)
 
   // 8. If successful, persist the structured result to the DB
   if (result.status === 'success' && result.result) {

@@ -21,7 +21,6 @@
 import { getSqlite } from '../db/connection'
 import { getCaseById } from '../cases'
 import { listDocuments } from '../documents'
-import { retrieveApiKey } from '../ai/key-storage'
 import { runAgent, type AgentConfig, type AgentResult } from './runner'
 
 // ---------------------------------------------------------------------------
@@ -300,17 +299,7 @@ export async function runPsychometricianAgent(caseId: number): Promise<AgentResu
   }
 
   // 4. Retrieve API key
-  const apiKey = retrieveApiKey()
-  if (!apiKey) {
-    return {
-      status: 'error',
-      agentType: 'psychometrician',
-      caseId,
-      operationId: '',
-      error: 'Anthropic API key not configured. Set your API key in Settings.',
-      durationMs: 0,
-    }
-  }
+  // API key resolution handled by provider.ts (passthrough or BYOK)
 
   // 5. Group scores by instrument and run deterministic validity checks
   const instrumentGroups = groupByInstrument(testScores)
@@ -378,7 +367,7 @@ export async function runPsychometricianAgent(caseId: number): Promise<AgentResu
   }
 
   // 8. Run through the generic agent runner (redact -> Claude -> rehydrate -> destroy)
-  const result = await runAgent<PsychometricianOutput>(apiKey, config)
+  const result = await runAgent<PsychometricianOutput>(null, config)
 
   // 9. If successful, persist the structured result to the DB
   if (result.status === 'success' && result.result) {

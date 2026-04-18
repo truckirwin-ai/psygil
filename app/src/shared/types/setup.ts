@@ -56,7 +56,8 @@ export interface PracticeInfo {
 }
 
 export interface AiConfig {
-  readonly provider: 'anthropic' | 'openai' | null
+  readonly mode: 'passthrough' | 'byok'
+  readonly provider: 'anthropic' | 'openai' | 'google' | null
   readonly model: string | null
   readonly configured: boolean
   readonly verifiedAt: string | null

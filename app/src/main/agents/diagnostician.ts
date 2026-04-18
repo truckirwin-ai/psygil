@@ -19,7 +19,6 @@
 
 import { getSqlite } from '../db/connection'
 import { getCaseById } from '../cases'
-import { retrieveApiKey } from '../ai/key-storage'
 import { runAgent, type AgentConfig, type AgentResult } from './runner'
 import { getLatestIngestorResult, type IngestorOutput } from './ingestor'
 
@@ -279,17 +278,7 @@ export async function runDiagnosticianAgent(caseId: number): Promise<AgentResult
   }
 
   // 3. Retrieve API key
-  const apiKey = retrieveApiKey()
-  if (!apiKey) {
-    return {
-      status: 'error',
-      agentType: 'diagnostician',
-      caseId,
-      operationId: '',
-      error: 'Anthropic API key not configured. Set your API key in Settings.',
-      durationMs: 0,
-    }
-  }
+  // API key resolution handled by provider.ts (passthrough or BYOK)
 
   // 4. Extract key data from ingestor result for diagnostician input
   const referralQuestions = ingestorResult.referral_questions
@@ -321,7 +310,7 @@ export async function runDiagnosticianAgent(caseId: number): Promise<AgentResult
   }
 
   // 7. Run through the generic agent runner (redact → Claude → rehydrate → destroy)
-  const result = await runAgent<DiagnosticianOutput>(apiKey, config)
+  const result = await runAgent<DiagnosticianOutput>(null, config)
 
   // 8. If successful, persist the structured result to the DB
   if (result.status === 'success' && result.result) {

@@ -138,7 +138,7 @@ export function registerSetupHandlers(): void {
     SETUP_CHANNELS.SAVE_LICENSE,
     (
       _event,
-      params: { license: LicenseInfo },
+      params: { license: LicenseInfo; rawKey?: string },
     ): IpcResponse<{ config: SetupConfig }> => {
       try {
         const current = loadConfig()
@@ -146,7 +146,12 @@ export function registerSetupHandlers(): void {
           { ...current, license: params.license },
           'license_entered',
         )
-        saveConfig(updated)
+        // Persist the raw license key alongside the config so the
+        // passthrough proxy client can use it for authentication.
+        // The key is NOT a secret (it is a license identifier, not an
+        // API key); storing it in the config JSON is acceptable.
+        const configWithKey = { ...updated, licenseKey: params.rawKey ?? null }
+        saveConfig(configWithKey as SetupConfig)
         return ok({ config: updated })
       } catch (err) {
         return fail('LICENSE_SAVE_FAILED', (err as Error).message)

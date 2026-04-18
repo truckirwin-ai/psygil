@@ -21,7 +21,6 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { getSqlite } from '../db/connection'
 import { getCaseById } from '../cases'
-import { retrieveApiKey } from '../ai/key-storage'
 import { runAgent, type AgentConfig, type AgentResult } from './runner'
 import { getLatestIngestorResult, type IngestorOutput } from './ingestor'
 import { loadWorkspacePath, getDefaultWorkspacePath } from '../workspace'
@@ -365,17 +364,7 @@ export async function runWriterAgent(caseId: number): Promise<AgentResult<Writer
   }
 
   // 5. Retrieve API key
-  const apiKey = retrieveApiKey()
-  if (!apiKey) {
-    return {
-      status: 'error',
-      agentType: 'writer',
-      caseId,
-      operationId: '',
-      error: 'Anthropic API key not configured. Set your API key in Settings.',
-      durationMs: 0,
-    }
-  }
+  // API key resolution handled by provider.ts (passthrough or BYOK)
 
   // 6. Build the writer input payload
   // This includes: case record, clinician decisions, and optional style guide
@@ -417,7 +406,7 @@ export async function runWriterAgent(caseId: number): Promise<AgentResult<Writer
   }
 
   // 8. Run through the generic agent runner (redact, Claude, rehydrate, destroy)
-  const result = await runAgent<WriterOutput>(apiKey, config)
+  const result = await runAgent<WriterOutput>(null, config)
 
   // 9. If the runner failed, return the error unchanged (already has HARD RULE
   //    violations surfaced via hardRuleScan).

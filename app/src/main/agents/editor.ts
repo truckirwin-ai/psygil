@@ -18,7 +18,6 @@
 
 import { getSqlite } from '../db/connection'
 import { getCaseById, getIntake } from '../cases'
-import { retrieveApiKey } from '../ai/key-storage'
 import { runAgent, type AgentConfig, type AgentResult } from './runner'
 import { getLatestIngestorResult } from './ingestor'
 
@@ -257,17 +256,7 @@ export async function runEditorAgent(caseId: number): Promise<AgentResult<Editor
   const intake = getIntake(caseId)
 
   // 6. Retrieve API key
-  const apiKey = retrieveApiKey()
-  if (!apiKey) {
-    return {
-      status: 'error',
-      agentType: 'editor',
-      caseId,
-      operationId: '',
-      error: 'Anthropic API key not configured. Set your API key in Settings.',
-      durationMs: 0,
-    }
-  }
+  // API key resolution handled by provider.ts (passthrough or BYOK)
 
   // 7. Build the editor input payload
   const inputPayload = JSON.stringify(
@@ -294,7 +283,7 @@ export async function runEditorAgent(caseId: number): Promise<AgentResult<Editor
   }
 
   // 9. Run through the generic agent runner (redact → Claude → rehydrate → destroy)
-  const result = await runAgent<EditorOutput>(apiKey, config)
+  const result = await runAgent<EditorOutput>(null, config)
 
   // 10. If successful, persist the result to the DB
   if (result.status === 'success' && result.result) {

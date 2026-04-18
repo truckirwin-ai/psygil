@@ -18,7 +18,7 @@ import type {
   PsychometricianRunParams, PsychometricianRunResult, PsychometricianGetResultParams,
 } from '../../shared/types'
 import { runAgent, isValidAgentType, type AgentConfig } from './runner'
-import { retrieveApiKey } from '../ai/key-storage'
+// API key retrieval moved to provider.ts; agents no longer need direct access
 import { runIngestorAgent, getLatestIngestorResult } from './ingestor'
 import { runPsychometricianAgent, getLatestPsychometricianResult } from './psychometrician'
 import { runDiagnosticianAgent, getLatestDiagnosticianResult } from './diagnostician'
@@ -93,11 +93,8 @@ async function handleAgentRun(
       return fail('INVALID_INPUT', 'inputTexts must be a non-empty array')
     }
 
-    // Retrieve API key from secure storage
-    const apiKey = retrieveApiKey()
-    if (!apiKey) {
-      return fail('NO_API_KEY', 'Anthropic API key not configured')
-    }
+    // API key resolution is handled by provider.ts (passthrough or BYOK).
+    // No need to retrieve or validate the key here.
 
     // Build agent config
     const config: AgentConfig = {
@@ -124,7 +121,7 @@ async function handleAgentRun(
 
     // Run agent
     currentOperation = operationId
-    const result = await runAgent(apiKey, config)
+    const result = await runAgent(null, config)
     currentOperation = null
 
     // Update status

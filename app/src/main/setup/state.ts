@@ -92,10 +92,11 @@ export interface PracticeInfo {
 }
 
 export interface AiConfig {
-  readonly provider: 'anthropic' | 'openai' | null
+  readonly mode: 'passthrough' | 'byok'
+  readonly provider: 'anthropic' | 'openai' | 'google' | null
   readonly model: string | null
-  readonly configured: boolean // true if API key stored in keychain AND UNID pipeline verified
-  readonly verifiedAt: string | null // ISO timestamp of last successful UNID verification
+  readonly configured: boolean // true if passthrough licensed OR BYOK key stored + UNID pipeline verified
+  readonly verifiedAt: string | null // ISO timestamp of last successful verification
 }
 
 export interface AppearanceConfig {

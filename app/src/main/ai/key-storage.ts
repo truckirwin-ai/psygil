@@ -107,6 +107,23 @@ export function hasApiKey(): boolean {
 }
 
 /**
+ * Detect the provider from an API key's prefix.
+ * Used by the BYOK routing path to select the correct client.
+ *
+ * @param key The raw API key string
+ * @returns The detected provider
+ */
+export function detectProvider(key: string): 'anthropic' | 'openai' | 'google' {
+  const trimmed = key.trim()
+  if (trimmed.startsWith('sk-ant-')) return 'anthropic'
+  if (trimmed.startsWith('sk-')) return 'openai'
+  if (trimmed.startsWith('AIza')) return 'google'
+  // Default to Anthropic for unrecognized prefixes; the API call will
+  // fail with a clear auth error if the key is wrong.
+  return 'anthropic'
+}
+
+/**
  * Delete the stored API key file.
  *
  * @returns true if deletion succeeded, false if no key was stored

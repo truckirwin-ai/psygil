@@ -71,7 +71,7 @@ export default function StepAi({
   onConfigUpdate,
   onAdvance,
 }: StepProps): React.JSX.Element {
-  const [provider, setProvider] = useState<'anthropic' | 'openai'>(
+  const [provider, setProvider] = useState<'anthropic' | 'openai' | 'google'>(
     config.ai?.provider ?? 'anthropic',
   )
   const [model, setModel] = useState<string>(config.ai?.model ?? ANTHROPIC_MODELS[0]!.value)
@@ -175,6 +175,7 @@ export default function StepAi({
 
     // 4. Persist AI config
     const ai: AiConfig = {
+      mode: 'byok',
       provider,
       model,
       configured: true,
@@ -196,6 +197,7 @@ export default function StepAi({
   const handleSkip = async (): Promise<void> => {
     setError(null)
     const ai: AiConfig = {
+      mode: 'passthrough',
       provider: null,
       model: null,
       configured: false,

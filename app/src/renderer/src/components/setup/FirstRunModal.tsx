@@ -125,10 +125,13 @@ export default function FirstRunModal({ onComplete }: FirstRunModalProps): React
         return
       }
 
-      // 2. Persist license.
+      // 2. Persist license. Include the raw key so the passthrough proxy
+      // client can use it for authentication (the key is a license
+      // identifier, not an API secret).
       const saveLicenseResp = await window.psygil.setup.saveLicense({
         license: validation.license,
-      })
+        rawKey: licenseKey,
+      } as { license: typeof validation.license })
       if (!isOk(saveLicenseResp)) {
         const message = isErr(saveLicenseResp)
           ? saveLicenseResp.message
