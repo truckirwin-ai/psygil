@@ -3372,14 +3372,38 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX
 
   const interviewDataLoaded = useRef(false)
 
-  // Load persisted interview sessions + notes. If none exist, seed with a
-  // default "Session 1" placeholder so the tab bar is always visible.
+  // Detect interview source from filename
+  const detectSource = (filename: string): InterviewSession['source'] => {
+    const lower = filename.toLowerCase()
+    if (lower.endsWith('.webm') || lower.endsWith('.wav') || lower.endsWith('.m4a') || lower.endsWith('.mp3')) return 'recording'
+    if (lower.includes('zoom') || lower.endsWith('.vtt')) return 'import' // Zoom VTT transcripts
+    return 'import'
+  }
+
+  // Derive a readable source label for display
+  const getSourceLabel = (session: InterviewSession): string => {
+    const fname = session.filename?.toLowerCase() ?? ''
+    if (session.source === 'recording') return 'In-App Recording'
+    if (session.source === 'manual') return 'Manual Entry'
+    if (fname.endsWith('.vtt') || fname.includes('zoom')) return 'Zoom Import'
+    if (fname.endsWith('.webm') || fname.endsWith('.wav')) return 'Audio Import'
+    if (fname.endsWith('.pdf')) return 'PDF Import'
+    if (fname.endsWith('.docx') || fname.endsWith('.doc')) return 'Word Import'
+    if (fname.endsWith('.md')) return 'Document'
+    if (fname.endsWith('.txt')) return 'Text Import'
+    return 'Document'
+  }
+
+  // Load persisted interview sessions + notes, THEN merge any interview
+  // documents from the workspace that aren't already represented as sessions.
   useEffect(() => {
     if (interviewDataLoaded.current) return
     interviewDataLoaded.current = true
     ;(async () => {
       let loadedSessions: InterviewSession[] = []
       let loadedNotes: Record<string, Record<string, string>> = {}
+
+      // Step 1: Load persisted sessions from DB
       try {
         const resp = await window.psygil.onboarding.get({ case_id: caseRow.case_id })
         if (resp.status === 'success' && resp.data) {
@@ -3394,6 +3418,56 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX
         }
       } catch { /* ignore */ }
 
+      // Step 2: Scan workspace for interview documents not yet represented
+      try {
+        const docsResp = await window.psygil.documents.list({ case_id: caseRow.case_id })
+        if (docsResp.status === 'success' && docsResp.data) {
+          const interviewDocs = (docsResp.data as any[]).filter((d: any) => {
+            const fp = String(d.file_path ?? d.relative_path ?? '')
+            return fp.toLowerCase().includes('/interviews/') || fp.toLowerCase().includes('\\interviews\\')
+          })
+
+          // Build set of filenames already represented in loaded sessions
+          const existingFilenames = new Set(
+            loadedSessions.filter((s) => s.filename).map((s) => s.filename!.toLowerCase())
+          )
+
+          for (const doc of interviewDocs) {
+            const filename = String(doc.original_filename ?? '')
+            if (!filename || existingFilenames.has(filename.toLowerCase())) continue
+
+            // Skip system-generated files (interview_notes.md, behavioral_observations.md)
+            const lower = filename.toLowerCase()
+            if (lower === 'interview_notes.md' || lower === 'behavioral_observations.md' || lower === 'readme.txt') continue
+
+            const id = `doc-${doc.document_id ?? _nextSessionId++}`
+            const content = String(doc.indexed_content ?? '')
+            const source = detectSource(filename)
+            const baseName = filename.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ')
+
+            // Build a basic summary from the first ~300 chars of content
+            const autoSummary = content.length > 300
+              ? content.slice(0, 300).replace(/\n+/g, ' ').trim() + '...'
+              : content.replace(/\n+/g, ' ').trim()
+
+            loadedSessions.push({
+              id,
+              title: baseName,
+              date: String(doc.upload_date ?? new Date().toISOString()).split('T')[0],
+              source,
+              filename,
+              transcript: content || `[Content from ${filename}]`,
+              summary: autoSummary,
+              duration: '',
+            })
+            existingFilenames.add(filename.toLowerCase())
+          }
+        }
+      } catch (err) {
+        console.error('[InterviewsSubTab] Failed to scan interview documents:', err)
+      }
+
+      // Step 3: If still no sessions, seed with default placeholder
       if (loadedSessions.length === 0) {
         loadedSessions = [{
           id: `session_${_nextSessionId++}`,
@@ -3406,6 +3480,7 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX
           duration: '',
         }]
       }
+
       setSessions(loadedSessions)
       setActiveSessionId(loadedSessions[0].id)
       setIntNotes(loadedNotes)
@@ -3568,16 +3643,34 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX
           // Strip extension for title
           const baseName = filename.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ')
           const sessionNum = sessions.length + newSessions.length + 1
-          const suggestedTitle = titles[sessionNum - 1] ?? `Session ${sessionNum}`
+          const suggestedTitle = titles[sessionNum - 1] ?? (baseName || `Session ${sessionNum}`)
           const id = `session-${_nextSessionId++}`
+          const source = detectSource(filename)
+
+          // Try to read back the indexed content after ingest
+          let content = ''
+          try {
+            const docsResp = await window.psygil.documents.list({ case_id: caseRow.case_id })
+            if (docsResp.status === 'success' && docsResp.data) {
+              const match = (docsResp.data as any[]).find((d: any) =>
+                String(d.original_filename ?? '').toLowerCase() === filename.toLowerCase()
+              )
+              if (match?.indexed_content) content = String(match.indexed_content)
+            }
+          } catch { /* use empty */ }
+
+          const autoSummary = content.length > 300
+            ? content.slice(0, 300).replace(/\n+/g, ' ').trim() + '...'
+            : content.replace(/\n+/g, ' ').trim()
+
           newSessions.push({
             id,
             title: suggestedTitle,
             date: new Date().toISOString().split('T')[0],
-            source: 'import',
+            source,
             filename,
-            transcript: `[Imported from ${filename}]\n\nTranscript content will be loaded from the file. Source: ${baseName}`,
-            summary: '',
+            transcript: content || `[Imported from ${filename}]`,
+            summary: autoSummary,
             duration: '',
           })
         }
@@ -3839,6 +3932,13 @@ function InterviewsSubTab({ caseRow }: { readonly caseRow: CaseRow }): React.JSX
   // Recording controls, wired to real MediaRecorder + live streaming
   const handleToggleRecording = useCallback(async () => {
     if (!activeSession) return
+
+    // If current session is an import, create a new recording session first
+    if (activeSession.source === 'import') {
+      handleCreateNewSession()
+      return // The new session will be active, user clicks Record again on it
+    }
+
     const status = activeSession.recordingStatus ?? 'idle'
     if (status === 'idle' || status === 'done') {
       // Start recording + live stream
@@ -4219,7 +4319,7 @@ Generate the clinical interview session summary.`,
         // bar via MockSection's `titleAction` prop.
         const recordingControls = (
           <>
-          {(activeSession.source === 'recording' || activeSession.source === 'manual') && (
+          {(activeSession.source === 'recording' || activeSession.source === 'manual' || activeSession.source === 'import') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {/* Elapsed / duration display */}
                 {(activeSession.recordingStatus === 'recording' || activeSession.recordingStatus === 'paused') && (
@@ -4463,7 +4563,22 @@ Generate the clinical interview session summary.`,
                       style={sessionTabStyle(activeSessionId === s.id)}
                     >
                       {idx + 1}. {s.title}
-                      {s.source === 'import' && <span style={{ marginLeft: 4, fontSize: 9, opacity: 0.6 }}>📎</span>}
+                      <span style={{
+                        marginLeft: 4, fontSize: 9, fontWeight: 600, padding: '1px 4px',
+                        borderRadius: 3, flexShrink: 0,
+                        background: s.source === 'recording'
+                          ? 'color-mix(in srgb, var(--danger) 10%, var(--bg))'
+                          : s.source === 'import'
+                          ? 'color-mix(in srgb, var(--accent) 10%, var(--bg))'
+                          : 'color-mix(in srgb, var(--text-secondary) 10%, var(--bg))',
+                        color: s.source === 'recording'
+                          ? 'var(--danger)'
+                          : s.source === 'import'
+                          ? 'var(--accent)'
+                          : 'var(--text-secondary)',
+                      }}>
+                        {getSourceLabel(s)}
+                      </span>
                     </button>
                   ))}
                 </div>
