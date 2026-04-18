@@ -3,783 +3,351 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Psygil - Kanban Board Mockup</title>
+<title>Psygil - Kanban</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #f7f7f8; color: #1a1a2e; -webkit-font-smoothing: antialiased;
-  }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #fff; color: #1a1a2e; -webkit-font-smoothing: antialiased; }
   .app { display: flex; height: 100vh; }
 
-  /* ── Sidebar ── */
-  .sidebar {
-    width: 220px; background: #fff; border-right: 1px solid #e8e8ec;
-    display: flex; flex-direction: column; flex-shrink: 0;
-  }
-  .sidebar-header {
-    padding: 20px 20px 16px; display: flex; align-items: center; gap: 10px;
-    border-bottom: 1px solid #e8e8ec;
-  }
-  .sidebar-logo {
-    width: 32px; height: 32px;
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    border-radius: 8px; display: flex; align-items: center; justify-content: center;
-    color: #fff; font-weight: 700; font-size: 14px;
-  }
-  .sidebar-brand { font-size: 15px; font-weight: 700; color: #1a1a2e; }
-  .sidebar-nav { padding: 12px 8px; flex: 1; }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 12px; border-radius: 8px;
-    font-size: 13.5px; font-weight: 500; color: #64648c; cursor: pointer;
-  }
-  .nav-item:hover { background: #f3f3f6; color: #1a1a2e; }
+  /* ── Sidebar (compact Mercury) ── */
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid #eaeaec; display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-header { padding: 16px 16px 14px; display: flex; align-items: center; gap: 8px; }
+  .sidebar-logo { width: 24px; height: 24px; background: #4f46e5; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 11px; }
+  .sidebar-brand { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+  .sidebar-nav { padding: 4px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; font-weight: 500; color: #5c5c70; cursor: pointer; }
+  .nav-item:hover { background: #f5f5f7; color: #1a1a2e; }
   .nav-item.active { background: #f0eeff; color: #4f46e5; font-weight: 600; }
-  .nav-icon { width: 18px; text-align: center; font-size: 15px; opacity: 0.7; }
-  .nav-divider { height: 1px; background: #e8e8ec; margin: 8px 12px; }
-  .nav-section-label {
-    padding: 12px 12px 4px; font-size: 11px; font-weight: 600;
-    color: #9898b0; text-transform: uppercase; letter-spacing: 0.5px;
-  }
-  .bookmark-item {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 12px; border-radius: 6px;
-    font-size: 12.5px; color: #64648c; cursor: pointer;
-  }
-  .bookmark-item:hover { background: #f3f3f6; }
-  .bookmark-count {
-    margin-left: auto; font-size: 10px; font-weight: 600;
-    color: #9898b0; background: #f3f3f6; padding: 1px 6px; border-radius: 10px;
-  }
+  .nav-icon { font-size: 14px; opacity: 0.6; width: 16px; text-align: center; }
+  .nav-divider { height: 1px; background: #eaeaec; margin: 6px 8px; }
+  .section-label { padding: 10px 8px 4px; font-size: 11px; font-weight: 600; color: #a0a0b0; }
+  .bm-item { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 12.5px; color: #5c5c70; cursor: pointer; border-radius: 4px; }
+  .bm-item:hover { background: #f5f5f7; }
+  .bm-badge { margin-left: auto; font-size: 10px; color: #a0a0b0; }
 
   /* ── Main ── */
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #fafafb; }
 
-  .topbar {
-    padding: 14px 28px; background: #fff; border-bottom: 1px solid #e8e8ec;
-    display: flex; align-items: center; gap: 16px; flex-shrink: 0;
-  }
-  .page-title { font-size: 20px; font-weight: 700; color: #1a1a2e; }
-  .topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-  .btn {
-    padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
-    cursor: pointer; border: 1px solid #e8e8ec; background: #fff; color: #1a1a2e;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .btn:hover { background: #f7f7f8; }
-  .btn.primary { background: #4f46e5; color: #fff; border-color: #4f46e5; }
-  .btn.primary:hover { background: #4338ca; }
+  .topbar { padding: 10px 20px; background: #fff; border-bottom: 1px solid #eaeaec; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .page-title { font-size: 16px; font-weight: 700; color: #1a1a2e; }
+  .search-box { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: #f5f5f7; border-radius: 6px; border: 1px solid #eaeaec; width: 220px; }
+  .search-box input { border: none; background: transparent; font-size: 12px; color: #5c5c70; outline: none; width: 100%; font-family: inherit; }
+  .topbar-right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .view-tog { display: flex; border-radius: 6px; overflow: hidden; border: 1px solid #eaeaec; }
+  .vb { padding: 4px 10px; font-size: 11px; font-weight: 500; cursor: pointer; border: none; background: #fff; color: #a0a0b0; border-right: 1px solid #eaeaec; }
+  .vb:last-child { border-right: none; }
+  .vb.on { background: #f0eeff; color: #4f46e5; font-weight: 600; }
+  .tb { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid #eaeaec; background: #fff; color: #1a1a2e; }
+  .tb.primary { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; background: #eaeaec; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #5c5c70; }
 
-  .search-box {
-    display: flex; align-items: center; gap: 8px;
-    padding: 7px 14px; background: #f7f7f8; border-radius: 8px;
-    border: 1px solid #e8e8ec; width: 260px;
-  }
-  .search-box input {
-    border: none; background: transparent; font-size: 13px;
-    color: #64648c; outline: none; width: 100%; font-family: inherit;
-  }
+  /* ── Kanban ── */
+  .kanban { flex: 1; display: flex; gap: 1px; padding: 0; overflow-x: auto; background: #eaeaec; }
 
-  .view-toggle {
-    display: flex; border-radius: 8px; overflow: hidden;
-    border: 1px solid #e8e8ec;
-  }
-  .view-btn {
-    padding: 6px 14px; font-size: 12px; font-weight: 500;
-    cursor: pointer; border: none; background: #fff; color: #9898b0;
-    border-right: 1px solid #e8e8ec;
-  }
-  .view-btn:last-child { border-right: none; }
-  .view-btn.active { background: #f0eeff; color: #4f46e5; font-weight: 600; }
+  .col { min-width: 220px; flex: 1; display: flex; flex-direction: column; background: #fafafb; }
+  .col-head { padding: 10px 12px; display: flex; align-items: center; gap: 6px; background: #fff; border-bottom: 1px solid #eaeaec; flex-shrink: 0; }
+  .col-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .d-teal { background: #0d9488; }
+  .d-purple { background: #7c3aed; }
+  .d-pink { background: #db2777; }
+  .d-orange { background: #ea580c; }
+  .d-red { background: #dc2626; }
+  .d-green { background: #059669; }
+  .col-name { font-size: 12px; font-weight: 600; color: #1a1a2e; }
+  .col-cnt { font-size: 10px; font-weight: 600; color: #a0a0b0; background: #eaeaec; padding: 1px 5px; border-radius: 8px; }
 
-  .avatar {
-    width: 32px; height: 32px; border-radius: 50%;
-    background: #e8e8ec; display: flex; align-items: center;
-    justify-content: center; font-size: 12px; font-weight: 600; color: #64648c;
-  }
+  .col-body { flex: 1; overflow-y: auto; padding: 6px 6px 12px; display: flex; flex-direction: column; gap: 4px; }
 
-  /* ── Kanban board ── */
-  .kanban {
-    flex: 1; display: flex; gap: 16px; padding: 20px 24px;
-    overflow-x: auto; overflow-y: hidden;
-  }
+  /* ── Card (tight, Mercury-density) ── */
+  .kc { background: #fff; border: 1px solid #eaeaec; border-radius: 6px; padding: 10px 12px; cursor: pointer; }
+  .kc:hover { border-color: #d0d0d8; }
 
-  .kanban-column {
-    min-width: 260px; width: 260px; flex-shrink: 0;
-    display: flex; flex-direction: column;
-    background: #f0f0f3; border-radius: 12px;
-    max-height: 100%;
-  }
+  .kc-top { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+  .kc-name { font-size: 12.5px; font-weight: 600; color: #1a1a2e; flex: 1; }
+  .kc-pri { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .p-hi { background: #dc2626; }
+  .p-md { background: #d97706; }
+  .p-lo { background: #059669; }
 
-  .column-header {
-    padding: 14px 16px 10px; display: flex; align-items: center; gap: 8px;
-    flex-shrink: 0;
-  }
-  .column-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .dot-teal { background: #0d9488; }
-  .dot-purple { background: #7c3aed; }
-  .dot-pink { background: #db2777; }
-  .dot-orange { background: #ea580c; }
-  .dot-red { background: #dc2626; }
-  .dot-green { background: #059669; }
+  .kc-type { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 9.5px; font-weight: 600; margin-bottom: 4px; }
+  .t-cst { background: #f0eeff; color: #4f46e5; }
+  .t-custody { background: #fef3c7; color: #92400e; }
+  .t-risk { background: #fce4ec; color: #9f1239; }
+  .t-ptsd { background: #dbeafe; color: #1e40af; }
+  .t-neuro { background: #e0e7ff; color: #3730a3; }
+  .t-ffd { background: #ecfdf5; color: #065f46; }
+  .t-crim { background: #fef2f2; color: #991b1b; }
+  .t-dis { background: #f5f3ff; color: #5b21b6; }
 
-  .column-title { font-size: 13px; font-weight: 700; color: #1a1a2e; }
-  .column-count {
-    font-size: 11px; font-weight: 600; color: #9898b0;
-    background: #e0e0e5; padding: 1px 7px; border-radius: 10px;
-    margin-left: 2px;
-  }
-  .column-add {
-    margin-left: auto; width: 24px; height: 24px; border-radius: 6px;
-    border: 1px solid #d4d4d8; background: transparent;
-    cursor: pointer; font-size: 14px; color: #9898b0;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .column-add:hover { background: #e8e8ec; }
+  .kc-flags { display: flex; gap: 3px; margin-bottom: 4px; flex-wrap: wrap; }
+  .kf { padding: 1px 4px; border-radius: 2px; font-size: 9px; font-weight: 600; }
+  .f-psych { background: #fef2f2; color: #991b1b; }
+  .f-sub { background: #fffbeb; color: #92400e; }
+  .f-tbi { background: #fef3c7; color: #78350f; }
+  .f-urg { background: #dc2626; color: #fff; }
+  .f-mal { background: #f0e7fe; color: #6b21a8; }
+  .f-draft { background: #ecfdf5; color: #065f46; }
 
-  .column-cards {
-    flex: 1; overflow-y: auto; padding: 0 10px 12px;
-    display: flex; flex-direction: column; gap: 8px;
-  }
+  .kc-meta { display: flex; gap: 8px; font-size: 10px; color: #a0a0b0; }
 
-  /* ── Kanban card ── */
-  .k-card {
-    background: #fff; border: 1px solid #e8e8ec; border-radius: 10px;
-    padding: 14px 16px; cursor: pointer;
-    transition: box-shadow 0.15s, border-color 0.15s;
-  }
-  .k-card:hover {
-    border-color: #c7c7d0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  }
-  .k-card.dragging {
-    opacity: 0.5; border-color: #4f46e5;
-  }
+  .kc-foot { display: flex; align-items: center; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f3f3f5; }
+  .kc-av { width: 18px; height: 18px; border-radius: 50%; background: #eaeaec; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 600; color: #5c5c70; }
+  .kc-who { font-size: 10px; color: #a0a0b0; }
+  .kc-when { margin-left: auto; font-size: 10px; color: #c4c4d0; }
 
-  .k-card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
-  .k-name { font-size: 13.5px; font-weight: 600; color: #1a1a2e; flex: 1; }
-  .k-priority {
-    width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0;
-  }
-  .pri-high { background: #dc2626; }
-  .pri-med { background: #d97706; }
-  .pri-low { background: #059669; }
-  .pri-none { background: transparent; }
+  /* progress */
+  .kc-prog { height: 2px; background: #eaeaec; border-radius: 1px; margin-top: 6px; }
+  .kc-prog-fill { height: 100%; border-radius: 1px; }
 
-  .k-eval-type {
-    display: inline-block;
-    padding: 2px 8px; border-radius: 4px;
-    font-size: 10.5px; font-weight: 600;
-    margin-bottom: 8px;
-  }
-  .type-cst { background: #f0eeff; color: #4f46e5; }
-  .type-custody { background: #fef3c7; color: #92400e; }
-  .type-risk { background: #fce4ec; color: #9f1239; }
-  .type-ptsd { background: #dbeafe; color: #1e40af; }
-  .type-neuro { background: #e0e7ff; color: #3730a3; }
-  .type-ffd { background: #f0fdf4; color: #166534; }
-  .type-crim { background: #fef2f2; color: #991b1b; }
-  .type-disability { background: #f5f3ff; color: #5b21b6; }
-
-  .k-meta { display: flex; gap: 10px; font-size: 11px; color: #9898b0; }
-  .k-meta-item { display: flex; align-items: center; gap: 3px; }
-
-  .k-footer {
-    display: flex; align-items: center; gap: 6px; margin-top: 10px;
-    padding-top: 8px; border-top: 1px solid #f3f3f6;
-  }
-  .k-avatar {
-    width: 22px; height: 22px; border-radius: 50%;
-    background: #e8e8ec; display: flex; align-items: center;
-    justify-content: center; font-size: 9px; font-weight: 600; color: #64648c;
-  }
-  .k-clinician { font-size: 11px; color: #9898b0; }
-  .k-date { margin-left: auto; font-size: 10px; color: #c4c4d4; }
-
-  .k-flags {
-    display: flex; gap: 4px; margin-top: 8px;
-  }
-  .k-flag {
-    padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 600;
-  }
-  .flag-psych { background: #fef2f2; color: #991b1b; }
-  .flag-substance { background: #fffbeb; color: #92400e; }
-  .flag-tbi { background: #fef3c7; color: #78350f; }
-  .flag-malingering { background: #f0e7fe; color: #6b21a8; }
-  .flag-docs { background: #ecfdf5; color: #065f46; }
-  .flag-urgent { background: #dc2626; color: #fff; }
-
-  /* Progress mini-bar */
-  .k-progress {
-    height: 3px; background: #e8e8ec; border-radius: 2px; margin-top: 8px;
-    overflow: hidden;
-  }
-  .k-progress-fill { height: 100%; border-radius: 2px; }
-  .prog-25 { width: 25%; background: #d97706; }
-  .prog-50 { width: 50%; background: #4f46e5; }
-  .prog-75 { width: 75%; background: #7c3aed; }
-  .prog-100 { width: 100%; background: #059669; }
-
-  /* Scrollbar styling */
-  .column-cards::-webkit-scrollbar { width: 4px; }
-  .column-cards::-webkit-scrollbar-track { background: transparent; }
-  .column-cards::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 2px; }
-  .kanban::-webkit-scrollbar { height: 6px; }
-  .kanban::-webkit-scrollbar-track { background: transparent; }
-  .kanban::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
+  .col-body::-webkit-scrollbar { width: 3px; }
+  .col-body::-webkit-scrollbar-thumb { background: #d0d0d8; border-radius: 2px; }
+  .kanban::-webkit-scrollbar { height: 4px; }
+  .kanban::-webkit-scrollbar-thumb { background: #d0d0d8; border-radius: 2px; }
 </style>
 </head>
 <body>
 <div class="app">
-  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo">P</div>
       <div class="sidebar-brand">Psygil</div>
     </div>
     <nav class="sidebar-nav">
-      <a class="nav-item active"><span class="nav-icon">&#9679;</span> Dashboard</a>
-      <a class="nav-item"><span class="nav-icon">&#9825;</span> Cases</a>
+      <a class="nav-item"><span class="nav-icon">&#9679;</span> Home</a>
+      <a class="nav-item active"><span class="nav-icon">&#9633;</span> Cases</a>
+      <a class="nav-item"><span class="nav-icon">&#8644;</span> Pipeline</a>
       <a class="nav-item"><span class="nav-icon">&#9998;</span> Reports</a>
-      <a class="nav-item"><span class="nav-icon">&#9881;</span> Instruments</a>
       <a class="nav-item"><span class="nav-icon">&#9776;</span> Audit Trail</a>
       <div class="nav-divider"></div>
       <a class="nav-item"><span class="nav-icon">&#9881;</span> Settings</a>
-
-      <div class="nav-section-label">Bookmarks</div>
-      <div style="padding: 0 8px;">
-        <div class="bookmark-item"><span style="font-size:13px; opacity:0.5;">&#9744;</span> Vasquez, M. <span class="bookmark-count">CST</span></div>
-        <div class="bookmark-item"><span style="font-size:13px; opacity:0.5;">&#9744;</span> Thompson, J. <span class="bookmark-count">Custody</span></div>
-        <div class="bookmark-item"><span style="font-size:13px; opacity:0.5;">&#9744;</span> Bridger, K. <span class="bookmark-count">Risk</span></div>
-        <div class="bookmark-item"><span style="font-size:13px; opacity:0.5;">&#9744;</span> Chen, L. <span class="bookmark-count">PTSD</span></div>
-        <div class="bookmark-item"><span style="font-size:13px; opacity:0.5;">&#9744;</span> Mitchell, D. <span class="bookmark-count">CST</span></div>
-      </div>
     </nav>
+    <div class="section-label">Bookmarks</div>
+    <div style="padding: 0 8px 16px;">
+      <div class="bm-item">Vasquez, M. <span class="bm-badge">CST</span></div>
+      <div class="bm-item">Thompson, J. <span class="bm-badge">Custody</span></div>
+      <div class="bm-item">Bridger, K. <span class="bm-badge">Risk</span></div>
+      <div class="bm-item">Chen, L. <span class="bm-badge">PTSD</span></div>
+      <div class="bm-item">Mitchell, D. <span class="bm-badge">CST</span></div>
+    </div>
   </aside>
 
   <div class="main">
-    <!-- Top bar -->
     <div class="topbar">
-      <div class="page-title">Evaluation Pipeline</div>
-      <div class="search-box">
-        <span style="color: #9898b0; font-size: 14px;">&#128269;</span>
-        <input type="text" placeholder="Search cases...">
-      </div>
+      <div class="page-title">Cases</div>
+      <div class="search-box"><span style="color:#a0a0b0; font-size:12px;">&#128269;</span><input placeholder="Search cases..."></div>
       <div class="topbar-right">
-        <div class="view-toggle">
-          <button class="view-btn active">Board</button>
-          <button class="view-btn">List</button>
-          <button class="view-btn">Analytics</button>
-        </div>
-        <button class="btn primary">+ New Case</button>
+        <div class="view-tog"><button class="vb on">Board</button><button class="vb">List</button><button class="vb">Analytics</button></div>
+        <button class="tb primary">+ New Case</button>
         <div class="avatar">RI</div>
       </div>
     </div>
 
-    <!-- Kanban Board -->
     <div class="kanban">
       <!-- Onboarding -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <div class="column-dot dot-teal"></div>
-          <div class="column-title">Onboarding</div>
-          <span class="column-count">3</span>
-          <button class="column-add">+</button>
-        </div>
-        <div class="column-cards">
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Rodriguez, Alex</div>
-              <div class="k-priority pri-med"></div>
-            </div>
-            <div class="k-eval-type type-neuro">Neuropsychological</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 2 docs</span>
-              <span class="k-meta-item">&#128337; 2d ago</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-25"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 15</span>
-            </div>
+      <div class="col">
+        <div class="col-head"><div class="col-dot d-teal"></div><div class="col-name">Onboarding</div><span class="col-cnt">3</span></div>
+        <div class="col-body">
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Rodriguez, Alex</div><div class="kc-pri p-md"></div></div>
+            <div class="kc-type t-neuro">Neuropsych</div>
+            <div class="kc-meta"><span>2 docs</span><span>2d ago</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:20%; background:#0d9488;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 15</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Park, Soo-jin</div>
-              <div class="k-priority pri-low"></div>
-            </div>
-            <div class="k-eval-type type-disability">Disability</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 1 doc</span>
-              <span class="k-meta-item">&#128337; 1d ago</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-25"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 16</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Park, Soo-jin</div><div class="kc-pri p-lo"></div></div>
+            <div class="kc-type t-dis">Disability</div>
+            <div class="kc-meta"><span>1 doc</span><span>1d ago</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:15%; background:#0d9488;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 16</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Williams, Tanya</div>
-              <div class="k-priority pri-none"></div>
-            </div>
-            <div class="k-eval-type type-ffd">Fitness for Duty</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 0 docs</span>
-              <span class="k-meta-item">&#128337; Today</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill" style="width:10%; background:#d4d4d8;"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 18</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Williams, Tanya</div></div>
+            <div class="kc-type t-ffd">Fitness for Duty</div>
+            <div class="kc-meta"><span>0 docs</span><span>Today</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:5%; background:#d0d0d8;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 18</span></div>
           </div>
         </div>
       </div>
 
       <!-- Testing -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <div class="column-dot dot-purple"></div>
-          <div class="column-title">Testing</div>
-          <span class="column-count">5</span>
-        </div>
-        <div class="column-cards">
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Chen, Lisa</div>
-              <div class="k-priority pri-high"></div>
-            </div>
-            <div class="k-eval-type type-ptsd">PTSD / Trauma</div>
-            <div class="k-flags">
-              <span class="k-flag flag-psych">Psych Hx</span>
-              <span class="k-flag flag-substance">Substance</span>
-            </div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 6 docs</span>
-              <span class="k-meta-item">&#9989; MMPI-3</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-50"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 10</span>
-            </div>
+      <div class="col">
+        <div class="col-head"><div class="col-dot d-purple"></div><div class="col-name">Testing</div><span class="col-cnt">5</span></div>
+        <div class="col-body">
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Chen, Lisa</div><div class="kc-pri p-hi"></div></div>
+            <div class="kc-type t-ptsd">PTSD</div>
+            <div class="kc-flags"><span class="kf f-psych">Psych Hx</span><span class="kf f-sub">Substance</span></div>
+            <div class="kc-meta"><span>6 docs</span><span>MMPI-3 done</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:45%; background:#7c3aed;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 10</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Garcia, Marco</div>
-              <div class="k-priority pri-med"></div>
-            </div>
-            <div class="k-eval-type type-cst">Competency (CST)</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 4 docs</span>
-              <span class="k-meta-item">&#9989; PAI</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-50"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 12</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Garcia, Marco</div><div class="kc-pri p-md"></div></div>
+            <div class="kc-type t-cst">CST</div>
+            <div class="kc-meta"><span>4 docs</span><span>PAI done</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:40%; background:#7c3aed;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 12</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Johnson, Derek</div>
-              <div class="k-priority pri-low"></div>
-            </div>
-            <div class="k-eval-type type-custody">Custody</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 8 docs</span>
-              <span class="k-meta-item">&#128337; 3d ago</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-50"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 8</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Johnson, Derek</div></div>
+            <div class="kc-type t-custody">Custody</div>
+            <div class="kc-meta"><span>8 docs</span><span>3d ago</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:50%; background:#7c3aed;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 8</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Petrov, Natasha</div>
-              <div class="k-priority pri-none"></div>
-            </div>
-            <div class="k-eval-type type-neuro">Neuropsychological</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 3 docs</span>
-              <span class="k-meta-item">&#128337; 5d ago</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill" style="width:35%; background:#7c3aed;"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 6</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Petrov, Natasha</div></div>
+            <div class="kc-type t-neuro">Neuropsych</div>
+            <div class="kc-meta"><span>3 docs</span><span>5d ago</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:35%; background:#7c3aed;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 6</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Adams, Brian</div>
-              <div class="k-priority pri-med"></div>
-            </div>
-            <div class="k-eval-type type-risk">Risk Assessment</div>
-            <div class="k-flags">
-              <span class="k-flag flag-malingering">Effort ?</span>
-            </div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 5 docs</span>
-              <span class="k-meta-item">&#9989; TOMM</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-50"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 9</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Adams, Brian</div><div class="kc-pri p-md"></div></div>
+            <div class="kc-type t-risk">Risk</div>
+            <div class="kc-flags"><span class="kf f-mal">Effort?</span></div>
+            <div class="kc-meta"><span>5 docs</span><span>TOMM done</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:45%; background:#7c3aed;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 9</span></div>
           </div>
         </div>
       </div>
 
       <!-- Interview -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <div class="column-dot dot-pink"></div>
-          <div class="column-title">Interview</div>
-          <span class="column-count">4</span>
-        </div>
-        <div class="column-cards">
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Bridger, Kara</div>
-              <div class="k-priority pri-high"></div>
-            </div>
-            <div class="k-eval-type type-risk">Risk Assessment</div>
-            <div class="k-flags">
-              <span class="k-flag flag-psych">Psych Hx</span>
-              <span class="k-flag flag-urgent">Urgent</span>
-            </div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 11 docs</span>
-              <span class="k-meta-item">&#127908; Transcribed</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-50"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 5</span>
-            </div>
+      <div class="col">
+        <div class="col-head"><div class="col-dot d-pink"></div><div class="col-name">Interview</div><span class="col-cnt">4</span></div>
+        <div class="col-body">
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Bridger, Kara</div><div class="kc-pri p-hi"></div></div>
+            <div class="kc-type t-risk">Risk</div>
+            <div class="kc-flags"><span class="kf f-psych">Psych Hx</span><span class="kf f-urg">Urgent</span></div>
+            <div class="kc-meta"><span>11 docs</span><span>Transcribed</span></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 5</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Nguyen, Phuc</div>
-              <div class="k-priority pri-med"></div>
-            </div>
-            <div class="k-eval-type type-cst">Competency (CST)</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 7 docs</span>
-              <span class="k-meta-item">&#127908; Recording</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-50"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 7</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Nguyen, Phuc</div><div class="kc-pri p-md"></div></div>
+            <div class="kc-type t-cst">CST</div>
+            <div class="kc-meta"><span>7 docs</span><span>Recording</span></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 7</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Sullivan, Kevin</div>
-              <div class="k-priority pri-low"></div>
-            </div>
-            <div class="k-eval-type type-custody">Custody</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 9 docs</span>
-              <span class="k-meta-item">&#127908; Transcribed</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-50"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 4</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Sullivan, Kevin</div></div>
+            <div class="kc-type t-custody">Custody</div>
+            <div class="kc-meta"><span>9 docs</span><span>Transcribed</span></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 4</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Okafor, Chidi</div>
-              <div class="k-priority pri-none"></div>
-            </div>
-            <div class="k-eval-type type-ptsd">PTSD / Trauma</div>
-            <div class="k-flags">
-              <span class="k-flag flag-tbi">TBI Hx</span>
-            </div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 6 docs</span>
-              <span class="k-meta-item">&#128337; 1d ago</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-50"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 11</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Okafor, Chidi</div></div>
+            <div class="kc-type t-ptsd">PTSD</div>
+            <div class="kc-flags"><span class="kf f-tbi">TBI Hx</span></div>
+            <div class="kc-meta"><span>6 docs</span><span>1d ago</span></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 11</span></div>
           </div>
         </div>
       </div>
 
       <!-- Diagnostics -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <div class="column-dot dot-orange"></div>
-          <div class="column-title">Diagnostics</div>
-          <span class="column-count">6</span>
-        </div>
-        <div class="column-cards">
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Vasquez, Maria</div>
-              <div class="k-priority pri-high"></div>
-            </div>
-            <div class="k-eval-type type-cst">Competency (CST)</div>
-            <div class="k-flags">
-              <span class="k-flag flag-psych">Bipolar I</span>
-            </div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 14 docs</span>
-              <span class="k-meta-item">&#9889; 3 dx proposed</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-75"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 2</span>
-            </div>
+      <div class="col">
+        <div class="col-head"><div class="col-dot d-orange"></div><div class="col-name">Diagnostics</div><span class="col-cnt">6</span></div>
+        <div class="col-body">
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Vasquez, Maria</div><div class="kc-pri p-hi"></div></div>
+            <div class="kc-type t-cst">CST</div>
+            <div class="kc-flags"><span class="kf f-psych">Bipolar I</span></div>
+            <div class="kc-meta"><span>14 docs</span><span>3 dx proposed</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:70%; background:#ea580c;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 2</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Baker, Samuel</div>
-              <div class="k-priority pri-med"></div>
-            </div>
-            <div class="k-eval-type type-crim">Criminal Resp.</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 12 docs</span>
-              <span class="k-meta-item">&#9889; 2 dx proposed</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-75"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 1</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Baker, Samuel</div><div class="kc-pri p-md"></div></div>
+            <div class="kc-type t-crim">Crim Resp</div>
+            <div class="kc-meta"><span>12 docs</span><span>2 dx proposed</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:65%; background:#ea580c;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 1</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Torres, Elena</div>
-              <div class="k-priority pri-low"></div>
-            </div>
-            <div class="k-eval-type type-custody">Custody</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 10 docs</span>
-              <span class="k-meta-item">&#9889; 1 dx confirmed</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-75"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Mar 28</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Torres, Elena</div></div>
+            <div class="kc-type t-custody">Custody</div>
+            <div class="kc-meta"><span>10 docs</span><span>1 dx confirmed</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:75%; background:#ea580c;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Mar 28</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Foster, Raymond</div>
-              <div class="k-priority pri-med"></div>
-            </div>
-            <div class="k-eval-type type-risk">Risk Assessment</div>
-            <div class="k-flags">
-              <span class="k-flag flag-substance">Substance</span>
-            </div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 8 docs</span>
-              <span class="k-meta-item">&#9889; 4 dx proposed</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-75"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Mar 30</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Foster, Raymond</div><div class="kc-pri p-md"></div></div>
+            <div class="kc-type t-risk">Risk</div>
+            <div class="kc-flags"><span class="kf f-sub">Substance</span></div>
+            <div class="kc-meta"><span>8 docs</span><span>4 dx proposed</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:60%; background:#ea580c;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Mar 30</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Kim, Jae-won</div>
-              <div class="k-priority pri-none"></div>
-            </div>
-            <div class="k-eval-type type-cst">Competency (CST)</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 9 docs</span>
-              <span class="k-meta-item">&#9889; Pending</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill" style="width:60%; background:#ea580c;"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Apr 3</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Kim, Jae-won</div></div>
+            <div class="kc-type t-cst">CST</div>
+            <div class="kc-meta"><span>9 docs</span><span>Pending</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:55%; background:#ea580c;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Apr 3</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Lewis, Shanice</div>
-              <div class="k-priority pri-high"></div>
-            </div>
-            <div class="k-eval-type type-ffd">Fitness for Duty</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 7 docs</span>
-              <span class="k-meta-item">&#9889; 2 dx proposed</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-75"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Mar 25</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Lewis, Shanice</div><div class="kc-pri p-hi"></div></div>
+            <div class="kc-type t-ffd">Fitness for Duty</div>
+            <div class="kc-meta"><span>7 docs</span><span>2 dx proposed</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:68%; background:#ea580c;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Mar 25</span></div>
           </div>
         </div>
       </div>
 
       <!-- Review -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <div class="column-dot dot-red"></div>
-          <div class="column-title">Review</div>
-          <span class="column-count">3</span>
-        </div>
-        <div class="column-cards">
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Thompson, James</div>
-              <div class="k-priority pri-med"></div>
-            </div>
-            <div class="k-eval-type type-custody">Custody</div>
-            <div class="k-flags">
-              <span class="k-flag flag-docs">Draft v3</span>
-            </div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 16 docs</span>
-              <span class="k-meta-item">&#128209; 2 flags</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-75"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Mar 20</span>
-            </div>
+      <div class="col">
+        <div class="col-head"><div class="col-dot d-red"></div><div class="col-name">Review</div><span class="col-cnt">3</span></div>
+        <div class="col-body">
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Thompson, James</div><div class="kc-pri p-md"></div></div>
+            <div class="kc-type t-custody">Custody</div>
+            <div class="kc-flags"><span class="kf f-draft">v3</span></div>
+            <div class="kc-meta"><span>16 docs</span><span>2 flags</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:85%; background:#dc2626;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Mar 20</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Reeves, Marcus</div>
-              <div class="k-priority pri-low"></div>
-            </div>
-            <div class="k-eval-type type-cst">Competency (CST)</div>
-            <div class="k-flags">
-              <span class="k-flag flag-docs">Draft v2</span>
-            </div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 13 docs</span>
-              <span class="k-meta-item">&#128209; 0 flags</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill" style="width:90%; background:#dc2626;"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Mar 22</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Reeves, Marcus</div></div>
+            <div class="kc-type t-cst">CST</div>
+            <div class="kc-flags"><span class="kf f-draft">v2</span></div>
+            <div class="kc-meta"><span>13 docs</span><span>0 flags</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:92%; background:#dc2626;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Mar 22</span></div>
           </div>
-
-          <div class="k-card">
-            <div class="k-card-header">
-              <div class="k-name">Hoffman, Laura</div>
-              <div class="k-priority pri-none"></div>
-            </div>
-            <div class="k-eval-type type-neuro">Neuropsychological</div>
-            <div class="k-flags">
-              <span class="k-flag flag-docs">Draft v4</span>
-            </div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 18 docs</span>
-              <span class="k-meta-item">&#128209; 1 flag</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill" style="width:85%; background:#dc2626;"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Mar 18</span>
-            </div>
+          <div class="kc">
+            <div class="kc-top"><div class="kc-name">Hoffman, Laura</div></div>
+            <div class="kc-type t-neuro">Neuropsych</div>
+            <div class="kc-flags"><span class="kf f-draft">v4</span></div>
+            <div class="kc-meta"><span>18 docs</span><span>1 flag</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:88%; background:#dc2626;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Mar 18</span></div>
           </div>
         </div>
       </div>
 
       <!-- Complete -->
-      <div class="kanban-column">
-        <div class="column-header">
-          <div class="column-dot dot-green"></div>
-          <div class="column-title">Complete</div>
-          <span class="column-count">2</span>
-        </div>
-        <div class="column-cards">
-          <div class="k-card" style="opacity: 0.75;">
-            <div class="k-card-header">
-              <div class="k-name">Mitchell, David</div>
-              <div class="k-priority pri-none"></div>
-            </div>
-            <div class="k-eval-type type-cst">Competency (CST)</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 15 docs</span>
-              <span class="k-meta-item">&#9989; Signed</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-100"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Mar 15</span>
-            </div>
+      <div class="col">
+        <div class="col-head"><div class="col-dot d-green"></div><div class="col-name">Complete</div><span class="col-cnt">2</span></div>
+        <div class="col-body">
+          <div class="kc" style="opacity: 0.65;">
+            <div class="kc-top"><div class="kc-name">Mitchell, David</div></div>
+            <div class="kc-type t-cst">CST</div>
+            <div class="kc-meta"><span>15 docs</span><span>Signed</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:100%; background:#059669;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Mar 15</span></div>
           </div>
-
-          <div class="k-card" style="opacity: 0.75;">
-            <div class="k-card-header">
-              <div class="k-name">Carter, Diane</div>
-              <div class="k-priority pri-none"></div>
-            </div>
-            <div class="k-eval-type type-ptsd">PTSD / Trauma</div>
-            <div class="k-meta">
-              <span class="k-meta-item">&#128196; 12 docs</span>
-              <span class="k-meta-item">&#9989; Signed</span>
-            </div>
-            <div class="k-progress"><div class="k-progress-fill prog-100"></div></div>
-            <div class="k-footer">
-              <div class="k-avatar">RI</div>
-              <span class="k-clinician">R. Irwin</span>
-              <span class="k-date">Mar 10</span>
-            </div>
+          <div class="kc" style="opacity: 0.65;">
+            <div class="kc-top"><div class="kc-name">Carter, Diane</div></div>
+            <div class="kc-type t-ptsd">PTSD</div>
+            <div class="kc-meta"><span>12 docs</span><span>Signed</span></div>
+            <div class="kc-prog"><div class="kc-prog-fill" style="width:100%; background:#059669;"></div></div>
+            <div class="kc-foot"><div class="kc-av">RI</div><span class="kc-who">R. Irwin</span><span class="kc-when">Mar 10</span></div>
           </div>
         </div>
       </div>
