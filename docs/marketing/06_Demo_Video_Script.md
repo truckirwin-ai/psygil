@@ -1,99 +1,80 @@
-# Psygil Demo Video Script
+# Psygil Demo Video Script (v2)
 **Duration:** 2:30
-**Format:** Screen recording with voiceover
-**Pacing:** Crisp, no lingering. Each shot 5-8 seconds max.
+**Voice:** American, conversational, confident
+**Pronunciation:** Psygil = "SID-jil" (like sigil)
 
 ---
 
-## OPENING (10 seconds)
+## SHOT 1: Dashboard kanban (8s)
 
-**[Dashboard kanban, full view]**
+"Meet Psygil. This is your morning view. Every evaluation you're working on, organized by stage, from onboarding all the way through to complete. You create a new case, and it moves through the pipeline as you work."
 
-"This is Psygil. 34 forensic evaluation cases, six pipeline stages, one dashboard. Every case you're managing, where it stands, what needs attention."
+## SHOT 2: Click into case, Intake tab (6s)
 
----
+"Open a case and you're looking at the full clinical picture. Demographics, referral source, legal context. Add your notes on the right as you go. Everything saves automatically."
 
-## ACT 1: THE WORKFLOW (40 seconds)
+## SHOT 3: Referral sub-tab (3s)
 
-**[Click into a case: Rodriguez, Miguel. Intake tab, Background sub-tab]**
+"Referral details, court information, charges, evaluation questions."
 
-"Click into any case. Demographics, referral source, legal context, clinical history. Everything the clinician enters stays on this machine, encrypted."
+## SHOT 4: Testing tab (7s)
 
-**[Click Testing tab. Battery table with 6 instruments]**
+"The testing tab tracks your full battery. Scores, validity flags, and review links for each instrument. Psygil supports 43 instruments out of the box, from the MMPI-3 and PAI to the HCR-20 and MacCAT."
 
-"Testing. Six instruments scored. PCL-R, HCR-20v3, SARA, PAI, MMPI-3, TOMM. Validity flags inline. Click Review to see the full score breakdown."
+## SHOT 5: Interviews tab (6s)
 
-**[Click Interviews tab. Session with Record button]**
+"Interviews. Record sessions with live transcription that runs entirely on your machine. No cloud. Import transcripts from Zoom or Teams. Add clinical notes at every stage."
 
-"Interviews. Record sessions with live transcription running locally. Import Zoom or Teams transcripts. Every session tracked with its source."
+## SHOT 6: Diagnostics, conditions undecided (5s)
 
----
+"Here's where it gets interesting. The diagnostics tab shows conditions suggested by your data. But Psygil never makes the call. You do."
 
-## ACT 2: THE DECISION (45 seconds)
+## SHOT 7: Click RENDER (2s)
 
-**[Click Diagnostics tab. Two conditions visible, 0/2 undecided]**
+"Confirm a diagnosis."
 
-"Diagnostics. The AI proposes conditions based on your data. It never diagnoses. You do."
+## SHOT 8: Click DEFER (2s)
 
-**[Click RENDER on Antisocial Personality Disorder. Green active, 1/2]**
+"Defer one that needs more data."
 
-"Render the diagnosis you confirm."
+## SHOT 9: Conditions decided, formulations approved (4s)
 
-**[Click DEFER on Structured Violence Risk. Amber active, 2/2 complete]**
+"Approve your formulations, check the attestation, and every gate turns green."
 
-"Defer what needs more data. Every decision is timestamped, attributed, and audit-logged."
+## SHOT 10: Click Build Report, report generates (6s)
 
-**[All 4 formulation sections APPROVED. Attestation checkbox checked. All gates green]**
+"Hit build, and Psygil generates a complete forensic evaluation report from your confirmed diagnoses, your test data, and your clinical notes. What used to take six hours takes about thirty five minutes."
 
-"Approve each formulation section. Check the attestation. All gates pass."
+## SHOT 11: Report preview with title page (5s)
 
-**[Click Approve & Build Report. Report generates, switches to Reports tab]**
+"Full report with a Word-style editor. Export to .docx for court or .pdf for distribution. Save anytime with Command-S."
 
-"Build the report. Psygil generates an 11-section forensic evaluation report from your confirmed diagnoses, test data, and clinical notes. 35 minutes, not 6 hours."
+## SHOT 12: Report scrolled, sections visible (3s)
 
----
+"Every section is populated from your clinical data. You control every word."
 
-## ACT 3: THE REPORT (25 seconds)
+## SHOT 13: Assessment Library (5s)
 
-**[Report tab showing CONFIDENTIAL FORENSIC EVALUATION REPORT title page]**
+"43 instruments with built-in scoring norms. Forensic, neuropsych, clinical, effort testing, risk assessment. All searchable, all categorized."
 
-"Full report preview with Word-style editing toolbar. Export to .docx for court filing or .pdf for distribution."
+## SHOT 14: Privacy & Compliance (6s)
 
-**[Scroll down showing report sections: Identifying Information, Informed Consent]**
+"Your patient data never leaves this device. No data trains AI models. You own everything. These are not policy promises. The architecture makes it impossible for us to access your data."
 
-"Every section populated from your clinical data. Edit anything. Save with Cmd+S. The clinician controls every word."
+## SHOT 15: AI & Models, PHI Redaction (4s)
 
----
+"Before any AI call, the UNID pipeline strips all patient identifiers. Always on. Cannot be disabled."
 
-## ACT 4: TRUST (30 seconds)
+## SHOT 16: Analytics charts (5s)
 
-**[Settings > Assessment Library showing 43 instruments]**
-
-"43 psychological instruments with scoring norms. MMPI-3, PAI, WAIS-V, SIRS-2, MacCAT-CA, HCR-20v3, and more."
-
-**[Settings > Privacy & Compliance showing green checkmarks]**
-
-"Patient data never leaves your device. No data trains AI models. You own 100% of everything. These are not policies. They are architectural guarantees."
-
-**[Settings > AI & Models showing PHI Redaction Pipeline ALWAYS ON]**
-
-"The UNID redaction pipeline strips all 18 HIPAA identifier categories before any AI call. Always on. Cannot be disabled."
-
----
-
-## CLOSING (10 seconds)
-
-**[Dashboard kanban, Analytics expanded with 6 charts]**
-
-"Psygil. The forensic evaluation platform where the doctor always diagnoses. Try it free for 10 days at psygil.com."
+"Psygil. The forensic evaluation platform where the doctor always diagnoses. Try it free at psygil.com."
 
 ---
 
 ## PRODUCTION NOTES
-
-- No background music. Clean, professional. Let the product speak.
-- Voiceover: confident, measured pace. Not salesy. Think product demo, not commercial.
-- Transitions: simple cuts, no animations or wipes.
-- Each screenshot held 5-8 seconds max. Move fast.
-- Total: ~15 shots, 2:30 runtime.
-- End card: Psygil logo + psygil.com + "Try Free" button
+- Remove case counts from narration
+- Pronunciation: "SID-jil" throughout
+- American accent, conversational tone
+- Not a feature list. Feels like someone showing you the app.
+- Quick cuts on shots 3, 7, 8, 12 (2-3 seconds)
+- Longer holds on shots 1, 4, 10, 14 (6-8 seconds)
