@@ -67,7 +67,75 @@ The reskin replaces token VALUES, not token NAMES. The existing `var(--*)` syste
 | `--accent` | #6b93db | #818cf8 | Indigo-400 |
 | `--highlight` | #2d3340 | #2a2a40 | Navy-tinted |
 
-**New token additions:** none needed. Existing tokens already cover all Mercury use cases.
+**New token additions for color consolidation:**
+
+The color audit found **67 unique hardcoded hex values** scattered across 30 components. Mercury uses roughly 12 colors total. The plan consolidates to ~20 semantic tokens.
+
+**New semantic tokens (add to tokens.css):**
+
+```css
+/* Stage colors (pipeline + kanban + left column) */
+--stage-onboarding:    #0d9488;
+--stage-testing:       #7c3aed;
+--stage-interview:     #db2777;
+--stage-diagnostics:   #ea580c;
+--stage-review:        #dc2626;
+--stage-complete:      #059669;
+
+/* Grayscale consolidation (replace #ddd, #888, #666, #222, #f5f5f5, etc.) */
+--gray-50:   #fafafb;   /* lightest bg */
+--gray-100:  #f5f5f7;   /* input bg, hover */
+--gray-200:  #eaeaec;   /* borders (= --border) */
+--gray-300:  #d0d0d8;   /* scrollbar thumb, hover borders */
+--gray-400:  #a0a0b0;   /* meta text (= --text-secondary) */
+--gray-500:  #5c5c70;   /* body text secondary */
+--gray-900:  #1a1a2e;   /* primary text (= --text) */
+
+/* Overlays (replace 8 different rgba(0,0,0,X) values) */
+--overlay-light:  rgba(0,0,0,0.1);
+--overlay-medium: rgba(0,0,0,0.4);
+--overlay-heavy:  rgba(0,0,0,0.55);
+```
+
+**Colors REMOVED (consolidated into tokens above):**
+
+| Removed | Replaced By |
+|---|---|
+| #ddd | var(--border) |
+| #888 | var(--text-secondary) |
+| #666 | var(--text-secondary) |
+| #222 | var(--text) |
+| #333 | var(--text) |
+| #111 | var(--text) |
+| #000 (in borders) | var(--text) |
+| #f5f5f5 | var(--gray-100) |
+| #fafafa | var(--gray-50) |
+| #f0f0f0 | var(--panel) |
+| #2196f3 | var(--stage-onboarding) or var(--accent) |
+| #9c27b0 | var(--stage-testing) |
+| #e91e63 | var(--stage-interview) |
+| #ff9800 | var(--stage-diagnostics) |
+| #ff5722 | var(--stage-review) |
+| #4caf50 | var(--stage-complete) |
+| #f44336 | var(--danger) |
+| #00bcd4 | var(--info) |
+| 6 rgba() variants | 3 overlay tokens |
+
+**Net effect:** from **67 unique hardcoded colors** down to **~20 semantic tokens** (15 existing + 6 stage + ~4 gray scale). Every component uses tokens exclusively. Theme switching automatically reskins everything.
+
+**Stage colors in dark theme:**
+```css
+html[data-theme="dark"] {
+  --stage-onboarding:  #5eead4;
+  --stage-testing:     #c4b5fd;
+  --stage-interview:   #f9a8d4;
+  --stage-diagnostics: #fdba74;
+  --stage-review:      #fca5a5;
+  --stage-complete:    #86efac;
+}
+```
+
+This gives muted pastels in dark mode that maintain readability without being garish.
 
 ---
 
