@@ -1,0 +1,64 @@
+Feature,Psygil,PsychAssist,Neuroaide,Assessment Assistant,PAR AI Report Writer,NovoPsych/NovoNote,Psynth,PatientNotes,PsychReport.ai,PsychWriterPro,FT Nexus
+SPECIALTY COVERAGE,,,,,,,,,,,
+Forensic Psychology Support,YES,YES,No,No,No,No,No,No,No,No,YES
+Neuropsychology Reports,YES,YES,YES,No,No,No,YES,YES,Partial,No,No
+Psychoeducational Reports,No,YES,YES,YES,YES,No,YES,No,Partial,No,No
+Clinical Psychology Reports,YES,YES,No,YES,No,Partial,YES,YES,YES,YES,No
+ADHD Evaluations,Planned,YES,No,Partial,No,No,YES,YES,YES,No,No
+Autism Evaluations,Planned,YES,No,Partial,No,No,YES,YES,YES,No,No
+Court / Medico-Legal Reports,YES,YES,No,No,No,No,No,YES,No,No,YES
+School Psychology,Planned,YES,No,YES,YES,No,YES,No,No,No,No
+CORE WORKFLOW FEATURES,,,,,,,,,,,
+AI Report Writing / Generation,YES,YES,YES,YES,YES,YES,YES,YES,YES,YES,Partial
+Gate-Based Diagnostic Decision Workflow,YES (UNIQUE),No,No,No,No,No,No,No,No,No,No
+Integrated Peer Review Module,YES (UNIQUE),No,No,No,No,No,No,No,No,No,No
+Case Overview Dashboard,YES,No,No,No,No,No,No,No,No,No,No
+Test Results Summary View,YES,No,No,No,No,No,No,No,No,No,No
+6-Stage Clinical Pipeline,YES (UNIQUE),No,No,No,No,No,No,No,No,No,No
+Report Consistency Checker,YES,No,No,No,No,No,YES,No,No,No,No
+INPUT CAPABILITIES,,,,,,,,,,,
+Test Score Integration,YES,YES,YES,YES,YES,YES,YES,Partial,YES,YES,YES
+PDF / Document Upload,YES,YES,Unknown,Unknown,Unknown,Unknown,YES,Unknown,Unknown,Unknown,Unknown
+Image Input (handwritten notes),Planned,YES,Unknown,Unknown,Unknown,Unknown,YES,Unknown,Unknown,Unknown,Unknown
+Voice / Dictation Input,YES (offline),Unknown,Unknown,Unknown,Unknown,YES,Unknown,Unknown,Unknown,Unknown,Unknown
+Interview Transcription + Summary,YES (offline),Unknown,Unknown,YES,No,YES,Unknown,Unknown,Unknown,Unknown,No
+Screeners / Intake Forms,YES,YES,No,YES,No,YES,No,Unknown,Unknown,Unknown,No
+Behavioral Observation Documentation,YES,YES,YES,YES,Unknown,Unknown,YES,Unknown,Unknown,Unknown,Unknown
+REPORT QUALITY FEATURES,,,,,,,,,,,
+Clinical Voice / Style Learning,YES,YES,YES,No,No,No,YES,Unknown,Unknown,Unknown,No
+Custom Report Templates,YES,Unknown,Unknown,YES,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown
+DSM-5 / ICD-10 Integration,YES,YES,Unknown,YES,YES,Unknown,Unknown,Unknown,Unknown,Unknown,No
+Daubert / Frye Legal Standard Support,YES,YES,No,No,No,No,No,No,No,No,Unknown
+Data Visualizations / Graphs,YES,Unknown,Unknown,Unknown,Unknown,Unknown,YES,Unknown,Unknown,YES,Unknown
+Forensic Normative Databases (offender norms),Planned,No,No,No,No,No,No,No,No,No,YES
+190+ Formulation Templates,YES (UNIQUE),No,No,No,No,No,No,No,No,No,No
+OUTPUT FORMATS,,,,,,,,,,,
+In-App Editor (OnlyOffice),YES,Unknown,No,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown,No
+Microsoft Word Export,YES,Unknown,YES,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown
+PDF Export,YES,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown
+COMPLIANCE & SECURITY,,,,,,,,,,,
+HIPAA Compliant,YES,YES,YES,YES,YES,YES,YES,YES,YES,Unknown,Unknown
+FERPA Compliant,Planned,Unknown,Unknown,YES,YES,Unknown,Unknown,Unknown,Unknown,Unknown,Unknown
+BAA Available,YES,YES,YES,Unknown,Unknown,Unknown,YES,Unknown,YES (self-service),Unknown,Unknown
+Audit Trails / Logging,YES (hash-chained),YES,YES,Unknown,Unknown,Unknown,YES,Unknown,YES,YES,Unknown
+Role-Based Access Control,Planned,YES,YES,Unknown,Unknown,Unknown,YES,Unknown,YES,Unknown,Unknown
+Data NOT Used for AI Training,YES (local-first),Unknown,Unknown,Unknown,NO (EULA grants training),Unknown,YES (zero-retention),Unknown,Unknown,Unknown,Unknown
+LOCAL-FIRST / ON-PREMISE OPTION,YES,No,No,No,No,No,No,No,No,No,YES
+Tamper-Evident Audit (SHA-256 hash chain),YES (UNIQUE),No,No,No,No,No,No,No,No,No,No
+UNID PHI Redaction Pipeline,YES (UNIQUE),No,No,No,No,No,No,No,No,No,No
+ASSESSMENTS,,,,,,,,,,,
+Number Supported,43+,Undisclosed,Undisclosed,~10,PsychEd only,150+,370+,Template-based,145+,230+,~5
+Forensic Instruments (with context),24 with norms,Unknown,No,No,No,No,No,No,No,No,YES
+PRICING,,,,,,,,,,,
+Lowest Solo Price,Founding: $199/mo,Undisclosed,~$4/mo,$60/mo,Bundled,$19/mo,Undisclosed,$35/mo,$50/user/mo,Undisclosed,Desktop license
+Free Trial,YES (10-day),No,After demo,YES (30 days),No,YES (15 days),YES (14 days),YES (3 reports),YES (14 days),Unknown,Unknown
+UNIQUE TO PSYGIL,,,,,,,,,,,
+Gate-Based Workflow,YES,---,---,---,---,---,---,---,---,---,---
+Peer Review Module,YES,---,---,---,---,---,---,---,---,---,---
+UNID Redaction Pipeline,YES,---,---,---,---,---,---,---,---,---,---
+Tamper-Evident Audit Chain,YES,---,---,---,---,---,---,---,---,---,---
+190+ Formulation Templates,YES,---,---,---,---,---,---,---,---,---,---
+Local-First Encrypted Database,YES,---,---,---,---,---,---,---,---,---,---
+Offline Interview Transcription,YES,---,---,---,---,---,---,---,---,---,---
+Forensic-Contextual Interpretation,YES,---,---,---,---,---,---,---,---,---,---
+White-Label Practice Branding,YES,---,---,---,---,---,---,---,---,---,---
