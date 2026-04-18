@@ -162,6 +162,36 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
   const [attestationStatement, setAttestationStatement] = useState(
     'I attest that I have reviewed the contents of this report, that all clinical opinions expressed herein are my own, and that the findings accurately reflect the data gathered during this evaluation.'
   )
+  const [saving, setSaving] = useState(false)
+
+  // Save handler: generate (or re-generate) the DOCX from current writer output
+  const handleSave = React.useCallback(async () => {
+    if (!writerOutput || saving) return
+    setSaving(true)
+    try {
+      const res = await window.psygil.onlyoffice.generateDocx({ caseId })
+      if (res.status === 'success') {
+        setDocxPath(res.data.filePath)
+        setDocxVersion(res.data.version)
+      }
+    } catch (err) {
+      console.error('[EvalReportTab] Save failed:', err)
+    } finally {
+      setSaving(false)
+    }
+  }, [caseId, writerOutput, saving])
+
+  // Cmd+S / Ctrl+S keyboard shortcut
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        void handleSave()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleSave])
 
   // Detect the current case stage on mount to set the initial phase
   React.useEffect(() => {
@@ -538,6 +568,27 @@ export default function EvalReportTab({ caseId }: EvalReportTabProps): React.JSX
         >
           {generating ? 'Generating...' : 'Generate DOCX'}
         </button>
+
+        {hasWriter && (
+          <button
+            onClick={() => { void handleSave() }}
+            disabled={saving || !writerOutput}
+            title="Save report (Cmd+S)"
+            style={{
+              padding: '4px 12px',
+              fontSize: '11px',
+              border: '1px solid var(--accent)',
+              borderRadius: '6px',
+              backgroundColor: 'var(--accent)',
+              color: '#fff',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.6 : 1,
+              fontWeight: 600,
+            }}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        )}
 
         {canEditMode && (
           <>
