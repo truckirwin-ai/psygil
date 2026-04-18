@@ -89,10 +89,10 @@ html[data-theme="dark"] {
   --report-bg:       #ffffff;
   --report-text:     #1e1e1e;
 
-  /* Semantic state colors - muted for less contrast */
-  --danger:          #c9706a;
-  --warn:            #c99a4d;
-  --success:         #6ba87a;
-  --info:            #6b8fc9;
+  /* Semantic state colors, further muted for ambient dark feel */
+  --danger:          #a8605b;
+  --warn:            #a8854a;
+  --success:         #5e9169;
+  --info:            #5e7faa;
 }
 

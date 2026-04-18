@@ -20,14 +20,14 @@ interface DashboardTabProps {
 
 // themed:skip - eval-type categorical colors, each is a distinct semantic marker not a theme token
 const EVAL_TYPE_COLORS: Record<string, string> = {
-  CST: '#2196f3',
-  Custody: '#9c27b0',
-  Risk: '#f44336',
-  'PTSD Dx': '#ff9800',
-  'ADHD Dx': '#4caf50',
-  Malingering: '#795548',
-  Fitness: '#607d8b',
-  Capacity: '#00bcd4',
+  CST: 'color-mix(in srgb, #2196f3 65%, var(--bg))',
+  Custody: 'color-mix(in srgb, #9c27b0 65%, var(--bg))',
+  Risk: 'color-mix(in srgb, #f44336 60%, var(--bg))',
+  'PTSD Dx': 'color-mix(in srgb, #ff9800 60%, var(--bg))',
+  'ADHD Dx': 'color-mix(in srgb, #4caf50 60%, var(--bg))',
+  Malingering: 'color-mix(in srgb, #795548 70%, var(--bg))',
+  Fitness: 'color-mix(in srgb, #607d8b 70%, var(--bg))',
+  Capacity: 'color-mix(in srgb, #00bcd4 60%, var(--bg))',
 }
 
 const PIPELINE_STAGES = [
@@ -39,14 +39,14 @@ const PIPELINE_STAGES = [
   { key: 'complete', label: 'Complete' },
 ]
 
-/** Stage card colors - themed:skip: pipeline-stage identity colors, each maps to a distinct clinical workflow phase */
+/** Stage card colors, blended with --bg so they adapt to the active theme */
 const STAGE_CARD_STYLES: Record<string, { bg: string; border: string; text: string; accent: string }> = {
-  onboarding:  { bg: '#e0f7fa', border: '#b2ebf2', text: '#00695c', accent: '#00897b' },
-  testing:     { bg: '#f3e5f5', border: '#e1bee7', text: '#6a1b9a', accent: '#8e24aa' },
-  interview:   { bg: '#fce4ec', border: '#f8bbd0', text: '#ad1457', accent: '#d81b60' },
-  diagnostics: { bg: '#fff3e0', border: '#ffe0b2', text: '#e65100', accent: '#f57c00' },
-  review:      { bg: '#fbe9e7', border: '#ffccbc', text: '#bf360c', accent: '#e64a19' },
-  complete:    { bg: '#e8f5e9', border: '#c8e6c9', text: '#2e7d32', accent: '#43a047' },
+  onboarding:  { bg: 'color-mix(in srgb, #00897b 12%, var(--bg))', border: 'color-mix(in srgb, #00897b 25%, var(--border))', text: 'color-mix(in srgb, #80cbc4 80%, var(--text))', accent: 'color-mix(in srgb, #00897b 70%, var(--bg))' },
+  testing:     { bg: 'color-mix(in srgb, #8e24aa 12%, var(--bg))', border: 'color-mix(in srgb, #8e24aa 25%, var(--border))', text: 'color-mix(in srgb, #ce93d8 80%, var(--text))', accent: 'color-mix(in srgb, #8e24aa 70%, var(--bg))' },
+  interview:   { bg: 'color-mix(in srgb, #d81b60 12%, var(--bg))', border: 'color-mix(in srgb, #d81b60 25%, var(--border))', text: 'color-mix(in srgb, #f48fb1 80%, var(--text))', accent: 'color-mix(in srgb, #d81b60 70%, var(--bg))' },
+  diagnostics: { bg: 'color-mix(in srgb, #f57c00 12%, var(--bg))', border: 'color-mix(in srgb, #f57c00 25%, var(--border))', text: 'color-mix(in srgb, #ffcc80 80%, var(--text))', accent: 'color-mix(in srgb, #f57c00 70%, var(--bg))' },
+  review:      { bg: 'color-mix(in srgb, #e64a19 12%, var(--bg))', border: 'color-mix(in srgb, #e64a19 25%, var(--border))', text: 'color-mix(in srgb, #ffab91 80%, var(--text))', accent: 'color-mix(in srgb, #e64a19 70%, var(--bg))' },
+  complete:    { bg: 'color-mix(in srgb, #43a047 12%, var(--bg))', border: 'color-mix(in srgb, #43a047 25%, var(--border))', text: 'color-mix(in srgb, #a5d6a7 80%, var(--text))', accent: 'color-mix(in srgb, #43a047 70%, var(--bg))' },
 }
 
 function mapStageToKey(stage: string | null): string {
