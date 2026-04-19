@@ -4232,7 +4232,25 @@ function registerDiagnosisCatalogHandlers(): void {
 // Public: register all IPC handlers
 // ---------------------------------------------------------------------------
 
+// Screenshot capture for demo video production
+function registerScreenshotHandler(): void {
+  ipcMain.handle('app:screenshot', async (_event, params: { outputPath: string }) => {
+    try {
+      const wins = BrowserWindow.getAllWindows()
+      if (wins.length === 0) return fail('NO_WINDOW', 'No window found')
+      const win = wins[0]
+      const image = await win.webContents.capturePage()
+      const png = image.toPNG()
+      require('fs').writeFileSync(params.outputPath, png)
+      return ok({ path: params.outputPath, size: png.length })
+    } catch (e) {
+      return fail('CAPTURE_FAILED', e instanceof Error ? e.message : 'Failed')
+    }
+  })
+}
+
 export function registerAllHandlers(): void {
+  registerScreenshotHandler()
   registerSetupHandlers()
   registerCasesHandlers()
   registerIntakeHandlers()

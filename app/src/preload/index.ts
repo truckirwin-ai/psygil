@@ -430,6 +430,8 @@ const api: PsygilApi = {
     wipe: (args: UninstallWipeParams) => ipcRenderer.invoke('uninstall:wipe', args),
     relaunch: () => ipcRenderer.invoke('uninstall:relaunch'),
   },
+
+  screenshot: (args: { outputPath: string }) => ipcRenderer.invoke('app:screenshot', args),
 }
 
 contextBridge.exposeInMainWorld('psygil', api)

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "demo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/truckirwin/Desktop/Foundry SMB/Products/Psygil/demo", "-l", "3456", "--no-clipboard"],
+      "port": 3456
+    },
+    {
+      "name": "demo-video",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/truckirwin/Desktop/Foundry SMB/Products/Psygil/demo/video", "-l", "8787", "--no-clipboard"],
+      "port": 8787
+    }
+  ]
+}
