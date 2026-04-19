@@ -21,7 +21,7 @@
 | 1:17 | Defer | Violence risk | Defer one that needs more data. |
 | 1:19 | Reject | TBI ruled out | Rule out the TBI. Three decisions, each timestamped and audit-logged. |
 | 1:23 | Gates ready | All approved | Approve your formulations, check the attestation, and every gate turns green. Time to build the report. |
-| 1:29 | Report | Title page | Build the report. Sidgel generates a multi-section forensic evaluation from your diagnoses, scores, and clinical notes. What used to take you four to six hours, done in about an hour. |
+| 1:29 | Report | Title page | Sidgel generates a multi-section forensic evaluation from your diagnoses, scores, and clinical notes. What used to take you four to six hours, done in about an hour. |
 | 1:41 | Report scroll | Sections | Identifying information, informed consent, background, test results, clinical impressions, risk analysis, recommendations. Every section populated from your data. |
 | 1:52 | Report detail | More sections | You control every word. Edit in the built-in editor or export to Word. Save with Command-S. |
 | 1:58 | Data & Storage | Settings | On the settings side, your workspace folder is the source of truth. All case files live on your machine, encrypted with AES-256. |
@@ -37,7 +37,7 @@
 
 This is Sidgel. Your full caseload at a glance. Cases organized by stage, moving through the pipeline as you work.
 
-Creating a new case takes about two minutes. Enter the patient info, referral details, and evaluation type. Sidgel handles the rest.
+Creating a new case takes about two minutes. Enter the patient info, referral details, and evaluation type. The patient completes their online record and Psygel handles the rest.
 
 The intake captures everything: demographics, family history, medical history, substance use, legal context. Clinical notes on the right, saving as you type.
 
@@ -51,28 +51,30 @@ Hover any instrument for the full detail card. Scale scores, elevation flags, ri
 
 Moving on to interviews. Record sessions with live transcription running entirely on your machine. No cloud. Import Zoom transcripts. Every session tracked with clinical notes.
 
-Now, diagnostics. Three conditions identified from your data. The AI suggests. You decide.
+Now, diagnostics. Three possible conditions identified from your case data. If you decide oi=n an additional condition, add it here.
 
-Confirm a diagnosis.
+Confirm your diagnosis.
 
 Defer one that needs more data.
 
 Rule out the TBI. Three decisions, each timestamped and audit-logged.
 
-Approve your formulations, check the attestation, and every gate turns green. Time to build the report.
+Approve your formulations, add additional diagnostic notes, check the attestation, and every gate is confirmed. Time to build the report.
 
-Build the report. Sidgel generates a multi-section forensic evaluation from your diagnoses, scores, and clinical notes. What used to take you four to six hours, done in about an hour.
+Sidgel generates a multi-section forensic evaluation using your template, your voice and your writing style. The report is built from the case data, test scores, clinical notes, and your diagnosis. 
 
 Identifying information, informed consent, background, test results, clinical impressions, risk analysis, recommendations. Every section populated from your data.
 
-You control every word. Edit in the built-in editor or export to Word. Save with Command-S.
+You control every word. Edit in the built-in editor or export to Word. What used to take you four to six hours, is done in about an hour.
 
-On the settings side, your workspace folder is the source of truth. All case files live on your machine, encrypted with AES-256.
+On the settings side, your workspace folder is the source of truth. All case files live on your machine, encrypted with AES-256. 
 
 Upload your past reports and Sidgel learns your writing voice: sentence length, vocabulary, formality, clinical terminology. Reports read like you wrote them. And every uploaded sample is stripped of PHI locally before analysis. No patient data is ever transmitted.
 
-Seven built-in report templates covering CST, custody, risk, fitness for duty, PTSD, ADHD, and malingering. Or upload your own.
+Built-in report templates covering CST, custody, risk, fitness for duty, PTSD, ADHD, and malingering. Upload your own based on your practice templates or your favorite examples.
 
 Finally, your practice analytics. Pipeline distribution, evaluation types, active versus complete, workload balance, monthly volume, and stage throughput with bottleneck detection.
 
-Sidgel. Write better reports in a fraction of the time. The doctor always diagnoses. Try it free at sidgel dot com.
+Sidgel. Write better reports in a fraction of the time. 
+
+The doctor always diagnoses. Try it free at sidgel dot com.
