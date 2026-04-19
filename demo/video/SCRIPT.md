@@ -35,33 +35,37 @@
 
 ## Full Transcript
 
-This is Sidgel. Your full caseload at a glance. Cases organized by stage, moving through the pipeline as you work.
+This is Sijul. Your full caseload at a glance. Cases organized by stage, moving through the pipeline as you work.
 
-Creating a new case takes about two minutes. Enter the patient info, referral details, and evaluation type. The patient completes their online record and Psygel handles the rest.
+Creating a new case takes about two minutes. Enter the patient info, referral details, and evaluation type. The patient completes their online record and Sijul handles the rest.
 
 The intake captures everything: demographics, family history, medical history, substance use, legal context. Clinical notes on the right, saving as you type.
 
-Medical history, head injuries, medications. All structured for the report. Next, testing.
+Medical history, head injuries, medications. All structured for the report. 
+
+Next, testing.
 
 Your test battery in one view. PCL-R, HCR-20, SARA, all scored with validity flags.
 
-Order Measures gives you access to 43 instruments. Forensic, neuropsych, clinical, effort testing. Add whatever your practice needs.
+Order Measures gives you access to 43 instruments. Forensic, neuropsych, clinical, effort testing. Add whatever measures your practice needs.
 
 Hover any instrument for the full detail card. Scale scores, elevation flags, risk rating, and a clinical recommendation, all structured and ready for your report.
 
-Moving on to interviews. Record sessions with live transcription running entirely on your machine. No cloud. Import Zoom transcripts. Every session tracked with clinical notes.
+Moving on to interviews. 
 
-Now, diagnostics. Three possible conditions identified from your case data. If you decide oi=n an additional condition, add it here.
+Record sessions with live transcription and session summary running entirely on your machine. Import Zoom or meeting transcripts. Every session tracked with clinical notes.
 
-Confirm your diagnosis.
+Now, diagnostics. Possible conditions identified from your case data. If you decide on an additional condition, add it here.
 
-Defer one that needs more data.
+Confirm your primary diagnosis.  Add specific clinical notes.
+
+Defer a condition that needs more data.
 
 Rule out the TBI. Three decisions, each timestamped and audit-logged.
 
-Approve your formulations, add additional diagnostic notes, check the attestation, and every gate is confirmed. Time to build the report.
+Approve your formulations, add additional diagnostic criteria, check the attestation. Every gate is confirmed. Time to build your report.
 
-Sidgel generates a multi-section forensic evaluation using your template, your voice and your writing style. The report is built from the case data, test scores, clinical notes, and your diagnosis. 
+Sijul generates a multi-section forensic evaluation using your template, your voice and your writing style. The report is built from the case data, test scores, clinical notes, and your diagnosis. 
 
 Identifying information, informed consent, background, test results, clinical impressions, risk analysis, recommendations. Every section populated from your data.
 
@@ -69,12 +73,18 @@ You control every word. Edit in the built-in editor or export to Word. What used
 
 On the settings side, your workspace folder is the source of truth. All case files live on your machine, encrypted with AES-256. 
 
-Upload your past reports and Sidgel learns your writing voice: sentence length, vocabulary, formality, clinical terminology. Reports read like you wrote them. And every uploaded sample is stripped of PHI locally before analysis. No patient data is ever transmitted.
+Upload your past reports and Sijul learns your writing voice: sentence length, vocabulary, formality, clinical terminology. Reports read like you wrote them. And every uploaded sample is stripped of personal health information locally before analysis. No patient data is ever transmitted.
 
-Built-in report templates covering CST, custody, risk, fitness for duty, PTSD, ADHD, and malingering. Upload your own based on your practice templates or your favorite examples.
+Built-in report templates cover CST, custody, risk, fitness for duty, PTSD, ADHD, and malingering. Upload your own based on your practice templates or your favorite examples.
 
-Finally, your practice analytics. Pipeline distribution, evaluation types, active versus complete, workload balance, monthly volume, and stage throughput with bottleneck detection.
+Finally, view practice analytics. 
 
-Sidgel. Write better reports in a fraction of the time. 
+Pipeline distribution, evaluation types, active versus complete, workload balance, monthly volume, and stage throughput. Sidjul helps identify workflow congestion letting you focus on getting your reports published.
 
-The doctor always diagnoses. Try it free at sidgel dot com.
+Write better reports in a fraction of the time. Free up several hours a week to focus on your business or enjoy that personal time.
+
+Sijul. 
+
+The doctor always diagnoses, Sijul optimizes your workflow. 
+
+Try it free at Sidjul dot com.
